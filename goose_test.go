@@ -13,4 +13,3 @@ type GooseTestSuite struct {
 }
 
 var _ = Suite(&GooseTestSuite{})
-
