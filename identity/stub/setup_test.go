@@ -1,7 +1,6 @@
 package identitystub
 
 import (
-	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
@@ -18,14 +17,6 @@ type HTTPSuite struct {
 	server     *httptest.Server
 	mux        *http.ServeMux
 	oldHandler http.Handler
-}
-
-type HelloHandler struct{}
-
-func (h *HelloHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(200)
-	w.Write([]byte("Hello World\n"))
 }
 
 func (s *HTTPSuite) SetUpSuite(c *C) {
@@ -49,15 +40,4 @@ func (s *HTTPSuite) TearDownSuite(c *C) {
 		// fmt.Printf("Stopping Server\n")
 		s.server.Close()
 	}
-}
-
-func (s *HTTPSuite) TestHelloWorld(c *C) {
-	s.mux.Handle("/", &HelloHandler{})
-	// fmt.Printf("Running HelloWorld\n")
-	response, err := http.Get(s.server.URL)
-	c.Check(err, IsNil)
-	content, err := ioutil.ReadAll(response.Body)
-	response.Body.Close()
-	c.Check(err, IsNil)
-	c.Check(string(content), Equals, "Hello World\n")
 }
