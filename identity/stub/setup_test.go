@@ -1,7 +1,6 @@
 package identitystub
 
 import (
-	"fmt"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
@@ -16,7 +15,9 @@ func Test(t *testing.T) {
 var _ = Suite(&HTTPSuite{})
 
 type HTTPSuite struct {
-	server *httptest.Server
+	server     *httptest.Server
+	mux        *http.ServeMux
+	oldHandler http.Handler
 }
 
 type HelloHandler struct{}
@@ -28,20 +29,31 @@ func (h *HelloHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *HTTPSuite) SetUpSuite(c *C) {
-	h := HelloHandler{}
-	fmt.Printf("Starting New Server\n")
-	s.server = httptest.NewServer(&h)
+	// fmt.Printf("Starting New Server\n")
+	s.server = httptest.NewServer(nil)
+}
+
+func (s *HTTPSuite) SetUpTest(c *C) {
+	s.oldHandler = s.server.Config.Handler
+	s.mux = http.NewServeMux()
+	s.server.Config.Handler = s.mux
+}
+
+func (s *HTTPSuite) TearDownTest(c *C) {
+	s.mux = nil
+	s.server.Config.Handler = s.oldHandler
 }
 
 func (s *HTTPSuite) TearDownSuite(c *C) {
 	if s.server != nil {
-		fmt.Printf("Stopping Server\n")
+		// fmt.Printf("Stopping Server\n")
 		s.server.Close()
 	}
 }
 
 func (s *HTTPSuite) TestHelloWorld(c *C) {
-	fmt.Printf("Running HelloWorld\n")
+	s.mux.Handle("/", &HelloHandler{})
+	// fmt.Printf("Running HelloWorld\n")
 	response, err := http.Get(s.server.URL)
 	c.Check(err, IsNil)
 	content, err := ioutil.ReadAll(response.Body)
