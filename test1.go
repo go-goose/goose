@@ -1,16 +1,16 @@
 package main
 
 import (
-	"os"
-	"net/http"
-	"io/ioutil"
-	"fmt"
-	"strings"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"strings"
 )
 
 const (
-	OS_AUTH_URL = "https://keystone.canonistack.canonical.com:443"
+	OS_AUTH_URL    = "https://keystone.canonistack.canonical.com:443"
 	OS_AUTH_TOKENS = "/v2.0/tokens"
 )
 
@@ -29,35 +29,53 @@ func getConfig(envVars ...string) (value string) {
 
 func getCredentials() (username, password, project string) {
 	username = getConfig("OS_USERNAME", "NOVA_USERNAME")
-	password  = getConfig("OS_PASSWORD", "NOVA_PASSWORD")
-	project  = getConfig("OS_TENANT_NAME", "NOVA_PROJECT_ID")
+	password = getConfig("OS_PASSWORD", "NOVA_PASSWORD")
+	project = getConfig("OS_TENANT_NAME", "NOVA_PROJECT_ID")
 	return
 }
 
-type AuthRequest struct {
-	Auth struct {
-		Credentials struct {
-			Username string `json:"username"`
-			Password string `json:"password"`
-		} `json:"passwordCredentials"`
-		TenantName string `json:"tenantName"`
-	} `json:"auth"`
+type Credentials struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type Auth struct {
+	Credentials Credentials `json:"passwordCredentials"`
+	TenantName string `json:"tenantName"`
+}
+
+func NewAuthRequest(username, password, project string) interface{} {
+	creds := struct{
+		Username string
+		Password string
+	}{username, password}
+	auth := struct{
+		Credentials interface{}
+		TenantName string
+	}{creds, project}
+	return struct {
+		Auth interface{}
+	}{auth}
 }
 
 func main() {
 	username, password, project := getCredentials()
 	client := &http.Client{CheckRedirect: nil}
 	url := OS_AUTH_URL + OS_AUTH_TOKENS
-	rq := AuthRequest{
-	Auth: {
-		Credentials: {
+	rq := StringMap{
+		"auth": Auth {
+			Credentials: Credentials{
 				Username: username,
 				Password: password,
 			},
 			TenantName: project,
 		},
 	}
-	fmt.Println(rq)
+	jrq, err := json.Marshal(rq)
+	if err != nil {
+		panic("error marshalling body: " + err.Error())
+	}
+	fmt.Println(string(jrq))
 	jsonBody := StringMap{
 		"auth": StringMap{
 			"passwordCredentials": StringMap{
@@ -88,10 +106,24 @@ func main() {
 	if err != nil {
 		panic("error reading response body: " + err.Error())
 	}
-	var jsonResp StringMap
+	//var jsonResp StringMap
+	var jsonResp struct {
+		Access struct {
+			User struct {
+				Id string
+				Username string
+				Roles []struct {
+					Name string
+				}
+			}
+		}
+	}
 	err = json.Unmarshal(respBody, &jsonResp)
 	if err != nil {
 		panic("error unmarshalling response body: " + err.Error())
 	}
 	fmt.Printf("\n\nGot response:\n%+v\n", jsonResp)
+	for _, k := range jsonResp.Access.User.Roles {
+		fmt.Println(k)
+	}
 }
