@@ -1,11 +1,11 @@
 package identitystub
 
 import (
+	"fmt"
+	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
-	"io/ioutil"
-	"fmt"
 	"testing"
 )
 
@@ -19,7 +19,7 @@ type HTTPSuite struct {
 	server *httptest.Server
 }
 
-type HelloHandler struct {}
+type HelloHandler struct{}
 
 func (h *HelloHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
