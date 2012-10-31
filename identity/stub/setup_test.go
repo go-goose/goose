@@ -29,19 +29,19 @@ func (h *HelloHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *HTTPSuite) SetUpSuite(c *C) {
 	h := HelloHandler{}
-	fmt.Printf("Starting New Server")
+	fmt.Printf("Starting New Server\n")
 	s.server = httptest.NewServer(&h)
 }
 
 func (s *HTTPSuite) TearDownSuite(c *C) {
 	if s.server != nil {
-		fmt.Printf("Stopping Server")
+		fmt.Printf("Stopping Server\n")
 		s.server.Close()
 	}
 }
 
 func (s *HTTPSuite) TestHelloWorld(c *C) {
-	fmt.Printf("Running HelloWorld")
+	fmt.Printf("Running HelloWorld\n")
 	response, err := http.Get(s.server.URL)
 	c.Check(err, IsNil)
 	content, err := ioutil.ReadAll(response.Body)
