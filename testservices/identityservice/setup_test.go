@@ -1,4 +1,4 @@
-package identitystub
+package identityservice
 
 import (
 	. "launchpad.net/gocheck"

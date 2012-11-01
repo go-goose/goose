@@ -1,4 +1,4 @@
-package identitystub
+package identityservice
 
 import (
 	"net/http"
@@ -9,23 +9,23 @@ type UserInfo struct {
 	token  string
 }
 
-type LegacyIdentityService struct {
+type Legacy struct {
 	tokens        map[string]UserInfo
 	managementURL string
 }
 
-func NewLegacyIdentityService(managementURL string) *LegacyIdentityService {
-	service := &LegacyIdentityService{}
+func NewLegacy(managementURL string) *Legacy {
+	service := &Legacy{}
 	service.tokens = make(map[string]UserInfo)
 	service.managementURL = managementURL
 	return service
 }
 
-func (lis *LegacyIdentityService) AddUser(user, secret, token string) {
+func (lis *Legacy) AddUser(user, secret, token string) {
 	lis.tokens[user] = UserInfo{secret: secret, token: token}
 }
 
-func (lis *LegacyIdentityService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (lis *Legacy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	username := r.Header.Get("X-Auth-User")
 	info, ok := lis.tokens[username]
 	if !ok {
