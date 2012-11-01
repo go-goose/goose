@@ -4,12 +4,6 @@ import (
 	"net/http"
 )
 
-type IdentityService interface {
-	AddUser(user, secret, token string)
-	SetManagementURL(URL string)
-	ServeHTTP(w http.ResponseWriter, r *http.Request)
-}
-
 type UserInfo struct {
 	secret string
 	token  string
