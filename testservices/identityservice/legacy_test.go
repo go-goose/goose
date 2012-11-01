@@ -6,7 +6,13 @@ import (
 	"net/http"
 )
 
-func (s *HTTPSuite) setupLegacy(user, secret string) (token, managementURL string) {
+type LegacySuite struct {
+	HTTPSuite
+}
+
+var _ = Suite(&LegacySuite{})
+
+func (s *LegacySuite) setupLegacy(user, secret string) (token, managementURL string) {
 	managementURL = s.server.URL
 	identity := NewLegacy()
 	identity.SetManagementURL(managementURL)
@@ -43,7 +49,7 @@ func AssertUnauthorized(c *C, response *http.Response) {
 	c.Check(response.StatusCode, Equals, http.StatusUnauthorized)
 }
 
-func (s *HTTPSuite) TestLegacyFailedAuth(c *C) {
+func (s *LegacySuite) TestLegacyFailedAuth(c *C) {
 	s.setupLegacy("", "")
 	// No headers set for Authentication
 	response, err := DoAuthRequest(s.server.URL, "", "")
@@ -51,7 +57,7 @@ func (s *HTTPSuite) TestLegacyFailedAuth(c *C) {
 	AssertUnauthorized(c, response)
 }
 
-func (s *HTTPSuite) TestLegacyFailedOnlyUser(c *C) {
+func (s *LegacySuite) TestLegacyFailedOnlyUser(c *C) {
 	s.setupLegacy("", "")
 	// Missing secret key
 	response, err := DoAuthRequest(s.server.URL, "user", "")
@@ -59,7 +65,7 @@ func (s *HTTPSuite) TestLegacyFailedOnlyUser(c *C) {
 	AssertUnauthorized(c, response)
 }
 
-func (s *HTTPSuite) TestLegacyNoSuchUser(c *C) {
+func (s *LegacySuite) TestLegacyNoSuchUser(c *C) {
 	s.setupLegacy("user", "key")
 	// No user matching the username
 	response, err := DoAuthRequest(s.server.URL, "notuser", "key")
@@ -67,7 +73,7 @@ func (s *HTTPSuite) TestLegacyNoSuchUser(c *C) {
 	AssertUnauthorized(c, response)
 }
 
-func (s *HTTPSuite) TestLegacyInvalidAuth(c *C) {
+func (s *LegacySuite) TestLegacyInvalidAuth(c *C) {
 	s.setupLegacy("user", "secret-key")
 	// Wrong key
 	response, err := DoAuthRequest(s.server.URL, "user", "bad-key")
@@ -75,7 +81,7 @@ func (s *HTTPSuite) TestLegacyInvalidAuth(c *C) {
 	AssertUnauthorized(c, response)
 }
 
-func (s *HTTPSuite) TestLegacyAuth(c *C) {
+func (s *LegacySuite) TestLegacyAuth(c *C) {
 	token, serverURL := s.setupLegacy("user", "secret-key")
 	response, err := DoAuthRequest(s.server.URL, "user", "secret-key")
 	c.Assert(err, IsNil)
