@@ -32,7 +32,7 @@ func (uv *userValues) String() string {
 	return fmt.Sprintf("%v", uv.users)
 }
 
-var provider = gnuflag.String("provider", "legacy", "provide the name of the identity service to run")
+var provider = gnuflag.String("provider", "userpass", "provide the name of the identity service to run")
 
 var serveAddr = gnuflag.String("addr", "localhost:8080", "serve the provider on the given address.")
 
@@ -45,6 +45,7 @@ func init() {
 
 var providerMap = map[string]identityservice.IdentityService{
 	"legacy": identityservice.NewLegacy(),
+	"userpass": identityservice.NewUserPass(),
 }
 
 func providers() []string {
@@ -63,9 +64,7 @@ func main() {
 	}
 	http.Handle("/", p)
 	for _, u := range users.users {
-		var pi interface{} = p
-		leg := pi.(*identityservice.Legacy)
-		leg.AddUser(u.user, u.secret, u.token)
+		p.AddUser(u.user, u.secret, u.token)
 	}
 	log.Fatal(http.ListenAndServe(*serveAddr, nil))
 }
