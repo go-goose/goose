@@ -4,6 +4,12 @@ import (
 	"net/http"
 )
 
+type IdentityService interface {
+	AddUser(user, secret, token string)
+	SetManagementURL(URL string)
+	ServeHTTP(w http.ResponseWriter, r *http.Request)
+}
+
 type UserInfo struct {
 	secret string
 	token  string
@@ -14,11 +20,14 @@ type Legacy struct {
 	managementURL string
 }
 
-func NewLegacy(managementURL string) *Legacy {
+func NewLegacy() *Legacy {
 	service := &Legacy{}
 	service.tokens = make(map[string]UserInfo)
-	service.managementURL = managementURL
 	return service
+}
+
+func (lis *Legacy) SetManagementURL(URL string) {
+	lis.managementURL = URL
 }
 
 func (lis *Legacy) AddUser(user, secret, token string) {

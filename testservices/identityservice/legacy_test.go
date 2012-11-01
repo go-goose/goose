@@ -8,7 +8,8 @@ import (
 
 func (s *HTTPSuite) setupLegacy(user, secret string) (token, managementURL string) {
 	managementURL = s.server.URL
-	identity := NewLegacy(managementURL)
+	identity := NewLegacy()
+	identity.SetManagementURL(managementURL)
 	s.mux.Handle("/", identity)
 	token = "new-special-token"
 	if user != "" {
