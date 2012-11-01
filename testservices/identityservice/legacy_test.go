@@ -3,20 +3,21 @@ package identityservice
 import (
 	"io/ioutil"
 	. "launchpad.net/gocheck"
+	"launchpad.net/goose/testing/httpsuite"
 	"net/http"
 )
 
 type LegacySuite struct {
-	HTTPSuite
+	httpsuite.HTTPSuite
 }
 
 var _ = Suite(&LegacySuite{})
 
 func (s *LegacySuite) setupLegacy(user, secret string) (token, managementURL string) {
-	managementURL = s.server.URL
+	managementURL = s.Server.URL
 	identity := NewLegacy()
 	identity.SetManagementURL(managementURL)
-	s.mux.Handle("/", identity)
+	s.Mux.Handle("/", identity)
 	token = "new-special-token"
 	if user != "" {
 		identity.AddUser(user, secret, token)
@@ -52,7 +53,7 @@ func AssertUnauthorized(c *C, response *http.Response) {
 func (s *LegacySuite) TestLegacyFailedAuth(c *C) {
 	s.setupLegacy("", "")
 	// No headers set for Authentication
-	response, err := DoAuthRequest(s.server.URL, "", "")
+	response, err := DoAuthRequest(s.Server.URL, "", "")
 	c.Assert(err, IsNil)
 	AssertUnauthorized(c, response)
 }
@@ -60,7 +61,7 @@ func (s *LegacySuite) TestLegacyFailedAuth(c *C) {
 func (s *LegacySuite) TestLegacyFailedOnlyUser(c *C) {
 	s.setupLegacy("", "")
 	// Missing secret key
-	response, err := DoAuthRequest(s.server.URL, "user", "")
+	response, err := DoAuthRequest(s.Server.URL, "user", "")
 	c.Assert(err, IsNil)
 	AssertUnauthorized(c, response)
 }
@@ -68,7 +69,7 @@ func (s *LegacySuite) TestLegacyFailedOnlyUser(c *C) {
 func (s *LegacySuite) TestLegacyNoSuchUser(c *C) {
 	s.setupLegacy("user", "key")
 	// No user matching the username
-	response, err := DoAuthRequest(s.server.URL, "notuser", "key")
+	response, err := DoAuthRequest(s.Server.URL, "notuser", "key")
 	c.Assert(err, IsNil)
 	AssertUnauthorized(c, response)
 }
@@ -76,14 +77,14 @@ func (s *LegacySuite) TestLegacyNoSuchUser(c *C) {
 func (s *LegacySuite) TestLegacyInvalidAuth(c *C) {
 	s.setupLegacy("user", "secret-key")
 	// Wrong key
-	response, err := DoAuthRequest(s.server.URL, "user", "bad-key")
+	response, err := DoAuthRequest(s.Server.URL, "user", "bad-key")
 	c.Assert(err, IsNil)
 	AssertUnauthorized(c, response)
 }
 
 func (s *LegacySuite) TestLegacyAuth(c *C) {
 	token, serverURL := s.setupLegacy("user", "secret-key")
-	response, err := DoAuthRequest(s.server.URL, "user", "secret-key")
+	response, err := DoAuthRequest(s.Server.URL, "user", "secret-key")
 	c.Assert(err, IsNil)
 	content, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
