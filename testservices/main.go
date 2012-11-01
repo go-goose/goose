@@ -40,7 +40,7 @@ var users userValues
 
 func init() {
 
-	gnuflag.Var(&users, "user", "supply to add a user to the identity provider. Can be supplied multiple times.")
+	gnuflag.Var(&users, "user", "supply to add a user to the identity provider. Can be supplied multiple times. Should be of the form \"user:secret:token\".")
 }
 
 var providerMap = map[string]identityservice.IdentityService{
