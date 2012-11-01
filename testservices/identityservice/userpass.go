@@ -9,6 +9,16 @@ import (
 
 // Implement the v2 User Pass form of identity (Keystone)
 
+type ErrorResponse struct {
+	Message string `json:"message"`
+	Code    int    `json:"code"`
+	Title   string `json:"title"`
+}
+
+type ErrorWrapper struct {
+	Error ErrorResponse `json:"error"`
+}
+
 type UserPassRequest struct {
 	Auth struct {
 		PasswordCredentials struct {
@@ -137,10 +147,44 @@ func (u *UserPass) AddUser(user, secret, token string) {
 	u.users[user] = UserInfo{secret: secret, token: token}
 }
 
+var internalError = []byte(`{
+    "error": {
+        "message": "Internal failure",
+	"code": 500,
+	"title": Internal Server Error"
+    }
+}`)
+
+func (u *UserPass) ReturnFailure(w http.ResponseWriter, status int, message string) {
+	e := ErrorWrapper{
+		Error: ErrorResponse{
+			Message: message,
+			Code:    status,
+			Title:   http.StatusText(status),
+		},
+	}
+	if content, err := json.Marshal(e); err != nil {
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(internalError)))
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write(internalError)
+	} else {
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", len(content)))
+		w.WriteHeader(status)
+		w.Write(content)
+	}
+}
+
+// Taken from an actual response
+const notJSON = ("Expecting to find application/json in Content-Type header." +
+	" The server could not comply with the request since it is either malformed" +
+	" or otherwise incorrect. The client is assumed to be in error.")
+
 func (u *UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var req UserPassRequest
+	// Testing against Canonistack, all responses are application/json, even failures
+	w.Header().Set("Content-Type", "application/json")
 	if r.Header.Get("Content-Type") != "application/json" {
-		w.WriteHeader(http.StatusBadRequest)
+		u.ReturnFailure(w, http.StatusBadRequest, notJSON)
 		return
 	}
 	if content, err := ioutil.ReadAll(r.Body); err != nil {

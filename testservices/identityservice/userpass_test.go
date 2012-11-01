@@ -49,6 +49,21 @@ func UserPassAuthRequest(URL, user, key string) (*http.Response, error) {
 	return client.Do(request)
 }
 
+func CheckErrorResponse(c *C, r *http.Response, status int, msg string) {
+	c.Check(r.StatusCode, Equals, status)
+	c.Assert(r.Header.Get("Content-Type"), Equals, "application/json")
+	body, err := ioutil.ReadAll(r.Body)
+	c.Assert(err, IsNil)
+	var errmsg ErrorWrapper
+	err = json.Unmarshal(body, &errmsg)
+	c.Assert(err, IsNil)
+	c.Check(errmsg.Error.Code, Equals, status)
+	c.Check(errmsg.Error.Title, Equals, http.StatusText(status))
+	if msg != "" {
+		c.Check(errmsg.Error.Message, Equals, msg)
+	}
+}
+
 func (s *UserPassSuite) TestNotJSON(c *C) {
 	// We do everything in UserPassAuthRequest, except set the Content-Type
 	token := s.setupUserPass("user", "secret")
@@ -58,8 +73,9 @@ func (s *UserPassSuite) TestNotJSON(c *C) {
 	request, err := http.NewRequest("POST", s.Server.URL, body)
 	c.Assert(err, IsNil)
 	res, err := client.Do(request)
+	defer res.Body.Close()
 	c.Assert(err, IsNil)
-	c.Check(res.StatusCode, Equals, http.StatusBadRequest)
+	CheckErrorResponse(c, res, http.StatusBadRequest, notJSON)
 }
 
 func (s *UserPassSuite) TestNoSuchUser(c *C) {
@@ -87,6 +103,7 @@ func (s *UserPassSuite) TestValidAuthorization(c *C) {
 	defer res.Body.Close()
 	c.Assert(err, IsNil)
 	c.Check(res.StatusCode, Equals, http.StatusOK)
+	c.Check(res.Header.Get("Content-Type"), Equals, "application/json")
 	content, err := ioutil.ReadAll(res.Body)
 	c.Assert(err, IsNil)
 	var response AccessResponse
