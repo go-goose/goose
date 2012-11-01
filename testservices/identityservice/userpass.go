@@ -174,10 +174,13 @@ func (u *UserPass) ReturnFailure(w http.ResponseWriter, status int, message stri
 	}
 }
 
-// Taken from an actual response
-const notJSON = ("Expecting to find application/json in Content-Type header." +
-	" The server could not comply with the request since it is either malformed" +
-	" or otherwise incorrect. The client is assumed to be in error.")
+// Taken from an actual responses
+const (
+	notJSON = ("Expecting to find application/json in Content-Type header." +
+		" The server could not comply with the request since it is either malformed" +
+		" or otherwise incorrect. The client is assumed to be in error.")
+	notAuthorized = "The request you have made requires authentication."
+)
 
 func (u *UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var req UserPassRequest
@@ -192,13 +195,13 @@ func (u *UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		if err := json.Unmarshal(content, &req); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			u.ReturnFailure(w, http.StatusBadRequest, notJSON)
 			return
 		}
 	}
 	userInfo, ok := u.users[req.Auth.PasswordCredentials.Username]
 	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
+		u.ReturnFailure(w, http.StatusUnauthorized, notAuthorized)
 		return
 	}
 	if userInfo.secret != req.Auth.PasswordCredentials.Password {

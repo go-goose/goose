@@ -78,13 +78,23 @@ func (s *UserPassSuite) TestNotJSON(c *C) {
 	CheckErrorResponse(c, res, http.StatusBadRequest, notJSON)
 }
 
+func (s *UserPassSuite) TestBadJSON(c *C) {
+	// We do everything in UserPassAuthRequest, except set the Content-Type
+	token := s.setupUserPass("user", "secret")
+	c.Assert(token, NotNil)
+	res, err := UserPassAuthRequest(s.Server.URL, "garbage\"in", "secret")
+	defer res.Body.Close()
+	c.Assert(err, IsNil)
+	CheckErrorResponse(c, res, http.StatusBadRequest, notJSON)
+}
+
 func (s *UserPassSuite) TestNoSuchUser(c *C) {
 	token := s.setupUserPass("user", "secret")
 	c.Assert(token, NotNil)
 	res, err := UserPassAuthRequest(s.Server.URL, "not-user", "secret")
 	defer res.Body.Close()
 	c.Assert(err, IsNil)
-	c.Check(res.StatusCode, Equals, http.StatusUnauthorized)
+	CheckErrorResponse(c, res, http.StatusUnauthorized, notAuthorized)
 }
 
 func (s *UserPassSuite) TestBadPassword(c *C) {
