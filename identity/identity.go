@@ -12,5 +12,5 @@ type Credentials struct {
 }
 
 type Authenticator interface {
-	Auth(URL string) (*AuthDetails, error)
+	Auth(creds Credentials) (*AuthDetails, error)
 }
