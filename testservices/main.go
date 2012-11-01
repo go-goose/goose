@@ -49,7 +49,7 @@ var providerMap = map[string]identityservice.IdentityService{
 
 func providers() []string {
 	out := make([]string, 0, len(providerMap))
-	for provider, _ := range providerMap {
+	for provider := range providerMap {
 		out = append(out, provider)
 	}
 	return out
