@@ -174,12 +174,13 @@ func (u *UserPass) ReturnFailure(w http.ResponseWriter, status int, message stri
 	}
 }
 
-// Taken from an actual responses
+// Taken from an actual responses, however it may vary based on actual Openstack implementation
 const (
 	notJSON = ("Expecting to find application/json in Content-Type header." +
 		" The server could not comply with the request since it is either malformed" +
 		" or otherwise incorrect. The client is assumed to be in error.")
 	notAuthorized = "The request you have made requires authentication."
+	invalidUser   = "Invalid user / password"
 )
 
 func (u *UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -205,7 +206,7 @@ func (u *UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if userInfo.secret != req.Auth.PasswordCredentials.Password {
-		w.WriteHeader(http.StatusUnauthorized)
+		u.ReturnFailure(w, http.StatusUnauthorized, invalidUser)
 		return
 	}
 	res := AccessResponse{}
@@ -213,19 +214,17 @@ func (u *UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// XXX: We should really build up valid state for this instead, at the
 	//	very least, we should manage the URLs better.
 	if err := json.Unmarshal([]byte(exampleResponse), &res); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		u.ReturnFailure(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	res.Access.Token.Id = userInfo.token
 	if content, err := json.Marshal(res); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprint(err)))
+		u.ReturnFailure(w, http.StatusInternalServerError, err.Error())
 		return
 	} else {
 		w.WriteHeader(http.StatusOK)
 		w.Write(content)
 		return
 	}
-	w.WriteHeader(http.StatusInternalServerError)
-	return
+	panic("All paths should have already returned")
 }

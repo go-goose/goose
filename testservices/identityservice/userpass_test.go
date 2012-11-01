@@ -103,7 +103,7 @@ func (s *UserPassSuite) TestBadPassword(c *C) {
 	res, err := UserPassAuthRequest(s.Server.URL, "user", "not-secret")
 	defer res.Body.Close()
 	c.Assert(err, IsNil)
-	c.Check(res.StatusCode, Equals, http.StatusUnauthorized)
+	CheckErrorResponse(c, res, http.StatusUnauthorized, invalidUser)
 }
 
 func (s *UserPassSuite) TestValidAuthorization(c *C) {
