@@ -4,12 +4,7 @@ import (
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/testing/httpsuite"
 	"launchpad.net/goose/testservices/identityservice"
-	"testing"
 )
-
-func Test(t *testing.T) {
-	TestingT(t)
-}
 
 type LegacyTestSuite struct {
 	httpsuite.HTTPSuite
