@@ -44,7 +44,7 @@ func init() {
 }
 
 var providerMap = map[string]identityservice.IdentityService{
-	"legacy": identityservice.NewLegacy(),
+	"legacy":   identityservice.NewLegacy(),
 	"userpass": identityservice.NewUserPass(),
 }
 
