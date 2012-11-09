@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 )
 
 // ErrorContextf prefixes any error stored in err with text formatted
@@ -859,4 +860,34 @@ func main() {
 		panic(err.Error())
 	}
 	fmt.Printf("\nList floating IPs:\n%#v\n", fips)
+
+	ro := RunServerOpts{
+		Name:     "test1",
+		FlavorId: "1",                                    // m1.tiny
+		ImageId:  "3fc0ef0b-82a9-4f44-a797-a43f0f73b20e", // smoser-cloud-images/ubuntu-precise-12.04-i386-server-20120424.manifest.xml
+	}
+	err = client.RunServer(ro)
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Printf("\nRun server with opts:\n%#v\n", ro)
+
+	fmt.Printf("\nWaiting 10 secs..\n")
+	time.Sleep(10 * time.Second)
+
+	servers, err = client.ListServersDetail()
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Printf("\nList servers (detailed):\n%#v\n", servers)
+
+	for _, s := range servers {
+		if s.Name == "test1" {
+			err = client.DeleteServer(s.Id)
+			if err != nil {
+				panic(err.Error())
+			}
+			fmt.Printf("\nDeleted server %s\n", s.Id)
+		}
+	}
 }
