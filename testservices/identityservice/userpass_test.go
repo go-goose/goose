@@ -38,7 +38,7 @@ var authTemplate = `{
     }
 }`
 
-func UserPassAuthRequest(URL, user, key string) (*http.Response, error) {
+func userPassAuthRequest(URL, user, key string) (*http.Response, error) {
 	client := &http.Client{}
 	body := strings.NewReader(fmt.Sprintf(authTemplate, user, key))
 	request, err := http.NewRequest("POST", URL, body)
@@ -65,7 +65,7 @@ func CheckErrorResponse(c *C, r *http.Response, status int, msg string) {
 }
 
 func (s *UserPassSuite) TestNotJSON(c *C) {
-	// We do everything in UserPassAuthRequest, except set the Content-Type
+	// We do everything in userPassAuthRequest, except set the Content-Type
 	token := s.setupUserPass("user", "secret")
 	c.Assert(token, NotNil)
 	client := &http.Client{}
@@ -79,10 +79,10 @@ func (s *UserPassSuite) TestNotJSON(c *C) {
 }
 
 func (s *UserPassSuite) TestBadJSON(c *C) {
-	// We do everything in UserPassAuthRequest, except set the Content-Type
+	// We do everything in userPassAuthRequest, except set the Content-Type
 	token := s.setupUserPass("user", "secret")
 	c.Assert(token, NotNil)
-	res, err := UserPassAuthRequest(s.Server.URL, "garbage\"in", "secret")
+	res, err := userPassAuthRequest(s.Server.URL, "garbage\"in", "secret")
 	defer res.Body.Close()
 	c.Assert(err, IsNil)
 	CheckErrorResponse(c, res, http.StatusBadRequest, notJSON)
@@ -91,7 +91,7 @@ func (s *UserPassSuite) TestBadJSON(c *C) {
 func (s *UserPassSuite) TestNoSuchUser(c *C) {
 	token := s.setupUserPass("user", "secret")
 	c.Assert(token, NotNil)
-	res, err := UserPassAuthRequest(s.Server.URL, "not-user", "secret")
+	res, err := userPassAuthRequest(s.Server.URL, "not-user", "secret")
 	defer res.Body.Close()
 	c.Assert(err, IsNil)
 	CheckErrorResponse(c, res, http.StatusUnauthorized, notAuthorized)
@@ -100,7 +100,7 @@ func (s *UserPassSuite) TestNoSuchUser(c *C) {
 func (s *UserPassSuite) TestBadPassword(c *C) {
 	token := s.setupUserPass("user", "secret")
 	c.Assert(token, NotNil)
-	res, err := UserPassAuthRequest(s.Server.URL, "user", "not-secret")
+	res, err := userPassAuthRequest(s.Server.URL, "user", "not-secret")
 	defer res.Body.Close()
 	c.Assert(err, IsNil)
 	CheckErrorResponse(c, res, http.StatusUnauthorized, invalidUser)
@@ -109,7 +109,7 @@ func (s *UserPassSuite) TestBadPassword(c *C) {
 func (s *UserPassSuite) TestValidAuthorization(c *C) {
 	token := s.setupUserPass("user", "secret")
 	c.Assert(token, NotNil)
-	res, err := UserPassAuthRequest(s.Server.URL, "user", "secret")
+	res, err := userPassAuthRequest(s.Server.URL, "user", "secret")
 	defer res.Body.Close()
 	c.Assert(err, IsNil)
 	c.Check(res.StatusCode, Equals, http.StatusOK)
