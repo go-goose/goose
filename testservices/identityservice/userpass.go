@@ -144,7 +144,7 @@ func NewUserPass() *UserPass {
 }
 
 func (u *UserPass) AddUser(user, secret string) string {
-	token := "new-secret-token"
+	token := randomHexToken()
 	u.users[user] = UserInfo{secret: secret, token: token}
 	return token
 }

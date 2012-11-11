@@ -4,11 +4,6 @@ import (
 	"net/http"
 )
 
-type UserInfo struct {
-	secret string
-	token  string
-}
-
 type Legacy struct {
 	tokens        map[string]UserInfo
 	managementURL string
@@ -25,7 +20,7 @@ func (lis *Legacy) SetManagementURL(URL string) {
 }
 
 func (lis *Legacy) AddUser(user, secret string) string {
-	token := "new-secret-token"
+	token := randomHexToken()
 	lis.tokens[user] = UserInfo{secret: secret, token: token}
 	return token
 }
