@@ -5,6 +5,6 @@ import (
 )
 
 type IdentityService interface {
-	AddUser(user, secret, token string)
+	AddUser(user, secret string) (token string)
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }

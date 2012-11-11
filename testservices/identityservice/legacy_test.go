@@ -20,9 +20,8 @@ func (s *LegacySuite) setupLegacy(user, secret string) (token, managementURL str
 	var _ IdentityService = identity
 	identity.SetManagementURL(managementURL)
 	s.Mux.Handle("/", identity)
-	token = "new-special-token"
 	if user != "" {
-		identity.AddUser(user, secret, token)
+		token = identity.AddUser(user, secret)
 	}
 	return
 }

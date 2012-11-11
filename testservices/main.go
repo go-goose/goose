@@ -10,7 +10,7 @@ import (
 )
 
 type userInfo struct {
-	user, secret, token string
+	user, secret string
 }
 type userValues struct {
 	users []userInfo
@@ -18,13 +18,12 @@ type userValues struct {
 
 func (uv *userValues) Set(s string) error {
 	vals := strings.Split(s, ":")
-	if len(vals) != 3 {
-		return fmt.Errorf("Invalid --user option, should be: user:secret:token")
+	if len(vals) != 2 {
+		return fmt.Errorf("Invalid --user option, should be: user:secret")
 	}
 	uv.users = append(uv.users, userInfo{
 		user:   vals[0],
 		secret: vals[1],
-		token:  vals[2],
 	})
 	return nil
 }
@@ -64,7 +63,7 @@ func main() {
 	}
 	http.Handle("/", p)
 	for _, u := range users.users {
-		p.AddUser(u.user, u.secret, u.token)
+		p.AddUser(u.user, u.secret)
 	}
 	log.Fatal(http.ListenAndServe(*serveAddr, nil))
 }

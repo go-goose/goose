@@ -21,9 +21,8 @@ func (s *UserPassSuite) setupUserPass(user, secret string) (token string) {
 	// Ensure that it conforms to the interface
 	var _ IdentityService = identity
 	s.Mux.Handle("/", identity)
-	token = "new-special-token"
 	if user != "" {
-		identity.AddUser(user, secret, token)
+		token = identity.AddUser(user, secret)
 	}
 	return
 }

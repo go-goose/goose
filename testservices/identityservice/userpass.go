@@ -143,8 +143,10 @@ func NewUserPass() *UserPass {
 	return userpass
 }
 
-func (u *UserPass) AddUser(user, secret, token string) {
+func (u *UserPass) AddUser(user, secret string) string {
+	token := "new-secret-token"
 	u.users[user] = UserInfo{secret: secret, token: token}
+	return token
 }
 
 var internalError = []byte(`{

@@ -24,8 +24,10 @@ func (lis *Legacy) SetManagementURL(URL string) {
 	lis.managementURL = URL
 }
 
-func (lis *Legacy) AddUser(user, secret, token string) {
+func (lis *Legacy) AddUser(user, secret string) string {
+	token := "new-secret-token"
 	lis.tokens[user] = UserInfo{secret: secret, token: token}
+	return token
 }
 
 func (lis *Legacy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
