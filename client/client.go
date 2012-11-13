@@ -1,4 +1,4 @@
-package main
+package client
 
 import (
 	"encoding/base64"
@@ -113,6 +113,9 @@ type OpenStackClient struct {
 
 func (c *OpenStackClient) Authenticate(username, password, tenant string) (err error) {
 	err = nil
+	if username == "" || password == "" || tenant == "" {
+		return fmt.Errorf("required argument(s) missing")
+	}
 	var req struct {
 		Auth struct {
 			Credentials struct {
@@ -191,10 +194,19 @@ func (c *OpenStackClient) ListFlavors() (flavors []Entity, err error) {
 	return resp.Flavors, nil
 }
 
-func (c *OpenStackClient) ListFlavorsDetail() (flavors []Entity, err error) {
+type FlavorDetail struct {
+	Name  string
+	RAM   int
+	VCPUs int
+	Disk  int
+	Id    string
+	Swap  interface{} // Can be an empty string (?!)
+}
+
+func (c *OpenStackClient) ListFlavorsDetail() (flavors []FlavorDetail, err error) {
 
 	var resp struct {
-		Flavors []Entity
+		Flavors []FlavorDetail
 	}
 	err = c.authRequest(GET, "compute", OS_API_FLAVORS_DETAIL, nil, nil, &resp, http.StatusOK)
 	if err != nil {
