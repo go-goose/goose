@@ -1,4 +1,4 @@
-package goose
+package identityservice
 
 import (
 	. "launchpad.net/gocheck"
@@ -8,8 +8,3 @@ import (
 func Test(t *testing.T) {
 	TestingT(t)
 }
-
-type GooseTestSuite struct {
-}
-
-var _ = Suite(&GooseTestSuite{})
