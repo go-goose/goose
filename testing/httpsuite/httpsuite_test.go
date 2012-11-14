@@ -14,6 +14,7 @@ type HTTPTestSuite struct {
 func Test(t *testing.T) {
 	TestingT(t)
 }
+
 var _ = Suite(&HTTPTestSuite{})
 
 type HelloHandler struct{}
