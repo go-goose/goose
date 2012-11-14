@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"time"
 )
 
 // ErrorContextf prefixes any error stored in err with text formatted
