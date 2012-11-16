@@ -16,14 +16,30 @@ type UserPassSuite struct {
 
 var _ = Suite(&UserPassSuite{})
 
-func (s *UserPassSuite) setupUserPass(user, secret string) (token string) {
-	var identity = NewUserPass()
+func makeUserPass(user, secret string) (identity *UserPass, token string) {
+	identity = NewUserPass()
 	// Ensure that it conforms to the interface
 	var _ IdentityService = identity
-	s.Mux.Handle("/", identity)
 	if user != "" {
 		token = identity.AddUser(user, secret)
 	}
+	return
+}
+
+func (s *UserPassSuite) setupUserPass(user, secret string) (token string) {
+	var identity *UserPass
+	identity, token = makeUserPass(user, secret)
+	s.Mux.Handle("/", identity)
+	return
+}
+
+func (s *UserPassSuite) setupUserPassWithServices(user, secret string, services []Service) (token string) {
+	var identity *UserPass
+	identity, token = makeUserPass(user, secret)
+	for _, service := range services {
+		identity.AddService(service)
+	}
+	s.Mux.Handle("/", identity)
 	return
 }
 
@@ -106,7 +122,11 @@ func (s *UserPassSuite) TestBadPassword(c *C) {
 }
 
 func (s *UserPassSuite) TestValidAuthorization(c *C) {
-	token := s.setupUserPass("user", "secret")
+	compute_url := "http://testing.invalid/compute"
+	token := s.setupUserPassWithServices("user", "secret", []Service{
+		{"nova", "compute", []Endpoint{
+			{PublicURL: compute_url},
+		}}})
 	c.Assert(token, NotNil)
 	res, err := userPassAuthRequest(s.Server.URL, "user", "secret")
 	defer res.Body.Close()
@@ -126,5 +146,5 @@ func (s *UserPassSuite) TestValidAuthorization(c *C) {
 			break
 		}
 	}
-	c.Assert(novaURL, Not(Equals), "")
+	c.Assert(novaURL, Equals, compute_url)
 }
