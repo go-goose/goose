@@ -135,11 +135,15 @@ var exampleResponse = `{
 }`
 
 type UserPass struct {
-	users map[string]UserInfo
+	users    map[string]UserInfo
+	services []Service
 }
 
 func NewUserPass() *UserPass {
-	userpass := &UserPass{users: make(map[string]UserInfo)}
+	userpass := &UserPass{
+		users:    make(map[string]UserInfo),
+		services: make([]Service, 0),
+	}
 	return userpass
 }
 
@@ -147,6 +151,10 @@ func (u *UserPass) AddUser(user, secret string) string {
 	token := randomHexToken()
 	u.users[user] = UserInfo{secret: secret, token: token}
 	return token
+}
+
+func (u *UserPass) AddService(service Service) {
+	u.services = append(u.services, service)
 }
 
 var internalError = []byte(`{
@@ -219,6 +227,7 @@ func (u *UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		u.ReturnFailure(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	res.Access.ServiceCatalog = u.services
 	res.Access.Token.Id = userInfo.token
 	if content, err := json.Marshal(res); err != nil {
 		u.ReturnFailure(w, http.StatusInternalServerError, err.Error())
