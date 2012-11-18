@@ -25,8 +25,8 @@ func (s *CredentialsTestSuite) TestCredentialsFromEnv(c *C) {
 	}{
 		{summary: "Old 'NOVA' style creds",
 			env: map[string]string{
-				"NOVA_USERNAME":   "test-user",
-				"NOVA_PASSWORD":   "test-pass",
+				"NOVA_USERNAME": "test-user",
+				"NOVA_PASSWORD": "test-pass",
 				// TODO: JAM 20121118 There exists a 'tenant
 				// name' and a 'tenant id'. Does
 				// NOVA_PROJECT_ID map to the 'tenant id' or to
@@ -42,10 +42,10 @@ func (s *CredentialsTestSuite) TestCredentialsFromEnv(c *C) {
 		},
 		{summary: "New 'OS' style environment",
 			env: map[string]string{
-				"OS_USERNAME":   "test-user",
-				"OS_PASSWORD":   "test-pass",
+				"OS_USERNAME":    "test-user",
+				"OS_PASSWORD":    "test-pass",
 				"OS_TENANT_NAME": "tenant-name",
-				"OS_REGION_NAME":     "region",
+				"OS_REGION_NAME": "region",
 			},
 			username: "test-user",
 			password: "test-pass",

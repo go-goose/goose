@@ -34,10 +34,10 @@ func getConfig(envVars ...string) (value string) {
 
 func CredentialsFromEnv() *Credentials {
 	return &Credentials{
-		URL: getConfig("OS_AUTH_URL"),
-		User: getConfig("OS_USERNAME", "NOVA_USERNAME"),
-		Secrets: getConfig("OS_PASSWORD", "NOVA_PASSWORD"),
-		Region: getConfig("OS_REGION_NAME", "NOVA_REGION"),
+		URL:        getConfig("OS_AUTH_URL"),
+		User:       getConfig("OS_USERNAME", "NOVA_USERNAME"),
+		Secrets:    getConfig("OS_PASSWORD", "NOVA_PASSWORD"),
+		Region:     getConfig("OS_REGION_NAME", "NOVA_REGION"),
 		TenantName: getConfig("OS_TENANT_NAME", "NOVA_PROJECT_ID"),
 	}
 }
