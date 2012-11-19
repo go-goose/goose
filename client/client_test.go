@@ -425,3 +425,29 @@ func (s *ClientSuite) TestServerFloatingIPs(c *C) {
 	err = s.client.DeleteFloatingIP(ip.Id)
 	c.Check(err, IsNil)
 }
+
+func (s *ClientSuite) TestCreateAndDeleteContainer(c *C) {
+	container := "test_container"
+	err := s.client.CreateContainer(container)
+	c.Check(err, IsNil)
+	err = s.client.DeleteContainer(container)
+	c.Check(err, IsNil)
+}
+
+func (s *ClientSuite) TestObjects(c *C) {
+
+	container := "test_container"
+	object := "test_obj"
+	data := []byte("...some data...")
+	err := s.client.CreateContainer(container)
+	c.Check(err, IsNil)
+	err = s.client.PutObject(container, object, data)
+	c.Check(err, IsNil)
+	objdata, err := s.client.GetObject(container, object)
+	c.Check(err, IsNil)
+	c.Check(objdata, Equals, data)
+	err = s.client.DeleteObject(container, object)
+	c.Check(err, IsNil)
+	err = s.client.DeleteContainer(container)
+	c.Check(err, IsNil)
+}
