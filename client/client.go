@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -55,6 +56,8 @@ const (
 	POST   = "POST"
 	PUT    = "PUT"
 	DELETE = "DELETE"
+	HEAD   = "HEAD"
+	COPY   = "COPY"
 )
 
 type endpoint struct {
@@ -137,7 +140,7 @@ func (c *OpenStackClient) Authenticate(username, password, tenant string) (err e
 		}
 	}
 
-	err = c.request(POST, c.IdentityEndpoint+OS_API_TOKENS, req, &resp, http.StatusOK)
+	err = c.request(POST, c.IdentityEndpoint+OS_API_TOKENS, nil, req, &resp, []int{http.StatusOK}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "authentication failed")
 		return
@@ -184,7 +187,7 @@ func (c *OpenStackClient) ListFlavors() (flavors []Entity, err error) {
 	var resp struct {
 		Flavors []Entity
 	}
-	err = c.authRequest(GET, "compute", OS_API_FLAVORS, nil, nil, &resp, http.StatusOK)
+	err = c.authRequest(GET, "compute", OS_API_FLAVORS, nil, nil, nil, &resp, []int{http.StatusOK}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to get list of flavors")
 		return
@@ -207,7 +210,7 @@ func (c *OpenStackClient) ListFlavorsDetail() (flavors []FlavorDetail, err error
 	var resp struct {
 		Flavors []FlavorDetail
 	}
-	err = c.authRequest(GET, "compute", OS_API_FLAVORS_DETAIL, nil, nil, &resp, http.StatusOK)
+	err = c.authRequest(GET, "compute", OS_API_FLAVORS_DETAIL, nil, nil, nil, &resp, []int{http.StatusOK}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to get list of flavors details")
 		return
@@ -221,7 +224,7 @@ func (c *OpenStackClient) ListServers() (servers []Entity, err error) {
 	var resp struct {
 		Servers []Entity
 	}
-	err = c.authRequest(GET, "compute", OS_API_SERVERS, nil, nil, &resp, http.StatusOK)
+	err = c.authRequest(GET, "compute", OS_API_SERVERS, nil, nil, nil, &resp, []int{http.StatusOK}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to get list of servers")
 		return
@@ -252,7 +255,7 @@ func (c *OpenStackClient) ListServersDetail() (servers []ServerDetail, err error
 	var resp struct {
 		Servers []ServerDetail
 	}
-	err = c.authRequest(GET, "compute", OS_API_SERVERS_DETAIL, nil, nil, &resp, http.StatusOK)
+	err = c.authRequest(GET, "compute", OS_API_SERVERS_DETAIL, nil, nil, nil, &resp, []int{http.StatusOK}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to get list of servers details")
 		return
@@ -267,7 +270,7 @@ func (c *OpenStackClient) GetServer(serverId string) (ServerDetail, error) {
 		Server ServerDetail
 	}
 	url := fmt.Sprintf("%s/%s", OS_API_SERVERS, serverId)
-	err := c.authRequest(GET, "compute", url, nil, nil, &resp, http.StatusOK)
+	err := c.authRequest(GET, "compute", url, nil, nil, nil, &resp, []int{http.StatusOK}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to get details for serverId=%s", serverId)
 		return ServerDetail{}, err
@@ -282,7 +285,7 @@ func (c *OpenStackClient) DeleteServer(serverId string) error {
 		Server ServerDetail
 	}
 	url := fmt.Sprintf("%s/%s", OS_API_SERVERS, serverId)
-	err := c.authRequest(DELETE, "compute", url, nil, nil, &resp, http.StatusNoContent)
+	err := c.authRequest(DELETE, "compute", url, nil, nil, nil, &resp, []int{http.StatusNoContent}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to delete server with serverId=%s", serverId)
 		return err
@@ -312,7 +315,7 @@ func (c *OpenStackClient) RunServer(opts RunServerOpts) (err error) {
 		encoded := base64.StdEncoding.EncodeToString(data)
 		req.Server.UserData = &encoded
 	}
-	err = c.authRequest(POST, "compute", OS_API_SERVERS, nil, &req, nil, http.StatusAccepted)
+	err = c.authRequest(POST, "compute", OS_API_SERVERS, nil, nil, &req, nil, []int{http.StatusAccepted}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to run a server with %#v", opts)
 	}
@@ -343,7 +346,7 @@ func (c *OpenStackClient) ListSecurityGroups() (groups []SecurityGroup, err erro
 	var resp struct {
 		Groups []SecurityGroup `json:"security_groups"`
 	}
-	err = c.authRequest(GET, "compute", OS_API_SECURITY_GROUPS, nil, nil, &resp, http.StatusOK)
+	err = c.authRequest(GET, "compute", OS_API_SECURITY_GROUPS, nil, nil, nil, &resp, []int{http.StatusOK}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to list security groups")
 		return nil, err
@@ -358,7 +361,7 @@ func (c *OpenStackClient) GetServerSecurityGroups(serverId string) (groups []Sec
 		Groups []SecurityGroup `json:"security_groups"`
 	}
 	url := fmt.Sprintf("%s/%s/%s", OS_API_SERVERS, serverId, OS_API_SECURITY_GROUPS)
-	err = c.authRequest(GET, "compute", url, nil, nil, &resp, http.StatusOK)
+	err = c.authRequest(GET, "compute", url, nil, nil, nil, &resp, []int{http.StatusOK}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to list server (%s) security groups", serverId)
 		return nil, err
@@ -381,7 +384,7 @@ func (c *OpenStackClient) CreateSecurityGroup(name, description string) (group S
 	var resp struct {
 		SecurityGroup SecurityGroup `json:"security_group"`
 	}
-	err = c.authRequest(POST, "compute", OS_API_SECURITY_GROUPS, nil, &req, &resp, http.StatusOK)
+	err = c.authRequest(POST, "compute", OS_API_SECURITY_GROUPS, nil, nil, &req, &resp, []int{http.StatusOK}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to create a security group with name=%s", name)
 	}
@@ -393,7 +396,7 @@ func (c *OpenStackClient) CreateSecurityGroup(name, description string) (group S
 func (c *OpenStackClient) DeleteSecurityGroup(groupId int) (err error) {
 
 	url := fmt.Sprintf("%s/%d", OS_API_SECURITY_GROUPS, groupId)
-	err = c.authRequest(DELETE, "compute", url, nil, nil, nil, http.StatusAccepted)
+	err = c.authRequest(DELETE, "compute", url, nil, nil, nil, nil, []int{http.StatusAccepted}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to delete a security group with id=%d", groupId)
 	}
@@ -421,7 +424,7 @@ func (c *OpenStackClient) CreateSecurityGroupRule(ruleInfo RuleInfo) (rule Secur
 		SecurityGroupRule SecurityGroupRule `json:"security_group_rule"`
 	}
 
-	err = c.authRequest(POST, "compute", OS_API_SECURITY_GROUP_RULES, nil, &req, &resp, http.StatusOK)
+	err = c.authRequest(POST, "compute", OS_API_SECURITY_GROUP_RULES, nil, nil, &req, &resp, []int{http.StatusOK}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to create a rule for the security group with id=%s", ruleInfo.GroupId)
 	}
@@ -432,7 +435,7 @@ func (c *OpenStackClient) CreateSecurityGroupRule(ruleInfo RuleInfo) (rule Secur
 func (c *OpenStackClient) DeleteSecurityGroupRule(ruleId int) (err error) {
 
 	url := fmt.Sprintf("%s/%d", OS_API_SECURITY_GROUP_RULES, ruleId)
-	err = c.authRequest(DELETE, "compute", url, nil, nil, nil, http.StatusAccepted)
+	err = c.authRequest(DELETE, "compute", url, nil, nil, nil, nil, []int{http.StatusAccepted}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to delete a security group rule with id=%d", ruleId)
 	}
@@ -450,7 +453,7 @@ func (c *OpenStackClient) AddServerSecurityGroup(serverId, groupName string) (er
 	req.AddSecurityGroup.Name = groupName
 
 	url := fmt.Sprintf("%s/%s/action", OS_API_SERVERS, serverId)
-	err = c.authRequest(POST, "compute", url, nil, &req, nil, http.StatusAccepted)
+	err = c.authRequest(POST, "compute", url, nil, nil, &req, nil, []int{http.StatusAccepted}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to add security group '%s' from server with id=%s", groupName, serverId)
 	}
@@ -467,7 +470,7 @@ func (c *OpenStackClient) RemoveServerSecurityGroup(serverId, groupName string) 
 	req.RemoveSecurityGroup.Name = groupName
 
 	url := fmt.Sprintf("%s/%s/action", OS_API_SERVERS, serverId)
-	err = c.authRequest(POST, "compute", url, nil, &req, nil, http.StatusAccepted)
+	err = c.authRequest(POST, "compute", url, nil, nil, &req, nil, []int{http.StatusAccepted}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to remove security group '%s' from server with id=%s", groupName, serverId)
 	}
@@ -488,7 +491,7 @@ func (c *OpenStackClient) ListFloatingIPs() (ips []FloatingIP, err error) {
 		FloatingIPs []FloatingIP `json:"floating_ips"`
 	}
 
-	err = c.authRequest(GET, "compute", OS_API_FLOATING_IPS, nil, nil, &resp, http.StatusOK)
+	err = c.authRequest(GET, "compute", OS_API_FLOATING_IPS, nil, nil, nil, &resp, []int{http.StatusOK}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to list floating ips")
 	}
@@ -503,7 +506,7 @@ func (c *OpenStackClient) GetFloatingIP(ipId int) (ip FloatingIP, err error) {
 	}
 
 	url := fmt.Sprintf("%s/%d", OS_API_FLOATING_IPS, ipId)
-	err = c.authRequest(GET, "compute", url, nil, nil, &resp, http.StatusOK)
+	err = c.authRequest(GET, "compute", url, nil, nil, nil, &resp, []int{http.StatusOK}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to get floating ip %d details", ipId)
 	}
@@ -517,7 +520,7 @@ func (c *OpenStackClient) AllocateFloatingIP() (ip FloatingIP, err error) {
 		FloatingIP FloatingIP `json:"floating_ip"`
 	}
 
-	err = c.authRequest(POST, "compute", OS_API_FLOATING_IPS, nil, nil, &resp, http.StatusOK)
+	err = c.authRequest(POST, "compute", OS_API_FLOATING_IPS, nil, nil, nil, &resp, []int{http.StatusOK}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to allocate a floating ip")
 	}
@@ -528,7 +531,7 @@ func (c *OpenStackClient) AllocateFloatingIP() (ip FloatingIP, err error) {
 func (c *OpenStackClient) DeleteFloatingIP(ipId int) (err error) {
 
 	url := fmt.Sprintf("%s/%d", OS_API_FLOATING_IPS, ipId)
-	err = c.authRequest(DELETE, "compute", url, nil, nil, nil, http.StatusAccepted)
+	err = c.authRequest(DELETE, "compute", url, nil, nil, nil, nil, []int{http.StatusAccepted}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to delete floating ip %d details", ipId)
 	}
@@ -546,7 +549,7 @@ func (c *OpenStackClient) AddServerFloatingIP(serverId, address string) (err err
 	req.AddFloatingIP.Address = address
 
 	url := fmt.Sprintf("%s/%s/action", OS_API_SERVERS, serverId)
-	err = c.authRequest(POST, "compute", url, nil, &req, nil, http.StatusAccepted)
+	err = c.authRequest(POST, "compute", url, nil, nil, &req, nil, []int{http.StatusAccepted}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to add floating ip %s to server %s", address, serverId)
 	}
@@ -564,12 +567,98 @@ func (c *OpenStackClient) RemoveServerFloatingIP(serverId, address string) (err 
 	req.RemoveFloatingIP.Address = address
 
 	url := fmt.Sprintf("%s/%s/action", OS_API_SERVERS, serverId)
-	err = c.authRequest(POST, "compute", url, nil, &req, nil, http.StatusAccepted)
+	err = c.authRequest(POST, "compute", url, nil, nil, &req, nil, []int{http.StatusAccepted}, nil, nil, nil)
 	if err != nil {
 		ErrorContextf(&err, "failed to remove floating ip %s to server %s", address, serverId)
 	}
 
 	return
+}
+
+func (c *OpenStackClient) CreateContainer(containerName string) (err error) {
+
+	// Juju expects there to be a (semi) public url for some objects. This
+	// could probably be more restrictive or placed in a seperate container
+	// with some refactoring, but for now just make everything public.
+	headers := make(http.Header)
+	headers.Add("X-Container-Read", ".r:*")
+	url := fmt.Sprintf("/%s", containerName)
+	err = c.authRequest(PUT, "object-store", url, nil, nil, nil, nil, []int{http.StatusAccepted, http.StatusCreated}, headers, nil, nil)
+	if err != nil {
+		ErrorContextf(&err, "failed to create container %s.", containerName)
+	}
+
+	return
+}
+
+func (c *OpenStackClient) DeleteContainer(containerName string) (err error) {
+
+	url := fmt.Sprintf("/%s", containerName)
+	err = c.authRequest(DELETE, "object-store", url, nil, nil, nil, nil, []int{http.StatusNoContent}, nil, nil, nil)
+	if err != nil {
+		ErrorContextf(&err, "failed to delete container %s.", containerName)
+	}
+
+	return
+}
+
+func (c *OpenStackClient) PublicObjectURL(containerName, objectName string) (url string, err error) {
+	path := fmt.Sprintf("/%s/%s", containerName, objectName)
+	return c.makeUrl("object-store", []string{path}, nil)
+}
+
+func (c *OpenStackClient) HeadObject(containerName, objectName string) (headers http.Header, err error) {
+
+	url, err := c.PublicObjectURL(containerName, objectName)
+	if err != nil {
+		return nil, err
+	}
+	err = c.authRequest(HEAD, "object-store", url, nil, nil, nil, nil, []int{http.StatusOK}, nil, &headers, nil)
+	if err != nil {
+		ErrorContextf(&err, "failed to HEAD object %s from container %s", objectName, containerName)
+		return nil, err
+	}
+	return headers, nil
+}
+
+func (c *OpenStackClient) GetObject(containerName, objectName string) (obj []byte, err error) {
+
+	url, err := c.PublicObjectURL(containerName, objectName)
+	if err != nil {
+		return nil, err
+	}
+	err = c.authRequest(GET, "object-store", url, nil, nil, nil, nil, []int{http.StatusOK}, nil, nil, &obj)
+	if err != nil {
+		ErrorContextf(&err, "failed to GET object %s content from container %s", objectName, containerName)
+		return nil, err
+	}
+	return obj, nil
+}
+
+func (c *OpenStackClient) DeleteObject(containerName, objectName string) (err error) {
+
+	url, err := c.PublicObjectURL(containerName, objectName)
+	if err != nil {
+		return err
+	}
+	err = c.authRequest(DELETE, "object-store", url, nil, nil, nil, nil, []int{http.StatusAccepted}, nil, nil, nil)
+	if err != nil {
+		ErrorContextf(&err, "failed to DELETE object %s content from container %s", objectName, containerName)
+	}
+	return err
+}
+
+func (c *OpenStackClient) PutObject(containerName, objectName string, data []byte) (err error) {
+
+	url, err := c.PublicObjectURL(containerName, objectName)
+	if err != nil {
+		return err
+	}
+	err = c.authRequest(PUT, "object-store", url, nil, data, nil, nil, []int{http.StatusAccepted}, nil, nil, nil)
+	if err != nil {
+		ErrorContextf(&err, "failed to PUT object %s content from container %s", objectName, containerName)
+	}
+	return err
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -578,7 +667,7 @@ func (c *OpenStackClient) RemoveServerFloatingIP(serverId, address string) (err 
 // request sends an HTTP request with the given method to the given URL,
 // containing an optional body (serialized to JSON), and returning either
 // an error or the (deserialized) response body
-func (c *OpenStackClient) request(method, url string, body, resp interface{}, expectedStatus int) (err error) {
+func (c *OpenStackClient) request(method, url string, rawReqBody []byte, body, resp interface{}, expectedStatus []int, reqHeaders http.Header, respHeaders *http.Header, rawRespBody *[]byte) (err error) {
 	err = nil
 	if c.client == nil {
 		c.client = &http.Client{CheckRedirect: nil}
@@ -588,7 +677,10 @@ func (c *OpenStackClient) request(method, url string, body, resp interface{}, ex
 		req      *http.Request
 		jsonBody []byte
 	)
-	if body != nil {
+	if rawReqBody != nil {
+		rawReqReader := bytes.NewReader(rawReqBody)
+		req, err = http.NewRequest(method, url, rawReqReader)
+	} else if body != nil {
 		jsonBody, err = json.Marshal(body)
 		if err != nil {
 			ErrorContextf(&err, "failed marshalling the request body")
@@ -606,6 +698,13 @@ func (c *OpenStackClient) request(method, url string, body, resp interface{}, ex
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
+	if reqHeaders != nil {
+		for header, values := range reqHeaders {
+			for _, value := range values {
+				req.Header.Add(header, value)
+			}
+		}
+	}
 	if c.IsAuthenticated() {
 		req.Header.Add("X-Auth-Token", c.Token.Id)
 	}
@@ -615,7 +714,14 @@ func (c *OpenStackClient) request(method, url string, body, resp interface{}, ex
 		ErrorContextf(&err, "failed executing the request")
 		return
 	}
-	if rawResp.StatusCode != expectedStatus {
+	foundStatus := false
+	for _, status := range expectedStatus {
+		if rawResp.StatusCode == status {
+			foundStatus = true
+			break
+		}
+	}
+	if !foundStatus && len(expectedStatus) > 0 {
 		defer rawResp.Body.Close()
 		respBody, _ := ioutil.ReadAll(rawResp.Body)
 		err = errors.New(
@@ -628,18 +734,25 @@ func (c *OpenStackClient) request(method, url string, body, resp interface{}, ex
 		return
 	}
 
-	var respBody []byte
+	respBody, err := ioutil.ReadAll(rawResp.Body)
 	defer rawResp.Body.Close()
-	respBody, err = ioutil.ReadAll(rawResp.Body)
 	if err != nil {
 		ErrorContextf(&err, "failed reading the response body")
 		return
 	}
 
 	if len(respBody) > 0 {
-		err = json.Unmarshal(respBody, &resp)
-		if err != nil {
-			ErrorContextf(&err, "failed unmarshaling the response body: %s", respBody)
+		if rawRespBody != nil {
+			*rawRespBody = respBody
+		} else if resp != nil {
+			// resp and rawRespBody are mutually exclusive
+			err = json.Unmarshal(respBody, &resp)
+			if err != nil {
+				ErrorContextf(&err, "failed unmarshaling the response body: %s", respBody)
+			}
+		}
+		if respHeaders != nil {
+			*respHeaders = rawResp.Header
 		}
 	} else {
 		resp = nil
@@ -666,7 +779,7 @@ func (c *OpenStackClient) makeUrl(serviceType string, parts []string, params url
 	return url, nil
 }
 
-func (c *OpenStackClient) authRequest(method, svcType, apiCall string, params url.Values, body, resp interface{}, expectedStatus int) (err error) {
+func (c *OpenStackClient) authRequest(method, svcType, apiCall string, params url.Values, rawBody []byte, body, resp interface{}, expectedStatus []int, reqHeaders http.Header, respHeaders *http.Header, respRawBody *[]byte) (err error) {
 
 	if !c.IsAuthenticated() {
 		return errors.New("not authenticated")
@@ -678,10 +791,12 @@ func (c *OpenStackClient) authRequest(method, svcType, apiCall string, params ur
 		return
 	}
 
-	if body != nil {
-		err = c.request(method, url, &body, &resp, expectedStatus)
-	} else {
-		err = c.request(method, url, nil, &resp, expectedStatus)
+	if body != nil && resp != nil {
+		err = c.request(method, url, rawBody, &body, &resp, expectedStatus, reqHeaders, respHeaders, respRawBody)
+	} else if resp != nil {
+		err = c.request(method, url, rawBody, nil, &resp, expectedStatus, reqHeaders, respHeaders, respRawBody)
+	} else if body != nil {
+		err = c.request(method, url, rawBody, &body, nil, expectedStatus, reqHeaders, respHeaders, respRawBody)
 	}
 	if err != nil {
 		ErrorContextf(&err, "request failed")
