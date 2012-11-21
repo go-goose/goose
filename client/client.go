@@ -37,7 +37,7 @@ type OpenStackClient struct {
 
 	//TODO - store service urls by region.
 	ServiceURLs map[string]string
-	TokenId     string
+	Token       string
 	TenantId    string
 	UserId      string
 }
@@ -67,7 +67,7 @@ func (c *OpenStackClient) Authenticate() (err error) {
 		return
 	}
 
-	c.TokenId = authDetails.TokenId
+	c.Token = authDetails.Token
 	c.TenantId = authDetails.TenantId
 	c.UserId = authDetails.UserId
 	c.ServiceURLs = authDetails.ServiceURLs
@@ -75,7 +75,7 @@ func (c *OpenStackClient) Authenticate() (err error) {
 }
 
 func (c *OpenStackClient) IsAuthenticated() bool {
-	return c.TokenId != ""
+	return c.Token != ""
 }
 
 type Link struct {
@@ -635,7 +635,7 @@ func (c *OpenStackClient) setupRequest(svcType, apiCall string, params url.Value
 	if requestData.ReqHeaders == nil {
 		requestData.ReqHeaders = make(http.Header)
 	}
-	requestData.ReqHeaders.Add("X-Auth-Token", c.TokenId)
+	requestData.ReqHeaders.Add("X-Auth-Token", c.Token)
 	return
 }
 

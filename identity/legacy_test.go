@@ -19,7 +19,7 @@ func (s *LegacyTestSuite) TestAuthAgainstServer(c *C) {
 	service.SetManagementURL("http://management/url")
 	var l Authenticator = &Legacy{}
 	creds := Credentials{User: "joe-user", URL: s.Server.URL, Secrets: "secrets"}
-	auth, err := l.Auth(creds)
+	auth, err := l.Auth(&creds)
 	c.Assert(err, IsNil)
 	c.Assert(auth.Token, Equals, token)
 	c.Assert(auth.ServiceURLs, DeepEquals, map[string]string{"compute": "http://management/url"})
@@ -31,7 +31,7 @@ func (s *LegacyTestSuite) TestBadAuth(c *C) {
 	_ = service.AddUser("joe-user", "secrets")
 	var l Authenticator = &Legacy{}
 	creds := Credentials{User: "joe-user", URL: s.Server.URL, Secrets: "bad-secrets"}
-	auth, err := l.Auth(creds)
+	auth, err := l.Auth(&creds)
 	c.Assert(err, NotNil)
 	c.Assert(auth, IsNil)
 }

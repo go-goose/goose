@@ -31,8 +31,8 @@ func (l *Legacy) Auth(creds *Credentials) (*AuthDetails, error) {
 			response.StatusCode, response.Status, content)
 	}
 	details := &AuthDetails{}
-	details.TokenId = response.Header.Get("X-Auth-Token")
-	if details.TokenId == "" {
+	details.Token = response.Header.Get("X-Auth-Token")
+	if details.Token == "" {
 		return nil, fmt.Errorf("Did not get valid Token from auth request")
 	}
 	nova_url := response.Header.Get("X-Server-Management-Url")

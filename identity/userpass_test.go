@@ -18,7 +18,7 @@ func (s *UserPassTestSuite) TestAuthAgainstServer(c *C) {
 	token := service.AddUser("joe-user", "secrets")
 	var l Authenticator = &UserPass{}
 	creds := Credentials{User: "joe-user", URL: s.Server.URL, Secrets: "secrets"}
-	auth, err := l.Auth(creds)
+	auth, err := l.Auth(&creds)
 	c.Assert(err, IsNil)
 	c.Assert(auth.Token, Equals, token)
 	// c.Assert(auth.ServiceURLs, DeepEquals, map[string]string{"compute": "http://management/url"})
