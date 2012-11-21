@@ -10,7 +10,7 @@ const (
 )
 
 type AuthDetails struct {
-	Token     string
+	Token       string
 	TenantId    string
 	UserId      string
 	ServiceURLs map[string]string

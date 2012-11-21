@@ -37,7 +37,7 @@ type OpenStackClient struct {
 
 	//TODO - store service urls by region.
 	ServiceURLs map[string]string
-	Token     string
+	Token       string
 	TenantId    string
 	UserId      string
 }
