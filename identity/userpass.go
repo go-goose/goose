@@ -94,7 +94,7 @@ func (u *UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 	if respToken.Id == "" {
 		return nil, fmt.Errorf("Did not get valid Token from auth request")
 	}
-	details.TokenId = respToken.Id
+	details.Token = respToken.Id
 	details.TenantId = respToken.Tenant.Id
 	details.UserId = access.User.Id
 	details.ServiceURLs = make(map[string]string, len(access.ServiceCatalog))
