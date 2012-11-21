@@ -3,14 +3,14 @@
 package http
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	gooseerrors "launchpad.net/goose/errors"
 	"io/ioutil"
+	gooseerrors "launchpad.net/goose/errors"
 	"net/http"
 	"strings"
-	"bytes"
 )
 
 type GooseHTTPClient struct {
@@ -32,12 +32,12 @@ type ErrorWrapper struct {
 }
 
 type RequestData struct {
-	ReqHeaders http.Header
+	ReqHeaders     http.Header
 	ExpectedStatus []int
-	ReqValue interface{}
-	RespValue interface{}
-	ReqData []byte
-	RespData *[]byte
+	ReqValue       interface{}
+	RespValue      interface{}
+	ReqData        []byte
+	RespData       *[]byte
 }
 
 // JsonRequest JSON encodes and sends the supplied object (if any) to the specified URL.
@@ -50,7 +50,7 @@ type RequestData struct {
 func (c *GooseHTTPClient) JsonRequest(method, url string, reqData *RequestData) (err error) {
 	err = nil
 	var (
-		req      *http.Request
+		req  *http.Request
 		body []byte
 	)
 	if reqData.ReqValue != nil {
@@ -166,12 +166,12 @@ func (c *GooseHTTPClient) sendRequest(req *http.Request, extraHeaders http.Heade
 			}
 		}
 		err = errors.New(
-		fmt.Sprintf(
-			"request (%s) returned unexpected status: %s; error info: %v; request body: %s",
-			req.URL,
-			rawResp.Status,
-			errInfo,
-			payloadInfo))
+			fmt.Sprintf(
+				"request (%s) returned unexpected status: %s; error info: %v; request body: %s",
+				req.URL,
+				rawResp.Status,
+				errInfo,
+				payloadInfo))
 		return
 	}
 

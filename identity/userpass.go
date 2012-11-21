@@ -2,8 +2,8 @@ package identity
 
 import (
 	"fmt"
-	"net/http"
 	goosehttp "launchpad.net/goose/http"
+	"net/http"
 )
 
 type PasswordCredentials struct {
@@ -37,10 +37,10 @@ type TokenResponse struct {
 	Expires string `json:"expires"` // should this be a date object?
 	Id      string `json:"id"`      // Actual token string
 	Tenant  struct {
-		Id   string `json:"id"`
-		Name string `json:"name"`
+		Id          string `json:"id"`
+		Name        string `json:"name"`
 		Description string `json:"description"`
-		Enabled bool `json:"enabled"`
+		Enabled     bool   `json:"enabled"`
 	} `json:"tenant"`
 }
 
@@ -62,8 +62,8 @@ type AccessWrapper struct {
 
 type AccessResponse struct {
 	ServiceCatalog []ServiceResponse `json:"serviceCatalog"`
-	Token          TokenResponse `json:"token"`
-	User           UserResponse  `json:"user"`
+	Token          TokenResponse     `json:"token"`
+	User           UserResponse      `json:"user"`
 }
 
 type UserPass struct {

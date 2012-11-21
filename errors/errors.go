@@ -15,4 +15,3 @@ func AddErrorContext(err *error, format string, args ...interface{}) {
 		*err = errors.New(fmt.Sprintf(format, args...) + ": " + (*err).Error())
 	}
 }
-

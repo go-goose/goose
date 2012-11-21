@@ -30,11 +30,10 @@ const (
 )
 
 type OpenStackClient struct {
-
 	client *goosehttp.GooseHTTPClient
 
 	creds *identity.Credentials
-	auth identity.Authenticator
+	auth  identity.Authenticator
 
 	//TODO - store service urls by region.
 	ServiceURLs map[string]string
@@ -47,7 +46,8 @@ func NewOpenStackClient(creds *identity.Credentials, auth_method int) *OpenStack
 	client := OpenStackClient{creds: creds}
 	client.creds.URL = client.creds.URL + OS_API_TOKENS
 	switch auth_method {
-	default: panic(fmt.Errorf("Invalid identity authorisation method: %d", auth_method))
+	default:
+		panic(fmt.Errorf("Invalid identity authorisation method: %d", auth_method))
 	case identity.AUTH_LEGACY:
 		client.auth = &identity.Legacy{}
 	case identity.AUTH_USERPASS:
