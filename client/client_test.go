@@ -4,6 +4,7 @@ import (
 	"flag"
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/client"
+	"launchpad.net/goose/identity"
 	"testing"
 	"time"
 )
@@ -15,9 +16,6 @@ var live = flag.Bool("live", false, "Include live OpenStack (Canonistack) tests"
 
 type ClientSuite struct {
 	client       *client.OpenStackClient
-	username     string
-	password     string
-	tenant       string
 	testServerId string
 	skipAuth     bool
 }
@@ -27,17 +25,14 @@ func (s *ClientSuite) SetUpSuite(c *C) {
 		c.Skip("-live not provided")
 	}
 
-	username, password, tenant, region, auth_url := client.GetEnvVars()
-	for i, p := range []string{username, password, tenant, region, auth_url} {
+	cred := identity.CredentialsFromEnv()
+	for i, p := range []string{cred.User, cred.Secrets, cred.TenantName, cred.Region, cred.URL} {
 		if p == "" {
 			c.Fatalf("required environment variable not set: %d", i)
 		}
 	}
 
-	s.client = &client.OpenStackClient{IdentityEndpoint: auth_url, Region: region}
-	s.username = username
-	s.password = password
-	s.tenant = tenant
+	s.client = client.NewOpenStackClient(cred, identity.AUTH_USERPASS)
 	s.skipAuth = true // set after TestAuthenticate
 
 }
@@ -54,7 +49,9 @@ func (s *ClientSuite) SetUpTestServer(c *C) {
 		ImageId:  "3fc0ef0b-82a9-4f44-a797-a43f0f73b20e", // smoser-cloud-images/ubuntu-precise-12.04-i386-server-20120424.manifest.xml
 	}
 	err := s.client.RunServer(ro)
-	c.Check(err, IsNil)
+	if err != nil {
+		c.Fatal("Error starting test server: " + err.Error())
+	}
 
 	// Now find it and save its ID
 	servers, err := s.client.ListServers()
@@ -82,7 +79,7 @@ func (s *ClientSuite) TearDownSuite(c *C) {
 
 func (s *ClientSuite) SetUpTest(c *C) {
 	if !s.skipAuth && !s.client.IsAuthenticated() {
-		err := s.client.Authenticate(s.username, s.password, s.tenant)
+		err := s.client.Authenticate()
 		c.Assert(err, IsNil)
 		c.Logf("authenticated")
 	}
@@ -90,49 +87,27 @@ func (s *ClientSuite) SetUpTest(c *C) {
 
 var suite = Suite(&ClientSuite{})
 
-var authTests = []struct {
-	summary string
-	inputs  []string
-	err     string
-}{
-	{
-		summary: "empty args",
-		inputs:  []string{"", "", ""},
-		err:     "required arg.*missing",
-	},
-	{
-		summary: "dummy args",
-		inputs:  []string{"phony", "fake", "dummy"},
-		err:     "authentication failed.*",
-	},
-	{
-		summary: "valid args",
-		inputs:  []string{"!", "", ""},
-		err:     "",
-	},
+func (s *ClientSuite) TestAuthenticateFail(c *C) {
+	cred := identity.CredentialsFromEnv()
+	cred.User = "fred"
+	cred.Secrets = "broken"
+	cred.Region = ""
+	var osclient *client.OpenStackClient = client.NewOpenStackClient(cred, identity.AUTH_USERPASS)
+	c.Assert(osclient.IsAuthenticated(), Equals, false)
+	var err error
+	err = osclient.Authenticate()
+	c.Assert(err, ErrorMatches, "authentication failed.*")
 }
 
 func (s *ClientSuite) TestAuthenticate(c *C) {
-	c.Assert(s.client.IsAuthenticated(), Equals, false)
-	for _, t := range authTests {
-		c.Logf("test: %s", t.summary)
-		var err error
-		if t.inputs[0] == "!" {
-			err = s.client.Authenticate(s.username, s.password, s.tenant)
-		} else {
-			err = s.client.Authenticate(t.inputs[0], t.inputs[1], t.inputs[2])
-		}
-		if t.err == "" {
-			c.Assert(err, IsNil)
-			c.Assert(s.client.IsAuthenticated(), Equals, true)
-		} else {
-			c.Assert(err, ErrorMatches, t.err)
-		}
-	}
+	var err error
+	err = s.client.Authenticate()
+	c.Assert(err, IsNil)
+	c.Assert(s.client.IsAuthenticated(), Equals, true)
 
 	// Check service endpoints are discovered
-	c.Assert(s.client.Services["compute"], NotNil)
-	c.Assert(s.client.Services["swift"], NotNil)
+	c.Assert(s.client.ServiceURLs["compute"], NotNil)
+	c.Assert(s.client.ServiceURLs["swift"], NotNil)
 
 	s.skipAuth = false
 
@@ -204,8 +179,8 @@ func (s *ClientSuite) TestListServersDetail(c *C) {
 		c.Assert(sr.Updated, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
 		c.Assert(sr.Id, Not(Equals), "")
 		c.Assert(sr.HostId, Not(Equals), "")
-		c.Assert(sr.TenantId, Equals, s.client.Token.Tenant.Id)
-		c.Assert(sr.UserId, Equals, s.client.User.Id)
+		c.Assert(sr.TenantId, Equals, s.client.TenantId)
+		c.Assert(sr.UserId, Equals, s.client.UserId)
 		c.Assert(sr.Status, Not(Equals), "")
 		c.Assert(sr.Name, Not(Equals), "")
 		if sr.Id == s.testServerId {
@@ -241,7 +216,7 @@ func (s *ClientSuite) TestListSecurityGroups(c *C) {
 		c.Fatalf("no security groups found (expected at least 1)")
 	}
 	for _, g := range groups {
-		c.Assert(g.TenantId, Equals, s.client.Token.Tenant.Id)
+		c.Assert(g.TenantId, Equals, s.client.TenantId)
 		c.Assert(g.Name, Not(Equals), "")
 		c.Assert(g.Description, Not(Equals), "")
 		c.Assert(g.Rules, NotNil)
@@ -302,7 +277,7 @@ func (s *ClientSuite) TestCreateAndDeleteSecurityGroupRules(c *C) {
 	rule, err = s.client.CreateSecurityGroupRule(ri)
 	c.Check(err, IsNil)
 	c.Check(rule.ParentGroupId, Equals, group1.Id)
-	c.Check(rule.Group["tenant_id"], Equals, s.client.Token.Tenant.Id)
+	c.Check(rule.Group["tenant_id"], Equals, s.client.TenantId)
 	c.Check(rule.Group["name"], Equals, "test_secgroup2")
 	err = s.client.DeleteSecurityGroupRule(rule.Id)
 	c.Check(err, IsNil)
@@ -324,7 +299,7 @@ func (s *ClientSuite) TestGetServer(c *C) {
 
 func (s *ClientSuite) waitTestServerToStart(c *C) {
 	// Wait until the test server is actually running
-	c.Logf("waiting the test server to start...")
+	c.Logf("waiting the test server %s to start...", s.testServerId)
 	for {
 		server, err := s.client.GetServer(s.testServerId)
 		c.Check(err, IsNil)
