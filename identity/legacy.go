@@ -7,17 +7,20 @@ import (
 )
 
 type Legacy struct {
+	client *http.Client
 }
 
-func (l *Legacy) Auth(creds Credentials) (*AuthDetails, error) {
-	client := &http.Client{}
+func (l *Legacy) Auth(creds *Credentials) (*AuthDetails, error) {
+	if l.client == nil {
+		l.client = &http.Client{CheckRedirect: nil}
+	}
 	request, err := http.NewRequest("GET", creds.URL, nil)
 	if err != nil {
 		return nil, err
 	}
 	request.Header.Set("X-Auth-User", creds.User)
 	request.Header.Set("X-Auth-Key", creds.Secrets)
-	response, err := client.Do(request)
+	response, err := l.client.Do(request)
 	defer response.Body.Close()
 	if err != nil {
 		return nil, err
@@ -28,8 +31,8 @@ func (l *Legacy) Auth(creds Credentials) (*AuthDetails, error) {
 			response.StatusCode, response.Status, content)
 	}
 	details := &AuthDetails{}
-	details.Token = response.Header.Get("X-Auth-Token")
-	if details.Token == "" {
+	details.TokenId = response.Header.Get("X-Auth-Token")
+	if details.TokenId == "" {
 		return nil, fmt.Errorf("Did not get valid Token from auth request")
 	}
 	nova_url := response.Header.Get("X-Server-Management-Url")

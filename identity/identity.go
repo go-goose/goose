@@ -4,8 +4,15 @@ import (
 	"os"
 )
 
+const (
+	AUTH_LEGACY = iota
+	AUTH_USERPASS
+)
+
 type AuthDetails struct {
-	Token       string
+	TokenId     string
+	TenantId    string
+	UserId      string
 	ServiceURLs map[string]string
 }
 
@@ -18,7 +25,7 @@ type Credentials struct {
 }
 
 type Authenticator interface {
-	Auth(creds Credentials) (*AuthDetails, error)
+	Auth(creds *Credentials) (*AuthDetails, error)
 }
 
 func getConfig(envVars ...string) (value string) {

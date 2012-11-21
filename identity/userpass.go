@@ -1,26 +1,10 @@
 package identity
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	goosehttp "launchpad.net/goose/http"
 )
-
-type ErrorResponse struct {
-	Message string `json:"message"`
-	Code    int    `json:"code"`
-	Title   string `json:"title"`
-}
-
-func (e *ErrorResponse) Error() string {
-	return fmt.Sprintf("Failed: %d %s: %s", e.Code, e.Title, e.Message)
-}
-
-type ErrorWrapper struct {
-	Error ErrorResponse `json:"error"`
-}
 
 type PasswordCredentials struct {
 	Username string `json:"username"`
@@ -43,7 +27,7 @@ type Endpoint struct {
 	Region      string `json:"region"`
 }
 
-type Service struct {
+type ServiceResponse struct {
 	Name      string `json:"name"`
 	Type      string `json:"type"`
 	Endpoints []Endpoint
@@ -55,6 +39,8 @@ type TokenResponse struct {
 	Tenant  struct {
 		Id   string `json:"id"`
 		Name string `json:"name"`
+		Description string `json:"description"`
+		Enabled bool `json:"enabled"`
 	} `json:"tenant"`
 }
 
@@ -75,63 +61,49 @@ type AccessWrapper struct {
 }
 
 type AccessResponse struct {
-	ServiceCatalog []Service     `json:"serviceCatalog"`
+	ServiceCatalog []ServiceResponse `json:"serviceCatalog"`
 	Token          TokenResponse `json:"token"`
 	User           UserResponse  `json:"user"`
 }
 
 type UserPass struct {
+	client *goosehttp.GooseHTTPClient
 }
 
-func (l *UserPass) Auth(creds Credentials) (*AuthDetails, error) {
-	client := &http.Client{}
+func (u *UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
+	if u.client == nil {
+		u.client = &goosehttp.GooseHTTPClient{http.Client{CheckRedirect: nil}}
+	}
 	auth := AuthWrapper{Auth: AuthRequest{
 		PasswordCredentials: PasswordCredentials{
 			Username: creds.User,
 			Password: creds.Secrets,
 		},
-		TenantName: "tenant-name"}}
-	auth_json, err := json.Marshal(auth)
-	request, err := http.NewRequest("POST", creds.URL+"/tokens", bytes.NewBuffer(auth_json))
+		TenantName: creds.TenantName}}
+
+	var accessWrapper AccessWrapper
+	requestData := goosehttp.RequestData{ReqValue: auth, RespValue: &accessWrapper}
+	err := u.client.JsonRequest("POST", creds.URL, &requestData)
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Set("Content-Type", "application/json")
-	response, err := client.Do(request)
-	if err != nil {
-		return nil, err
-	}
-	content, err := ioutil.ReadAll(response.Body)
-	response.Body.Close()
-	if err != nil {
-		return nil, err
-	}
-	if response.StatusCode != http.StatusOK {
-		// Check if we have a JSON representation of the failure, if so, return it
-		if response.Header.Get("Content-Type") == "application/json" {
-			var wrappedErr ErrorWrapper
-			if err := json.Unmarshal(content, &wrappedErr); err == nil {
-				return nil, &wrappedErr.Error
-			}
-		}
-		// We weren't able to parse the response, so just return our own error
-		return nil, fmt.Errorf("Failed to Authenticate (code %d %s): %s",
-			response.StatusCode, response.Status, content)
-	}
-	if response.Header.Get("Content-Type") != "application/json" {
-		return nil, fmt.Errorf("Failed to Authenticate. Did not get JSON back: %s", content)
-	}
-	var access AccessWrapper
-	if err := json.Unmarshal(content, &access); err != nil {
-		return nil, err
-	}
+
 	details := &AuthDetails{}
-	details.Token = access.Access.Token.Id
-	if details.Token == "" {
+	access := accessWrapper.Access
+	respToken := access.Token
+	if respToken.Id == "" {
 		return nil, fmt.Errorf("Did not get valid Token from auth request")
 	}
-	details.ServiceURLs = make(map[string]string, len(access.Access.ServiceCatalog))
-	for _, service := range access.Access.ServiceCatalog {
+	details.TokenId = respToken.Id
+	details.TenantId = respToken.Tenant.Id
+	details.UserId = access.User.Id
+	details.ServiceURLs = make(map[string]string, len(access.ServiceCatalog))
+	for _, service := range access.ServiceCatalog {
+		for i, e := range service.Endpoints {
+			if e.Region != creds.Region {
+				service.Endpoints = append(service.Endpoints[:i], service.Endpoints[i+1:]...)
+			}
+		}
 		details.ServiceURLs[service.Type] = service.Endpoints[0].PublicURL
 	}
 
