@@ -7,11 +7,12 @@ import (
 	"fmt"
 )
 
-// AddErrorContext prefixes any error stored in err with text formatted
+// AddContext prefixes any error stored in err with text formatted
 // according to the format specifier. If err does not contain an error,
-// AddErrorContext does nothing.
-func AddErrorContext(err *error, format string, args ...interface{}) {
-	if *err != nil {
-		*err = errors.New(fmt.Sprintf(format, args...) + ": " + (*err).Error())
+// AddContext does nothing.
+func AddContext(err error, format string, args ...interface{}) error {
+	if err != nil {
+		err = errors.New(fmt.Sprintf(format, args...) + ": " + err.Error())
 	}
+	return err
 }

@@ -30,7 +30,7 @@ const (
 )
 
 type OpenStackClient struct {
-	client *goosehttp.GooseHTTPClient
+	client *goosehttp.Client
 
 	creds *identity.Credentials
 	auth  identity.Authenticator
@@ -42,7 +42,7 @@ type OpenStackClient struct {
 	UserId      string
 }
 
-func NewOpenStackClient(creds *identity.Credentials, auth_method int) *OpenStackClient {
+func NewOpenStackClient(creds *identity.Credentials, auth_method identity.AuthMethod) *OpenStackClient {
 	client := OpenStackClient{creds: creds}
 	client.creds.URL = client.creds.URL + OS_API_TOKENS
 	switch auth_method {
@@ -63,7 +63,7 @@ func (c *OpenStackClient) Authenticate() (err error) {
 	}
 	authDetails, err := c.auth.Auth(c.creds)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "authentication failed")
+		err = gooseerrors.AddContext(err, "authentication failed")
 		return
 	}
 
@@ -100,7 +100,7 @@ func (c *OpenStackClient) ListFlavors() (flavors []Entity, err error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err = c.authRequest(GET, "compute", OS_API_FLAVORS, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to get list of flavors")
+		err = gooseerrors.AddContext(err, "failed to get list of flavors")
 		return
 	}
 
@@ -124,7 +124,7 @@ func (c *OpenStackClient) ListFlavorsDetail() (flavors []FlavorDetail, err error
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err = c.authRequest(GET, "compute", OS_API_FLAVORS_DETAIL, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to get list of flavors details")
+		err = gooseerrors.AddContext(err, "failed to get list of flavors details")
 		return
 	}
 
@@ -139,7 +139,7 @@ func (c *OpenStackClient) ListServers() (servers []Entity, err error) {
 	requestData := goosehttp.RequestData{RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
 	err = c.authRequest(GET, "compute", OS_API_SERVERS, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to get list of servers")
+		err = gooseerrors.AddContext(err, "failed to get list of servers")
 		return
 	}
 	return resp.Servers, nil
@@ -170,7 +170,7 @@ func (c *OpenStackClient) ListServersDetail() (servers []ServerDetail, err error
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err = c.authRequest(GET, "compute", OS_API_SERVERS_DETAIL, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to get list of servers details")
+		err = gooseerrors.AddContext(err, "failed to get list of servers details")
 		return
 	}
 
@@ -186,7 +186,7 @@ func (c *OpenStackClient) GetServer(serverId string) (ServerDetail, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.authRequest(GET, "compute", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to get details for serverId=%s", serverId)
+		err = gooseerrors.AddContext(err, "failed to get details for serverId=%s", serverId)
 		return ServerDetail{}, err
 	}
 
@@ -202,7 +202,7 @@ func (c *OpenStackClient) DeleteServer(serverId string) error {
 	requestData := goosehttp.RequestData{RespValue: &resp, ExpectedStatus: []int{http.StatusNoContent}}
 	err := c.authRequest(DELETE, "compute", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to delete server with serverId=%s", serverId)
+		err = gooseerrors.AddContext(err, "failed to delete server with serverId=%s", serverId)
 		return err
 	}
 
@@ -233,7 +233,7 @@ func (c *OpenStackClient) RunServer(opts RunServerOpts) (err error) {
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
 	err = c.authRequest(POST, "compute", OS_API_SERVERS, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to run a server with %#v", opts)
+		err = gooseerrors.AddContext(err, "failed to run a server with %#v", opts)
 	}
 
 	return
@@ -265,7 +265,7 @@ func (c *OpenStackClient) ListSecurityGroups() (groups []SecurityGroup, err erro
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err = c.authRequest(GET, "compute", OS_API_SECURITY_GROUPS, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to list security groups")
+		err = gooseerrors.AddContext(err, "failed to list security groups")
 		return nil, err
 	}
 
@@ -281,7 +281,7 @@ func (c *OpenStackClient) GetServerSecurityGroups(serverId string) (groups []Sec
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err = c.authRequest(GET, "compute", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to list server (%s) security groups", serverId)
+		err = gooseerrors.AddContext(err, "failed to list server (%s) security groups", serverId)
 		return nil, err
 	}
 
@@ -305,7 +305,7 @@ func (c *OpenStackClient) CreateSecurityGroup(name, description string) (group S
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
 	err = c.authRequest(POST, "compute", OS_API_SECURITY_GROUPS, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to create a security group with name=%s", name)
+		err = gooseerrors.AddContext(err, "failed to create a security group with name=%s", name)
 	}
 	group = resp.SecurityGroup
 
@@ -318,7 +318,7 @@ func (c *OpenStackClient) DeleteSecurityGroup(groupId int) (err error) {
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
 	err = c.authRequest(DELETE, "compute", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to delete a security group with id=%d", groupId)
+		err = gooseerrors.AddContext(err, "failed to delete a security group with id=%d", groupId)
 	}
 
 	return
@@ -347,7 +347,7 @@ func (c *OpenStackClient) CreateSecurityGroupRule(ruleInfo RuleInfo) (rule Secur
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp}
 	err = c.authRequest(POST, "compute", OS_API_SECURITY_GROUP_RULES, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to create a rule for the security group with id=%s", ruleInfo.GroupId)
+		err = gooseerrors.AddContext(err, "failed to create a rule for the security group with id=%s", ruleInfo.GroupId)
 	}
 
 	return resp.SecurityGroupRule, err
@@ -359,7 +359,7 @@ func (c *OpenStackClient) DeleteSecurityGroupRule(ruleId int) (err error) {
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
 	err = c.authRequest(DELETE, "compute", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to delete a security group rule with id=%d", ruleId)
+		err = gooseerrors.AddContext(err, "failed to delete a security group rule with id=%d", ruleId)
 	}
 
 	return
@@ -378,7 +378,7 @@ func (c *OpenStackClient) AddServerSecurityGroup(serverId, groupName string) (er
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
 	err = c.authRequest(POST, "compute", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to add security group '%s' from server with id=%s", groupName, serverId)
+		err = gooseerrors.AddContext(err, "failed to add security group '%s' from server with id=%s", groupName, serverId)
 	}
 	return
 }
@@ -396,7 +396,7 @@ func (c *OpenStackClient) RemoveServerSecurityGroup(serverId, groupName string) 
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
 	err = c.authRequest(POST, "compute", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to remove security group '%s' from server with id=%s", groupName, serverId)
+		err = gooseerrors.AddContext(err, "failed to remove security group '%s' from server with id=%s", groupName, serverId)
 	}
 	return
 }
@@ -418,7 +418,7 @@ func (c *OpenStackClient) ListFloatingIPs() (ips []FloatingIP, err error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err = c.authRequest(GET, "compute", OS_API_FLOATING_IPS, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to list floating ips")
+		err = gooseerrors.AddContext(err, "failed to list floating ips")
 	}
 
 	return resp.FloatingIPs, err
@@ -434,7 +434,7 @@ func (c *OpenStackClient) GetFloatingIP(ipId int) (ip FloatingIP, err error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err = c.authRequest(GET, "compute", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to get floating ip %d details", ipId)
+		err = gooseerrors.AddContext(err, "failed to get floating ip %d details", ipId)
 	}
 
 	return resp.FloatingIP, err
@@ -449,7 +449,7 @@ func (c *OpenStackClient) AllocateFloatingIP() (ip FloatingIP, err error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err = c.authRequest(POST, "compute", OS_API_FLOATING_IPS, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to allocate a floating ip")
+		err = gooseerrors.AddContext(err, "failed to allocate a floating ip")
 	}
 
 	return resp.FloatingIP, err
@@ -461,7 +461,7 @@ func (c *OpenStackClient) DeleteFloatingIP(ipId int) (err error) {
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
 	err = c.authRequest(DELETE, "compute", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to delete floating ip %d details", ipId)
+		err = gooseerrors.AddContext(err, "failed to delete floating ip %d details", ipId)
 	}
 
 	return
@@ -480,7 +480,7 @@ func (c *OpenStackClient) AddServerFloatingIP(serverId, address string) (err err
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
 	err = c.authRequest(POST, "compute", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to add floating ip %s to server %s", address, serverId)
+		err = gooseerrors.AddContext(err, "failed to add floating ip %s to server %s", address, serverId)
 	}
 
 	return
@@ -499,7 +499,7 @@ func (c *OpenStackClient) RemoveServerFloatingIP(serverId, address string) (err 
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
 	err = c.authRequest(POST, "compute", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to remove floating ip %s to server %s", address, serverId)
+		err = gooseerrors.AddContext(err, "failed to remove floating ip %s to server %s", address, serverId)
 	}
 
 	return
@@ -516,7 +516,7 @@ func (c *OpenStackClient) CreateContainer(containerName string) (err error) {
 	requestData := goosehttp.RequestData{ReqHeaders: headers, ExpectedStatus: []int{http.StatusAccepted, http.StatusCreated}}
 	err = c.authRequest(PUT, "object-store", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to create container %s.", containerName)
+		err = gooseerrors.AddContext(err, "failed to create container %s.", containerName)
 	}
 
 	return
@@ -528,7 +528,7 @@ func (c *OpenStackClient) DeleteContainer(containerName string) (err error) {
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusNoContent}}
 	err = c.authRequest(DELETE, "object-store", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to delete container %s.", containerName)
+		err = gooseerrors.AddContext(err, "failed to delete container %s.", containerName)
 	}
 
 	return
@@ -536,7 +536,7 @@ func (c *OpenStackClient) DeleteContainer(containerName string) (err error) {
 
 func (c *OpenStackClient) PublicObjectURL(containerName, objectName string) (url string, err error) {
 	path := fmt.Sprintf("/%s/%s", containerName, objectName)
-	return c.makeUrl("object-store", []string{path}, nil)
+	return c.makeURL("object-store", []string{path}, nil)
 }
 
 func (c *OpenStackClient) HeadObject(containerName, objectName string) (headers http.Header, err error) {
@@ -548,7 +548,7 @@ func (c *OpenStackClient) HeadObject(containerName, objectName string) (headers 
 	requestData := goosehttp.RequestData{ReqHeaders: headers, ExpectedStatus: []int{http.StatusOK}}
 	err = c.authRequest(HEAD, "object-store", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to HEAD object %s from container %s", objectName, containerName)
+		err = gooseerrors.AddContext(err, "failed to HEAD object %s from container %s", objectName, containerName)
 		return nil, err
 	}
 	return headers, nil
@@ -563,7 +563,7 @@ func (c *OpenStackClient) GetObject(containerName, objectName string) (obj []byt
 	requestData := goosehttp.RequestData{RespData: &obj, ExpectedStatus: []int{http.StatusOK}}
 	err = c.authBinaryRequest(GET, "object-store", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to GET object %s content from container %s", objectName, containerName)
+		err = gooseerrors.AddContext(err, "failed to GET object %s content from container %s", objectName, containerName)
 		return nil, err
 	}
 	return obj, nil
@@ -578,7 +578,7 @@ func (c *OpenStackClient) DeleteObject(containerName, objectName string) (err er
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
 	err = c.authRequest(DELETE, "object-store", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to DELETE object %s content from container %s", objectName, containerName)
+		err = gooseerrors.AddContext(err, "failed to DELETE object %s content from container %s", objectName, containerName)
 	}
 	return err
 }
@@ -592,7 +592,7 @@ func (c *OpenStackClient) PutObject(containerName, objectName string, data []byt
 	requestData := goosehttp.RequestData{ReqData: data, ExpectedStatus: []int{http.StatusAccepted}}
 	err = c.authBinaryRequest(PUT, "object-store", url, nil, &requestData)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed to PUT object %s content from container %s", objectName, containerName)
+		err = gooseerrors.AddContext(err, "failed to PUT object %s content from container %s", objectName, containerName)
 	}
 	return err
 }
@@ -600,10 +600,10 @@ func (c *OpenStackClient) PutObject(containerName, objectName string, data []byt
 ////////////////////////////////////////////////////////////////////////
 // Private helpers
 
-// makeUrl prepares a full URL to a service endpoint, with optional
+// makeURL prepares a full URL to a service endpoint, with optional
 // URL parts, appended to it and optional query string params. It
 // uses the first endpoint it can find for the given service type
-func (c *OpenStackClient) makeUrl(serviceType string, parts []string, params url.Values) (string, error) {
+func (c *OpenStackClient) makeURL(serviceType string, parts []string, params url.Values) (string, error) {
 	url, ok := c.ServiceURLs[serviceType]
 	if !ok {
 		return "", errors.New("no endpoints known for service type: " + serviceType)
@@ -622,14 +622,14 @@ func (c *OpenStackClient) setupRequest(svcType, apiCall string, params url.Value
 		return "", errors.New("not authenticated")
 	}
 
-	url, err = c.makeUrl(svcType, []string{apiCall}, params)
+	url, err = c.makeURL(svcType, []string{apiCall}, params)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "cannot find a '%s' node endpoint", svcType)
+		err = gooseerrors.AddContext(err, "cannot find a '%s' node endpoint", svcType)
 		return
 	}
 
 	if c.client == nil {
-		c.client = &goosehttp.GooseHTTPClient{http.Client{CheckRedirect: nil}}
+		c.client = &goosehttp.Client{http.Client{CheckRedirect: nil}}
 	}
 
 	if requestData.ReqHeaders == nil {

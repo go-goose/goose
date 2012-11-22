@@ -6,34 +6,34 @@ import (
 	"net/http"
 )
 
-type PasswordCredentials struct {
+type passwordCredentials struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
-type AuthRequest struct {
-	PasswordCredentials PasswordCredentials `json:"passwordCredentials"`
+type authRequest struct {
+	PasswordCredentials passwordCredentials `json:"passwordCredentials"`
 	TenantName          string              `json:"tenantName"`
 }
 
-type AuthWrapper struct {
-	Auth AuthRequest `json:"auth"`
+type authWrapper struct {
+	Auth authRequest `json:"auth"`
 }
 
-type Endpoint struct {
+type endpoint struct {
 	AdminURL    string `json:"adminURL"`
 	InternalURL string `json:"internalURL"`
 	PublicURL   string `json:"publicURL"`
 	Region      string `json:"region"`
 }
 
-type ServiceResponse struct {
+type serviceResponse struct {
 	Name      string `json:"name"`
 	Type      string `json:"type"`
-	Endpoints []Endpoint
+	Endpoints []endpoint
 }
 
-type TokenResponse struct {
+type tokenResponse struct {
 	Expires string `json:"expires"` // should this be a date object?
 	Id      string `json:"id"`      // Actual token string
 	Tenant  struct {
@@ -44,44 +44,44 @@ type TokenResponse struct {
 	} `json:"tenant"`
 }
 
-type RoleResponse struct {
+type roleResponse struct {
 	Id       string `json:"id"`
 	Name     string `json:"name"`
 	TenantId string `json:"tenantId"`
 }
 
-type UserResponse struct {
+type userResponse struct {
 	Id    string         `json:"id"`
 	Name  string         `json:"name"`
-	Roles []RoleResponse `json:"roles"`
+	Roles []roleResponse `json:"roles"`
 }
 
-type AccessWrapper struct {
-	Access AccessResponse `json:"access"`
+type accessWrapper struct {
+	Access accessResponse `json:"access"`
 }
 
-type AccessResponse struct {
-	ServiceCatalog []ServiceResponse `json:"serviceCatalog"`
-	Token          TokenResponse     `json:"token"`
-	User           UserResponse      `json:"user"`
+type accessResponse struct {
+	ServiceCatalog []serviceResponse `json:"serviceCatalog"`
+	Token          tokenResponse     `json:"token"`
+	User           userResponse      `json:"user"`
 }
 
 type UserPass struct {
-	client *goosehttp.GooseHTTPClient
+	client *goosehttp.Client
 }
 
 func (u *UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 	if u.client == nil {
-		u.client = &goosehttp.GooseHTTPClient{http.Client{CheckRedirect: nil}}
+		u.client = &goosehttp.Client{http.Client{CheckRedirect: nil}}
 	}
-	auth := AuthWrapper{Auth: AuthRequest{
-		PasswordCredentials: PasswordCredentials{
+	auth := authWrapper{Auth: authRequest{
+		PasswordCredentials: passwordCredentials{
 			Username: creds.User,
 			Password: creds.Secrets,
 		},
 		TenantName: creds.TenantName}}
 
-	var accessWrapper AccessWrapper
+	var accessWrapper accessWrapper
 	requestData := goosehttp.RequestData{ReqValue: auth, RespValue: &accessWrapper}
 	err := u.client.JsonRequest("POST", creds.URL, &requestData)
 	if err != nil {

@@ -1,13 +1,26 @@
 package identity
 
 import (
+	"fmt"
 	"os"
 )
 
+type AuthMethod int
+
 const (
-	AUTH_LEGACY = iota
+	AUTH_LEGACY = AuthMethod(iota)
 	AUTH_USERPASS
 )
+
+func (a AuthMethod) String() string {
+	switch a {
+	case AUTH_LEGACY:
+		return "Legacy Authenetication"
+	case AUTH_USERPASS:
+		return "Username/password Authentication"
+	}
+	panic(fmt.Errorf("Unknown athentication type: %d", a))
+}
 
 type AuthDetails struct {
 	Token       string

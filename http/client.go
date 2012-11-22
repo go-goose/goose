@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-type GooseHTTPClient struct {
+type Client struct {
 	http.Client
 }
 
@@ -47,7 +47,7 @@ type RequestData struct {
 // ExpectedStatus: the allowed HTTP response status values, else an error is returned.
 // ReqValue: the data object to send.
 // RespValue: the data object to decode the result into.
-func (c *GooseHTTPClient) JsonRequest(method, url string, reqData *RequestData) (err error) {
+func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err error) {
 	err = nil
 	var (
 		req  *http.Request
@@ -56,7 +56,7 @@ func (c *GooseHTTPClient) JsonRequest(method, url string, reqData *RequestData) 
 	if reqData.ReqValue != nil {
 		body, err = json.Marshal(reqData.ReqValue)
 		if err != nil {
-			gooseerrors.AddErrorContext(&err, "failed marshalling the request body")
+			err = gooseerrors.AddContext(err, "failed marshalling the request body")
 			return
 		}
 		reqBody := strings.NewReader(string(body))
@@ -65,7 +65,7 @@ func (c *GooseHTTPClient) JsonRequest(method, url string, reqData *RequestData) 
 		req, err = http.NewRequest(method, url, nil)
 	}
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed creating the request")
+		err = gooseerrors.AddContext(err, "failed creating the request")
 		return
 	}
 	req.Header.Add("Content-Type", "application/json")
@@ -80,7 +80,7 @@ func (c *GooseHTTPClient) JsonRequest(method, url string, reqData *RequestData) 
 		if reqData.RespValue != nil {
 			err = json.Unmarshal(respBody, &reqData.RespValue)
 			if err != nil {
-				gooseerrors.AddErrorContext(&err, "failed unmarshaling the response body: %s", respBody)
+				err = gooseerrors.AddContext(err, "failed unmarshaling the response body: %s", respBody)
 			}
 		}
 	}
@@ -94,7 +94,7 @@ func (c *GooseHTTPClient) JsonRequest(method, url string, reqData *RequestData) 
 // ExpectedStatus: the allowed HTTP response status values, else an error is returned.
 // ReqData: the byte array to send.
 // RespData: the byte array to decode the result into.
-func (c *GooseHTTPClient) BinaryRequest(method, url string, reqData *RequestData) (err error) {
+func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err error) {
 	err = nil
 
 	var req *http.Request
@@ -106,7 +106,7 @@ func (c *GooseHTTPClient) BinaryRequest(method, url string, reqData *RequestData
 		req, err = http.NewRequest(method, url, nil)
 	}
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed creating the request")
+		err = gooseerrors.AddContext(err, "failed creating the request")
 		return
 	}
 	req.Header.Add("Content-Type", "application/octet-stream")
@@ -130,7 +130,7 @@ func (c *GooseHTTPClient) BinaryRequest(method, url string, reqData *RequestData
 // extraHeaders: additional HTTP headers to include with the request.
 // expectedStatus: a slice of allowed response status codes.
 // payloadInfo: a string to include with an error message if something goes wrong.
-func (c *GooseHTTPClient) sendRequest(req *http.Request, extraHeaders http.Header, expectedStatus []int, payloadInfo string) (respBody []byte, err error) {
+func (c *Client) sendRequest(req *http.Request, extraHeaders http.Header, expectedStatus []int, payloadInfo string) (respBody []byte, err error) {
 	if extraHeaders != nil {
 		for header, values := range extraHeaders {
 			for _, value := range values {
@@ -141,7 +141,7 @@ func (c *GooseHTTPClient) sendRequest(req *http.Request, extraHeaders http.Heade
 
 	rawResp, err := c.Do(req)
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed executing the request")
+		err = gooseerrors.AddContext(err, "failed executing the request")
 		return
 	}
 	foundStatus := false
@@ -178,7 +178,7 @@ func (c *GooseHTTPClient) sendRequest(req *http.Request, extraHeaders http.Heade
 	respBody, err = ioutil.ReadAll(rawResp.Body)
 	rawResp.Body.Close()
 	if err != nil {
-		gooseerrors.AddErrorContext(&err, "failed reading the response body")
+		err = gooseerrors.AddContext(err, "failed reading the response body")
 		return
 	}
 	return
