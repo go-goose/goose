@@ -10,11 +10,13 @@ import (
 	"io/ioutil"
 	gooseerrors "launchpad.net/goose/errors"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
 type Client struct {
 	http.Client
+	AuthToken string
 }
 
 type ErrorResponse struct {
@@ -33,6 +35,7 @@ type ErrorWrapper struct {
 
 type RequestData struct {
 	ReqHeaders     http.Header
+	Params         url.Values
 	ExpectedStatus []int
 	ReqValue       interface{}
 	RespValue      interface{}
@@ -53,6 +56,9 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 		req  *http.Request
 		body []byte
 	)
+	if reqData.params != nil {
+		url += "?" + reqData.Params.Encode()
+	}
 	if reqData.ReqValue != nil {
 		body, err = json.Marshal(reqData.ReqValue)
 		if err != nil {
@@ -99,6 +105,9 @@ func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err er
 
 	var req *http.Request
 
+	if reqData.params != nil {
+		url += "?" + reqData.params.Encode()
+	}
 	if reqData.ReqData != nil {
 		rawReqReader := bytes.NewReader(reqData.ReqData)
 		req, err = http.NewRequest(method, url, rawReqReader)
@@ -138,7 +147,9 @@ func (c *Client) sendRequest(req *http.Request, extraHeaders http.Header, expect
 			}
 		}
 	}
-
+	if c.AuthToken != "" {
+		req.Header.Add("X-Auth-Token", c.AuthToken)
+	}
 	rawResp, err := c.Do(req)
 	if err != nil {
 		err = gooseerrors.AddContext(err, "failed executing the request")
