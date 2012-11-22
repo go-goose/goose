@@ -35,7 +35,7 @@ func (s *ClientSuite) SetUpSuite(c *C) {
 			c.Fatalf("required environment variable not set for credentials attribute: %s", t.Field(i).Name)
 		}
 	}
-	s.client = client.NewOpenStackClient(cred, identity.AUTH_USERPASS)
+	s.client = client.NewOpenStackClient(cred, identity.AuthUserPass)
 	s.skipAuth = true // set after TestAuthenticate
 
 }
@@ -95,7 +95,7 @@ func (s *ClientSuite) TestAuthenticateFail(c *C) {
 	cred.User = "fred"
 	cred.Secrets = "broken"
 	cred.Region = ""
-	var osclient *client.OpenStackClient = client.NewOpenStackClient(cred, identity.AUTH_USERPASS)
+	var osclient *client.OpenStackClient = client.NewOpenStackClient(cred, identity.AuthUserPass)
 	c.Assert(osclient.IsAuthenticated(), Equals, false)
 	var err error
 	err = osclient.Authenticate()

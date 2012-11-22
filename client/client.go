@@ -47,9 +47,9 @@ func NewOpenStackClient(creds *identity.Credentials, auth_method identity.AuthMe
 	switch auth_method {
 	default:
 		panic(fmt.Errorf("Invalid identity authorisation method: %d", auth_method))
-	case identity.AUTH_LEGACY:
+	case identity.AuthLegacy:
 		client.auth = &identity.Legacy{}
-	case identity.AUTH_USERPASS:
+	case identity.AuthUserPass:
 		client.auth = &identity.UserPass{}
 	}
 	return &client
