@@ -56,7 +56,7 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 		req  *http.Request
 		body []byte
 	)
-	if reqData.params != nil {
+	if reqData.Params != nil {
 		url += "?" + reqData.Params.Encode()
 	}
 	if reqData.ReqValue != nil {
@@ -105,8 +105,8 @@ func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err er
 
 	var req *http.Request
 
-	if reqData.params != nil {
-		url += "?" + reqData.params.Encode()
+	if reqData.Params != nil {
+		url += "?" + reqData.Params.Encode()
 	}
 	if reqData.ReqData != nil {
 		rawReqReader := bytes.NewReader(reqData.ReqData)
