@@ -5,6 +5,7 @@ import (
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/identity"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -26,13 +27,15 @@ func (s *ClientSuite) SetUpSuite(c *C) {
 	}
 
 	cred := identity.CredentialsFromEnv()
-	for i, p := range []string{cred.User, cred.Secrets, cred.TenantName, cred.Region, cred.URL} {
-		if p == "" {
-			c.Fatalf("required environment variable not set: %d", i)
+	v := reflect.ValueOf(cred).Elem()
+	t := v.Type()
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		if f.String() == "" {
+			c.Fatalf("required environment variable not set for credentials attribute: %s", t.Field(i).Name)
 		}
 	}
-
-	s.client = client.NewOpenStackClient(cred, identity.AUTH_USERPASS)
+	s.client = client.NewOpenStackClient(cred, identity.AuthUserPass)
 	s.skipAuth = true // set after TestAuthenticate
 
 }
@@ -92,7 +95,7 @@ func (s *ClientSuite) TestAuthenticateFail(c *C) {
 	cred.User = "fred"
 	cred.Secrets = "broken"
 	cred.Region = ""
-	var osclient *client.OpenStackClient = client.NewOpenStackClient(cred, identity.AUTH_USERPASS)
+	var osclient *client.OpenStackClient = client.NewOpenStackClient(cred, identity.AuthUserPass)
 	c.Assert(osclient.IsAuthenticated(), Equals, false)
 	var err error
 	err = osclient.Authenticate()
