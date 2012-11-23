@@ -11,7 +11,7 @@ type UserInfo struct {
 	token  string
 }
 
-// Generate a bit of random hex data for 
+// Generate a bit of random hex data for
 func randomHexToken() string {
 	raw_bytes := make([]byte, 16)
 	n, err := rand.Read(raw_bytes)
