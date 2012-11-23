@@ -55,14 +55,14 @@ func (s *SwiftSuite) TestObjects(c *C) {
 
 	container := "test_container"
 	object := "test_obj"
-	data := []byte("...some data...")
+	data := "...some data..."
 	err := s.swift.CreateContainer(container)
 	c.Check(err, IsNil)
-	err = s.swift.PutObject(container, object, data)
+	err = s.swift.PutObject(container, object, []byte(data))
 	c.Check(err, IsNil)
 	objdata, err := s.swift.GetObject(container, object)
 	c.Check(err, IsNil)
-	c.Check(objdata, Equals, data)
+	c.Check(string(objdata), Equals, data)
 	err = s.swift.DeleteObject(container, object)
 	c.Check(err, IsNil)
 	err = s.swift.DeleteContainer(container)

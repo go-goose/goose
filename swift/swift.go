@@ -63,49 +63,33 @@ func (s *OpenStackSwiftProvider) publicObjectURL(containerName, objectName strin
 }
 
 func (s *OpenStackSwiftProvider) HeadObject(containerName, objectName string) (headers http.Header, err error) {
-
-	url, err := s.publicObjectURL(containerName, objectName)
-	if err != nil {
-		return nil, err
-	}
+	path := fmt.Sprintf("/%s/%s", containerName, objectName)
 	requestData := goosehttp.RequestData{ReqHeaders: headers, ExpectedStatus: []int{http.StatusOK}}
-	err = s.client.SendRequest(client.HEAD, "object-store", url, &requestData,
+	err = s.client.SendRequest(client.HEAD, "object-store", path, &requestData,
 		"failed to HEAD object %s from container %s", objectName, containerName)
 	return headers, err
 }
 
 func (s *OpenStackSwiftProvider) GetObject(containerName, objectName string) (obj []byte, err error) {
-
-	url, err := s.publicObjectURL(containerName, objectName)
-	if err != nil {
-		return nil, err
-	}
+	path := fmt.Sprintf("/%s/%s", containerName, objectName)
 	requestData := goosehttp.RequestData{RespData: &obj, ExpectedStatus: []int{http.StatusOK}}
-	err = s.client.SendRequest(client.GET, "object-store", url, &requestData,
+	err = s.client.SendRequest(client.GET, "object-store", path, &requestData,
 		"failed to GET object %s content from container %s", objectName, containerName)
 	return obj, err
 }
 
 func (s *OpenStackSwiftProvider) DeleteObject(containerName, objectName string) (err error) {
-
-	url, err := s.publicObjectURL(containerName, objectName)
-	if err != nil {
-		return err
-	}
-	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
-	err = s.client.SendRequest(client.DELETE, "object-store", url, &requestData,
+	path := fmt.Sprintf("/%s/%s", containerName, objectName)
+	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusNoContent}}
+	err = s.client.SendRequest(client.DELETE, "object-store", path, &requestData,
 		"failed to DELETE object %s content from container %s", objectName, containerName)
 	return err
 }
 
 func (s *OpenStackSwiftProvider) PutObject(containerName, objectName string, data []byte) (err error) {
-
-	url, err := s.publicObjectURL(containerName, objectName)
-	if err != nil {
-		return err
-	}
-	requestData := goosehttp.RequestData{ReqData: data, ExpectedStatus: []int{http.StatusAccepted}}
-	err = s.client.SendRequest(client.PUT, "object-store", url, &requestData,
+	path := fmt.Sprintf("/%s/%s", containerName, objectName)
+	requestData := goosehttp.RequestData{ReqData: data, ExpectedStatus: []int{http.StatusCreated}}
+	err = s.client.SendRequest(client.PUT, "object-store", path, &requestData,
 		"failed to PUT object %s content from container %s", objectName, containerName)
 	return err
 }
