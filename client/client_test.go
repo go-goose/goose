@@ -23,22 +23,14 @@ func (s *ClientSuite) SetUpSuite(c *C) {
 		c.Skip("-live not provided")
 	}
 
-	cred := identity.CredentialsFromEnv()
-	v := reflect.ValueOf(cred).Elem()
-	t := v.Type()
-	for i := 0; i < v.NumField(); i++ {
-		f := v.Field(i)
-		if f.String() == "" {
-			c.Fatalf("required environment variable not set for credentials attribute: %s", t.Field(i).Name)
-		}
-	}
+	cred := identity.CompleteCredentialsFromEnv()
 	s.client = client.NewOpenStackClient(cred, identity.AuthUserPass)
 }
 
 var suite = Suite(&ClientSuite{})
 
 func (s *ClientSuite) TestAuthenticateFail(c *C) {
-	cred := identity.CredentialsFromEnv()
+	cred := identity.CompleteCredentialsFromEnv()
 	cred.User = "fred"
 	cred.Secrets = "broken"
 	cred.Region = ""

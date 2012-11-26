@@ -3,6 +3,7 @@ package identity
 import (
 	"fmt"
 	"os"
+	"reflect"
 )
 
 type AuthMethod int
@@ -60,4 +61,17 @@ func CredentialsFromEnv() *Credentials {
 		Region:     getConfig("OS_REGION_NAME", "NOVA_REGION"),
 		TenantName: getConfig("OS_TENANT_NAME", "NOVA_PROJECT_ID"),
 	}
+}
+
+func CompleteCredentialsFromEnv() *Credentials {
+	cred := CredentialsFromEnv()
+	v := reflect.ValueOf(cred).Elem()
+	t := v.Type()
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		if f.String() == "" {
+			panic(fmt.Sprintf("required environment variable not set for credentials attribute: %s", t.Field(i).Name))
+		}
+	}
+	return cred
 }

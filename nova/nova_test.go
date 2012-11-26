@@ -6,7 +6,6 @@ import (
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/nova"
-	"reflect"
 	"testing"
 	"time"
 )
@@ -27,15 +26,7 @@ func (s *NovaSuite) SetUpSuite(c *C) {
 		c.Skip("-live not provided")
 	}
 
-	cred := identity.CredentialsFromEnv()
-	v := reflect.ValueOf(cred).Elem()
-	t := v.Type()
-	for i := 0; i < v.NumField(); i++ {
-		f := v.Field(i)
-		if f.String() == "" {
-			c.Fatalf("required environment variable not set for credentials attribute: %s", t.Field(i).Name)
-		}
-	}
+	cred := identity.CompleteCredentialsFromEnv()
 	client := client.NewOpenStackClient(cred, identity.AuthUserPass)
 	err := client.Authenticate()
 	if err != nil {
