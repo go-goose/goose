@@ -15,7 +15,7 @@ func Test(t *testing.T) { TestingT(t) }
 var live = flag.Bool("live", false, "Include live OpenStack (Canonistack) tests")
 
 type GlanceSuite struct {
-	glance  glance.GlanceClient
+	glance glance.GlanceClient
 	// The id of an existing image which we will use in subsequent tests.
 	imageId string
 }
