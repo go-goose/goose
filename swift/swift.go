@@ -13,8 +13,6 @@ type SwiftProvider interface {
 
 	DeleteContainer(containerName string) (err error)
 
-	publicObjectURL(containerName, objectName string) (url string, err error)
-
 	HeadObject(containerName, objectName string) (headers http.Header, err error)
 
 	GetObject(containerName, objectName string) (obj []byte, err error)
@@ -56,56 +54,33 @@ func (s *OpenStackSwiftProvider) DeleteContainer(containerName string) (err erro
 	return
 }
 
-func (s *OpenStackSwiftProvider) publicObjectURL(containerName, objectName string) (url string, err error) {
+func (s *OpenStackSwiftProvider) touchObject(requestData *goosehttp.RequestData, op, containerName, objectName string) (err error) {
 	path := fmt.Sprintf("/%s/%s", containerName, objectName)
-	url, err = s.client.MakeServiceURL("object-store", []string{path})
+	err = s.client.SendRequest(op, "object-store", path, requestData,
+		"failed to %s object %s from container %s", op, objectName, containerName)
 	return
 }
 
 func (s *OpenStackSwiftProvider) HeadObject(containerName, objectName string) (headers http.Header, err error) {
-
-	url, err := s.publicObjectURL(containerName, objectName)
-	if err != nil {
-		return nil, err
-	}
-	requestData := goosehttp.RequestData{ReqHeaders: headers, ExpectedStatus: []int{http.StatusOK}}
-	err = s.client.SendRequest(client.HEAD, "object-store", url, &requestData,
-		"failed to HEAD object %s from container %s", objectName, containerName)
+	requestData := goosehttp.RequestData{ReqHeaders: headers}
+	err = s.touchObject(&requestData, client.HEAD, containerName, objectName)
 	return headers, err
 }
 
 func (s *OpenStackSwiftProvider) GetObject(containerName, objectName string) (obj []byte, err error) {
-
-	url, err := s.publicObjectURL(containerName, objectName)
-	if err != nil {
-		return nil, err
-	}
-	requestData := goosehttp.RequestData{RespData: &obj, ExpectedStatus: []int{http.StatusOK}}
-	err = s.client.SendRequest(client.GET, "object-store", url, &requestData,
-		"failed to GET object %s content from container %s", objectName, containerName)
+	requestData := goosehttp.RequestData{RespData: &obj}
+	err = s.touchObject(&requestData, client.GET, containerName, objectName)
 	return obj, err
 }
 
 func (s *OpenStackSwiftProvider) DeleteObject(containerName, objectName string) (err error) {
-
-	url, err := s.publicObjectURL(containerName, objectName)
-	if err != nil {
-		return err
-	}
-	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
-	err = s.client.SendRequest(client.DELETE, "object-store", url, &requestData,
-		"failed to DELETE object %s content from container %s", objectName, containerName)
-	return err
+	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusNoContent}}
+	err = s.touchObject(&requestData, client.DELETE, containerName, objectName)
+	return
 }
 
 func (s *OpenStackSwiftProvider) PutObject(containerName, objectName string, data []byte) (err error) {
-
-	url, err := s.publicObjectURL(containerName, objectName)
-	if err != nil {
-		return err
-	}
-	requestData := goosehttp.RequestData{ReqData: data, ExpectedStatus: []int{http.StatusAccepted}}
-	err = s.client.SendRequest(client.PUT, "object-store", url, &requestData,
-		"failed to PUT object %s content from container %s", objectName, containerName)
-	return err
+	requestData := goosehttp.RequestData{ReqData: data, ExpectedStatus: []int{http.StatusCreated}}
+	err = s.touchObject(&requestData, client.PUT, containerName, objectName)
+	return
 }
