@@ -13,20 +13,20 @@ const (
 )
 
 // Provide access to the OpenStack Glance service.
-type GlanceProvider interface {
+type GlanceClient interface {
 	ListImages() (servers []Image, err error)
 
 	ListImagesDetail() (servers []ImageDetail, err error)
 
-	TestGetImageDetail(imageId string) (ImageDetail, error)
+	GetImageDetail(imageId string) (ImageDetail, error)
 }
 
-type OpenStackGlanceProvider struct {
+type OpenStackGlanceClient struct {
 	client client.Client
 }
 
-func NewGlanceProvider(client client.Client) GlanceProvider {
-	n := &OpenStackGlanceProvider{client}
+func NewGlanceClient(client client.Client) GlanceClient {
+	n := &OpenStackGlanceClient{client}
 	return n
 }
 
@@ -42,7 +42,7 @@ type Image struct {
 	Links []Link
 }
 
-func (n *OpenStackGlanceProvider) ListImages() (servers []Image, err error) {
+func (n *OpenStackGlanceClient) ListImages() (servers []Image, err error) {
 
 	var resp struct {
 		Images []Image
@@ -76,7 +76,7 @@ type ImageDetail struct {
 	Metadata    ImageMetadata
 }
 
-func (n *OpenStackGlanceProvider) ListImagesDetail() (images []ImageDetail, err error) {
+func (n *OpenStackGlanceClient) ListImagesDetail() (images []ImageDetail, err error) {
 
 	var resp struct {
 		Images []ImageDetail
@@ -87,7 +87,7 @@ func (n *OpenStackGlanceProvider) ListImagesDetail() (images []ImageDetail, err 
 	return resp.Images, err
 }
 
-func (n *OpenStackGlanceProvider) TestGetImageDetail(imageId string) (ImageDetail, error) {
+func (n *OpenStackGlanceClient) GetImageDetail(imageId string) (ImageDetail, error) {
 
 	var resp struct {
 		Image ImageDetail

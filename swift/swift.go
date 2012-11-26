@@ -8,7 +8,7 @@ import (
 )
 
 // Provide access to the OpenStack Object Storage service.
-type SwiftProvider interface {
+type SwiftClient interface {
 	CreateContainer(containerName string) (err error)
 
 	DeleteContainer(containerName string) (err error)
@@ -24,16 +24,16 @@ type SwiftProvider interface {
 	PutObject(containerName, objectName string, data []byte) (err error)
 }
 
-type OpenStackSwiftProvider struct {
+type SwiftClient struct {
 	client client.Client
 }
 
-func NewSwiftProvider(client client.Client) SwiftProvider {
-	s := &OpenStackSwiftProvider{client}
+func NewSwiftClient(client client.Client) SwiftClient {
+	s := &SwiftClient{client}
 	return s
 }
 
-func (s *OpenStackSwiftProvider) CreateContainer(containerName string) (err error) {
+func (s *SwiftClient) CreateContainer(containerName string) (err error) {
 
 	// Juju expects there to be a (semi) public url for some objects. This
 	// could probably be more restrictive or placed in a seperate container
@@ -47,7 +47,7 @@ func (s *OpenStackSwiftProvider) CreateContainer(containerName string) (err erro
 	return
 }
 
-func (s *OpenStackSwiftProvider) DeleteContainer(containerName string) (err error) {
+func (s *SwiftClient) DeleteContainer(containerName string) (err error) {
 
 	url := fmt.Sprintf("/%s", containerName)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusNoContent}}
@@ -56,13 +56,13 @@ func (s *OpenStackSwiftProvider) DeleteContainer(containerName string) (err erro
 	return
 }
 
-func (s *OpenStackSwiftProvider) publicObjectURL(containerName, objectName string) (url string, err error) {
+func (s *SwiftClient) publicObjectURL(containerName, objectName string) (url string, err error) {
 	path := fmt.Sprintf("/%s/%s", containerName, objectName)
 	url, err = s.client.MakeServiceURL("object-store", []string{path})
 	return
 }
 
-func (s *OpenStackSwiftProvider) HeadObject(containerName, objectName string) (headers http.Header, err error) {
+func (s *SwiftClient) HeadObject(containerName, objectName string) (headers http.Header, err error) {
 
 	url, err := s.publicObjectURL(containerName, objectName)
 	if err != nil {
@@ -74,7 +74,7 @@ func (s *OpenStackSwiftProvider) HeadObject(containerName, objectName string) (h
 	return headers, err
 }
 
-func (s *OpenStackSwiftProvider) GetObject(containerName, objectName string) (obj []byte, err error) {
+func (s *SwiftClient) GetObject(containerName, objectName string) (obj []byte, err error) {
 
 	url, err := s.publicObjectURL(containerName, objectName)
 	if err != nil {
@@ -86,7 +86,7 @@ func (s *OpenStackSwiftProvider) GetObject(containerName, objectName string) (ob
 	return obj, err
 }
 
-func (s *OpenStackSwiftProvider) DeleteObject(containerName, objectName string) (err error) {
+func (s *SwiftClient) DeleteObject(containerName, objectName string) (err error) {
 
 	url, err := s.publicObjectURL(containerName, objectName)
 	if err != nil {
@@ -98,7 +98,7 @@ func (s *OpenStackSwiftProvider) DeleteObject(containerName, objectName string) 
 	return err
 }
 
-func (s *OpenStackSwiftProvider) PutObject(containerName, objectName string, data []byte) (err error) {
+func (s *SwiftClient) PutObject(containerName, objectName string, data []byte) (err error) {
 
 	url, err := s.publicObjectURL(containerName, objectName)
 	if err != nil {

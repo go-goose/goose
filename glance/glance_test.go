@@ -2,7 +2,6 @@ package glance_test
 
 import (
 	"flag"
-	"fmt"
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/glance"
@@ -16,7 +15,8 @@ func Test(t *testing.T) { TestingT(t) }
 var live = flag.Bool("live", false, "Include live OpenStack (Canonistack) tests")
 
 type GlanceSuite struct {
-	glance  glance.GlanceProvider
+	glance  glance.GlanceClient
+	// The id of an existing image which we will use in subsequent tests.
 	imageId string
 }
 
@@ -40,7 +40,7 @@ func (s *GlanceSuite) SetUpSuite(c *C) {
 		c.Fatalf("OpenStack authentication failed for %s", cred.User)
 	}
 	c.Logf("client authenticated")
-	s.glance = glance.NewGlanceProvider(client)
+	s.glance = glance.NewGlanceClient(client)
 	// For live testing, we'll use a known existing image.
 	s.imageId = "ceee61e9-c7a5-4e51-ae61-6770e359e341"
 }
@@ -83,8 +83,7 @@ func (s *GlanceSuite) TestListImagesDetail(c *C) {
 }
 
 func (s *GlanceSuite) TestGetImageDetail(c *C) {
-	ir, err := s.glance.TestGetImageDetail(s.imageId)
-	fmt.Println("%#v", ir)
+	ir, err := s.glance.GetImageDetail(s.imageId)
 	c.Assert(err, IsNil)
 	c.Assert(ir.Created, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
 	c.Assert(ir.Updated, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
