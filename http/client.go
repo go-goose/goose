@@ -84,9 +84,6 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 
 	if len(respBody) > 0 {
 		if reqData.RespValue != nil {
-			var mm interface {}
-			json.Unmarshal(respBody, &mm)
-			fmt.Println(mm)
 			err = json.Unmarshal(respBody, &reqData.RespValue)
 			if err != nil {
 				err = gooseerrors.AddContext(err, "failed unmarshaling the response body: %s", respBody)

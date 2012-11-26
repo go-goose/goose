@@ -16,7 +16,7 @@ func Test(t *testing.T) { TestingT(t) }
 var live = flag.Bool("live", false, "Include live OpenStack (Canonistack) tests")
 
 type NovaSuite struct {
-	nova         nova.NovaClient
+	nova         nova.Nova
 	testServerId string
 	userId       string
 	tenantId     string
@@ -42,7 +42,7 @@ func (s *NovaSuite) SetUpSuite(c *C) {
 		c.Fatalf("OpenStack authentication failed for %s", cred.User)
 	}
 	c.Logf("client authenticated")
-	s.nova = nova.NewNovaClient(client)
+	s.nova = nova.NewNova(client)
 	s.userId = client.UserId
 	s.tenantId = client.TenantId
 }

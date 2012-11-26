@@ -19,7 +19,7 @@ const (
 )
 
 // Provide access to the OpenStack Compute service.
-type NovaClient interface {
+type Nova interface {
 	ListFlavors() (flavors []Entity, err error)
 
 	ListFlavorsDetail() (flavors []FlavorDetail, err error)
@@ -63,12 +63,12 @@ type NovaClient interface {
 	RemoveServerFloatingIP(serverId, address string) (err error)
 }
 
-type OpenStackNovaClient struct {
+type NovaClient struct {
 	client client.Client
 }
 
-func NewNovaClient(client client.Client) NovaClient {
-	n := &OpenStackNovaClient{client}
+func NewNova(client client.Client) Nova {
+	n := &NovaClient{client}
 	return n
 }
 
@@ -86,7 +86,7 @@ type Entity struct {
 	Name  string
 }
 
-func (n *OpenStackNovaClient) ListFlavors() (flavors []Entity, err error) {
+func (n *NovaClient) ListFlavors() (flavors []Entity, err error) {
 
 	var resp struct {
 		Flavors []Entity
@@ -105,7 +105,7 @@ type FlavorDetail struct {
 	Swap  interface{} // Can be an empty string (?!)
 }
 
-func (n *OpenStackNovaClient) ListFlavorsDetail() (flavors []FlavorDetail, err error) {
+func (n *NovaClient) ListFlavorsDetail() (flavors []FlavorDetail, err error) {
 
 	var resp struct {
 		Flavors []FlavorDetail
@@ -116,7 +116,7 @@ func (n *OpenStackNovaClient) ListFlavorsDetail() (flavors []FlavorDetail, err e
 	return resp.Flavors, err
 }
 
-func (n *OpenStackNovaClient) ListServers() (servers []Entity, err error) {
+func (n *NovaClient) ListServers() (servers []Entity, err error) {
 
 	var resp struct {
 		Servers []Entity
@@ -144,7 +144,7 @@ type ServerDetail struct {
 	UserId      string `json:"user_id"`
 }
 
-func (n *OpenStackNovaClient) ListServersDetail() (servers []ServerDetail, err error) {
+func (n *NovaClient) ListServersDetail() (servers []ServerDetail, err error) {
 
 	var resp struct {
 		Servers []ServerDetail
@@ -155,7 +155,7 @@ func (n *OpenStackNovaClient) ListServersDetail() (servers []ServerDetail, err e
 	return resp.Servers, err
 }
 
-func (n *OpenStackNovaClient) GetServer(serverId string) (ServerDetail, error) {
+func (n *NovaClient) GetServer(serverId string) (ServerDetail, error) {
 
 	var resp struct {
 		Server ServerDetail
@@ -167,7 +167,7 @@ func (n *OpenStackNovaClient) GetServer(serverId string) (ServerDetail, error) {
 	return resp.Server, err
 }
 
-func (n *OpenStackNovaClient) DeleteServer(serverId string) (err error) {
+func (n *NovaClient) DeleteServer(serverId string) (err error) {
 
 	var resp struct {
 		Server ServerDetail
@@ -189,7 +189,7 @@ type RunServerOpts struct {
 	} `json:"security_groups"`
 }
 
-func (n *OpenStackNovaClient) RunServer(opts RunServerOpts) (err error) {
+func (n *NovaClient) RunServer(opts RunServerOpts) (err error) {
 
 	var req struct {
 		Server RunServerOpts `json:"server"`
@@ -224,7 +224,7 @@ type SecurityGroup struct {
 	Description string
 }
 
-func (n *OpenStackNovaClient) ListSecurityGroups() (groups []SecurityGroup, err error) {
+func (n *NovaClient) ListSecurityGroups() (groups []SecurityGroup, err error) {
 
 	var resp struct {
 		Groups []SecurityGroup `json:"security_groups"`
@@ -235,7 +235,7 @@ func (n *OpenStackNovaClient) ListSecurityGroups() (groups []SecurityGroup, err 
 	return resp.Groups, err
 }
 
-func (n *OpenStackNovaClient) GetServerSecurityGroups(serverId string) (groups []SecurityGroup, err error) {
+func (n *NovaClient) GetServerSecurityGroups(serverId string) (groups []SecurityGroup, err error) {
 
 	var resp struct {
 		Groups []SecurityGroup `json:"security_groups"`
@@ -247,7 +247,7 @@ func (n *OpenStackNovaClient) GetServerSecurityGroups(serverId string) (groups [
 	return resp.Groups, err
 }
 
-func (n *OpenStackNovaClient) CreateSecurityGroup(name, description string) (group SecurityGroup, err error) {
+func (n *NovaClient) CreateSecurityGroup(name, description string) (group SecurityGroup, err error) {
 
 	var req struct {
 		SecurityGroup struct {
@@ -267,7 +267,7 @@ func (n *OpenStackNovaClient) CreateSecurityGroup(name, description string) (gro
 	return resp.SecurityGroup, err
 }
 
-func (n *OpenStackNovaClient) DeleteSecurityGroup(groupId int) (err error) {
+func (n *NovaClient) DeleteSecurityGroup(groupId int) (err error) {
 
 	url := fmt.Sprintf("%s/%d", OS_API_SECURITY_GROUPS, groupId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
@@ -285,7 +285,7 @@ type RuleInfo struct {
 	ParentGroupId int    `json:"parent_group_id"` // Required always
 }
 
-func (n *OpenStackNovaClient) CreateSecurityGroupRule(ruleInfo RuleInfo) (rule SecurityGroupRule, err error) {
+func (n *NovaClient) CreateSecurityGroupRule(ruleInfo RuleInfo) (rule SecurityGroupRule, err error) {
 
 	var req struct {
 		SecurityGroupRule RuleInfo `json:"security_group_rule"`
@@ -302,7 +302,7 @@ func (n *OpenStackNovaClient) CreateSecurityGroupRule(ruleInfo RuleInfo) (rule S
 	return resp.SecurityGroupRule, err
 }
 
-func (n *OpenStackNovaClient) DeleteSecurityGroupRule(ruleId int) (err error) {
+func (n *NovaClient) DeleteSecurityGroupRule(ruleId int) (err error) {
 
 	url := fmt.Sprintf("%s/%d", OS_API_SECURITY_GROUP_RULES, ruleId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
@@ -311,7 +311,7 @@ func (n *OpenStackNovaClient) DeleteSecurityGroupRule(ruleId int) (err error) {
 	return
 }
 
-func (n *OpenStackNovaClient) AddServerSecurityGroup(serverId, groupName string) (err error) {
+func (n *NovaClient) AddServerSecurityGroup(serverId, groupName string) (err error) {
 
 	var req struct {
 		AddSecurityGroup struct {
@@ -327,7 +327,7 @@ func (n *OpenStackNovaClient) AddServerSecurityGroup(serverId, groupName string)
 	return
 }
 
-func (n *OpenStackNovaClient) RemoveServerSecurityGroup(serverId, groupName string) (err error) {
+func (n *NovaClient) RemoveServerSecurityGroup(serverId, groupName string) (err error) {
 
 	var req struct {
 		RemoveSecurityGroup struct {
@@ -351,7 +351,7 @@ type FloatingIP struct {
 	Pool       string      `json:"pool"`
 }
 
-func (n *OpenStackNovaClient) ListFloatingIPs() (ips []FloatingIP, err error) {
+func (n *NovaClient) ListFloatingIPs() (ips []FloatingIP, err error) {
 
 	var resp struct {
 		FloatingIPs []FloatingIP `json:"floating_ips"`
@@ -363,7 +363,7 @@ func (n *OpenStackNovaClient) ListFloatingIPs() (ips []FloatingIP, err error) {
 	return resp.FloatingIPs, err
 }
 
-func (n *OpenStackNovaClient) GetFloatingIP(ipId int) (ip FloatingIP, err error) {
+func (n *NovaClient) GetFloatingIP(ipId int) (ip FloatingIP, err error) {
 
 	var resp struct {
 		FloatingIP FloatingIP `json:"floating_ip"`
@@ -376,7 +376,7 @@ func (n *OpenStackNovaClient) GetFloatingIP(ipId int) (ip FloatingIP, err error)
 	return resp.FloatingIP, err
 }
 
-func (n *OpenStackNovaClient) AllocateFloatingIP() (ip FloatingIP, err error) {
+func (n *NovaClient) AllocateFloatingIP() (ip FloatingIP, err error) {
 
 	var resp struct {
 		FloatingIP FloatingIP `json:"floating_ip"`
@@ -388,7 +388,7 @@ func (n *OpenStackNovaClient) AllocateFloatingIP() (ip FloatingIP, err error) {
 	return resp.FloatingIP, err
 }
 
-func (n *OpenStackNovaClient) DeleteFloatingIP(ipId int) (err error) {
+func (n *NovaClient) DeleteFloatingIP(ipId int) (err error) {
 
 	url := fmt.Sprintf("%s/%d", OS_API_FLOATING_IPS, ipId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
@@ -397,7 +397,7 @@ func (n *OpenStackNovaClient) DeleteFloatingIP(ipId int) (err error) {
 	return
 }
 
-func (n *OpenStackNovaClient) AddServerFloatingIP(serverId, address string) (err error) {
+func (n *NovaClient) AddServerFloatingIP(serverId, address string) (err error) {
 
 	var req struct {
 		AddFloatingIP struct {
@@ -413,7 +413,7 @@ func (n *OpenStackNovaClient) AddServerFloatingIP(serverId, address string) (err
 	return
 }
 
-func (n *OpenStackNovaClient) RemoveServerFloatingIP(serverId, address string) (err error) {
+func (n *NovaClient) RemoveServerFloatingIP(serverId, address string) (err error) {
 
 	var req struct {
 		RemoveFloatingIP struct {
