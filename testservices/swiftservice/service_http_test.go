@@ -85,8 +85,8 @@ func (s *SwiftHTTPSuite) TestContainerHandling(c *C) {
 	c.Assert(ok, Equals, false)
 
 	resp, err = s.sendRequest("DELETE", "test", nil)
-	//c.Assert(err, IsNil)
-	//c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
+	c.Assert(err, IsNil)
+	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
 
 	ok = s.service.HasContainer("test")
 	c.Assert(ok, Equals, false)
