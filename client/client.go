@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	OS_API_TOKENS = "/tokens"
+	apiTokens = "/tokens"
 
 	GET    = "GET"
 	POST   = "POST"
@@ -41,7 +41,7 @@ type OpenStackClient struct {
 
 func NewOpenStackClient(creds *identity.Credentials, auth_method identity.AuthMethod) *OpenStackClient {
 	client := OpenStackClient{creds: creds}
-	client.creds.URL = client.creds.URL + OS_API_TOKENS
+	client.creds.URL = client.creds.URL + apiTokens
 	switch auth_method {
 	default:
 		panic(fmt.Errorf("Invalid identity authorisation method: %d", auth_method))
