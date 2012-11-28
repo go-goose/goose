@@ -9,7 +9,7 @@ import (
 
 var live = flag.Bool("live", false, "Include live OpenStack (Canonistack) tests")
 var liveAuthMethod = flag.String(
-	"live_auth_method", "userpass", "The authentication mode to use when running live tests [all|legacy|userpass]")
+	"live-auth-method", "userpass", "The authentication mode to use when running live tests [all|legacy|userpass]")
 
 func Test(t *testing.T) {
 	cred, err := identity.CompleteCredentialsFromEnv()
