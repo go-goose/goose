@@ -47,159 +47,239 @@ func (s *SwiftHTTPSuite) sendRequest(method, path string, body []byte) (*http.Re
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add("X-Auth-Token", token)
+	if token != "" {
+		req.Header.Add("X-Auth-Token", token)
+	}
 	client := &http.Client{}
 	return client.Do(req)
 }
 
-func (s *SwiftHTTPSuite) TestContainerHandling(c *C) {
+func (s *SwiftHTTPSuite) ensureNotContainer(name string, c *C) {
 	ok := s.service.HasContainer("test")
 	c.Assert(ok, Equals, false)
+}
+
+func (s *SwiftHTTPSuite) ensureContainer(name string, c *C) {
+	s.ensureNotContainer(name, c)
+	err := s.service.AddContainer("test")
+	c.Assert(err, IsNil)
+}
+
+func (s *SwiftHTTPSuite) removeContainer(name string, c *C) {
+	ok := s.service.HasContainer("test")
+	c.Assert(ok, Equals, true)
+	err := s.service.RemoveContainer("test")
+	c.Assert(err, IsNil)
+}
+
+func (s *SwiftHTTPSuite) ensureNotObject(container, object string, c *C) {
+	_, err := s.service.GetObject(container, object)
+	c.Assert(err, Not(IsNil))
+}
+
+func (s *SwiftHTTPSuite) ensureObject(container, object string, data []byte, c *C) {
+	s.ensureNotObject(container, object, c)
+	err := s.service.AddObject(container, object, data)
+	c.Assert(err, IsNil)
+}
+
+func (s *SwiftHTTPSuite) ensureObjectData(container, object string, data []byte, c *C) {
+	objdata, err := s.service.GetObject(container, object)
+	c.Assert(err, IsNil)
+	c.Assert(objdata, DeepEquals, data)
+}
+
+func (s *SwiftHTTPSuite) removeObject(container, object string, c *C) {
+	err := s.service.RemoveObject(container, object)
+	c.Assert(err, IsNil)
+	s.ensureNotObject(container, object, c)
+}
+
+func (s *SwiftHTTPSuite) TestPUTContainerMissingCreated(c *C) {
+	s.ensureNotContainer("test", c)
 
 	resp, err := s.sendRequest("PUT", "test", nil)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusCreated)
 
-	ok = s.service.HasContainer("test")
-	c.Assert(ok, Equals, true)
+	s.removeContainer("test", c)
+}
 
-	resp, err = s.sendRequest("PUT", "test", nil)
+func (s *SwiftHTTPSuite) TestPUTContainerExistsAccepted(c *C) {
+	s.ensureContainer("test", c)
+
+	resp, err := s.sendRequest("PUT", "test", nil)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusAccepted)
 
-	ok = s.service.HasContainer("test")
-	c.Assert(ok, Equals, true)
+	s.removeContainer("test", c)
+}
 
-	resp, err = s.sendRequest("GET", "test", nil)
+func (s *SwiftHTTPSuite) TestGETContainerMissingNotFound(c *C) {
+	s.ensureNotContainer("test", c)
+
+	resp, err := s.sendRequest("GET", "test", nil)
+	c.Assert(err, IsNil)
+	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
+
+	s.ensureNotContainer("test", c)
+}
+
+func (s *SwiftHTTPSuite) TestGETContainerExistsOK(c *C) {
+	s.ensureContainer("test", c)
+
+	resp, err := s.sendRequest("GET", "test", nil)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
 
-	ok = s.service.HasContainer("test")
-	c.Assert(ok, Equals, true)
+	s.removeContainer("test", c)
+}
 
-	resp, err = s.sendRequest("DELETE", "test", nil)
+func (s *SwiftHTTPSuite) TestDELETEContainerMissingNotFound(c *C) {
+	s.ensureNotContainer("test", c)
+
+	resp, err := s.sendRequest("DELETE", "test", nil)
+	c.Assert(err, IsNil)
+	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
+}
+
+func (s *SwiftHTTPSuite) TestDELETEContainerExistsNoContent(c *C) {
+	s.ensureContainer("test", c)
+
+	resp, err := s.sendRequest("DELETE", "test", nil)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
 
-	ok = s.service.HasContainer("test")
-	c.Assert(ok, Equals, false)
-
-	resp, err = s.sendRequest("DELETE", "test", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
-
-	ok = s.service.HasContainer("test")
-	c.Assert(ok, Equals, false)
-
-	resp, err = s.sendRequest("GET", "test", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
-
-	ok = s.service.HasContainer("test")
-	c.Assert(ok, Equals, false)
+	s.ensureNotContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestObjectsHandling(c *C) {
-	_, err := s.service.GetObject("test", "obj")
-	c.Assert(err, Not(IsNil))
+func (s *SwiftHTTPSuite) TestPUTObjectMissingCreated(c *C) {
+	s.ensureContainer("test", c)
+	s.ensureNotObject("test", "obj", c)
+
+	data := []byte("test data")
+	resp, err := s.sendRequest("PUT", "test/obj", data)
+	c.Assert(err, IsNil)
+	c.Assert(resp.StatusCode, Equals, http.StatusCreated)
+
+	s.ensureObjectData("test", "obj", data, c)
+	s.removeContainer("test", c)
+}
+
+func (s *SwiftHTTPSuite) TestPUTObjectExistsCreated(c *C) {
+	data := []byte("test data")
+	s.ensureContainer("test", c)
+	s.ensureObject("test", "obj", data, c)
+
+	newdata := []byte("new test data")
+	resp, err := s.sendRequest("PUT", "test/obj", newdata)
+	c.Assert(err, IsNil)
+	c.Assert(resp.StatusCode, Equals, http.StatusCreated)
+
+	s.ensureObjectData("test", "obj", newdata, c)
+	s.removeContainer("test", c)
+}
+
+func (s *SwiftHTTPSuite) TestPUTObjectContainerMissingNotFound(c *C) {
+	s.ensureNotContainer("test", c)
+
+	data := []byte("test data")
+	resp, err := s.sendRequest("PUT", "test/obj", data)
+	c.Assert(err, IsNil)
+	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
+
+	s.ensureNotContainer("test", c)
+}
+
+func (s *SwiftHTTPSuite) TestGETObjectMissingNotFound(c *C) {
+	s.ensureContainer("test", c)
+	s.ensureNotObject("test", "obj", c)
 
 	resp, err := s.sendRequest("GET", "test/obj", nil)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
 
-	data := []byte("test data")
-	err = s.service.AddObject("test", "obj", data)
-	c.Assert(err, IsNil)
+	s.removeContainer("test", c)
+}
 
-	resp, err = s.sendRequest("GET", "test/obj", nil)
+func (s *SwiftHTTPSuite) TestGETObjectContainerMissingNotFound(c *C) {
+	s.ensureNotContainer("test", c)
+
+	resp, err := s.sendRequest("GET", "test/obj", nil)
+	c.Assert(err, IsNil)
+	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
+
+	s.ensureNotContainer("test", c)
+}
+
+func (s *SwiftHTTPSuite) TestGETObjectExistsOK(c *C) {
+	data := []byte("test data")
+	s.ensureContainer("test", c)
+	s.ensureObject("test", "obj", data, c)
+
+	resp, err := s.sendRequest("GET", "test/obj", nil)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
+
+	s.ensureObjectData("test", "obj", data, c)
+
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	c.Assert(err, IsNil)
 	c.Assert(body, DeepEquals, data)
 
-	resp, err = s.sendRequest("DELETE", "test/obj", nil)
+	s.removeContainer("test", c)
+}
+
+func (s *SwiftHTTPSuite) TestDELETEObjectMissingNotFound(c *C) {
+	s.ensureContainer("test", c)
+	s.ensureNotObject("test", "obj", c)
+
+	resp, err := s.sendRequest("DELETE", "test/obj", nil)
+	c.Assert(err, IsNil)
+	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
+
+	s.removeContainer("test", c)
+}
+
+func (s *SwiftHTTPSuite) TestDELETEObjectContainerMissingNotFound(c *C) {
+	s.ensureNotContainer("test", c)
+
+	resp, err := s.sendRequest("DELETE", "test/obj", nil)
+	c.Assert(err, IsNil)
+	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
+
+	s.ensureNotContainer("test", c)
+}
+
+func (s *SwiftHTTPSuite) TestDELETEObjectExistsNoContent(c *C) {
+	data := []byte("test data")
+	s.ensureContainer("test", c)
+	s.ensureObject("test", "obj", data, c)
+
+	resp, err := s.sendRequest("DELETE", "test/obj", nil)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
 
-	_, err = s.service.GetObject("test", "obj")
-	c.Assert(err, Not(IsNil))
+	s.removeContainer("test", c)
+}
 
-	ok := s.service.HasContainer("test")
-	c.Assert(ok, Equals, true)
-
-	resp, err = s.sendRequest("PUT", "test/obj", data)
+func (s *SwiftHTTPSuite) TestUnauthorizedFails(c *C) {
+	oldtoken := token
+	defer func() {
+		token = oldtoken
+	}()
+	token = ""
+	resp, err := s.sendRequest("GET", "test", nil)
 	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusCreated)
+	c.Assert(resp.StatusCode, Equals, http.StatusUnauthorized)
 
-	err = s.service.RemoveContainer("test")
+	token = "invalid"
+	resp, err = s.sendRequest("PUT", "test", nil)
 	c.Assert(err, IsNil)
+	c.Assert(resp.StatusCode, Equals, http.StatusUnauthorized)
 
-	ok = s.service.HasContainer("test")
-	c.Assert(ok, Equals, false)
-
-	resp, err = s.sendRequest("PUT", "test/obj", data)
+	resp, err = s.sendRequest("DELETE", "test", nil)
 	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
-
-	resp, err = s.sendRequest("GET", "test/obj", data)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
-
-	resp, err = s.sendRequest("DELETE", "test/obj", data)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
-
-	err = s.service.AddContainer("test")
-	c.Assert(err, IsNil)
-
-	ok = s.service.HasContainer("test")
-	c.Assert(ok, Equals, true)
-
-	_, err = s.service.GetObject("test", "obj")
-	c.Assert(err, Not(IsNil))
-
-	resp, err = s.sendRequest("GET", "test/obj", data)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
-
-	resp, err = s.sendRequest("DELETE", "test/obj", data)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
-
-	resp, err = s.sendRequest("PUT", "test/obj", data)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusCreated)
-
-	objdata, err := s.service.GetObject("test", "obj")
-	c.Assert(err, IsNil)
-	c.Assert(objdata, DeepEquals, data)
-
-	resp, err = s.sendRequest("GET", "test/obj", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusOK)
-	defer resp.Body.Close()
-	body, err = ioutil.ReadAll(resp.Body)
-	c.Assert(body, DeepEquals, data)
-
-	newdata := []byte("new test data")
-	resp, err = s.sendRequest("PUT", "test/obj", newdata)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusCreated)
-
-	objdata, err = s.service.GetObject("test", "obj")
-	c.Assert(err, IsNil)
-	c.Assert(objdata, DeepEquals, newdata)
-
-	resp, err = s.sendRequest("GET", "test/obj", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusOK)
-	defer resp.Body.Close()
-	body, err = ioutil.ReadAll(resp.Body)
-	c.Assert(err, IsNil)
-	c.Assert(body, DeepEquals, newdata)
-
-	err = s.service.RemoveContainer("test")
-	c.Assert(err, IsNil)
+	c.Assert(resp.StatusCode, Equals, http.StatusUnauthorized)
 }
