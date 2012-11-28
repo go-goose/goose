@@ -63,13 +63,12 @@ type Nova interface {
 	RemoveServerFloatingIP(serverId, address string) (err error)
 }
 
-type NovaClient struct {
+type Client struct {
 	client client.Client
 }
 
-func NewNova(client client.Client) Nova {
-	n := &NovaClient{client}
-	return n
+func NewClient(client client.Client) Nova {
+	return &Client{client}
 }
 
 type Link struct {
@@ -86,13 +85,12 @@ type Entity struct {
 	Name  string
 }
 
-func (n *NovaClient) ListFlavors() (flavors []Entity, err error) {
-
+func (c *Client) ListFlavors() (flavors []Entity, err error) {
 	var resp struct {
 		Flavors []Entity
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err = n.client.SendRequest(client.GET, "compute", apiFlavors, &requestData, "failed to get list of flavors")
+	err = c.client.SendRequest(client.GET, "compute", apiFlavors, &requestData, "failed to get list of flavors")
 	return resp.Flavors, err
 }
 
@@ -105,24 +103,22 @@ type FlavorDetail struct {
 	Swap  interface{} // Can be an empty string (?!)
 }
 
-func (n *NovaClient) ListFlavorsDetail() (flavors []FlavorDetail, err error) {
-
+func (c *Client) ListFlavorsDetail() (flavors []FlavorDetail, err error) {
 	var resp struct {
 		Flavors []FlavorDetail
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err = n.client.SendRequest(client.GET, "compute", apiFlavorsDetail, &requestData,
+	err = c.client.SendRequest(client.GET, "compute", apiFlavorsDetail, &requestData,
 		"failed to get list of flavors details")
 	return resp.Flavors, err
 }
 
-func (n *NovaClient) ListServers() (servers []Entity, err error) {
-
+func (c *Client) ListServers() (servers []Entity, err error) {
 	var resp struct {
 		Servers []Entity
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
-	err = n.client.SendRequest(client.GET, "compute", apiServers, &requestData,
+	err = c.client.SendRequest(client.GET, "compute", apiServers, &requestData,
 		"failed to get list of servers")
 	return resp.Servers, err
 }
@@ -144,37 +140,34 @@ type ServerDetail struct {
 	UserId      string `json:"user_id"`
 }
 
-func (n *NovaClient) ListServersDetail() (servers []ServerDetail, err error) {
-
+func (c *Client) ListServersDetail() (servers []ServerDetail, err error) {
 	var resp struct {
 		Servers []ServerDetail
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err = n.client.SendRequest(client.GET, "compute", apiServersDetail, &requestData,
+	err = c.client.SendRequest(client.GET, "compute", apiServersDetail, &requestData,
 		"failed to get list of servers details")
 	return resp.Servers, err
 }
 
-func (n *NovaClient) GetServer(serverId string) (ServerDetail, error) {
-
+func (c *Client) GetServer(serverId string) (ServerDetail, error) {
 	var resp struct {
 		Server ServerDetail
 	}
 	url := fmt.Sprintf("%s/%s", apiServers, serverId)
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := n.client.SendRequest(client.GET, "compute", url, &requestData,
+	err := c.client.SendRequest(client.GET, "compute", url, &requestData,
 		"failed to get details for serverId=%s", serverId)
 	return resp.Server, err
 }
 
-func (n *NovaClient) DeleteServer(serverId string) (err error) {
-
+func (c *Client) DeleteServer(serverId string) (err error) {
 	var resp struct {
 		Server ServerDetail
 	}
 	url := fmt.Sprintf("%s/%s", apiServers, serverId)
 	requestData := goosehttp.RequestData{RespValue: &resp, ExpectedStatus: []int{http.StatusNoContent}}
-	err = n.client.SendRequest(client.DELETE, "compute", url, &requestData,
+	err = c.client.SendRequest(client.DELETE, "compute", url, &requestData,
 		"failed to delete server with serverId=%s", serverId)
 	return
 }
@@ -189,8 +182,7 @@ type RunServerOpts struct {
 	} `json:"security_groups"`
 }
 
-func (n *NovaClient) RunServer(opts RunServerOpts) (err error) {
-
+func (c *Client) RunServer(opts RunServerOpts) (err error) {
 	var req struct {
 		Server RunServerOpts `json:"server"`
 	}
@@ -201,7 +193,7 @@ func (n *NovaClient) RunServer(opts RunServerOpts) (err error) {
 		req.Server.UserData = &encoded
 	}
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
-	err = n.client.SendRequest(client.POST, "compute", apiServers, &requestData,
+	err = c.client.SendRequest(client.POST, "compute", apiServers, &requestData,
 		"failed to run a server with %#v", opts)
 	return
 }
@@ -224,31 +216,29 @@ type SecurityGroup struct {
 	Description string
 }
 
-func (n *NovaClient) ListSecurityGroups() (groups []SecurityGroup, err error) {
-
+func (c *Client) ListSecurityGroups() (groups []SecurityGroup, err error) {
 	var resp struct {
 		Groups []SecurityGroup `json:"security_groups"`
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err = n.client.SendRequest(client.GET, "compute", apiSecurityGroups, &requestData,
+	err = c.client.SendRequest(client.GET, "compute", apiSecurityGroups, &requestData,
 		"failed to list security groups")
 	return resp.Groups, err
 }
 
-func (n *NovaClient) GetServerSecurityGroups(serverId string) (groups []SecurityGroup, err error) {
+func (c *Client) GetServerSecurityGroups(serverId string) (groups []SecurityGroup, err error) {
 
 	var resp struct {
 		Groups []SecurityGroup `json:"security_groups"`
 	}
 	url := fmt.Sprintf("%s/%s/%s", apiServers, serverId, apiSecurityGroups)
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err = n.client.SendRequest(client.GET, "compute", url, &requestData,
+	err = c.client.SendRequest(client.GET, "compute", url, &requestData,
 		"failed to list server (%s) security groups", serverId)
 	return resp.Groups, err
 }
 
-func (n *NovaClient) CreateSecurityGroup(name, description string) (group SecurityGroup, err error) {
-
+func (c *Client) CreateSecurityGroup(name, description string) (group SecurityGroup, err error) {
 	var req struct {
 		SecurityGroup struct {
 			Name        string `json:"name"`
@@ -262,16 +252,15 @@ func (n *NovaClient) CreateSecurityGroup(name, description string) (group Securi
 		SecurityGroup SecurityGroup `json:"security_group"`
 	}
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
-	err = n.client.SendRequest(client.POST, "compute", apiSecurityGroups, &requestData,
+	err = c.client.SendRequest(client.POST, "compute", apiSecurityGroups, &requestData,
 		"failed to create a security group with name=%s", name)
 	return resp.SecurityGroup, err
 }
 
-func (n *NovaClient) DeleteSecurityGroup(groupId int) (err error) {
-
+func (c *Client) DeleteSecurityGroup(groupId int) (err error) {
 	url := fmt.Sprintf("%s/%d", apiSecurityGroups, groupId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
-	err = n.client.SendRequest(client.DELETE, "compute", url, &requestData,
+	err = c.client.SendRequest(client.DELETE, "compute", url, &requestData,
 		"failed to delete a security group with id=%d", groupId)
 	return
 }
@@ -285,8 +274,7 @@ type RuleInfo struct {
 	ParentGroupId int    `json:"parent_group_id"` // Required always
 }
 
-func (n *NovaClient) CreateSecurityGroupRule(ruleInfo RuleInfo) (rule SecurityGroupRule, err error) {
-
+func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (rule SecurityGroupRule, err error) {
 	var req struct {
 		SecurityGroupRule RuleInfo `json:"security_group_rule"`
 	}
@@ -297,22 +285,20 @@ func (n *NovaClient) CreateSecurityGroupRule(ruleInfo RuleInfo) (rule SecurityGr
 	}
 
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp}
-	err = n.client.SendRequest(client.POST, "compute", apiSecurityGroupRules, &requestData,
+	err = c.client.SendRequest(client.POST, "compute", apiSecurityGroupRules, &requestData,
 		"failed to create a rule for the security group with id=%s", ruleInfo.GroupId)
 	return resp.SecurityGroupRule, err
 }
 
-func (n *NovaClient) DeleteSecurityGroupRule(ruleId int) (err error) {
-
+func (c *Client) DeleteSecurityGroupRule(ruleId int) (err error) {
 	url := fmt.Sprintf("%s/%d", apiSecurityGroupRules, ruleId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
-	err = n.client.SendRequest(client.DELETE, "compute", url, &requestData,
+	err = c.client.SendRequest(client.DELETE, "compute", url, &requestData,
 		"failed to delete a security group rule with id=%d", ruleId)
 	return
 }
 
-func (n *NovaClient) AddServerSecurityGroup(serverId, groupName string) (err error) {
-
+func (c *Client) AddServerSecurityGroup(serverId, groupName string) (err error) {
 	var req struct {
 		AddSecurityGroup struct {
 			Name string `json:"name"`
@@ -322,13 +308,12 @@ func (n *NovaClient) AddServerSecurityGroup(serverId, groupName string) (err err
 
 	url := fmt.Sprintf("%s/%s/action", apiServers, serverId)
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
-	err = n.client.SendRequest(client.POST, "compute", url, &requestData,
+	err = c.client.SendRequest(client.POST, "compute", url, &requestData,
 		"failed to add security group '%s' from server with id=%s", groupName, serverId)
 	return
 }
 
-func (n *NovaClient) RemoveServerSecurityGroup(serverId, groupName string) (err error) {
-
+func (c *Client) RemoveServerSecurityGroup(serverId, groupName string) (err error) {
 	var req struct {
 		RemoveSecurityGroup struct {
 			Name string `json:"name"`
@@ -338,7 +323,7 @@ func (n *NovaClient) RemoveServerSecurityGroup(serverId, groupName string) (err 
 
 	url := fmt.Sprintf("%s/%s/action", apiServers, serverId)
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
-	err = n.client.SendRequest(client.POST, "compute", url, &requestData,
+	err = c.client.SendRequest(client.POST, "compute", url, &requestData,
 		"failed to remove security group '%s' from server with id=%s", groupName, serverId)
 	return
 }
@@ -351,54 +336,49 @@ type FloatingIP struct {
 	Pool       string      `json:"pool"`
 }
 
-func (n *NovaClient) ListFloatingIPs() (ips []FloatingIP, err error) {
-
+func (c *Client) ListFloatingIPs() (ips []FloatingIP, err error) {
 	var resp struct {
 		FloatingIPs []FloatingIP `json:"floating_ips"`
 	}
 
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err = n.client.SendRequest(client.GET, "compute", apiFloatingIPs, &requestData,
+	err = c.client.SendRequest(client.GET, "compute", apiFloatingIPs, &requestData,
 		"failed to list floating ips")
 	return resp.FloatingIPs, err
 }
 
-func (n *NovaClient) GetFloatingIP(ipId int) (ip FloatingIP, err error) {
-
+func (c *Client) GetFloatingIP(ipId int) (ip FloatingIP, err error) {
 	var resp struct {
 		FloatingIP FloatingIP `json:"floating_ip"`
 	}
 
 	url := fmt.Sprintf("%s/%d", apiFloatingIPs, ipId)
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err = n.client.SendRequest(client.GET, "compute", url, &requestData,
+	err = c.client.SendRequest(client.GET, "compute", url, &requestData,
 		"failed to get floating ip %d details", ipId)
 	return resp.FloatingIP, err
 }
 
-func (n *NovaClient) AllocateFloatingIP() (ip FloatingIP, err error) {
-
+func (c *Client) AllocateFloatingIP() (ip FloatingIP, err error) {
 	var resp struct {
 		FloatingIP FloatingIP `json:"floating_ip"`
 	}
 
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err = n.client.SendRequest(client.POST, "compute", apiFloatingIPs, &requestData,
+	err = c.client.SendRequest(client.POST, "compute", apiFloatingIPs, &requestData,
 		"failed to allocate a floating ip")
 	return resp.FloatingIP, err
 }
 
-func (n *NovaClient) DeleteFloatingIP(ipId int) (err error) {
-
+func (c *Client) DeleteFloatingIP(ipId int) (err error) {
 	url := fmt.Sprintf("%s/%d", apiFloatingIPs, ipId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
-	err = n.client.SendRequest(client.DELETE, "compute", url, &requestData,
+	err = c.client.SendRequest(client.DELETE, "compute", url, &requestData,
 		"failed to delete floating ip %d details", ipId)
 	return
 }
 
-func (n *NovaClient) AddServerFloatingIP(serverId, address string) (err error) {
-
+func (c *Client) AddServerFloatingIP(serverId, address string) (err error) {
 	var req struct {
 		AddFloatingIP struct {
 			Address string `json:"address"`
@@ -408,13 +388,12 @@ func (n *NovaClient) AddServerFloatingIP(serverId, address string) (err error) {
 
 	url := fmt.Sprintf("%s/%s/action", apiServers, serverId)
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
-	err = n.client.SendRequest(client.POST, "compute", url, &requestData,
+	err = c.client.SendRequest(client.POST, "compute", url, &requestData,
 		"failed to add floating ip %s to server %s", address, serverId)
 	return
 }
 
-func (n *NovaClient) RemoveServerFloatingIP(serverId, address string) (err error) {
-
+func (c *Client) RemoveServerFloatingIP(serverId, address string) (err error) {
 	var req struct {
 		RemoveFloatingIP struct {
 			Address string `json:"address"`
@@ -424,7 +403,7 @@ func (n *NovaClient) RemoveServerFloatingIP(serverId, address string) (err error
 
 	url := fmt.Sprintf("%s/%s/action", apiServers, serverId)
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
-	err = n.client.SendRequest(client.POST, "compute", url, &requestData,
+	err = c.client.SendRequest(client.POST, "compute", url, &requestData,
 		"failed to remove floating ip %s to server %s", address, serverId)
 	return
 }

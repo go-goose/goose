@@ -22,14 +22,17 @@ func (s *GlanceSuite) SetUpSuite(c *C) {
 		c.Skip("-live not provided")
 	}
 
-	cred := identity.CompleteCredentialsFromEnv()
+	cred, err := identity.CompleteCredentialsFromEnv()
+	if err != nil {
+		c.Fatalf("Error setting up test suite: %s", err.Error())
+	}
 	client := client.NewOpenStackClient(cred, identity.AuthUserPass)
-	err := client.Authenticate()
+	err = client.Authenticate()
 	if err != nil {
 		c.Fatalf("OpenStack authentication failed for %s", cred.User)
 	}
 	c.Logf("client authenticated")
-	s.glance = glance.NewGlanceClient(client)
+	s.glance = glance.NewClient(client)
 }
 
 var suite = Suite(&GlanceSuite{})
