@@ -26,7 +26,11 @@ type ClientSuite struct {
 }
 
 func (s *ClientSuite) SetUpSuite(c *C) {
-	s.cred = identity.CompleteCredentialsFromEnv()
+	var err error
+	s.cred, err = identity.CompleteCredentialsFromEnv()
+	if err != nil {
+		c.Fatalf("Error setting up test suite: %s", err.Error())
+	}
 	switch *authMethodName {
 	default:
 		c.Fatalf("Invalid auth method specified: %s", *authMethodName)
@@ -77,12 +81,16 @@ func (s *ClientSuite) TearDownTest(c *C) {
 var suite = Suite(&ClientSuite{})
 
 func (s *ClientSuite) TestAuthenticateFail(c *C) {
-	s.cred.User = "fred"
-	s.cred.Secrets = "broken"
-	s.cred.Region = ""
-	var osclient = client.NewOpenStackClient(s.cred, s.authMethod)
+	cred, err := identity.CompleteCredentialsFromEnv()
+	if err != nil {
+		c.Fatalf(err.Error())
+	}
+	cred.User = "fred"
+	cred.Secrets = "broken"
+	cred.Region = ""
+	cred.URL = s.Server.URL
+	var osclient *client.OpenStackClient = client.NewOpenStackClient(cred, s.authMethod)
 	c.Assert(osclient.IsAuthenticated(), Equals, false)
-	var err error
 	err = osclient.Authenticate()
 	c.Assert(err, ErrorMatches, "authentication failed.*")
 }
