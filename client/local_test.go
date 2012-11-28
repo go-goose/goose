@@ -11,8 +11,8 @@ import (
 func registerLocalTests(cred *identity.Credentials, authMethods []identity.AuthMethod) {
 	for _, authMethod := range authMethods {
 		Suite(&localLiveSuite{
-			LiveTests: LiveTests {
-				cred: cred,
+			LiveTests: LiveTests{
+				cred:       cred,
 				authMethod: authMethod,
 			},
 		})
@@ -33,7 +33,8 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 	s.HTTPSuite.SetUpSuite(c)
 	s.cred.URL = s.Server.URL
 	switch s.authMethod {
-	default: panic("Invalid authentication method")
+	default:
+		panic("Invalid authentication method")
 	case identity.AuthUserPass:
 		s.identityDouble = identityservice.NewUserPass()
 		s.identityDouble.(*identityservice.UserPass).AddUser(s.cred.User, s.cred.Secrets)

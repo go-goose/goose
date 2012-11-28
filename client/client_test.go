@@ -16,7 +16,7 @@ func Test(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error setting up test suite: %s", err.Error())
 	}
-	var allAuthMethods = []identity.AuthMethod{identity.AuthLegacy, identity.AuthUserPass};
+	var allAuthMethods = []identity.AuthMethod{identity.AuthLegacy, identity.AuthUserPass}
 	var liveAuthMethods []identity.AuthMethod
 	switch *liveAuthMethod {
 	default:
