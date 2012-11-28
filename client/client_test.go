@@ -8,27 +8,31 @@ import (
 )
 
 var live = flag.Bool("live", false, "Include live OpenStack (Canonistack) tests")
-var authMethodName = flag.String("auth_method", "userpass", "The authentication mode to use [legacy|userpass]")
+var liveAuthMethod = flag.String(
+	"live_auth_method", "userpass", "The authentication mode to use when running live tests [all|legacy|userpass]")
 
 func Test(t *testing.T) {
 	cred, err := identity.CompleteCredentialsFromEnv()
 	if err != nil {
 		t.Fatalf("Error setting up test suite: %s", err.Error())
 	}
-	var authMethod identity.AuthMethod
-	switch *authMethodName {
+	var allAuthMethods = []identity.AuthMethod{identity.AuthLegacy, identity.AuthUserPass};
+	var liveAuthMethods []identity.AuthMethod
+	switch *liveAuthMethod {
 	default:
-		t.Fatalf("Invalid auth method specified: %s", *authMethodName)
+		t.Fatalf("Invalid auth method specified: %s", *liveAuthMethod)
+	case "all":
+		liveAuthMethods = allAuthMethods
 	case "":
 	case "userpass":
-		authMethod = identity.AuthUserPass
+		liveAuthMethods = []identity.AuthMethod{identity.AuthUserPass}
 	case "legacy":
-		authMethod = identity.AuthLegacy
+		liveAuthMethods = []identity.AuthMethod{identity.AuthLegacy}
 	}
 
 	if *live {
-		registerOpenStackTests(cred, authMethod)
+		registerOpenStackTests(cred, liveAuthMethods)
 	}
-	registerLocalTests(cred, authMethod)
+	registerLocalTests(cred, allAuthMethods)
 	TestingT(t)
 }

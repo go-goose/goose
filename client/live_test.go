@@ -6,11 +6,13 @@ import (
 	"launchpad.net/goose/identity"
 )
 
-func registerOpenStackTests(cred *identity.Credentials, authMethod identity.AuthMethod) {
-	Suite(&LiveTests{
-		cred:       cred,
-		authMethod: authMethod,
-	})
+func registerOpenStackTests(cred *identity.Credentials, authMethods []identity.AuthMethod) {
+	for _, authMethod := range authMethods {
+		Suite(&LiveTests{
+			cred:       cred,
+			authMethod: authMethod,
+		})
+	}
 }
 
 type LiveTests struct {
@@ -19,7 +21,7 @@ type LiveTests struct {
 }
 
 func (s *LiveTests) SetUpSuite(c *C) {
-	// noop, called by local test suite.
+	c.Logf("Running tests with authentication method %v", s.authMethod)
 }
 
 func (s *LiveTests) TearDownSuite(c *C) {
@@ -39,14 +41,14 @@ func (s *LiveTests) TestAuthenticateFail(c *C) {
 	cred.User = "fred"
 	cred.Secrets = "broken"
 	cred.Region = ""
-	var osclient *client.OpenStackClient = client.NewOpenStackClient(&cred, s.authMethod)
+	osclient := client.NewClient(&cred, s.authMethod)
 	c.Assert(osclient.IsAuthenticated(), Equals, false)
 	err := osclient.Authenticate()
 	c.Assert(err, ErrorMatches, "authentication failed.*")
 }
 
 func (s *LiveTests) TestAuthenticate(c *C) {
-	client := client.NewOpenStackClient(s.cred, s.authMethod)
+	client := client.NewClient(s.cred, s.authMethod)
 	err := client.Authenticate()
 	c.Assert(err, IsNil)
 	c.Assert(client.IsAuthenticated(), Equals, true)

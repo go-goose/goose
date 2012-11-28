@@ -8,13 +8,15 @@ import (
 	"net/http"
 )
 
-func registerLocalTests(cred *identity.Credentials, authMethod identity.AuthMethod) {
-	Suite(&localLiveSuite{
-		LiveTests: LiveTests {
-			cred: cred,
-			authMethod: authMethod,
-		},
-	})
+func registerLocalTests(cred *identity.Credentials, authMethods []identity.AuthMethod) {
+	for _, authMethod := range authMethods {
+		Suite(&localLiveSuite{
+			LiveTests: LiveTests {
+				cred: cred,
+				authMethod: authMethod,
+			},
+		})
+	}
 }
 
 // localLiveSuite runs tests from LiveTests using a fake

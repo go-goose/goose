@@ -30,7 +30,7 @@ func (s *NovaSuite) SetUpSuite(c *C) {
 	if err != nil {
 		c.Fatalf("Error setting up test suite: %s", err.Error())
 	}
-	client := client.NewOpenStackClient(cred, identity.AuthUserPass)
+	client := client.NewClient(cred, identity.AuthUserPass)
 	err = client.Authenticate()
 	if err != nil {
 		c.Fatalf("OpenStack authentication failed for %s", cred.User)
