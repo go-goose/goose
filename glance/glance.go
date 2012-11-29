@@ -12,20 +12,11 @@ const (
 	apiImagesDetail = "/images/detail"
 )
 
-// Provide access to the OpenStack Glance service.
-type Glance interface {
-	ListImages() (servers []Image, err error)
-
-	ListImagesDetail() (servers []ImageDetail, err error)
-
-	GetImageDetail(imageId string) (ImageDetail, error)
-}
-
 type Client struct {
 	client client.Client
 }
 
-func NewClient(client client.Client) Glance {
+func New(client client.Client) *Client {
 	return &Client{client}
 }
 
@@ -41,13 +32,12 @@ type Image struct {
 	Links []Link
 }
 
-func (c *Client) ListImages() (servers []Image, err error) {
-
+func (c *Client) ListImages() ([]Image, error) {
 	var resp struct {
 		Images []Image
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
-	err = c.client.SendRequest(client.GET, "compute", apiImages, &requestData,
+	err := c.client.SendRequest(client.GET, "compute", apiImages, &requestData,
 		"failed to get list of images")
 	return resp.Images, err
 }
@@ -75,12 +65,12 @@ type ImageDetail struct {
 	Metadata    ImageMetadata
 }
 
-func (c *Client) ListImagesDetail() (images []ImageDetail, err error) {
+func (c *Client) ListImagesDetail() ([]ImageDetail, error) {
 	var resp struct {
 		Images []ImageDetail
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err = c.client.SendRequest(client.GET, "compute", apiImagesDetail, &requestData,
+	err := c.client.SendRequest(client.GET, "compute", apiImagesDetail, &requestData,
 		"failed to get list of images details")
 	return resp.Images, err
 }

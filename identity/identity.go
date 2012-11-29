@@ -1,7 +1,6 @@
 package identity
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -71,8 +70,7 @@ func CompleteCredentialsFromEnv() (cred *Credentials, err error) {
 	for i := 0; i < v.NumField(); i++ {
 		f := v.Field(i)
 		if f.String() == "" {
-			err = errors.New(
-				(fmt.Sprintf("required environment variable not set for credentials attribute: %s", t.Field(i).Name)))
+			err = fmt.Errorf("required environment variable not set for credentials attribute: %s", t.Field(i).Name)
 		}
 	}
 	return
