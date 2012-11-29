@@ -6,7 +6,6 @@ import (
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/nova"
-	"reflect"
 	"testing"
 	"time"
 )
@@ -16,7 +15,7 @@ func Test(t *testing.T) { TestingT(t) }
 var live = flag.Bool("live", false, "Include live OpenStack (Canonistack) tests")
 
 type NovaSuite struct {
-	nova         nova.NovaProvider
+	nova         *nova.Client
 	testServerId string
 	userId       string
 	tenantId     string
@@ -27,22 +26,13 @@ func (s *NovaSuite) SetUpSuite(c *C) {
 		c.Skip("-live not provided")
 	}
 
-	cred := identity.CredentialsFromEnv()
-	v := reflect.ValueOf(cred).Elem()
-	t := v.Type()
-	for i := 0; i < v.NumField(); i++ {
-		f := v.Field(i)
-		if f.String() == "" {
-			c.Fatalf("required environment variable not set for credentials attribute: %s", t.Field(i).Name)
-		}
-	}
+	cred, err := identity.CompleteCredentialsFromEnv()
+	c.Assert(err, IsNil)
 	client := client.NewOpenStackClient(cred, identity.AuthUserPass)
-	err := client.Authenticate()
-	if err != nil {
-		c.Fatalf("OpenStack authentication failed for %s", cred.User)
-	}
+	err = client.Authenticate()
+	c.Assert(err, IsNil)
 	c.Logf("client authenticated")
-	s.nova = nova.NewNovaProvider(client)
+	s.nova = nova.New(client)
 	s.userId = client.UserId
 	s.tenantId = client.TenantId
 }

@@ -12,6 +12,7 @@ import (
 const (
 	apiTokens = "/tokens"
 
+	// The HTTP request methods.
 	GET    = "GET"
 	POST   = "POST"
 	PUT    = "PUT"

@@ -6,7 +6,6 @@ import (
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/swift"
-	"reflect"
 	"testing"
 )
 
@@ -15,7 +14,7 @@ func Test(t *testing.T) { TestingT(t) }
 var live = flag.Bool("live", false, "Include live OpenStack (Canonistack) tests")
 
 type SwiftSuite struct {
-	swift swift.SwiftProvider
+	swift *swift.Client
 }
 
 func (s *SwiftSuite) SetUpSuite(c *C) {
@@ -23,22 +22,13 @@ func (s *SwiftSuite) SetUpSuite(c *C) {
 		c.Skip("-live not provided")
 	}
 
-	cred := identity.CredentialsFromEnv()
-	v := reflect.ValueOf(cred).Elem()
-	t := v.Type()
-	for i := 0; i < v.NumField(); i++ {
-		f := v.Field(i)
-		if f.String() == "" {
-			c.Fatalf("required environment variable not set for credentials attribute: %s", t.Field(i).Name)
-		}
-	}
+	cred, err := identity.CompleteCredentialsFromEnv()
+	c.Assert(err, IsNil)
 	client := client.NewOpenStackClient(cred, identity.AuthUserPass)
-	err := client.Authenticate()
-	if err != nil {
-		c.Fatalf("OpenStack authentication failed for %s", cred.User)
-	}
+	err = client.Authenticate()
+	c.Assert(err, IsNil)
 	c.Logf("client authenticated")
-	s.swift = swift.NewSwiftProvider(client)
+	s.swift = swift.New(client)
 }
 
 var suite = Suite(&SwiftSuite{})

@@ -5,7 +5,6 @@ import (
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/identity"
-	"reflect"
 	"testing"
 )
 
@@ -22,29 +21,21 @@ func (s *ClientSuite) SetUpSuite(c *C) {
 	if !*live {
 		c.Skip("-live not provided")
 	}
-
-	cred := identity.CredentialsFromEnv()
-	v := reflect.ValueOf(cred).Elem()
-	t := v.Type()
-	for i := 0; i < v.NumField(); i++ {
-		f := v.Field(i)
-		if f.String() == "" {
-			c.Fatalf("required environment variable not set for credentials attribute: %s", t.Field(i).Name)
-		}
-	}
+	cred, err := identity.CompleteCredentialsFromEnv()
+	c.Assert(err, IsNil)
 	s.client = client.NewOpenStackClient(cred, identity.AuthUserPass)
 }
 
 var suite = Suite(&ClientSuite{})
 
 func (s *ClientSuite) TestAuthenticateFail(c *C) {
-	cred := identity.CredentialsFromEnv()
+	cred, err := identity.CompleteCredentialsFromEnv()
+	c.Assert(err, IsNil)
 	cred.User = "fred"
 	cred.Secrets = "broken"
 	cred.Region = ""
 	var osclient *client.OpenStackClient = client.NewOpenStackClient(cred, identity.AuthUserPass)
 	c.Assert(osclient.IsAuthenticated(), Equals, false)
-	var err error
 	err = osclient.Authenticate()
 	c.Assert(err, ErrorMatches, "authentication failed.*")
 }
