@@ -32,13 +32,12 @@ type localLiveSuite struct {
 }
 
 func (s *localLiveSuite) SetUpSuite(c *C) {
-	c.Logf("Using identity service test double")
-	c.Logf("Using swift service test double")
+	c.Logf("Using identity and swift service test doubles")
 	s.HTTPSuite.SetUpSuite(c)
 	s.cred.URL = s.Server.URL
+	// Create an identity service and register a Swift endpoint.
 	s.identityDouble = identityservice.NewUserPass()
 	token := s.identityDouble.(*identityservice.UserPass).AddUser(s.cred.User, s.cred.Secrets)
-	s.swiftDouble = swiftservice.New("localhost", baseURL+"/", token)
 	ep := identityservice.Endpoint{
 		s.Server.URL + baseURL, //admin
 		s.Server.URL + baseURL, //internal
@@ -47,6 +46,8 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 	}
 	service := identityservice.Service{"swift", "object-store", []identityservice.Endpoint{ep}}
 	s.identityDouble.(*identityservice.UserPass).AddService(service)
+	// Create a swift service at the registered endpoint.
+	s.swiftDouble = swiftservice.New("localhost", baseURL+"/", token)
 	s.LiveTests.SetUpSuite(c)
 }
 
