@@ -24,7 +24,8 @@ func (s *SwiftSuite) SetUpSuite(c *C) {
 
 	cred, err := identity.CompleteCredentialsFromEnv()
 	c.Assert(err, IsNil)
-	client := client.NewOpenStackClient(cred, identity.AuthUserPass)
+	client := client.NewClient(cred, identity.AuthUserPass)
+	c.Assert(err, IsNil)
 	err = client.Authenticate()
 	c.Assert(err, IsNil)
 	c.Logf("client authenticated")

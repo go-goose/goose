@@ -40,9 +40,10 @@ type OpenStackClient struct {
 	UserId      string
 }
 
-func NewOpenStackClient(creds *identity.Credentials, auth_method identity.AuthMethod) *OpenStackClient {
-	client := OpenStackClient{creds: creds}
-	client.creds.URL = client.creds.URL + apiTokens
+func NewClient(creds *identity.Credentials, auth_method identity.AuthMethod) *OpenStackClient {
+	client_creds := *creds
+	client_creds.URL = client_creds.URL + apiTokens
+	client := OpenStackClient{creds: &client_creds}
 	switch auth_method {
 	default:
 		panic(fmt.Errorf("Invalid identity authorisation method: %d", auth_method))

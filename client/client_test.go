@@ -3,50 +3,36 @@ package client_test
 import (
 	"flag"
 	. "launchpad.net/gocheck"
-	"launchpad.net/goose/client"
 	"launchpad.net/goose/identity"
 	"testing"
 )
 
-// Hook up gocheck into the gotest runner.
-func Test(t *testing.T) { TestingT(t) }
-
 var live = flag.Bool("live", false, "Include live OpenStack (Canonistack) tests")
+var liveAuthMethod = flag.String(
+	"live-auth-method", "userpass", "The authentication mode to use when running live tests [all|legacy|userpass]")
 
-type ClientSuite struct {
-	client *client.OpenStackClient
-}
-
-func (s *ClientSuite) SetUpSuite(c *C) {
-	if !*live {
-		c.Skip("-live not provided")
+func Test(t *testing.T) {
+	cred, err := identity.CompleteCredentialsFromEnv()
+	if err != nil {
+		t.Fatalf("Error setting up test suite: %s", err.Error())
 	}
-	cred, err := identity.CompleteCredentialsFromEnv()
-	c.Assert(err, IsNil)
-	s.client = client.NewOpenStackClient(cred, identity.AuthUserPass)
-}
+	var allAuthMethods = []identity.AuthMethod{identity.AuthLegacy, identity.AuthUserPass}
+	var liveAuthMethods []identity.AuthMethod
+	switch *liveAuthMethod {
+	default:
+		t.Fatalf("Invalid auth method specified: %s", *liveAuthMethod)
+	case "all":
+		liveAuthMethods = allAuthMethods
+	case "":
+	case "userpass":
+		liveAuthMethods = []identity.AuthMethod{identity.AuthUserPass}
+	case "legacy":
+		liveAuthMethods = []identity.AuthMethod{identity.AuthLegacy}
+	}
 
-var suite = Suite(&ClientSuite{})
-
-func (s *ClientSuite) TestAuthenticateFail(c *C) {
-	cred, err := identity.CompleteCredentialsFromEnv()
-	c.Assert(err, IsNil)
-	cred.User = "fred"
-	cred.Secrets = "broken"
-	cred.Region = ""
-	var osclient *client.OpenStackClient = client.NewOpenStackClient(cred, identity.AuthUserPass)
-	c.Assert(osclient.IsAuthenticated(), Equals, false)
-	err = osclient.Authenticate()
-	c.Assert(err, ErrorMatches, "authentication failed.*")
-}
-
-func (s *ClientSuite) TestAuthenticate(c *C) {
-	var err error
-	err = s.client.Authenticate()
-	c.Assert(err, IsNil)
-	c.Assert(s.client.IsAuthenticated(), Equals, true)
-
-	// Check service endpoints are discovered
-	c.Assert(s.client.ServiceURLs["compute"], NotNil)
-	c.Assert(s.client.ServiceURLs["swift"], NotNil)
+	if *live {
+		registerOpenStackTests(cred, liveAuthMethods)
+	}
+	registerLocalTests(cred, allAuthMethods)
+	TestingT(t)
 }
