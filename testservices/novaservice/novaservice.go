@@ -69,7 +69,7 @@ type NovaService interface {
 	RemoveSecurityGroup(groupId int) error
 
 	// AddSecurityGroupRule creates a new rule in an existing group.
-	AddSecurityGroupRule(groupId int, rule nova.RuleInfo) error
+	AddSecurityGroupRule(ruleId int, rule nova.RuleInfo) error
 
 	// HasSecurityGroupRule verifies the given group contains the given rule.
 	HasSecurityGroupRule(groupId, ruleId int) bool
@@ -78,7 +78,7 @@ type NovaService interface {
 	GetSecurityGroupRule(ruleId int) (nova.SecurityGroupRule, error)
 
 	// RemoveSecurityGroupRule deletes an existing rule from its group.
-	RemoveSecurityGroupRule(groupId, ruleId int) error
+	RemoveSecurityGroupRule(ruleId int) error
 
 	// AddServerSecurityGroup attaches an existing server to a group.
 	AddServerSecurityGroup(serverId string, groupId int) error
@@ -111,7 +111,7 @@ type NovaService interface {
 	HasServerFloatingIP(serverId, address string) bool
 
 	// RemoveServerFloatingIP deletes an attached floating IP from a server.
-	RemoveServerFloatingIP(serverId, ipId int) error
+	RemoveServerFloatingIP(serverId string, ipId int) error
 
 	// ServeHTTP is the main entry point in the HTTP request processing.
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
