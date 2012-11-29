@@ -125,7 +125,7 @@ func (c *Client) GetServer(serverId string) (ServerDetail, error) {
 }
 
 // DeleteServer terminates the specified server.
-func (c *Client) DeleteServer(serverId string) (error) {
+func (c *Client) DeleteServer(serverId string) error {
 	var resp struct {
 		Server ServerDetail
 	}
@@ -147,7 +147,7 @@ type RunServerOpts struct {
 }
 
 // RunServer creates a new server.
-func (c *Client) RunServer(opts RunServerOpts) (error) {
+func (c *Client) RunServer(opts RunServerOpts) error {
 	var req struct {
 		Server RunServerOpts `json:"server"`
 	}
@@ -226,7 +226,7 @@ func (c *Client) CreateSecurityGroup(name, description string) (SecurityGroup, e
 }
 
 // DeleteSecurityGroup deletes the specified security group.
-func (c *Client) DeleteSecurityGroup(groupId int) (error) {
+func (c *Client) DeleteSecurityGroup(groupId int) error {
 	url := fmt.Sprintf("%s/%d", apiSecurityGroups, groupId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData,
@@ -261,7 +261,7 @@ func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (SecurityGroupRule, 
 }
 
 // DeleteSecurityGroupRule deletes the specified security group rule.
-func (c *Client) DeleteSecurityGroupRule(ruleId int) (error) {
+func (c *Client) DeleteSecurityGroupRule(ruleId int) error {
 	url := fmt.Sprintf("%s/%d", apiSecurityGroupRules, ruleId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData,
@@ -270,7 +270,7 @@ func (c *Client) DeleteSecurityGroupRule(ruleId int) (error) {
 }
 
 // AddServerSecurityGroup adds a security group to the specified server.
-func (c *Client) AddServerSecurityGroup(serverId, groupName string) (error) {
+func (c *Client) AddServerSecurityGroup(serverId, groupName string) error {
 	var req struct {
 		AddSecurityGroup struct {
 			Name string `json:"name"`
@@ -286,7 +286,7 @@ func (c *Client) AddServerSecurityGroup(serverId, groupName string) (error) {
 }
 
 // RemoveServerSecurityGroup removes a security group from the specified server.
-func (c *Client) RemoveServerSecurityGroup(serverId, groupName string) (error) {
+func (c *Client) RemoveServerSecurityGroup(serverId, groupName string) error {
 	var req struct {
 		RemoveSecurityGroup struct {
 			Name string `json:"name"`
@@ -347,7 +347,7 @@ func (c *Client) AllocateFloatingIP() (FloatingIP, error) {
 }
 
 // DeleteFloatingIP deallocates the floating IP address associated with the specified id.
-func (c *Client) DeleteFloatingIP(ipId int) (error) {
+func (c *Client) DeleteFloatingIP(ipId int) error {
 	url := fmt.Sprintf("%s/%d", apiFloatingIPs, ipId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData,
@@ -356,7 +356,7 @@ func (c *Client) DeleteFloatingIP(ipId int) (error) {
 }
 
 // AddServerFloatingIP assigns a floating IP addess to the specified server.
-func (c *Client) AddServerFloatingIP(serverId, address string) (error) {
+func (c *Client) AddServerFloatingIP(serverId, address string) error {
 	var req struct {
 		AddFloatingIP struct {
 			Address string `json:"address"`
@@ -372,7 +372,7 @@ func (c *Client) AddServerFloatingIP(serverId, address string) (error) {
 }
 
 // RemoveServerFloatingIP removes a floating IP address from the specified server.
-func (c *Client) RemoveServerFloatingIP(serverId, address string) (error) {
+func (c *Client) RemoveServerFloatingIP(serverId, address string) error {
 	var req struct {
 		RemoveFloatingIP struct {
 			Address string `json:"address"`
