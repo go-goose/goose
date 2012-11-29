@@ -1,3 +1,5 @@
+// The nova package provides a way to access the OpenStack Compute APIs.
+// See http://docs.openstack.org/api/openstack-compute/2/content/.
 package nova
 
 import (
@@ -18,6 +20,7 @@ const (
 	apiFloatingIPs        = "/os-floating-ips"
 )
 
+// Client provides a means to access the OpenStack Compute Service.
 type Client struct {
 	client client.Client
 }
@@ -40,6 +43,7 @@ type Entity struct {
 	Name  string
 }
 
+// ListFlavours lists IDs, names, and links for available flavors.
 func (c *Client) ListFlavors() ([]Entity, error) {
 	var resp struct {
 		Flavors []Entity
@@ -58,6 +62,7 @@ type FlavorDetail struct {
 	Swap  interface{} // Can be an empty string (?!)
 }
 
+// ListFlavorsDetail lists all details for available flavors.
 func (c *Client) ListFlavorsDetail() ([]FlavorDetail, error) {
 	var resp struct {
 		Flavors []FlavorDetail
@@ -68,6 +73,7 @@ func (c *Client) ListFlavorsDetail() ([]FlavorDetail, error) {
 	return resp.Flavors, err
 }
 
+// ListServers lists IDs, names, and links for all servers.
 func (c *Client) ListServers() ([]Entity, error) {
 	var resp struct {
 		Servers []Entity
@@ -95,6 +101,7 @@ type ServerDetail struct {
 	UserId      string `json:"user_id"`
 }
 
+// ListServersDetail lists all details for available servers.
 func (c *Client) ListServersDetail() ([]ServerDetail, error) {
 	var resp struct {
 		Servers []ServerDetail
@@ -105,6 +112,7 @@ func (c *Client) ListServersDetail() ([]ServerDetail, error) {
 	return resp.Servers, err
 }
 
+// GetServer lists details for the specified server.
 func (c *Client) GetServer(serverId string) (ServerDetail, error) {
 	var resp struct {
 		Server ServerDetail
@@ -116,6 +124,7 @@ func (c *Client) GetServer(serverId string) (ServerDetail, error) {
 	return resp.Server, err
 }
 
+// DeleteServer terminates the specified server.
 func (c *Client) DeleteServer(serverId string) (error) {
 	var resp struct {
 		Server ServerDetail
@@ -137,6 +146,7 @@ type RunServerOpts struct {
 	} `json:"security_groups"`
 }
 
+// RunServer creates a new server.
 func (c *Client) RunServer(opts RunServerOpts) (error) {
 	var req struct {
 		Server RunServerOpts `json:"server"`
@@ -171,6 +181,7 @@ type SecurityGroup struct {
 	Description string
 }
 
+// ListSecurityGroups lists IDs, names, and other details for all security groups.
 func (c *Client) ListSecurityGroups() ([]SecurityGroup, error) {
 	var resp struct {
 		Groups []SecurityGroup `json:"security_groups"`
@@ -181,6 +192,7 @@ func (c *Client) ListSecurityGroups() ([]SecurityGroup, error) {
 	return resp.Groups, err
 }
 
+// GetServerSecurityGroups list security groups for a specific server.
 func (c *Client) GetServerSecurityGroups(serverId string) ([]SecurityGroup, error) {
 
 	var resp struct {
@@ -193,6 +205,7 @@ func (c *Client) GetServerSecurityGroups(serverId string) ([]SecurityGroup, erro
 	return resp.Groups, err
 }
 
+// CreateSecurityGroup creates a new security group.
 func (c *Client) CreateSecurityGroup(name, description string) (SecurityGroup, error) {
 	var req struct {
 		SecurityGroup struct {
@@ -212,6 +225,7 @@ func (c *Client) CreateSecurityGroup(name, description string) (SecurityGroup, e
 	return resp.SecurityGroup, err
 }
 
+// DeleteSecurityGroup deletes the specified security group.
 func (c *Client) DeleteSecurityGroup(groupId int) (error) {
 	url := fmt.Sprintf("%s/%d", apiSecurityGroups, groupId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
@@ -229,6 +243,7 @@ type RuleInfo struct {
 	ParentGroupId int    `json:"parent_group_id"` // Required always
 }
 
+// CreateSecurityGroupRule creates a security group rule.
 func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (SecurityGroupRule, error) {
 	var req struct {
 		SecurityGroupRule RuleInfo `json:"security_group_rule"`
@@ -245,6 +260,7 @@ func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (SecurityGroupRule, 
 	return resp.SecurityGroupRule, err
 }
 
+// DeleteSecurityGroupRule deletes the specified security group rule.
 func (c *Client) DeleteSecurityGroupRule(ruleId int) (error) {
 	url := fmt.Sprintf("%s/%d", apiSecurityGroupRules, ruleId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
@@ -253,6 +269,7 @@ func (c *Client) DeleteSecurityGroupRule(ruleId int) (error) {
 	return err
 }
 
+// AddServerSecurityGroup adds a security group to the specified server.
 func (c *Client) AddServerSecurityGroup(serverId, groupName string) (error) {
 	var req struct {
 		AddSecurityGroup struct {
@@ -264,10 +281,11 @@ func (c *Client) AddServerSecurityGroup(serverId, groupName string) (error) {
 	url := fmt.Sprintf("%s/%s/action", apiServers, serverId)
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.POST, "compute", url, &requestData,
-		"failed to add security group '%s' from server with id=%s", groupName, serverId)
+		"failed to add security group '%s' to server with id=%s", groupName, serverId)
 	return err
 }
 
+// RemoveServerSecurityGroup removes a security group from the specified server.
 func (c *Client) RemoveServerSecurityGroup(serverId, groupName string) (error) {
 	var req struct {
 		RemoveSecurityGroup struct {
@@ -291,6 +309,7 @@ type FloatingIP struct {
 	Pool       string      `json:"pool"`
 }
 
+// ListFloatingIPs lists floating IP addresses associated with the tenant or account.
 func (c *Client) ListFloatingIPs() ([]FloatingIP, error) {
 	var resp struct {
 		FloatingIPs []FloatingIP `json:"floating_ips"`
@@ -302,6 +321,7 @@ func (c *Client) ListFloatingIPs() ([]FloatingIP, error) {
 	return resp.FloatingIPs, err
 }
 
+// GetFloatingIP lists details of the floating IP address associated with specified id.
 func (c *Client) GetFloatingIP(ipId int) (FloatingIP, error) {
 	var resp struct {
 		FloatingIP FloatingIP `json:"floating_ip"`
@@ -314,6 +334,7 @@ func (c *Client) GetFloatingIP(ipId int) (FloatingIP, error) {
 	return resp.FloatingIP, err
 }
 
+// AllocateFloatingIP allocates a new floating IP address to a tenant or account.
 func (c *Client) AllocateFloatingIP() (FloatingIP, error) {
 	var resp struct {
 		FloatingIP FloatingIP `json:"floating_ip"`
@@ -325,6 +346,7 @@ func (c *Client) AllocateFloatingIP() (FloatingIP, error) {
 	return resp.FloatingIP, err
 }
 
+// DeleteFloatingIP deallocates the floating IP address associated with the specified id.
 func (c *Client) DeleteFloatingIP(ipId int) (error) {
 	url := fmt.Sprintf("%s/%d", apiFloatingIPs, ipId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
@@ -333,6 +355,7 @@ func (c *Client) DeleteFloatingIP(ipId int) (error) {
 	return err
 }
 
+// AddServerFloatingIP assigns a floating IP addess to the specified server.
 func (c *Client) AddServerFloatingIP(serverId, address string) (error) {
 	var req struct {
 		AddFloatingIP struct {
@@ -348,6 +371,7 @@ func (c *Client) AddServerFloatingIP(serverId, address string) (error) {
 	return err
 }
 
+// RemoveServerFloatingIP removes a floating IP address from the specified server.
 func (c *Client) RemoveServerFloatingIP(serverId, address string) (error) {
 	var req struct {
 		RemoveFloatingIP struct {

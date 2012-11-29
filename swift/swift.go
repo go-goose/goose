@@ -1,3 +1,5 @@
+// The swift package provides a way to access the OpenStack Object Storage APIs.
+// See http://docs.openstack.org/api/openstack-object-storage/1.0/content/.
 package swift
 
 import (
@@ -7,6 +9,7 @@ import (
 	"net/http"
 )
 
+// Client provides a means to access the OpenStack Object Storage Service.
 type Client struct {
 	client client.Client
 }
@@ -15,6 +18,7 @@ func New(client client.Client) *Client {
 	return &Client{client}
 }
 
+// CreateContainer creates a container with the given name.
 func (c *Client) CreateContainer(containerName string) (error) {
 	// Juju expects there to be a (semi) public url for some objects. This
 	// could probably be more restrictive or placed in a seperate container
@@ -28,6 +32,7 @@ func (c *Client) CreateContainer(containerName string) (error) {
 	return err
 }
 
+// DeleteContainer deletes the specified container.
 func (c *Client) DeleteContainer(containerName string) (error) {
 	url := fmt.Sprintf("/%s", containerName)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusNoContent}}
@@ -42,25 +47,28 @@ func (c *Client) touchObject(requestData *goosehttp.RequestData, op, containerNa
 		"failed to %s object %s from container %s", op, objectName, containerName)
 	return err
 }
-
+// HeadObject retrieves object metadata and other standard HTTP headers.
 func (c *Client) HeadObject(containerName, objectName string) (headers http.Header, error) {
 	requestData := goosehttp.RequestData{ReqHeaders: headers}
 	err := c.touchObject(&requestData, client.HEAD, containerName, objectName)
 	return headers, err
 }
 
+// GetObject retrieves the specified object's data.
 func (c *Client) GetObject(containerName, objectName string) (obj []byte, error) {
 	requestData := goosehttp.RequestData{RespData: &obj}
 	err := c.touchObject(&requestData, client.GET, containerName, objectName)
 	return obj, err
 }
 
+// DeleteObject removes an object from the storage system permanently.
 func (c *Client) DeleteObject(containerName, objectName string) (error) {
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusNoContent}}
 	err := c.touchObject(&requestData, client.DELETE, containerName, objectName)
 	return err
 }
 
+// PutObject writes, or overwrites, an object's content and metadata.
 func (c *Client) PutObject(containerName, objectName string, data []byte) (error) {
 	requestData := goosehttp.RequestData{ReqData: data, ExpectedStatus: []int{http.StatusCreated}}
 	err := c.touchObject(&requestData, client.PUT, containerName, objectName)
