@@ -35,7 +35,8 @@ func (s *SwiftHTTPSuite) TearDownSuite(c *C) {
 	s.HTTPSuite.TearDownSuite(c)
 }
 
-func (s *SwiftHTTPSuite) sendRequest(c *C, method, path string, body []byte, statusCode int) (resp *http.Response) {
+func (s *SwiftHTTPSuite) sendRequest(c *C, method, path string, body []byte,
+	expectedStatusCode int) (resp *http.Response) {
 	var req *http.Request
 	var err error
 	url := s.Server.URL + baseURL + path
@@ -51,7 +52,7 @@ func (s *SwiftHTTPSuite) sendRequest(c *C, method, path string, body []byte, sta
 	client := &http.Client{}
 	resp, err = client.Do(req)
 	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, statusCode)
+	c.Assert(resp.StatusCode, Equals, expectedStatusCode)
 	return resp
 }
 
