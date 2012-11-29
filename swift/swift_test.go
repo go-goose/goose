@@ -14,7 +14,7 @@ func Test(t *testing.T) { TestingT(t) }
 var live = flag.Bool("live", false, "Include live OpenStack (Canonistack) tests")
 
 type SwiftSuite struct {
-	swift swift.Swift
+	swift *swift.Client
 }
 
 func (s *SwiftSuite) SetUpSuite(c *C) {
@@ -23,16 +23,13 @@ func (s *SwiftSuite) SetUpSuite(c *C) {
 	}
 
 	cred, err := identity.CompleteCredentialsFromEnv()
-	if err != nil {
-		c.Fatalf("Error setting up test suite: %s", err.Error())
-	}
+	c.Assert(err, IsNil)
 	client := client.NewClient(cred, identity.AuthUserPass)
+	c.Assert(err, IsNil)
 	err = client.Authenticate()
-	if err != nil {
-		c.Fatalf("OpenStack authentication failed for %s", cred.User)
-	}
+	c.Assert(err, IsNil)
 	c.Logf("client authenticated")
-	s.swift = swift.NewClient(client)
+	s.swift = swift.New(client)
 }
 
 var suite = Suite(&SwiftSuite{})

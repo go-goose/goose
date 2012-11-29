@@ -14,7 +14,7 @@ func Test(t *testing.T) { TestingT(t) }
 var live = flag.Bool("live", false, "Include live OpenStack (Canonistack) tests")
 
 type GlanceSuite struct {
-	glance glance.Glance
+	glance *glance.Client
 }
 
 func (s *GlanceSuite) SetUpSuite(c *C) {
@@ -23,16 +23,13 @@ func (s *GlanceSuite) SetUpSuite(c *C) {
 	}
 
 	cred, err := identity.CompleteCredentialsFromEnv()
-	if err != nil {
-		c.Fatalf("Error setting up test suite: %s", err.Error())
-	}
+	c.Assert(err, IsNil)
 	client := client.NewClient(cred, identity.AuthUserPass)
+	c.Assert(err, IsNil)
 	err = client.Authenticate()
-	if err != nil {
-		c.Fatalf("OpenStack authentication failed for %s", cred.User)
-	}
+	c.Assert(err, IsNil)
 	c.Logf("client authenticated")
-	s.glance = glance.NewClient(client)
+	s.glance = glance.New(client)
 }
 
 var suite = Suite(&GlanceSuite{})
@@ -40,9 +37,7 @@ var suite = Suite(&GlanceSuite{})
 func (s *GlanceSuite) TestListImages(c *C) {
 	images, err := s.glance.ListImages()
 	c.Assert(err, IsNil)
-	if len(images) < 1 {
-		c.Fatalf("no images to list (expected at least 1)")
-	}
+	c.Assert(images, Not(HasLen), 0)
 	for _, ir := range images {
 		c.Assert(ir.Id, Not(Equals), "")
 		c.Assert(ir.Name, Not(Equals), "")
@@ -56,9 +51,7 @@ func (s *GlanceSuite) TestListImages(c *C) {
 func (s *GlanceSuite) TestListImagesDetail(c *C) {
 	images, err := s.glance.ListImagesDetail()
 	c.Assert(err, IsNil)
-	if len(images) < 1 {
-		c.Fatalf("no images to list (expected at least 1)")
-	}
+	c.Assert(images, Not(HasLen), 0)
 	for _, ir := range images {
 		c.Assert(ir.Created, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
 		c.Assert(ir.Updated, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)

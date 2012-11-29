@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	OS_API_TOKENS = "/tokens"
+	apiTokens = "/tokens"
 
+	// The HTTP request methods.
 	GET    = "GET"
 	POST   = "POST"
 	PUT    = "PUT"
@@ -41,7 +42,7 @@ type OpenStackClient struct {
 
 func NewClient(creds *identity.Credentials, auth_method identity.AuthMethod) *OpenStackClient {
 	client_creds := *creds
-	client_creds.URL = client_creds.URL + OS_API_TOKENS
+	client_creds.URL = client_creds.URL + apiTokens
 	client := OpenStackClient{creds: &client_creds}
 	switch auth_method {
 	default:
