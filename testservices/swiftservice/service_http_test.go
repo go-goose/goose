@@ -35,7 +35,7 @@ func (s *SwiftHTTPSuite) TearDownSuite(c *C) {
 	s.HTTPSuite.TearDownSuite(c)
 }
 
-func (s *SwiftHTTPSuite) sendRequest(method, path string, body []byte) (*http.Response, error) {
+func (s *SwiftHTTPSuite) sendRequest(c *C, method, path string, body []byte, statusCode int) (resp *http.Response) {
 	var req *http.Request
 	var err error
 	url := s.Server.URL + baseURL + path
@@ -44,14 +44,15 @@ func (s *SwiftHTTPSuite) sendRequest(method, path string, body []byte) (*http.Re
 	} else {
 		req, err = http.NewRequest(method, url, nil)
 	}
-	if err != nil {
-		return nil, err
-	}
+	c.Assert(err, IsNil)
 	if token != "" {
 		req.Header.Add("X-Auth-Token", token)
 	}
 	client := &http.Client{}
-	return client.Do(req)
+	resp, err = client.Do(req)
+	c.Assert(err, IsNil)
+	c.Assert(resp.StatusCode, Equals, statusCode)
+	return resp
 }
 
 func (s *SwiftHTTPSuite) ensureNotContainer(name string, c *C) {
@@ -98,9 +99,7 @@ func (s *SwiftHTTPSuite) removeObject(container, object string, c *C) {
 func (s *SwiftHTTPSuite) TestPUTContainerMissingCreated(c *C) {
 	s.ensureNotContainer("test", c)
 
-	resp, err := s.sendRequest("PUT", "test", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusCreated)
+	s.sendRequest(c, "PUT", "test", nil, http.StatusCreated)
 
 	s.removeContainer("test", c)
 }
@@ -108,9 +107,7 @@ func (s *SwiftHTTPSuite) TestPUTContainerMissingCreated(c *C) {
 func (s *SwiftHTTPSuite) TestPUTContainerExistsAccepted(c *C) {
 	s.ensureContainer("test", c)
 
-	resp, err := s.sendRequest("PUT", "test", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusAccepted)
+	s.sendRequest(c, "PUT", "test", nil, http.StatusAccepted)
 
 	s.removeContainer("test", c)
 }
@@ -118,9 +115,7 @@ func (s *SwiftHTTPSuite) TestPUTContainerExistsAccepted(c *C) {
 func (s *SwiftHTTPSuite) TestGETContainerMissingNotFound(c *C) {
 	s.ensureNotContainer("test", c)
 
-	resp, err := s.sendRequest("GET", "test", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
+	s.sendRequest(c, "GET", "test", nil, http.StatusNotFound)
 
 	s.ensureNotContainer("test", c)
 }
@@ -128,9 +123,7 @@ func (s *SwiftHTTPSuite) TestGETContainerMissingNotFound(c *C) {
 func (s *SwiftHTTPSuite) TestGETContainerExistsOK(c *C) {
 	s.ensureContainer("test", c)
 
-	resp, err := s.sendRequest("GET", "test", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusOK)
+	s.sendRequest(c, "GET", "test", nil, http.StatusOK)
 
 	s.removeContainer("test", c)
 }
@@ -138,17 +131,13 @@ func (s *SwiftHTTPSuite) TestGETContainerExistsOK(c *C) {
 func (s *SwiftHTTPSuite) TestDELETEContainerMissingNotFound(c *C) {
 	s.ensureNotContainer("test", c)
 
-	resp, err := s.sendRequest("DELETE", "test", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
+	s.sendRequest(c, "DELETE", "test", nil, http.StatusNotFound)
 }
 
 func (s *SwiftHTTPSuite) TestDELETEContainerExistsNoContent(c *C) {
 	s.ensureContainer("test", c)
 
-	resp, err := s.sendRequest("DELETE", "test", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
+	s.sendRequest(c, "DELETE", "test", nil, http.StatusNoContent)
 
 	s.ensureNotContainer("test", c)
 }
@@ -158,9 +147,7 @@ func (s *SwiftHTTPSuite) TestPUTObjectMissingCreated(c *C) {
 	s.ensureNotObject("test", "obj", c)
 
 	data := []byte("test data")
-	resp, err := s.sendRequest("PUT", "test/obj", data)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusCreated)
+	s.sendRequest(c, "PUT", "test/obj", data, http.StatusCreated)
 
 	s.ensureObjectData("test", "obj", data, c)
 	s.removeContainer("test", c)
@@ -172,9 +159,7 @@ func (s *SwiftHTTPSuite) TestPUTObjectExistsCreated(c *C) {
 	s.ensureObject("test", "obj", data, c)
 
 	newdata := []byte("new test data")
-	resp, err := s.sendRequest("PUT", "test/obj", newdata)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusCreated)
+	s.sendRequest(c, "PUT", "test/obj", newdata, http.StatusCreated)
 
 	s.ensureObjectData("test", "obj", newdata, c)
 	s.removeContainer("test", c)
@@ -184,9 +169,7 @@ func (s *SwiftHTTPSuite) TestPUTObjectContainerMissingNotFound(c *C) {
 	s.ensureNotContainer("test", c)
 
 	data := []byte("test data")
-	resp, err := s.sendRequest("PUT", "test/obj", data)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
+	s.sendRequest(c, "PUT", "test/obj", data, http.StatusNotFound)
 
 	s.ensureNotContainer("test", c)
 }
@@ -195,9 +178,7 @@ func (s *SwiftHTTPSuite) TestGETObjectMissingNotFound(c *C) {
 	s.ensureContainer("test", c)
 	s.ensureNotObject("test", "obj", c)
 
-	resp, err := s.sendRequest("GET", "test/obj", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
+	s.sendRequest(c, "GET", "test/obj", nil, http.StatusNotFound)
 
 	s.removeContainer("test", c)
 }
@@ -205,9 +186,7 @@ func (s *SwiftHTTPSuite) TestGETObjectMissingNotFound(c *C) {
 func (s *SwiftHTTPSuite) TestGETObjectContainerMissingNotFound(c *C) {
 	s.ensureNotContainer("test", c)
 
-	resp, err := s.sendRequest("GET", "test/obj", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
+	s.sendRequest(c, "GET", "test/obj", nil, http.StatusNotFound)
 
 	s.ensureNotContainer("test", c)
 }
@@ -217,9 +196,7 @@ func (s *SwiftHTTPSuite) TestGETObjectExistsOK(c *C) {
 	s.ensureContainer("test", c)
 	s.ensureObject("test", "obj", data, c)
 
-	resp, err := s.sendRequest("GET", "test/obj", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusOK)
+	resp := s.sendRequest(c, "GET", "test/obj", nil, http.StatusOK)
 
 	s.ensureObjectData("test", "obj", data, c)
 
@@ -235,9 +212,7 @@ func (s *SwiftHTTPSuite) TestDELETEObjectMissingNotFound(c *C) {
 	s.ensureContainer("test", c)
 	s.ensureNotObject("test", "obj", c)
 
-	resp, err := s.sendRequest("DELETE", "test/obj", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
+	s.sendRequest(c, "DELETE", "test/obj", nil, http.StatusNotFound)
 
 	s.removeContainer("test", c)
 }
@@ -245,9 +220,7 @@ func (s *SwiftHTTPSuite) TestDELETEObjectMissingNotFound(c *C) {
 func (s *SwiftHTTPSuite) TestDELETEObjectContainerMissingNotFound(c *C) {
 	s.ensureNotContainer("test", c)
 
-	resp, err := s.sendRequest("DELETE", "test/obj", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
+	s.sendRequest(c, "DELETE", "test/obj", nil, http.StatusNotFound)
 
 	s.ensureNotContainer("test", c)
 }
@@ -257,9 +230,7 @@ func (s *SwiftHTTPSuite) TestDELETEObjectExistsNoContent(c *C) {
 	s.ensureContainer("test", c)
 	s.ensureObject("test", "obj", data, c)
 
-	resp, err := s.sendRequest("DELETE", "test/obj", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
+	s.sendRequest(c, "DELETE", "test/obj", nil, http.StatusNoContent)
 
 	s.removeContainer("test", c)
 }
@@ -270,16 +241,10 @@ func (s *SwiftHTTPSuite) TestUnauthorizedFails(c *C) {
 		token = oldtoken
 	}()
 	token = ""
-	resp, err := s.sendRequest("GET", "test", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusUnauthorized)
+	s.sendRequest(c, "GET", "test", nil, http.StatusUnauthorized)
 
 	token = "invalid"
-	resp, err = s.sendRequest("PUT", "test", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusUnauthorized)
+	s.sendRequest(c, "PUT", "test", nil, http.StatusUnauthorized)
 
-	resp, err = s.sendRequest("DELETE", "test", nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusUnauthorized)
+	s.sendRequest(c, "DELETE", "test", nil, http.StatusUnauthorized)
 }
