@@ -21,11 +21,8 @@ func (s *ClientSuite) SetUpSuite(c *C) {
 	if !*live {
 		c.Skip("-live not provided")
 	}
-
 	cred, err := identity.CompleteCredentialsFromEnv()
-	if err != nil {
-		c.Fatalf("Error setting up test suite: %s", err.Error())
-	}
+	c.Assert(err, IsNil)
 	s.client = client.NewOpenStackClient(cred, identity.AuthUserPass)
 }
 
@@ -33,9 +30,7 @@ var suite = Suite(&ClientSuite{})
 
 func (s *ClientSuite) TestAuthenticateFail(c *C) {
 	cred, err := identity.CompleteCredentialsFromEnv()
-	if err != nil {
-		c.Fatalf(err.Error())
-	}
+	c.Assert(err, IsNil)
 	cred.User = "fred"
 	cred.Secrets = "broken"
 	cred.Region = ""
