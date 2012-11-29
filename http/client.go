@@ -168,11 +168,12 @@ func (c *Client) sendRequest(req *http.Request, extraHeaders http.Header, expect
 	if !foundStatus && len(expectedStatus) > 0 {
 		defer rawResp.Body.Close()
 		var errInfo interface{}
-		errInfo, _ = ioutil.ReadAll(rawResp.Body)
+		errBytes, _ := ioutil.ReadAll(rawResp.Body)
+		errInfo = string(errBytes)
 		// Check if we have a JSON representation of the failure, if so decode it.
 		if rawResp.Header.Get("Content-Type") == "application/json" {
 			var wrappedErr ErrorWrapper
-			if err := json.Unmarshal(errInfo.([]byte), &wrappedErr); err == nil {
+			if err := json.Unmarshal(errBytes, &wrappedErr); err == nil {
 				errInfo = wrappedErr.Error
 			}
 		}
