@@ -30,7 +30,6 @@ func (s *NovaSuite) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	client := client.NewClient(cred, identity.AuthUserPass)
 	c.Assert(err, IsNil)
-	c.Logf("client authenticated")
 	s.nova = nova.New(client)
 	s.userId = client.UserId
 	s.tenantId = client.TenantId

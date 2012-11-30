@@ -26,7 +26,6 @@ func (s *GlanceSuite) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	client := client.NewClient(cred, identity.AuthUserPass)
 	c.Assert(err, IsNil)
-	c.Logf("client authenticated")
 	s.glance = glance.New(client)
 }
 
