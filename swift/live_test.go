@@ -30,10 +30,7 @@ func (s *LiveTests) TearDownSuite(c *C) {
 }
 
 func (s *LiveTests) SetUpTest(c *C) {
-	if !s.client.IsAuthenticated() {
-		err := s.client.Authenticate()
-		c.Assert(err, IsNil)
-	}
+	// noop, called by local test suite.
 }
 
 func (s *LiveTests) TearDownTest(c *C) {
