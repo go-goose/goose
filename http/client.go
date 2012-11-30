@@ -165,33 +165,42 @@ func (c *Client) sendRequest(req *http.Request, extraHeaders http.Header, expect
 			break
 		}
 	}
+	defer rawResp.Body.Close()
 	if !foundStatus && len(expectedStatus) > 0 {
-		defer rawResp.Body.Close()
-		var errInfo interface{}
-		errBytes, _ := ioutil.ReadAll(rawResp.Body)
-		errInfo = string(errBytes)
-		// Check if we have a JSON representation of the failure, if so decode it.
-		if rawResp.Header.Get("Content-Type") == "application/json" {
-			var wrappedErr ErrorWrapper
-			if err := json.Unmarshal(errBytes, &wrappedErr); err == nil {
-				errInfo = wrappedErr.Error
-			}
-		}
-		err = errors.New(
-			fmt.Sprintf(
-				"request (%s) returned unexpected status: %s; error info: %v; request body: %s",
-				req.URL,
-				rawResp.Status,
-				errInfo,
-				payloadInfo))
+		err = handleError(req.URL, rawResp, payloadInfo)
 		return
 	}
 
 	respBody, err = ioutil.ReadAll(rawResp.Body)
-	rawResp.Body.Close()
 	if err != nil {
 		err = gooseerrors.AddContext(err, "failed reading the response body")
 		return
 	}
 	return
+}
+
+// The HTTP response status code was not one of those expected, so we construct an error.
+// NotFound (404) codes have their own NotFound error type.
+func handleError(URL *url.URL, resp *http.Response, payloadInfo string) error {
+	var errInfo interface{}
+	errBytes, _ := ioutil.ReadAll(resp.Body)
+	errInfo = string(errBytes)
+	// Check if we have a JSON representation of the failure, if so decode it.
+	if resp.Header.Get("Content-Type") == "application/json" {
+		var wrappedErr ErrorWrapper
+		if err := json.Unmarshal(errBytes, &wrappedErr); err == nil {
+			errInfo = wrappedErr.Error
+		}
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return gooseerrors.NotFound("resource at URL %s", URL)
+	}
+	err := errors.New(
+		fmt.Sprintf(
+			"request (%s) returned unexpected status: %s; error info: %v; request body: [%s]",
+			URL,
+			resp.Status,
+			errInfo,
+			payloadInfo))
+	return err
 }
