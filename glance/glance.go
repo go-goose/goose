@@ -80,10 +80,7 @@ func (c *Client) ListImagesDetail() ([]ImageDetail, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiImagesDetail, &requestData,
 		"failed to get list of images details")
-	if err != nil {
-		return nil, err
-	}
-	return resp.Images, nil
+	return resp.Images, err
 }
 
 // GetImageDetail lists details of the specified image.
@@ -95,8 +92,5 @@ func (c *Client) GetImageDetail(imageId string) (ImageDetail, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", url, &requestData,
 		"failed to get details for imageId=%s", imageId)
-	if err != nil {
-		return nil, err
-	}
-	return resp.Image, nil
+	return resp.Image, err
 }
