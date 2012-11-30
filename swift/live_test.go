@@ -3,6 +3,7 @@ package swift_test
 import (
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/client"
+	gooseerrors "launchpad.net/goose/errors"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/swift"
 )
@@ -39,22 +40,30 @@ func (s *LiveTests) TearDownTest(c *C) {
 	// noop, called by local test suite.
 }
 
+func (s *LiveTests) assertCreateContainer(c *C, container string) {
+	// The test container may exist already, so try and delete it.
+	// If the result is a NotFound error, we don't care.
+	err := s.swift.DeleteContainer(container)
+	if err != nil {
+		c.Check(gooseerrors.IsNotFound(err), Equals, true)
+	}
+	err = s.swift.CreateContainer(container)
+	c.Assert(err, IsNil)
+}
+
 func (s *LiveTests) TestCreateAndDeleteContainer(c *C) {
 	container := "test_container"
-	err := s.swift.CreateContainer(container)
-	c.Check(err, IsNil)
-	err = s.swift.DeleteContainer(container)
-	c.Check(err, IsNil)
+	s.assertCreateContainer(c, container)
+	err := s.swift.DeleteContainer(container)
+	c.Assert(err, IsNil)
 }
 
 func (s *LiveTests) TestObjects(c *C) {
-
 	container := "test_container"
+	s.assertCreateContainer(c, container)
 	object := "test_obj"
 	data := "...some data..."
-	err := s.swift.CreateContainer(container)
-	c.Check(err, IsNil)
-	err = s.swift.PutObject(container, object, []byte(data))
+	err := s.swift.PutObject(container, object, []byte(data))
 	c.Check(err, IsNil)
 	objdata, err := s.swift.GetObject(container, object)
 	c.Check(err, IsNil)
@@ -62,5 +71,5 @@ func (s *LiveTests) TestObjects(c *C) {
 	err = s.swift.DeleteObject(container, object)
 	c.Check(err, IsNil)
 	err = s.swift.DeleteContainer(container)
-	c.Check(err, IsNil)
+	c.Assert(err, IsNil)
 }

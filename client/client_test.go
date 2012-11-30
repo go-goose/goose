@@ -12,10 +12,6 @@ var liveAuthMethod = flag.String(
 	"live-auth-method", "userpass", "The authentication mode to use when running live tests [all|legacy|userpass]")
 
 func Test(t *testing.T) {
-	cred, err := identity.CompleteCredentialsFromEnv()
-	if err != nil {
-		t.Fatalf("Error setting up test suite: %s", err.Error())
-	}
 	var allAuthMethods = []identity.AuthMethod{identity.AuthLegacy, identity.AuthUserPass}
 	var liveAuthMethods []identity.AuthMethod
 	switch *liveAuthMethod {
@@ -31,8 +27,12 @@ func Test(t *testing.T) {
 	}
 
 	if *live {
+		cred, err := identity.CompleteCredentialsFromEnv()
+		if err != nil {
+			t.Fatalf("Error setting up test suite: %s", err.Error())
+		}
 		registerOpenStackTests(cred, liveAuthMethods)
 	}
-	registerLocalTests(cred, allAuthMethods)
+	registerLocalTests(allAuthMethods)
 	TestingT(t)
 }

@@ -9,12 +9,8 @@ import (
 	"net/http"
 )
 
-func registerLocalTests(cred *identity.Credentials) {
-	Suite(&localLiveSuite{
-		LiveTests: LiveTests{
-			cred: cred,
-		},
-	})
+func registerLocalTests() {
+	Suite(&localLiveSuite{})
 }
 
 const (
@@ -34,7 +30,11 @@ type localLiveSuite struct {
 func (s *localLiveSuite) SetUpSuite(c *C) {
 	c.Logf("Using identity and swift service test doubles")
 	s.HTTPSuite.SetUpSuite(c)
-	s.cred.URL = s.Server.URL
+	s.cred = &identity.Credentials{
+		URL:     s.Server.URL,
+		User:    "fred",
+		Secrets: "secret",
+		Region:  "some region"}
 	// Create an identity service and register a Swift endpoint.
 	s.identityDouble = identityservice.NewUserPass()
 	token := s.identityDouble.(*identityservice.UserPass).AddUser(s.cred.User, s.cred.Secrets)

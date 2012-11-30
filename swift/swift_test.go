@@ -10,13 +10,13 @@ import (
 var live = flag.Bool("live", false, "Include live OpenStack (Canonistack) tests")
 
 func Test(t *testing.T) {
-	cred, err := identity.CompleteCredentialsFromEnv()
-	if err != nil {
-		t.Fatalf("Error setting up test suite: %s", err.Error())
-	}
 	if *live {
+		cred, err := identity.CompleteCredentialsFromEnv()
+		if err != nil {
+			t.Fatalf("Error setting up test suite: %s", err.Error())
+		}
 		registerOpenStackTests(cred)
 	}
-	registerLocalTests(cred)
+	registerLocalTests()
 	TestingT(t)
 }

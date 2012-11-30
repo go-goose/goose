@@ -8,11 +8,10 @@ import (
 	"net/http"
 )
 
-func registerLocalTests(cred *identity.Credentials, authMethods []identity.AuthMethod) {
+func registerLocalTests(authMethods []identity.AuthMethod) {
 	for _, authMethod := range authMethods {
 		Suite(&localLiveSuite{
 			LiveTests: LiveTests{
-				cred:       cred,
 				authMethod: authMethod,
 			},
 		})
@@ -31,7 +30,11 @@ type localLiveSuite struct {
 func (s *localLiveSuite) SetUpSuite(c *C) {
 	c.Logf("Using identity service test double")
 	s.HTTPSuite.SetUpSuite(c)
-	s.cred.URL = s.Server.URL
+	s.cred = &identity.Credentials{
+		URL:     s.Server.URL,
+		User:    "fred",
+		Secrets: "secret",
+		Region:  "some region"}
 	switch s.authMethod {
 	default:
 		panic("Invalid authentication method")
