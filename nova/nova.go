@@ -70,7 +70,10 @@ func (c *Client) ListFlavorsDetail() ([]FlavorDetail, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiFlavorsDetail, &requestData,
 		"failed to get list of flavors details")
-	return resp.Flavors, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.Flavors, nil
 }
 
 // ListServers lists IDs, names, and links for all servers.
@@ -81,7 +84,10 @@ func (c *Client) ListServers() ([]Entity, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
 	err := c.client.SendRequest(client.GET, "compute", apiServers, &requestData,
 		"failed to get list of servers")
-	return resp.Servers, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.Servers, nil
 }
 
 type ServerDetail struct {
@@ -109,7 +115,10 @@ func (c *Client) ListServersDetail() ([]ServerDetail, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiServersDetail, &requestData,
 		"failed to get list of servers details")
-	return resp.Servers, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.Servers, nil
 }
 
 // GetServer lists details for the specified server.
@@ -121,7 +130,10 @@ func (c *Client) GetServer(serverId string) (ServerDetail, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", url, &requestData,
 		"failed to get details for serverId=%s", serverId)
-	return resp.Server, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.Server, nil
 }
 
 // DeleteServer terminates the specified server.
@@ -189,7 +201,10 @@ func (c *Client) ListSecurityGroups() ([]SecurityGroup, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiSecurityGroups, &requestData,
 		"failed to list security groups")
-	return resp.Groups, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.Groups, nil
 }
 
 // GetServerSecurityGroups list security groups for a specific server.
@@ -202,7 +217,10 @@ func (c *Client) GetServerSecurityGroups(serverId string) ([]SecurityGroup, erro
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", url, &requestData,
 		"failed to list server (%s) security groups", serverId)
-	return resp.Groups, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.Groups, nil
 }
 
 // CreateSecurityGroup creates a new security group.
@@ -222,7 +240,10 @@ func (c *Client) CreateSecurityGroup(name, description string) (SecurityGroup, e
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
 	err := c.client.SendRequest(client.POST, "compute", apiSecurityGroups, &requestData,
 		"failed to create a security group with name=%s", name)
-	return resp.SecurityGroup, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.SecurityGroup, nil
 }
 
 // DeleteSecurityGroup deletes the specified security group.
@@ -257,7 +278,10 @@ func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (SecurityGroupRule, 
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp}
 	err := c.client.SendRequest(client.POST, "compute", apiSecurityGroupRules, &requestData,
 		"failed to create a rule for the security group with id=%s", ruleInfo.GroupId)
-	return resp.SecurityGroupRule, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.SecurityGroupRule, nil
 }
 
 // DeleteSecurityGroupRule deletes the specified security group rule.
@@ -318,7 +342,10 @@ func (c *Client) ListFloatingIPs() ([]FloatingIP, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiFloatingIPs, &requestData,
 		"failed to list floating ips")
-	return resp.FloatingIPs, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.FloatingIPs, nil
 }
 
 // GetFloatingIP lists details of the floating IP address associated with specified id.
@@ -331,7 +358,10 @@ func (c *Client) GetFloatingIP(ipId int) (FloatingIP, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", url, &requestData,
 		"failed to get floating ip %d details", ipId)
-	return resp.FloatingIP, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.FloatingIP, nil
 }
 
 // AllocateFloatingIP allocates a new floating IP address to a tenant or account.
@@ -343,7 +373,10 @@ func (c *Client) AllocateFloatingIP() (FloatingIP, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.POST, "compute", apiFloatingIPs, &requestData,
 		"failed to allocate a floating ip")
-	return resp.FloatingIP, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.FloatingIP, nil
 }
 
 // DeleteFloatingIP deallocates the floating IP address associated with the specified id.
