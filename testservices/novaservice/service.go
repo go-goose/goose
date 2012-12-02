@@ -7,6 +7,7 @@ import (
 	"launchpad.net/goose/nova"
 )
 
+// Nova contains the service double's internal state.
 type Nova struct {
 	flavors      map[string]Flavor
 	servers      map[string]Server
@@ -74,7 +75,7 @@ func (n *Nova) AllFlavors() ([]Flavor, error) {
 	if len(n.flavors) == 0 {
 		return nil, fmt.Errorf("no flavors to return")
 	}
-	flavors := make([]Flavor, len(n.flavors))
+	flavors := []Flavor{}
 	for _, flavor := range n.flavors {
 		flavors = append(flavors, flavor)
 	}
@@ -127,7 +128,7 @@ func (n *Nova) AllServers() ([]Server, error) {
 	if len(n.servers) == 0 {
 		return nil, fmt.Errorf("no servers to return")
 	}
-	servers := make([]Server, len(n.servers))
+	servers := []Server{}
 	for _, server := range n.servers {
 		servers = append(servers, server)
 	}
@@ -146,7 +147,7 @@ func (n *Nova) RemoveServer(serverId string) error {
 // AddSecurityGroup creates a new security group.
 func (n *Nova) AddSecurityGroup(group nova.SecurityGroup) error {
 	if n.HasSecurityGroup(group.Id) {
-		return fmt.Errorf("group with id %d already exists", group.Id)
+		return fmt.Errorf("a security group with id %d already exists", group.Id)
 	}
 	n.groups[group.Id] = group
 	return nil
@@ -172,7 +173,7 @@ func (n *Nova) AllSecurityGroups() ([]nova.SecurityGroup, error) {
 	if len(n.groups) == 0 {
 		return nil, fmt.Errorf("no security groups to return")
 	}
-	groups := make([]nova.SecurityGroup, len(n.groups))
+	groups := []nova.SecurityGroup{}
 	for _, group := range n.groups {
 		groups = append(groups, group)
 	}
@@ -189,6 +190,8 @@ func (n *Nova) RemoveSecurityGroup(groupId int) error {
 }
 
 // AddSecurityGroupRule creates a new rule in an existing group.
+// This can be either an ingress or a group rule (see the notes
+// about nova.RuleInfo).
 func (n *Nova) AddSecurityGroupRule(ruleId int, rule nova.RuleInfo) error {
 	_, ok := n.rules[ruleId]
 	if ok {
@@ -208,12 +211,29 @@ func (n *Nova) AddSecurityGroupRule(ruleId int, rule nova.RuleInfo) error {
 		Id:            ruleId,
 	}
 	if rule.GroupId != nil {
+		sourceGroup, ok := n.groups[*rule.GroupId]
+		if !ok {
+			fmt.Errorf("uknown source security group %d", *rule.GroupId)
+		}
+		newrule.Group = &nova.SecurityGroupRef{
+			TenantId: sourceGroup.TenantId,
+			Name:     sourceGroup.Name,
+		}
+	}
+	if rule.FromPort > 0 {
 		newrule.FromPort = &rule.FromPort
+	}
+	if rule.ToPort > 0 {
 		newrule.ToPort = &rule.ToPort
+	}
+	if rule.IPProtocol != "" {
 		newrule.IPProtocol = &rule.IPProtocol
+	}
+	if rule.Cidr != "" {
 		newrule.IPRange = make(map[string]string)
 		newrule.IPRange["cidr"] = rule.Cidr
 	}
+
 	group.Rules = append(group.Rules, newrule)
 	n.groups[group.Id] = group
 	n.rules[newrule.Id] = newrule
@@ -223,7 +243,7 @@ func (n *Nova) AddSecurityGroupRule(ruleId int, rule nova.RuleInfo) error {
 // HasSecurityGroupRule verifies the given group contains the given rule.
 // If groupId is -1, it verifies if the rule exists only.
 func (n *Nova) HasSecurityGroupRule(groupId, ruleId int) bool {
-	rule, ok := n.rules[groupId]
+	rule, ok := n.rules[ruleId]
 	if !ok {
 		return false
 	}
@@ -276,6 +296,9 @@ func (n *Nova) AddServerSecurityGroup(serverId string, groupId int) error {
 	if !n.HasServer(serverId) {
 		return fmt.Errorf("no such server %q", serverId)
 	}
+	if !n.HasSecurityGroup(groupId) {
+		return fmt.Errorf("no such security group %d", groupId)
+	}
 	groups, ok := n.serverGroups[serverId]
 	if ok {
 		for _, gid := range groups {
@@ -283,9 +306,6 @@ func (n *Nova) AddServerSecurityGroup(serverId string, groupId int) error {
 				return fmt.Errorf("server %q already belongs to group %d", serverId, groupId)
 			}
 		}
-	}
-	if !n.HasSecurityGroup(groupId) {
-		return fmt.Errorf("no such security group %d", groupId)
 	}
 	groups = append(groups, groupId)
 	n.serverGroups[serverId] = groups
@@ -311,6 +331,12 @@ func (n *Nova) HasServerSecurityGroup(serverId string, groupId int) bool {
 
 // RemoveServerSecurityGroup detaches an existing server from a group.
 func (n *Nova) RemoveServerSecurityGroup(serverId string, groupId int) error {
+	if !n.HasServer(serverId) {
+		return fmt.Errorf("no such server %q", serverId)
+	}
+	if !n.HasSecurityGroup(groupId) {
+		return fmt.Errorf("no such security group %d", groupId)
+	}
 	groups, ok := n.serverGroups[serverId]
 	if !ok {
 		return fmt.Errorf("server %q does not belong to any groups", serverId)
@@ -325,9 +351,6 @@ func (n *Nova) RemoveServerSecurityGroup(serverId string, groupId int) error {
 	if idx == -1 {
 		return fmt.Errorf("server %q does not belong to group %d", serverId, groupId)
 	}
-	if !n.HasSecurityGroup(groupId) {
-		return fmt.Errorf("no such security group %d", groupId)
-	}
 	groups = append(groups[:idx], groups[idx+1:]...)
 	n.serverGroups[serverId] = groups
 	return nil
@@ -337,7 +360,7 @@ func (n *Nova) RemoveServerSecurityGroup(serverId string, groupId int) error {
 func (n *Nova) AddFloatingIP(ip nova.FloatingIP) error {
 	_, ok := n.floatingIPs[ip.Id]
 	if ok {
-		fmt.Errorf("floating IP with id %d already exists", ip.Id)
+		return fmt.Errorf("a floating IP with id %d already exists", ip.Id)
 	}
 	n.floatingIPs[ip.Id] = ip
 	return nil
@@ -371,7 +394,7 @@ func (n *Nova) AllFlotingIPs() ([]nova.FloatingIP, error) {
 	if len(n.floatingIPs) == 0 {
 		return nil, fmt.Errorf("no floating IPs to return")
 	}
-	fips := make([]nova.FloatingIP, len(n.floatingIPs))
+	fips := []nova.FloatingIP{}
 	for _, fip := range n.floatingIPs {
 		fips = append(fips, fip)
 	}
@@ -382,7 +405,7 @@ func (n *Nova) AllFlotingIPs() ([]nova.FloatingIP, error) {
 func (n *Nova) RemoveFloatingIP(ipId int) error {
 	_, ok := n.floatingIPs[ipId]
 	if !ok {
-		fmt.Errorf("no such floating IP %d", ipId)
+		return fmt.Errorf("no such floating IP %d", ipId)
 	}
 	delete(n.floatingIPs, ipId)
 	return nil
@@ -399,7 +422,11 @@ func (n *Nova) AddServerFloatingIP(serverId string, ipId int) error {
 	}
 	fips, ok := n.serverIPs[serverId]
 	if ok {
-		return fmt.Errorf("server %q already has floating IP %d", serverId, ipId)
+		for _, fipId := range fips {
+			if fipId == ipId {
+				return fmt.Errorf("server %q already has floating IP %d", serverId, ipId)
+			}
+		}
 	}
 	fips = append(fips, ipId)
 	n.serverIPs[serverId] = fips
@@ -408,7 +435,7 @@ func (n *Nova) AddServerFloatingIP(serverId string, ipId int) error {
 
 // HasServerFloatingIP verifies the given floating IP belongs to a server.
 func (n *Nova) HasServerFloatingIP(serverId, address string) bool {
-	if !n.HasServer(serverId) {
+	if !n.HasServer(serverId) || !n.HasFloatingIP(address) {
 		return false
 	}
 	fips, ok := n.serverIPs[serverId]
@@ -416,10 +443,7 @@ func (n *Nova) HasServerFloatingIP(serverId, address string) bool {
 		return false
 	}
 	for _, fipId := range fips {
-		fip, ok := n.floatingIPs[fipId]
-		if !ok {
-			return false
-		}
+		fip := n.floatingIPs[fipId]
 		if fip.IP == address {
 			return true
 		}
@@ -432,6 +456,10 @@ func (n *Nova) RemoveServerFloatingIP(serverId string, ipId int) error {
 	if !n.HasServer(serverId) {
 		return fmt.Errorf("no such server %q", serverId)
 	}
+	_, ok := n.floatingIPs[ipId]
+	if !ok {
+		return fmt.Errorf("no such floating IP %d", ipId)
+	}
 	fips, ok := n.serverIPs[serverId]
 	if !ok {
 		return fmt.Errorf("server %q does not have any floating IPs to remove", serverId)
@@ -439,10 +467,6 @@ func (n *Nova) RemoveServerFloatingIP(serverId string, ipId int) error {
 	idx := -1
 	for fi, fipId := range fips {
 		if fipId == ipId {
-			_, ok := n.floatingIPs[fipId]
-			if !ok {
-				return fmt.Errorf("no such floating IP %d", ipId)
-			}
 			idx = fi
 			break
 		}

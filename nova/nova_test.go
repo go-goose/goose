@@ -190,7 +190,7 @@ func (n *NovaSuite) TestCreateAndDeleteSecurityGroupRules(c *C) {
 	c.Check(*rule.ToPort, Equals, 4321)
 	c.Check(rule.ParentGroupId, Equals, group1.Id)
 	c.Check(*rule.IPProtocol, Equals, "tcp")
-	c.Check(rule.Group, HasLen, 0)
+	c.Check(rule.Group, IsNil)
 	err = n.nova.DeleteSecurityGroupRule(rule.Id)
 	c.Check(err, IsNil)
 
@@ -202,8 +202,9 @@ func (n *NovaSuite) TestCreateAndDeleteSecurityGroupRules(c *C) {
 	rule, err = n.nova.CreateSecurityGroupRule(ri)
 	c.Check(err, IsNil)
 	c.Check(rule.ParentGroupId, Equals, group1.Id)
-	c.Check(rule.Group["tenant_id"], Equals, n.tenantId)
-	c.Check(rule.Group["name"], Equals, "test_secgroup2")
+	c.Check(rule.Group, Not(IsNil))
+	c.Check(rule.Group.TenantId, Equals, n.tenantId)
+	c.Check(rule.Group.Name, Equals, "test_secgroup2")
 	err = n.nova.DeleteSecurityGroupRule(rule.Id)
 	c.Check(err, IsNil)
 
