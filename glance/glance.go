@@ -73,18 +73,21 @@ type ImageDetail struct {
 }
 
 // ListImageDetails lists all details for available images.
-func (c *Client) ListImagesDetail() ([]ImageDetail, error) {
+func (c *Client) ListImagesDetail() (*[]ImageDetail, error) {
 	var resp struct {
 		Images []ImageDetail
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiImagesDetail, &requestData,
 		"failed to get list of images details")
-	return resp.Images, err
+	if err != nil {
+		return nil, err
+	}
+	return &resp.Images, nil
 }
 
 // GetImageDetail lists details of the specified image.
-func (c *Client) GetImageDetail(imageId string) (ImageDetail, error) {
+func (c *Client) GetImageDetail(imageId string) (*ImageDetail, error) {
 	var resp struct {
 		Image ImageDetail
 	}
@@ -92,5 +95,5 @@ func (c *Client) GetImageDetail(imageId string) (ImageDetail, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", url, &requestData,
 		"failed to get details for imageId=%s", imageId)
-	return resp.Image, err
+	return &resp.Image, err
 }

@@ -56,10 +56,10 @@ func (n *NovaSuite) TestListFlavors(c *C) {
 func (n *NovaSuite) TestListFlavorsDetail(c *C) {
 	flavors, err := n.nova.ListFlavorsDetail()
 	c.Assert(err, IsNil)
-	if len(flavors) < 1 {
+	if len(*flavors) < 1 {
 		c.Fatalf("no flavors (details) to list")
 	}
-	for _, f := range flavors {
+	for _, f := range *flavors {
 		c.Assert(f.Name, Not(Equals), "")
 		c.Assert(f.Id, Not(Equals), "")
 		if f.RAM < 0 || f.VCPUs < 0 || f.Disk < 0 {
@@ -72,7 +72,7 @@ func (n *NovaSuite) TestListServers(c *C) {
 	servers, err := n.nova.ListServers()
 	c.Assert(err, IsNil)
 	foundTest := false
-	for _, sr := range servers {
+	for _, sr := range *servers {
 		c.Assert(sr.Id, Not(Equals), "")
 		c.Assert(sr.Name, Not(Equals), "")
 		if sr.Id == n.testServerId {
@@ -92,11 +92,11 @@ func (n *NovaSuite) TestListServers(c *C) {
 func (n *NovaSuite) TestListServersDetail(c *C) {
 	servers, err := n.nova.ListServersDetail()
 	c.Assert(err, IsNil)
-	if len(servers) < 1 {
+	if len(*servers) < 1 {
 		c.Fatalf("no servers to list (expected at least 1)")
 	}
 	foundTest := false
-	for _, sr := range servers {
+	for _, sr := range *servers {
 		c.Assert(sr.Created, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
 		c.Assert(sr.Updated, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
 		c.Assert(sr.Id, Not(Equals), "")
@@ -134,10 +134,10 @@ func (n *NovaSuite) TestListServersDetail(c *C) {
 func (n *NovaSuite) TestListSecurityGroups(c *C) {
 	groups, err := n.nova.ListSecurityGroups()
 	c.Assert(err, IsNil)
-	if len(groups) < 1 {
+	if len(*groups) < 1 {
 		c.Fatalf("no security groups found (expected at least 1)")
 	}
-	for _, g := range groups {
+	for _, g := range *groups {
 		c.Assert(g.TenantId, Equals, n.tenantId)
 		c.Assert(g.Name, Not(Equals), "")
 		c.Assert(g.Description, Not(Equals), "")
@@ -147,13 +147,13 @@ func (n *NovaSuite) TestListSecurityGroups(c *C) {
 
 func (n *NovaSuite) TestCreateAndDeleteSecurityGroup(c *C) {
 	group, err := n.nova.CreateSecurityGroup("test_secgroup", "test_desc")
-	c.Check(err, IsNil)
+	c.Assert(err, IsNil)
 	c.Check(group.Name, Equals, "test_secgroup")
 	c.Check(group.Description, Equals, "test_desc")
 
 	groups, err := n.nova.ListSecurityGroups()
 	found := false
-	for _, g := range groups {
+	for _, g := range *groups {
 		if g.Id == group.Id {
 			found = true
 			break
@@ -169,9 +169,9 @@ func (n *NovaSuite) TestCreateAndDeleteSecurityGroup(c *C) {
 
 func (n *NovaSuite) TestCreateAndDeleteSecurityGroupRules(c *C) {
 	group1, err := n.nova.CreateSecurityGroup("test_secgroup1", "test_desc")
-	c.Check(err, IsNil)
+	c.Assert(err, IsNil)
 	group2, err := n.nova.CreateSecurityGroup("test_secgroup2", "test_desc")
-	c.Check(err, IsNil)
+	c.Assert(err, IsNil)
 
 	// First type of rule - port range + protocol
 	ri := nova.RuleInfo{
@@ -182,7 +182,7 @@ func (n *NovaSuite) TestCreateAndDeleteSecurityGroupRules(c *C) {
 		ParentGroupId: group1.Id,
 	}
 	rule, err := n.nova.CreateSecurityGroupRule(ri)
-	c.Check(err, IsNil)
+	c.Assert(err, IsNil)
 	c.Check(*rule.FromPort, Equals, 1234)
 	c.Check(*rule.ToPort, Equals, 4321)
 	c.Check(rule.ParentGroupId, Equals, group1.Id)
@@ -197,7 +197,7 @@ func (n *NovaSuite) TestCreateAndDeleteSecurityGroupRules(c *C) {
 		ParentGroupId: group1.Id,
 	}
 	rule, err = n.nova.CreateSecurityGroupRule(ri)
-	c.Check(err, IsNil)
+	c.Assert(err, IsNil)
 	c.Check(rule.ParentGroupId, Equals, group1.Id)
 	c.Check(rule.Group["tenant_id"], Equals, n.tenantId)
 	c.Check(rule.Group["name"], Equals, "test_secgroup2")
@@ -224,7 +224,7 @@ func (n *NovaSuite) waitTestServerToStart(c *C) {
 	c.Logf("waiting the test server %s to start...", n.testServerId)
 	for {
 		server, err := n.nova.GetServer(n.testServerId)
-		c.Check(err, IsNil)
+		c.Assert(err, IsNil)
 		if server.Status == "ACTIVE" {
 			break
 		}
@@ -240,11 +240,11 @@ func (n *NovaSuite) TestServerAddGetRemoveSecurityGroup(c *C) {
 
 	n.waitTestServerToStart(c)
 	err = n.nova.AddServerSecurityGroup(n.testServerId, group.Name)
-	c.Check(err, IsNil)
+	c.Assert(err, IsNil)
 	groups, err := n.nova.GetServerSecurityGroups(n.testServerId)
-	c.Check(err, IsNil)
+	c.Assert(err, IsNil)
 	found := false
-	for _, g := range groups {
+	for _, g := range *groups {
 		if g.Id == group.Id || g.Name == group.Name {
 			found = true
 			break
@@ -270,12 +270,12 @@ func (n *NovaSuite) TestFloatingIPs(c *C) {
 	c.Check(ip.InstanceId, IsNil)
 
 	ips, err := n.nova.ListFloatingIPs()
-	c.Check(err, IsNil)
-	if len(ips) < 1 {
+	c.Assert(err, IsNil)
+	if len(*ips) < 1 {
 		c.Errorf("no floating IPs found (expected at least 1)")
 	} else {
 		found := false
-		for _, i := range ips {
+		for _, i := range *ips {
 			c.Check(i.IP, Not(Equals), "")
 			c.Check(i.Pool, Not(Equals), "")
 			if i.Id == ip.Id {
@@ -289,7 +289,7 @@ func (n *NovaSuite) TestFloatingIPs(c *C) {
 		}
 
 		fip, err := n.nova.GetFloatingIP(ip.Id)
-		c.Check(err, IsNil)
+		c.Assert(err, IsNil)
 		c.Check(fip.Id, Equals, ip.Id)
 		c.Check(fip.IP, Equals, ip.IP)
 		c.Check(fip.Pool, Equals, ip.Pool)
@@ -305,17 +305,17 @@ func (n *NovaSuite) TestServerFloatingIPs(c *C) {
 
 	n.waitTestServerToStart(c)
 	err = n.nova.AddServerFloatingIP(n.testServerId, ip.IP)
-	c.Check(err, IsNil)
+	c.Assert(err, IsNil)
 
 	fip, err := n.nova.GetFloatingIP(ip.Id)
-	c.Check(err, IsNil)
+	c.Assert(err, IsNil)
 	c.Check(fip.FixedIP, Matches, `\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`)
 	c.Check(fip.InstanceId, Equals, n.testServerId)
 
 	err = n.nova.RemoveServerFloatingIP(n.testServerId, ip.IP)
 	c.Check(err, IsNil)
 	fip, err = n.nova.GetFloatingIP(ip.Id)
-	c.Check(err, IsNil)
+	c.Assert(err, IsNil)
 	c.Check(fip.FixedIP, IsNil)
 	c.Check(fip.InstanceId, IsNil)
 
