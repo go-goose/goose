@@ -95,5 +95,8 @@ func (c *Client) GetImageDetail(imageId string) (*ImageDetail, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", url, &requestData,
 		"failed to get details for imageId=%s", imageId)
-	return &resp.Image, err
+	if err != nil {
+		return nil, err
+	}
+	return &resp.Image, nil
 }
