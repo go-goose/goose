@@ -38,9 +38,10 @@ type Link struct {
 // Entity can describe a flavor, flavor detail or server.
 // Contains a list of links.
 type Entity struct {
-	Id    string
-	Links []Link
-	Name  string
+	Id        string
+	Links     []Link
+	Name      string
+	AdminPass string
 }
 
 // ListFlavours lists IDs, names, and links for available flavors.
@@ -159,7 +160,7 @@ type RunServerOpts struct {
 }
 
 // RunServer creates a new server.
-func (c *Client) RunServer(opts RunServerOpts) error {
+func (c *Client) RunServer(opts RunServerOpts) (*Entity, error) {
 	var req struct {
 		Server RunServerOpts `json:"server"`
 	}
@@ -169,10 +170,16 @@ func (c *Client) RunServer(opts RunServerOpts) error {
 		encoded := base64.StdEncoding.EncodeToString(data)
 		req.Server.UserData = &encoded
 	}
-	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
+	var resp struct {
+		Server Entity `json:"server"`
+	}
+	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp, ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.POST, "compute", apiServers, &requestData,
 		"failed to run a server with %#v", opts)
-	return err
+	if err != nil {
+		return nil, err
+	}
+	return &resp.Server, nil
 }
 
 type SecurityGroupRule struct {

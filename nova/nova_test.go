@@ -15,10 +15,10 @@ func Test(t *testing.T) { TestingT(t) }
 var live = flag.Bool("live", false, "Include live OpenStack (Canonistack) tests")
 
 type NovaSuite struct {
-	nova         *nova.Client
-	testServerId string
-	userId       string
-	tenantId     string
+	nova       *nova.Client
+	testServer *nova.Entity
+	userId     string
+	tenantId   string
 }
 
 func (s *NovaSuite) SetUpSuite(c *C) {
@@ -29,10 +29,32 @@ func (s *NovaSuite) SetUpSuite(c *C) {
 	cred, err := identity.CompleteCredentialsFromEnv()
 	c.Assert(err, IsNil)
 	client := client.NewClient(cred, identity.AuthUserPass)
-	c.Assert(err, IsNil)
 	s.nova = nova.New(client)
+	s.testServer, err = s.createInstance(c)
+	c.Assert(err, IsNil)
+	// These will not be filled in until a client has authorised which will happen creating the instance above.
 	s.userId = client.UserId
 	s.tenantId = client.TenantId
+}
+
+func (s *NovaSuite) TearDownSuite(c *C) {
+	err := s.nova.DeleteServer(s.testServer.Id)
+	c.Check(err, IsNil)
+}
+
+func (s *NovaSuite) createInstance(c *C) (instance *nova.Entity, err error) {
+	opts := nova.RunServerOpts{
+		Name:     "nova_test_server",
+		FlavorId: "1", // m1.tiny
+		ImageId:  "0f602ea9-c09e-440c-9e29-cfae5635afa3",
+		UserData: nil,
+	}
+	instance, err = s.nova.RunServer(opts)
+	if err != nil {
+		return nil, err
+	}
+	s.waitTestServerToStart(c)
+	return instance, nil
 }
 
 var suite = Suite(&NovaSuite{})
@@ -75,8 +97,8 @@ func (n *NovaSuite) TestListServers(c *C) {
 	for _, sr := range *servers {
 		c.Assert(sr.Id, Not(Equals), "")
 		c.Assert(sr.Name, Not(Equals), "")
-		if sr.Id == n.testServerId {
-			c.Assert(sr.Name, Equals, "test_server1")
+		if sr.Id == n.testServer.Id {
+			c.Assert(sr.Name, Equals, "nova_test_server")
 			foundTest = true
 		}
 		for _, l := range sr.Links {
@@ -85,7 +107,7 @@ func (n *NovaSuite) TestListServers(c *C) {
 		}
 	}
 	if !foundTest {
-		c.Fatalf("test server (%s) not found in server list", n.testServerId)
+		c.Fatalf("test server (%s) not found in server list", n.testServer.Id)
 	}
 }
 
@@ -105,10 +127,10 @@ func (n *NovaSuite) TestListServersDetail(c *C) {
 		c.Assert(sr.UserId, Equals, n.userId)
 		c.Assert(sr.Status, Not(Equals), "")
 		c.Assert(sr.Name, Not(Equals), "")
-		if sr.Id == n.testServerId {
-			c.Assert(sr.Name, Equals, "test_server1")
+		if sr.Id == n.testServer.Id {
+			c.Assert(sr.Name, Equals, "nova_test_server")
 			c.Assert(sr.Flavor.Id, Equals, "1")
-			c.Assert(sr.Image.Id, Equals, "3fc0ef0b-82a9-4f44-a797-a43f0f73b20e")
+			c.Assert(sr.Image.Id, Equals, "0f602ea9-c09e-440c-9e29-cfae5635afa3")
 			foundTest = true
 		}
 		for _, l := range sr.Links {
@@ -127,7 +149,7 @@ func (n *NovaSuite) TestListServersDetail(c *C) {
 		}
 	}
 	if !foundTest {
-		c.Fatalf("test server (%s) not found in server list (details)", n.testServerId)
+		c.Fatalf("test server (%s) not found in server list (details)", n.testServer.Id)
 	}
 }
 
@@ -211,19 +233,19 @@ func (n *NovaSuite) TestCreateAndDeleteSecurityGroupRules(c *C) {
 }
 
 func (n *NovaSuite) TestGetServer(c *C) {
-	server, err := n.nova.GetServer(n.testServerId)
+	server, err := n.nova.GetServer(n.testServer.Id)
 	c.Assert(err, IsNil)
-	c.Assert(server.Id, Equals, n.testServerId)
-	c.Assert(server.Name, Equals, "test_server1")
+	c.Assert(server.Id, Equals, n.testServer.Id)
+	c.Assert(server.Name, Equals, "nova_test_server")
 	c.Assert(server.Flavor.Id, Equals, "1")
-	c.Assert(server.Image.Id, Equals, "3fc0ef0b-82a9-4f44-a797-a43f0f73b20e")
+	c.Assert(server.Image.Id, Equals, "0f602ea9-c09e-440c-9e29-cfae5635afa3")
 }
 
 func (n *NovaSuite) waitTestServerToStart(c *C) {
 	// Wait until the test server is actually running
-	c.Logf("waiting the test server %s to start...", n.testServerId)
+	c.Logf("waiting the test server %s to start...", n.testServer.Id)
 	for {
-		server, err := n.nova.GetServer(n.testServerId)
+		server, err := n.nova.GetServer(n.testServer.Id)
 		c.Assert(err, IsNil)
 		if server.Status == "ACTIVE" {
 			break
@@ -239,9 +261,9 @@ func (n *NovaSuite) TestServerAddGetRemoveSecurityGroup(c *C) {
 	c.Assert(err, IsNil)
 
 	n.waitTestServerToStart(c)
-	err = n.nova.AddServerSecurityGroup(n.testServerId, group.Name)
+	err = n.nova.AddServerSecurityGroup(n.testServer.Id, group.Name)
 	c.Assert(err, IsNil)
-	groups, err := n.nova.GetServerSecurityGroups(n.testServerId)
+	groups, err := n.nova.GetServerSecurityGroups(n.testServer.Id)
 	c.Assert(err, IsNil)
 	found := false
 	for _, g := range *groups {
@@ -250,7 +272,7 @@ func (n *NovaSuite) TestServerAddGetRemoveSecurityGroup(c *C) {
 			break
 		}
 	}
-	err = n.nova.RemoveServerSecurityGroup(n.testServerId, group.Name)
+	err = n.nova.RemoveServerSecurityGroup(n.testServer.Id, group.Name)
 	c.Check(err, IsNil)
 
 	err = n.nova.DeleteSecurityGroup(group.Id)
@@ -304,15 +326,15 @@ func (n *NovaSuite) TestServerFloatingIPs(c *C) {
 	c.Check(ip.IP, Matches, `\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`)
 
 	n.waitTestServerToStart(c)
-	err = n.nova.AddServerFloatingIP(n.testServerId, ip.IP)
+	err = n.nova.AddServerFloatingIP(n.testServer.Id, ip.IP)
 	c.Assert(err, IsNil)
 
 	fip, err := n.nova.GetFloatingIP(ip.Id)
 	c.Assert(err, IsNil)
 	c.Check(fip.FixedIP, Matches, `\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`)
-	c.Check(fip.InstanceId, Equals, n.testServerId)
+	c.Check(fip.InstanceId, Equals, n.testServer.Id)
 
-	err = n.nova.RemoveServerFloatingIP(n.testServerId, ip.IP)
+	err = n.nova.RemoveServerFloatingIP(n.testServer.Id, ip.IP)
 	c.Check(err, IsNil)
 	fip, err = n.nova.GetFloatingIP(ip.Id)
 	c.Assert(err, IsNil)
