@@ -38,10 +38,9 @@ type Link struct {
 // Entity can describe a flavor, flavor detail or server.
 // Contains a list of links.
 type Entity struct {
-	Id        string
-	Links     []Link
-	Name      string
-	AdminPass string
+	Id    string
+	Links []Link
+	Name  string
 }
 
 // ListFlavours lists IDs, names, and links for available flavors.
