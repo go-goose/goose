@@ -47,8 +47,10 @@ func (s *NovaSuite) SetUpSuite(c *C) {
 }
 
 func (s *NovaSuite) TearDownSuite(c *C) {
-	err := s.nova.DeleteServer(s.testServer.Id)
-	c.Check(err, IsNil)
+	if *live {
+		err := s.nova.DeleteServer(s.testServer.Id)
+		c.Check(err, IsNil)
+	}
 }
 
 func (s *NovaSuite) createInstance(c *C) (instance *nova.Entity, err error) {
