@@ -63,7 +63,7 @@ type FlavorDetail struct {
 }
 
 // ListFlavorsDetail lists all details for available flavors.
-func (c *Client) ListFlavorsDetail() (*[]FlavorDetail, error) {
+func (c *Client) ListFlavorsDetail() ([]FlavorDetail, error) {
 	var resp struct {
 		Flavors []FlavorDetail
 	}
@@ -73,11 +73,11 @@ func (c *Client) ListFlavorsDetail() (*[]FlavorDetail, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &resp.Flavors, nil
+	return resp.Flavors, nil
 }
 
 // ListServers lists IDs, names, and links for all servers.
-func (c *Client) ListServers() (*[]Entity, error) {
+func (c *Client) ListServers() ([]Entity, error) {
 	var resp struct {
 		Servers []Entity
 	}
@@ -87,7 +87,7 @@ func (c *Client) ListServers() (*[]Entity, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &resp.Servers, nil
+	return resp.Servers, nil
 }
 
 type ServerDetail struct {
@@ -108,7 +108,7 @@ type ServerDetail struct {
 }
 
 // ListServersDetail lists all details for available servers.
-func (c *Client) ListServersDetail() (*[]ServerDetail, error) {
+func (c *Client) ListServersDetail() ([]ServerDetail, error) {
 	var resp struct {
 		Servers []ServerDetail
 	}
@@ -118,7 +118,7 @@ func (c *Client) ListServersDetail() (*[]ServerDetail, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &resp.Servers, nil
+	return resp.Servers, nil
 }
 
 // GetServer lists details for the specified server.
@@ -200,7 +200,7 @@ type SecurityGroup struct {
 }
 
 // ListSecurityGroups lists IDs, names, and other details for all security groups.
-func (c *Client) ListSecurityGroups() (*[]SecurityGroup, error) {
+func (c *Client) ListSecurityGroups() ([]SecurityGroup, error) {
 	var resp struct {
 		Groups []SecurityGroup `json:"security_groups"`
 	}
@@ -210,11 +210,11 @@ func (c *Client) ListSecurityGroups() (*[]SecurityGroup, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &resp.Groups, nil
+	return resp.Groups, nil
 }
 
 // GetServerSecurityGroups list security groups for a specific server.
-func (c *Client) GetServerSecurityGroups(serverId string) (*[]SecurityGroup, error) {
+func (c *Client) GetServerSecurityGroups(serverId string) ([]SecurityGroup, error) {
 
 	var resp struct {
 		Groups []SecurityGroup `json:"security_groups"`
@@ -226,7 +226,7 @@ func (c *Client) GetServerSecurityGroups(serverId string) (*[]SecurityGroup, err
 	if err != nil {
 		return nil, err
 	}
-	return &resp.Groups, nil
+	return resp.Groups, nil
 }
 
 // CreateSecurityGroup creates a new security group.
@@ -340,7 +340,7 @@ type FloatingIP struct {
 }
 
 // ListFloatingIPs lists floating IP addresses associated with the tenant or account.
-func (c *Client) ListFloatingIPs() (*[]FloatingIP, error) {
+func (c *Client) ListFloatingIPs() ([]FloatingIP, error) {
 	var resp struct {
 		FloatingIPs []FloatingIP `json:"floating_ips"`
 	}
@@ -351,7 +351,7 @@ func (c *Client) ListFloatingIPs() (*[]FloatingIP, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &resp.FloatingIPs, nil
+	return resp.FloatingIPs, nil
 }
 
 // GetFloatingIP lists details of the floating IP address associated with specified id.

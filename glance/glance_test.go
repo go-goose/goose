@@ -48,8 +48,8 @@ func (s *GlanceSuite) TestListImages(c *C) {
 func (s *GlanceSuite) TestListImagesDetail(c *C) {
 	images, err := s.glance.ListImagesDetail()
 	c.Assert(err, IsNil)
-	c.Assert(*images, Not(HasLen), 0)
-	for _, ir := range *images {
+	c.Assert(images, Not(HasLen), 0)
+	for _, ir := range images {
 		c.Assert(ir.Created, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
 		c.Assert(ir.Updated, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
 		c.Assert(ir.Id, Not(Equals), "")
@@ -68,7 +68,7 @@ func (s *GlanceSuite) TestListImagesDetail(c *C) {
 func (s *GlanceSuite) TestGetImageDetail(c *C) {
 	images, err := s.glance.ListImagesDetail()
 	c.Assert(err, IsNil)
-	firstImage := (*images)[0]
+	firstImage := images[0]
 	ir, err := s.glance.GetImageDetail(firstImage.Id)
 	c.Assert(err, IsNil)
 	c.Assert(ir.Created, Matches, firstImage.Created)
