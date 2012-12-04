@@ -38,7 +38,7 @@ func (s *NovaSuite) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	client := client.NewClient(cred, identity.AuthUserPass)
 	s.nova = nova.New(client)
-	s.testServer, err = s.createInstance(c)
+	s.testServer, err = s.createInstance(c, testImageName)
 	c.Assert(err, IsNil)
 	s.waitTestServerToStart(c)
 	// These will not be filled in until a client has authorised which will happen creating the instance above.
@@ -53,9 +53,9 @@ func (s *NovaSuite) TearDownSuite(c *C) {
 	}
 }
 
-func (s *NovaSuite) createInstance(c *C) (instance *nova.Entity, err error) {
+func (s *NovaSuite) createInstance(c *C, name string) (instance *nova.Entity, err error) {
 	opts := nova.RunServerOpts{
-		Name:     testImageName,
+		Name:     name,
 		FlavorId: testFlavourId,
 		ImageId:  testImageId,
 		UserData: nil,
@@ -109,7 +109,7 @@ func (s *NovaSuite) TestListFlavorsDetail(c *C) {
 }
 
 func (s *NovaSuite) TestListServers(c *C) {
-	servers, err := s.nova.ListServers()
+	servers, err := s.nova.ListServers(nil)
 	c.Assert(err, IsNil)
 	foundTest := false
 	for _, sr := range servers {
@@ -129,8 +129,30 @@ func (s *NovaSuite) TestListServers(c *C) {
 	}
 }
 
+func (s *NovaSuite) TestListServersWithFilter(c *C) {
+	inst, err := s.createInstance(c, "filtered_server")
+	c.Assert(err, IsNil)
+	defer s.nova.DeleteServer(inst.Id)
+	filter := nova.NewFilter()
+	filter.Add(nova.FilterServer, "filtered_server")
+	// The server will still be building when we make the API call.
+	filter.Add(nova.FilterStatus, nova.StatusBuild)
+	servers, err := s.nova.ListServers(filter)
+	c.Assert(err, IsNil)
+	found := false
+	for _, sr := range servers {
+		if sr.Id == inst.Id {
+			c.Assert(sr.Name, Equals, "filtered_server")
+			found = true
+		}
+	}
+	if !found {
+		c.Fatalf("server (%s) not found in filtered server list %v", inst.Id, servers)
+	}
+}
+
 func (s *NovaSuite) TestListServersDetail(c *C) {
-	servers, err := s.nova.ListServersDetail()
+	servers, err := s.nova.ListServersDetail(nil)
 	c.Assert(err, IsNil)
 	if len(servers) < 1 {
 		c.Fatalf("no servers to list (expected at least 1)")
@@ -166,6 +188,28 @@ func (s *NovaSuite) TestListServersDetail(c *C) {
 	}
 	if !foundTest {
 		c.Fatalf("test server (%s) not found in server list (details)", s.testServer.Id)
+	}
+}
+
+func (s *NovaSuite) TestListServersDetailWithFilter(c *C) {
+	inst, err := s.createInstance(c, "filtered_server")
+	c.Assert(err, IsNil)
+	defer s.nova.DeleteServer(inst.Id)
+	filter := nova.NewFilter()
+	filter.Add(nova.FilterServer, "filtered_server")
+	// The server will still be building when we make the API call.
+	filter.Add(nova.FilterStatus, nova.StatusBuild)
+	servers, err := s.nova.ListServersDetail(filter)
+	c.Assert(err, IsNil)
+	found := false
+	for _, sr := range servers {
+		if sr.Id == inst.Id {
+			c.Assert(sr.Name, Equals, "filtered_server")
+			found = true
+		}
+	}
+	if !found {
+		c.Fatalf("server (%s) not found in filtered server details %v", inst.Id, servers)
 	}
 }
 
@@ -260,7 +304,7 @@ func (s *NovaSuite) waitTestServerToStart(c *C) {
 	for {
 		server, err := s.nova.GetServer(s.testServer.Id)
 		c.Assert(err, IsNil)
-		if server.Status == "ACTIVE" {
+		if server.Status != "aa" { //}nova.StatusActive {
 			break
 		}
 		// There's a rate limit of max 10 POSTs per minute!
