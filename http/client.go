@@ -35,7 +35,7 @@ type ErrorWrapper struct {
 
 type RequestData struct {
 	ReqHeaders     http.Header
-	Params         url.Values
+	Params         *url.Values
 	ExpectedStatus []int
 	ReqValue       interface{}
 	RespValue      interface{}

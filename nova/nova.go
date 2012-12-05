@@ -8,6 +8,7 @@ import (
 	"launchpad.net/goose/client"
 	goosehttp "launchpad.net/goose/http"
 	"net/http"
+	"net/url"
 )
 
 const (
@@ -20,6 +21,35 @@ const (
 	apiFloatingIPs        = "/os-floating-ips"
 )
 
+const (
+	// Server status values.
+	StatusActive       = "ACTIVE"        // The server is active.
+	StatusBuild        = "BUILD"         // The server has not finished the original build process.
+	StatusDeleted      = "DELETED"       // The server is deleted.
+	StatusError        = "ERROR"         // The server is in error.
+	StatusHardReboot   = "HARD_REBOOT"   // The server is hard rebooting.
+	StatusPassword     = "PASSWORD"      // The password is being reset on the server.
+	StatusReboot       = "REBOOT"        // The server is in a soft reboot state.
+	StatusRebuild      = "REBUILD"       // The server is currently being rebuilt from an image.
+	StatusRescue       = "RESCUE"        // The server is in rescue mode.
+	StatusResize       = "RESIZE"        // Server is performing the differential copy of data that changed during its initial copy.
+	StatusShutoff      = "SHUTOFF"       // The virtual machine (VM) was powered down by the user, but not through the OpenStack Compute API.
+	StatusSuspended    = "SUSPENDED"     // The server is suspended, either by request or necessity.
+	StatusUnknown      = "UNKNOWN"       // The state of the server is unknown. Contact your cloud provider.
+	StatusVerifyResize = "VERIFY_RESIZE" // System is awaiting confirmation that the server is operational after a move or resize.
+)
+
+const (
+	// Filter keys.
+	FilterStatus       = "status"        // The server status. See Server Status Values.
+	FilterImage        = "image"         // The image reference specified as an ID or full URL.
+	FilterFlavor       = "flavor"        // The flavor reference specified as an ID or full URL.
+	FilterServer       = "name"          // The server name.
+	FilterMarker       = "marker"        // The ID of the last item in the previous list.
+	FilterLimit        = "limit"         // The page size.
+	FilterChangesSince = "changes-since" // The changes-since time. The list contains servers that have been deleted since the changes-since time.
+)
+
 // Client provides a means to access the OpenStack Compute Service.
 type Client struct {
 	client client.Client
@@ -27,6 +57,26 @@ type Client struct {
 
 func New(client client.Client) *Client {
 	return &Client{client}
+}
+
+// ----------------------------------------------------------------------------
+// Filtering helper.
+
+// Filter builds filtering parameters to be used in an OpenStack query which supports
+// filtering.  For example:
+//
+//     filter := NewFilter()
+//     filter.Add(nova.FilterServer, "server_name")
+//     filter.Add(nova.FilterStatus, nova.StatusBuild)
+//     resp, err := nova.ListServers(filter)
+//
+type Filter struct {
+	url.Values
+}
+
+// NewFilter creates a new Filter.
+func NewFilter() *Filter {
+	return &Filter{make(url.Values)}
 }
 
 type Link struct {
@@ -77,11 +127,11 @@ func (c *Client) ListFlavorsDetail() ([]FlavorDetail, error) {
 }
 
 // ListServers lists IDs, names, and links for all servers.
-func (c *Client) ListServers() ([]Entity, error) {
+func (c *Client) ListServers(filter *Filter) ([]Entity, error) {
 	var resp struct {
 		Servers []Entity
 	}
-	requestData := goosehttp.RequestData{RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
+	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.Values, ExpectedStatus: []int{http.StatusOK}}
 	err := c.client.SendRequest(client.GET, "compute", apiServers, &requestData,
 		"failed to get list of servers")
 	if err != nil {
@@ -108,11 +158,11 @@ type ServerDetail struct {
 }
 
 // ListServersDetail lists all details for available servers.
-func (c *Client) ListServersDetail() ([]ServerDetail, error) {
+func (c *Client) ListServersDetail(filter *Filter) ([]ServerDetail, error) {
 	var resp struct {
 		Servers []ServerDetail
 	}
-	requestData := goosehttp.RequestData{RespValue: &resp}
+	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.Values}
 	err := c.client.SendRequest(client.GET, "compute", apiServersDetail, &requestData,
 		"failed to get list of servers details")
 	if err != nil {
