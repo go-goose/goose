@@ -48,8 +48,10 @@ func (s *NovaSuite) SetUpSuite(c *C) {
 
 func (s *NovaSuite) TearDownSuite(c *C) {
 	if *live {
-		err := s.nova.DeleteServer(s.testServer.Id)
-		c.Check(err, IsNil)
+		if s.testServer != nil {
+			err := s.nova.DeleteServer(s.testServer.Id)
+			c.Check(err, IsNil)
+		}
 	}
 }
 

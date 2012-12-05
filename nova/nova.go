@@ -66,8 +66,8 @@ func New(client client.Client) *Client {
 // filtering.  For example:
 //
 //     filter := NewFilter()
-//     filter.Add("name", "server_name")
-//     filter.Add("status", "ACTIVE")
+//     filter.Add(nova.FilterServer, "server_name")
+//     filter.Add(nova.FilterStatus, nova.StatusBuild)
 //     resp, err := nova.ListServers(filter)
 //
 type Filter struct {
