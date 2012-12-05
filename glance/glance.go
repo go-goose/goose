@@ -73,7 +73,7 @@ type ImageDetail struct {
 }
 
 // ListImageDetails lists all details for available images.
-func (c *Client) ListImagesDetail() (*[]ImageDetail, error) {
+func (c *Client) ListImagesDetail() ([]ImageDetail, error) {
 	var resp struct {
 		Images []ImageDetail
 	}
@@ -83,7 +83,7 @@ func (c *Client) ListImagesDetail() (*[]ImageDetail, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &resp.Images, nil
+	return resp.Images, nil
 }
 
 // GetImageDetail lists details of the specified image.
