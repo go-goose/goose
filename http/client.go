@@ -5,7 +5,6 @@ package http
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	gooseerrors "launchpad.net/goose/errors"
@@ -62,7 +61,7 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 	if reqData.ReqValue != nil {
 		body, err = json.Marshal(reqData.ReqValue)
 		if err != nil {
-			err = gooseerrors.AddContext(err, "failed marshalling the request body")
+			err = gooseerrors.New(err, "failed marshalling the request body")
 			return
 		}
 		reqBody := strings.NewReader(string(body))
@@ -71,7 +70,7 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 		req, err = http.NewRequest(method, url, nil)
 	}
 	if err != nil {
-		err = gooseerrors.AddContext(err, "failed creating the request")
+		err = gooseerrors.New(err, "failed creating the request")
 		return
 	}
 	req.Header.Add("Content-Type", "application/json")
@@ -86,7 +85,7 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 		if reqData.RespValue != nil {
 			err = json.Unmarshal(respBody, &reqData.RespValue)
 			if err != nil {
-				err = gooseerrors.AddContext(err, "failed unmarshaling the response body: %s", respBody)
+				err = gooseerrors.New(err, "failed unmarshaling the response body: %s", respBody)
 			}
 		}
 	}
@@ -115,7 +114,7 @@ func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err er
 		req, err = http.NewRequest(method, url, nil)
 	}
 	if err != nil {
-		err = gooseerrors.AddContext(err, "failed creating the request")
+		err = gooseerrors.New(err, "failed creating the request")
 		return
 	}
 	req.Header.Add("Content-Type", "application/octet-stream")
@@ -152,7 +151,7 @@ func (c *Client) sendRequest(req *http.Request, extraHeaders http.Header, expect
 	}
 	rawResp, err := c.Do(req)
 	if err != nil {
-		err = gooseerrors.AddContext(err, "failed executing the request")
+		err = gooseerrors.New(err, "failed executing the request")
 		return
 	}
 	foundStatus := false
@@ -173,16 +172,22 @@ func (c *Client) sendRequest(req *http.Request, extraHeaders http.Header, expect
 
 	respBody, err = ioutil.ReadAll(rawResp.Body)
 	if err != nil {
-		err = gooseerrors.AddContext(err, "failed reading the response body")
+		err = gooseerrors.New(err, "failed reading the response body")
 		return
 	}
 	return
 }
 
+type ResponseData struct {
+	StatusCode int
+	Data       map[string][]string
+}
+
 // The HTTP response status code was not one of those expected, so we construct an error.
 // NotFound (404) codes have their own NotFound error type.
+// We also make a guess at duplicate value errors.
 func handleError(URL *url.URL, resp *http.Response, payloadInfo string) error {
-	var errInfo interface{}
+	var errInfo, errContext interface{}
 	errBytes, _ := ioutil.ReadAll(resp.Body)
 	errInfo = string(errBytes)
 	// Check if we have a JSON representation of the failure, if so decode it.
@@ -190,17 +195,28 @@ func handleError(URL *url.URL, resp *http.Response, payloadInfo string) error {
 		var wrappedErr ErrorWrapper
 		if err := json.Unmarshal(errBytes, &wrappedErr); err == nil {
 			errInfo = wrappedErr.Error
+			errContext = errInfo
 		}
 	}
-	if resp.StatusCode == http.StatusNotFound {
-		return gooseerrors.NotFound("resource at URL %s", URL)
+	// If there was no JSON error contextual data available, we will use the response code and headers.
+	if errContext == nil {
+		errContext = ResponseData{
+			StatusCode: resp.StatusCode,
+			Data:       map[string][]string(resp.Header),
+		}
 	}
-	err := errors.New(
-		fmt.Sprintf(
-			"request (%s) returned unexpected status: %s; error info: %v; request body: [%s]",
-			URL,
-			resp.Status,
-			errInfo,
-			payloadInfo))
-	return err
+	switch resp.StatusCode {
+	case http.StatusNotFound:
+		{
+			return gooseerrors.NotFound(URL)
+		}
+	}
+	return gooseerrors.New(
+		errContext,
+		"request (%s) returned unexpected status: %s; error info: %v; request body: [%s]",
+		URL,
+		resp.Status,
+		errInfo,
+		payloadInfo,
+	)
 }

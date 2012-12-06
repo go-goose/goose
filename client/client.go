@@ -7,6 +7,7 @@ import (
 	goosehttp "launchpad.net/goose/http"
 	"launchpad.net/goose/identity"
 	"net/http"
+	"regexp"
 )
 
 const (
@@ -62,7 +63,7 @@ func (c *OpenStackClient) Authenticate() (err error) {
 	}
 	authDetails, err := c.auth.Auth(c.creds)
 	if err != nil {
-		err = gooseerrors.AddContext(err, "authentication failed")
+		err = gooseerrors.New(err, "authentication failed")
 		return
 	}
 
@@ -91,18 +92,18 @@ func (c *OpenStackClient) MakeServiceURL(serviceType string, parts []string) (st
 }
 
 func (c *OpenStackClient) SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData,
-	context string, contextArgs ...interface{}) (err error) {
+	info string, infoArgs ...interface{}) (err error) {
 	if c.creds != nil && !c.IsAuthenticated() {
 		err = c.Authenticate()
 		if err != nil {
-			err = gooseerrors.AddContext(err, context, contextArgs...)
+			err = gooseerrors.New(err, info, infoArgs...)
 			return
 		}
 	}
 
 	url, err := c.MakeServiceURL(svcType, []string{apiCall})
 	if err != nil {
-		err = gooseerrors.AddContext(err, "cannot find a '%s' node endpoint", svcType)
+		err = gooseerrors.New(err, "cannot find a '%s' node endpoint", svcType)
 		return
 	}
 
@@ -115,7 +116,26 @@ func (c *OpenStackClient) SendRequest(method, svcType, apiCall string, requestDa
 		err = c.client.BinaryRequest(method, url, requestData)
 	}
 	if err != nil {
-		err = gooseerrors.AddContext(err, context, contextArgs...)
+		err = gooseerrors.NewError(requestData, err, info, infoArgs...)
 	}
 	return
+}
+
+// GuessDuplicateValueError looks at the specified err and returns a DuplicateValue Error if it determines that
+// the underlying cause is due to an object already existing.
+// This is quite horrid, but the OpenStack API calls do not provide a type safe way of doing this.
+func GuessDuplicateValueError(context interface{}, err error) (error, bool) {
+	if _, ok := err.(gooseerrors.Error); !ok {
+		return nil, false
+	}
+	gerr := err.(gooseerrors.Error)
+	respData, ok := gerr.Context.(goosehttp.ResponseData)
+	if !ok || respData.StatusCode != http.StatusBadRequest {
+		return GuessDuplicateValueError(context, gerr.Cause)
+	}
+	dupExp, _ := regexp.Compile(".*already exists.*")
+	if dupExp.Match([]byte(err.Error())) {
+		return gooseerrors.NewDuplicateValue(context, err, ""), true
+	}
+	return nil, false
 }
