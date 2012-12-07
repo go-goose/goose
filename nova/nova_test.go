@@ -257,9 +257,7 @@ func (s *NovaSuite) TestDuplicateSecurityGroupError(c *C) {
 	c.Assert(err, IsNil)
 	defer s.nova.DeleteSecurityGroup(group.Id)
 	group, err = s.nova.CreateSecurityGroup("test_dupgroup", "test_desc")
-	duperr, ok := client.GuessDuplicateValueError(group, err)
-	c.Assert(ok, Equals, true)
-	c.Assert(gooseerrors.IsDuplicateValue(duperr), Equals, true)
+	c.Assert(gooseerrors.IsDuplicateValue(err), Equals, true)
 }
 
 func (s *NovaSuite) TestCreateAndDeleteSecurityGroupRules(c *C) {

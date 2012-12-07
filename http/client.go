@@ -7,9 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	gooseerrors "launchpad.net/goose/errors"
+	"launchpad.net/goose/errors"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -61,7 +62,7 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 	if reqData.ReqValue != nil {
 		body, err = json.Marshal(reqData.ReqValue)
 		if err != nil {
-			err = gooseerrors.New(err, "failed marshalling the request body")
+			err = errors.Newf(err, "failed marshalling the request body")
 			return
 		}
 		reqBody := strings.NewReader(string(body))
@@ -70,7 +71,7 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 		req, err = http.NewRequest(method, url, nil)
 	}
 	if err != nil {
-		err = gooseerrors.New(err, "failed creating the request")
+		err = errors.Newf(err, "failed creating the request")
 		return
 	}
 	req.Header.Add("Content-Type", "application/json")
@@ -85,7 +86,7 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 		if reqData.RespValue != nil {
 			err = json.Unmarshal(respBody, &reqData.RespValue)
 			if err != nil {
-				err = gooseerrors.New(err, "failed unmarshaling the response body: %s", respBody)
+				err = errors.Newf(err, "failed unmarshaling the response body: %s", respBody)
 			}
 		}
 	}
@@ -114,7 +115,7 @@ func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err er
 		req, err = http.NewRequest(method, url, nil)
 	}
 	if err != nil {
-		err = gooseerrors.New(err, "failed creating the request")
+		err = errors.Newf(err, "failed creating the request")
 		return
 	}
 	req.Header.Add("Content-Type", "application/octet-stream")
@@ -151,7 +152,7 @@ func (c *Client) sendRequest(req *http.Request, extraHeaders http.Header, expect
 	}
 	rawResp, err := c.Do(req)
 	if err != nil {
-		err = gooseerrors.New(err, "failed executing the request")
+		err = errors.Newf(err, "failed executing the request")
 		return
 	}
 	foundStatus := false
@@ -172,7 +173,7 @@ func (c *Client) sendRequest(req *http.Request, extraHeaders http.Header, expect
 
 	respBody, err = ioutil.ReadAll(rawResp.Body)
 	if err != nil {
-		err = gooseerrors.New(err, "failed reading the response body")
+		err = errors.Newf(err, "failed reading the response body")
 		return
 	}
 	return
@@ -208,10 +209,17 @@ func handleError(URL *url.URL, resp *http.Response, payloadInfo string) error {
 	switch resp.StatusCode {
 	case http.StatusNotFound:
 		{
-			return gooseerrors.NotFound(URL)
+			return errors.NewNotFoundf(URL, nil, "Resource at %s not found", URL)
+		}
+	case http.StatusBadRequest:
+		{
+			dupExp, _ := regexp.Compile(".*already exists.*")
+			if dupExp.Match(errBytes) {
+				return errors.NewDuplicateValuef(URL, nil, string(errBytes))
+			}
 		}
 	}
-	return gooseerrors.New(
+	return errors.Newf(
 		errContext,
 		"request (%s) returned unexpected status: %s; error info: %v; request body: [%s]",
 		URL,

@@ -5,6 +5,7 @@ package swift
 import (
 	"fmt"
 	"launchpad.net/goose/client"
+	"launchpad.net/goose/errors"
 	goosehttp "launchpad.net/goose/http"
 	"net/http"
 )
@@ -27,8 +28,10 @@ func (c *Client) CreateContainer(containerName string) error {
 	headers.Add("X-Container-Read", ".r:*")
 	url := fmt.Sprintf("/%s", containerName)
 	requestData := goosehttp.RequestData{ReqHeaders: headers, ExpectedStatus: []int{http.StatusAccepted, http.StatusCreated}}
-	err := c.client.SendRequest(client.PUT, "object-store", url, &requestData,
-		"failed to create container %s.", containerName)
+	err := c.client.SendRequest(client.PUT, "object-store", url, &requestData)
+	if err != nil {
+		err = errors.Newf(err, "failed to create container: %s", containerName)
+	}
 	return err
 }
 
@@ -36,15 +39,19 @@ func (c *Client) CreateContainer(containerName string) error {
 func (c *Client) DeleteContainer(containerName string) error {
 	url := fmt.Sprintf("/%s", containerName)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusNoContent}}
-	err := c.client.SendRequest(client.DELETE, "object-store", url, &requestData,
-		"failed to delete container %s.", containerName)
+	err := c.client.SendRequest(client.DELETE, "object-store", url, &requestData)
+	if err != nil {
+		err = errors.Newf(err, "failed to delete container: %s", containerName)
+	}
 	return err
 }
 
 func (c *Client) touchObject(requestData *goosehttp.RequestData, op, containerName, objectName string) error {
 	path := fmt.Sprintf("/%s/%s", containerName, objectName)
-	err := c.client.SendRequest(op, "object-store", path, requestData,
-		"failed to %s object %s from container %s", op, objectName, containerName)
+	err := c.client.SendRequest(op, "object-store", path, requestData)
+	if err != nil {
+		err = errors.Newf(err, "failed to %s object %s from container %s", op, objectName, containerName)
+	}
 	return err
 }
 

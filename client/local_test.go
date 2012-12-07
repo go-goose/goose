@@ -2,9 +2,6 @@ package client_test
 
 import (
 	. "launchpad.net/gocheck"
-	"launchpad.net/goose/client"
-	gooseerrors "launchpad.net/goose/errors"
-	goosehttp "launchpad.net/goose/http"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/testing/httpsuite"
 	"launchpad.net/goose/testservices/identityservice"
@@ -70,22 +67,3 @@ func (s *localLiveSuite) TearDownTest(c *C) {
 }
 
 // Additional tests to be run against the service double only go here.
-
-func (s *localLiveSuite) TestGuessDuplicateError(c *C) {
-	context := goosehttp.ResponseData{http.StatusBadRequest, nil}
-	err := gooseerrors.New(context, "something already exists")
-	nested := gooseerrors.New(err, "a nested error")
-	dupErr, ok := client.GuessDuplicateValueError("context", nested)
-	c.Assert(ok, Equals, true)
-	c.Assert(dupErr.(gooseerrors.Error).IsDuplicateValue(), Equals, true)
-	c.Assert(dupErr.(gooseerrors.Error).Context, Equals, "context")
-}
-
-func (s *localLiveSuite) TestGuessDuplicateErrorNotDup(c *C) {
-	context := goosehttp.ResponseData{http.StatusBadRequest, nil}
-	err := gooseerrors.New(context, "something is missing")
-	nested := gooseerrors.New(err, "a nested error")
-	dupErr, ok := client.GuessDuplicateValueError("context", nested)
-	c.Assert(ok, Equals, false)
-	c.Assert(dupErr, IsNil)
-}
