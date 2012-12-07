@@ -5,12 +5,13 @@ package novaservice
 import (
 	"fmt"
 	"launchpad.net/goose/nova"
+	"strings"
 )
 
 // Nova contains the service double's internal state.
 type Nova struct {
-	flavors      map[string]Flavor
-	servers      map[string]Server
+	flavors      map[string]nova.FlavorDetail
+	servers      map[string]nova.ServerDetail
 	groups       map[int]nova.SecurityGroup
 	rules        map[int]nova.SecurityGroupRule
 	floatingIPs  map[int]nova.FloatingIP
@@ -24,8 +25,8 @@ type Nova struct {
 // New creates an instance of the Nova object, given the parameters.
 func New(hostname, baseURL, token string) *Nova {
 	nova := &Nova{
-		flavors:      make(map[string]Flavor),
-		servers:      make(map[string]Server),
+		flavors:      make(map[string]nova.FlavorDetail),
+		servers:      make(map[string]nova.ServerDetail),
 		groups:       make(map[int]nova.SecurityGroup),
 		rules:        make(map[int]nova.SecurityGroupRule),
 		floatingIPs:  make(map[int]nova.FloatingIP),
@@ -39,52 +40,77 @@ func New(hostname, baseURL, token string) *Nova {
 }
 
 // AddFlavor creates a new flavor.
-func (n *Nova) AddFlavor(flavor Flavor) error {
-	id := ""
-	if flavor.entity == nil && flavor.detail == nil {
-		return fmt.Errorf("refusing to add a nil flavor")
-	} else if flavor.entity != nil {
-		id = flavor.entity.Id
-	} else {
-		id = flavor.detail.Id
+func (n *Nova) AddFlavor(flavor nova.FlavorDetail) error {
+	if _, ok := n.flavors[flavor.Id]; ok {
+		return fmt.Errorf("a flavor with id %q already exists", flavor.Id)
 	}
-	if n.HasFlavor(id) {
-		return fmt.Errorf("a flavor with id %q already exists", id)
+	// build the links, if not given
+	if flavor.Links == nil {
+		ep := n.hostname
+		ver := strings.TrimLeft(n.baseURL, "/")
+		url := n.token + "/flavors/" + flavor.Id
+		flavor.Links = []nova.Link{
+			nova.Link{Href: ep + ver + url, Rel: "self"},
+			nova.Link{Href: ep + url, Rel: "bookmark"},
+		}
 	}
-	n.flavors[id] = flavor
+	n.flavors[flavor.Id] = flavor
 	return nil
 }
 
-// HasFlavor verifies the given flavor exists or not.
-func (n *Nova) HasFlavor(flavorId string) bool {
-	_, ok := n.flavors[flavorId]
-	return ok
-}
-
 // GetFlavor retrieves an existing flavor by ID.
-func (n *Nova) GetFlavor(flavorId string) (Flavor, error) {
+func (n *Nova) GetFlavor(flavorId string) (nova.FlavorDetail, error) {
 	flavor, ok := n.flavors[flavorId]
 	if !ok {
-		return Flavor{}, fmt.Errorf("no such flavor %q", flavorId)
+		return flavor, fmt.Errorf("no such flavor %q", flavorId)
 	}
 	return flavor, nil
 }
 
+// GetFlavorAsEntity returns the stored FlavorDetail as Entity.
+func (n *Nova) GetFlavorAsEntity(flavorId string) (nova.Entity, error) {
+	flavor, err := n.GetFlavor(flavorId)
+	if err != nil {
+		return nova.Entity{}, err
+	}
+	return nova.Entity{
+		Id:    flavor.Id,
+		Name:  flavor.Name,
+		Links: flavor.Links,
+	}, nil
+}
+
 // AllFlavors returns a list of all existing flavors.
-func (n *Nova) AllFlavors() ([]Flavor, error) {
+func (n *Nova) AllFlavors() ([]nova.FlavorDetail, error) {
 	if len(n.flavors) == 0 {
 		return nil, fmt.Errorf("no flavors to return")
 	}
-	flavors := []Flavor{}
+	flavors := []nova.FlavorDetail{}
 	for _, flavor := range n.flavors {
 		flavors = append(flavors, flavor)
 	}
 	return flavors, nil
 }
 
+// AllFlavorsAsEntities returns all flavors as Entity structs.
+func (n *Nova) AllFlavorsAsEntities() ([]nova.Entity, error) {
+	if len(n.flavors) == 0 {
+		return nil, fmt.Errorf("no flavors to return")
+	}
+	entities := []nova.Entity{}
+	for _, flavor := range n.flavors {
+		entities = append(entities, nova.Entity{
+			Id:    flavor.Id,
+			Name:  flavor.Name,
+			Links: flavor.Links,
+		})
+	}
+	return entities, nil
+}
+
 // RemoveFlavor deletes an existing flavor.
 func (n *Nova) RemoveFlavor(flavorId string) error {
-	if !n.HasFlavor(flavorId) {
+	if _, ok := n.flavors[flavorId]; !ok {
 		return fmt.Errorf("no such flavor %q", flavorId)
 	}
 	delete(n.flavors, flavorId)
@@ -92,52 +118,77 @@ func (n *Nova) RemoveFlavor(flavorId string) error {
 }
 
 // AddServer creates a new server.
-func (n *Nova) AddServer(server Server) error {
-	id := ""
-	if server.server == nil && server.detail == nil {
-		return fmt.Errorf("refusing to add a nil server")
-	} else if server.server != nil {
-		id = server.server.Id
-	} else {
-		id = server.detail.Id
+func (n *Nova) AddServer(server nova.ServerDetail) error {
+	if _, ok := n.servers[server.Id]; ok {
+		return fmt.Errorf("a server with id %q already exists", server.Id)
 	}
-	if n.HasServer(id) {
-		return fmt.Errorf("a server with id %q already exists", id)
+	// build the links, if not given
+	if server.Links == nil {
+		ep := n.hostname
+		ver := strings.TrimLeft(n.baseURL, "/")
+		url := n.token + "/servers/" + server.Id
+		server.Links = []nova.Link{
+			nova.Link{Href: ep + ver + url, Rel: "self"},
+			nova.Link{Href: ep + url, Rel: "bookmark"},
+		}
 	}
-	n.servers[id] = server
+	n.servers[server.Id] = server
 	return nil
 }
 
-// HasServer verifies the given server exists or not.
-func (n *Nova) HasServer(serverId string) bool {
-	_, ok := n.servers[serverId]
-	return ok
-}
-
 // GetServer retrieves an existing server by ID.
-func (n *Nova) GetServer(serverId string) (Server, error) {
+func (n *Nova) GetServer(serverId string) (nova.ServerDetail, error) {
 	server, ok := n.servers[serverId]
 	if !ok {
-		return Server{}, fmt.Errorf("no such server %q", serverId)
+		return nova.ServerDetail{}, fmt.Errorf("no such server %q", serverId)
 	}
 	return server, nil
 }
 
+// GetServerAsEntity returns the stored ServerDetail as Entity.
+func (n *Nova) GetServerAsEntity(serverId string) (nova.Entity, error) {
+	server, err := n.GetServer(serverId)
+	if err != nil {
+		return nova.Entity{}, err
+	}
+	return nova.Entity{
+		Id:    server.Id,
+		Name:  server.Name,
+		Links: server.Links,
+	}, nil
+}
+
 // AllServers returns a list of all existing servers.
-func (n *Nova) AllServers() ([]Server, error) {
+func (n *Nova) AllServers() ([]nova.ServerDetail, error) {
 	if len(n.servers) == 0 {
 		return nil, fmt.Errorf("no servers to return")
 	}
-	servers := []Server{}
+	servers := []nova.ServerDetail{}
 	for _, server := range n.servers {
 		servers = append(servers, server)
 	}
 	return servers, nil
 }
 
+// AllServersAsEntities returns all servers as Entity structs.
+func (n *Nova) AllServersAsEntities() ([]nova.Entity, error) {
+	if len(n.servers) == 0 {
+		return nil, fmt.Errorf("no servers to return")
+	}
+	entities := []nova.Entity{}
+	for _, server := range n.servers {
+		entities = append(entities, nova.Entity{
+			Id:    server.Id,
+			Name:  server.Name,
+			Links: server.Links,
+		})
+	}
+	return entities, nil
+}
+
 // RemoveServer deletes an existing server.
 func (n *Nova) RemoveServer(serverId string) error {
-	if !n.HasServer(serverId) {
+	if _, ok := n.servers[serverId]; !ok {
 		return fmt.Errorf("no such server %q", serverId)
 	}
 	delete(n.servers, serverId)
@@ -146,17 +197,11 @@ func (n *Nova) RemoveServer(serverId string) error {
 
 // AddSecurityGroup creates a new security group.
 func (n *Nova) AddSecurityGroup(group nova.SecurityGroup) error {
-	if n.HasSecurityGroup(group.Id) {
+	if _, ok := n.groups[group.Id]; ok {
 		return fmt.Errorf("a security group with id %d already exists", group.Id)
 	}
 	n.groups[group.Id] = group
 	return nil
-}
-
-// HasSecurityGroup verifies the given security group exists.
-func (n *Nova) HasSecurityGroup(groupId int) bool {
-	_, ok := n.groups[groupId]
-	return ok
 }
 
 // GetSecurityGroup retrieves an existing group by ID.
@@ -182,7 +227,7 @@ func (n *Nova) AllSecurityGroups() ([]nova.SecurityGroup, error) {
 
 // RemoveSecurityGroup deletes an existing group.
 func (n *Nova) RemoveSecurityGroup(groupId int) error {
-	if !n.HasSecurityGroup(groupId) {
+	if _, ok := n.groups[groupId]; !ok {
 		return fmt.Errorf("no such security group %d", groupId)
 	}
 	delete(n.groups, groupId)
@@ -193,13 +238,12 @@ func (n *Nova) RemoveSecurityGroup(groupId int) error {
 // This can be either an ingress or a group rule (see the notes
 // about nova.RuleInfo).
 func (n *Nova) AddSecurityGroupRule(ruleId int, rule nova.RuleInfo) error {
-	_, ok := n.rules[ruleId]
-	if ok {
+	if _, ok := n.rules[ruleId]; ok {
 		return fmt.Errorf("a security group rule with id %d already exists", ruleId)
 	}
 	group, ok := n.groups[rule.ParentGroupId]
 	if !ok {
-		return fmt.Errorf("trying to add a rule to unknown security group %d", rule.ParentGroupId)
+		return fmt.Errorf("cannot add a rule to unknown security group %d", rule.ParentGroupId)
 	}
 	for _, ru := range group.Rules {
 		if ru.Id == ruleId {
@@ -213,7 +257,7 @@ func (n *Nova) AddSecurityGroupRule(ruleId int, rule nova.RuleInfo) error {
 	if rule.GroupId != nil {
 		sourceGroup, ok := n.groups[*rule.GroupId]
 		if !ok {
-			fmt.Errorf("uknown source security group %d", *rule.GroupId)
+			return fmt.Errorf("unknown source security group %d", *rule.GroupId)
 		}
 		newrule.Group = &nova.SecurityGroupRef{
 			TenantId: sourceGroup.TenantId,
@@ -240,20 +284,12 @@ func (n *Nova) AddSecurityGroupRule(ruleId int, rule nova.RuleInfo) error {
 	return nil
 }
 
-// HasSecurityGroupRule verifies the given group contains the given rule.
-// If groupId is -1, it verifies if the rule exists only.
+// HasSecurityGroupRule returns whether the given group contains the given rule,
+// or (when groupId=-1) whether the given rule exists.
 func (n *Nova) HasSecurityGroupRule(groupId, ruleId int) bool {
 	rule, ok := n.rules[ruleId]
-	if !ok {
-		return false
-	}
-	if groupId != -1 {
-		if !n.HasSecurityGroup(groupId) {
-			return false
-		}
-		return rule.ParentGroupId == groupId
-	}
-	return true
+	_, err := n.GetSecurityGroup(groupId)
+	return ok && (groupId == -1 || (err == nil && rule.ParentGroupId == groupId))
 }
 
 // GetSecurityGroupRule retrieves an existing rule by ID.
@@ -271,8 +307,7 @@ func (n *Nova) RemoveSecurityGroupRule(ruleId int) error {
 	if !ok {
 		return fmt.Errorf("no such security group rule %d", ruleId)
 	}
-	group, ok := n.groups[rule.ParentGroupId]
-	if ok {
+	if group, ok := n.groups[rule.ParentGroupId]; ok {
 		idx := -1
 		for ri, ru := range group.Rules {
 			if ru.Id == ruleId {
@@ -293,10 +328,10 @@ func (n *Nova) RemoveSecurityGroupRule(ruleId int) error {
 
 // AddServerSecurityGroup attaches an existing server to a group.
 func (n *Nova) AddServerSecurityGroup(serverId string, groupId int) error {
-	if !n.HasServer(serverId) {
+	if _, err := n.GetServer(serverId); err != nil {
 		return fmt.Errorf("no such server %q", serverId)
 	}
-	if !n.HasSecurityGroup(groupId) {
+	if _, err := n.GetSecurityGroup(groupId); err != nil {
 		return fmt.Errorf("no such security group %d", groupId)
 	}
 	groups, ok := n.serverGroups[serverId]
@@ -312,9 +347,12 @@ func (n *Nova) AddServerSecurityGroup(serverId string, groupId int) error {
 	return nil
 }
 
-// HasServerSecurityGroup verifies the given server is part of the group.
+// HasServerSecurityGroup returns whether the given server belongs to the group.
 func (n *Nova) HasServerSecurityGroup(serverId string, groupId int) bool {
-	if !n.HasServer(serverId) || !n.HasSecurityGroup(groupId) {
+	if _, err := n.GetServer(serverId); err != nil {
+		return false
+	}
+	if _, err := n.GetSecurityGroup(groupId); err != nil {
 		return false
 	}
 	groups, ok := n.serverGroups[serverId]
@@ -331,10 +369,10 @@ func (n *Nova) HasServerSecurityGroup(serverId string, groupId int) bool {
 
 // RemoveServerSecurityGroup detaches an existing server from a group.
 func (n *Nova) RemoveServerSecurityGroup(serverId string, groupId int) error {
-	if !n.HasServer(serverId) {
+	if _, err := n.GetServer(serverId); err != nil {
 		return fmt.Errorf("no such server %q", serverId)
 	}
-	if !n.HasSecurityGroup(groupId) {
+	if _, err := n.GetSecurityGroup(groupId); err != nil {
 		return fmt.Errorf("no such security group %d", groupId)
 	}
 	groups, ok := n.serverGroups[serverId]
@@ -358,15 +396,14 @@ func (n *Nova) RemoveServerSecurityGroup(serverId string, groupId int) error {
 
 // AddFloatingIP creates a new floating IP address in the pool.
 func (n *Nova) AddFloatingIP(ip nova.FloatingIP) error {
-	_, ok := n.floatingIPs[ip.Id]
-	if ok {
+	if _, ok := n.floatingIPs[ip.Id]; ok {
 		return fmt.Errorf("a floating IP with id %d already exists", ip.Id)
 	}
 	n.floatingIPs[ip.Id] = ip
 	return nil
 }
 
-// HasFloatingIP verifies the given floating IP address exists.
+// HasFloatingIP returns whether the given floating IP address exists.
 func (n *Nova) HasFloatingIP(address string) bool {
 	if len(n.floatingIPs) == 0 {
 		return false
@@ -381,16 +418,15 @@ func (n *Nova) HasFloatingIP(address string) bool {
 
 // GetFloatingIP retrieves the floating IP by ID.
 func (n *Nova) GetFloatingIP(ipId int) (nova.FloatingIP, error) {
-	for fipid, fip := range n.floatingIPs {
-		if fipid == ipId {
-			return fip, nil
-		}
+	ip, ok := n.floatingIPs[ipId]
+	if !ok {
+		return nova.FloatingIP{}, fmt.Errorf("no such floating IP %d", ipId)
 	}
-	return nova.FloatingIP{}, fmt.Errorf("no such floating IP %d", ipId)
+	return ip, nil
 }
 
-// AllFlotingIPs returns a list of all created floating IPs.
-func (n *Nova) AllFlotingIPs() ([]nova.FloatingIP, error) {
+// AllFloatingIPs returns a list of all created floating IPs.
+func (n *Nova) AllFloatingIPs() ([]nova.FloatingIP, error) {
 	if len(n.floatingIPs) == 0 {
 		return nil, fmt.Errorf("no floating IPs to return")
 	}
@@ -403,8 +439,7 @@ func (n *Nova) AllFlotingIPs() ([]nova.FloatingIP, error) {
 
 // RemoveFloatingIP deletes an existing floating IP by ID.
 func (n *Nova) RemoveFloatingIP(ipId int) error {
-	_, ok := n.floatingIPs[ipId]
-	if !ok {
+	if _, ok := n.floatingIPs[ipId]; !ok {
 		return fmt.Errorf("no such floating IP %d", ipId)
 	}
 	delete(n.floatingIPs, ipId)
@@ -413,11 +448,10 @@ func (n *Nova) RemoveFloatingIP(ipId int) error {
 
 // AddServerFloatingIP attaches an existing floating IP to a server.
 func (n *Nova) AddServerFloatingIP(serverId string, ipId int) error {
-	if !n.HasServer(serverId) {
+	if _, err := n.GetServer(serverId); err != nil {
 		return fmt.Errorf("no such server %q", serverId)
 	}
-	_, ok := n.floatingIPs[ipId]
-	if !ok {
+	if _, err := n.GetFloatingIP(ipId); err != nil {
 		return fmt.Errorf("no such floating IP %d", ipId)
 	}
 	fips, ok := n.serverIPs[serverId]
@@ -435,7 +469,7 @@ func (n *Nova) AddServerFloatingIP(serverId string, ipId int) error {
 
 // HasServerFloatingIP verifies the given floating IP belongs to a server.
 func (n *Nova) HasServerFloatingIP(serverId, address string) bool {
-	if !n.HasServer(serverId) || !n.HasFloatingIP(address) {
+	if _, err := n.GetServer(serverId); err != nil || !n.HasFloatingIP(address) {
 		return false
 	}
 	fips, ok := n.serverIPs[serverId]
@@ -453,11 +487,10 @@ func (n *Nova) HasServerFloatingIP(serverId, address string) bool {
 
 // RemoveServerFloatingIP deletes an attached floating IP from a server.
 func (n *Nova) RemoveServerFloatingIP(serverId string, ipId int) error {
-	if !n.HasServer(serverId) {
+	if _, err := n.GetServer(serverId); err != nil {
 		return fmt.Errorf("no such server %q", serverId)
 	}
-	_, ok := n.floatingIPs[ipId]
-	if !ok {
+	if _, err := n.GetFloatingIP(ipId); err != nil {
 		return fmt.Errorf("no such floating IP %d", ipId)
 	}
 	fips, ok := n.serverIPs[serverId]

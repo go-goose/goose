@@ -59,7 +59,8 @@ type FlavorDetail struct {
 	VCPUs int
 	Disk  int
 	Id    string
-	Swap  interface{} // Can be an empty string (?!)
+	Links []Link
+	Swap  *string // Can be empty (nil)
 }
 
 // ListFlavorsDetail lists all details for available flavors.
@@ -249,40 +250,42 @@ func (c *Client) DeleteSecurityGroup(groupId int) error {
 // 2. Group rules - specified indirectly by giving a source group,
 // which can be any user's group (different tenant ID).
 //
-// Every rule is essentially an iptables ACCEPT rule, thus a group
-// with no rules does not allow ingress at all. Rules can be added
-// and removed even while the server(s), part of their parent group
-// are running. Adding or removing security groups from a server only
-// take effect when the server is running. Changing them after that
-// won't take effect until the server is restared, while the rules
-// inside the effective groups for the server can change at any time.
-//
-// IPProtocol is optional, and if specified must be "tcp", "udp" or
-//  "icmp" (in this case, both FromPort and ToPort can be -1). 
-// FromPort and ToPort are both optional, and if specifed must be
-// integers between 1 and 65535 (valid TCP port numbers). -1 is a
-// special value, meaning "use default" (e.g. for ICMP).
-// Cidr cannot be specified with GroupId. Ingress rules need a valid
-// subnet mast in CIDR format here, while if GroupID is specifed, it
-// means you're adding a group rule, specifying source group ID, which
-// must exists already and can be equal to ParentGroupId).
-// need Cidr, while
-// ParentGroupId is always required and specifies the group to which
-// the rule is added.
+// Every rule works as an iptables ACCEPT rule, thus a group/ with no
+// rules does not allow ingress at all. Rules can be added and removed
+// while the server(s) are running. The set of security groups that
+// apply to a server is changed only when the server is
+// started. Adding or removing a security group on a running server
+// will not take effect until that server is restarted. However,
+// changing rules of existing groups will take effect immediately.
 //
 // For more information:
 // http://docs.openstack.org/developer/nova/nova.concepts.html#concept-security-groups
 // Nova source: https://github.com/openstack/nova.git
 type RuleInfo struct {
-	IPProtocol    string `json:"ip_protocol"`
-	FromPort      int    `json:"from_port"`
-	ToPort        int    `json:"to_port"`
-	Cidr          string `json:"cidr"`
-	GroupId       *int   `json:"group_id"`
-	ParentGroupId int    `json:"parent_group_id"`
+	/// IPProtocol is optional, and if specified must be "tcp", "udp" or
+	//  "icmp" (in this case, both FromPort and ToPort can be -1). 
+	IPProtocol string `json:"ip_protocol"`
+
+	// FromPort and ToPort are both optional, and if specifed must be
+	// integers between 1 and 65535 (valid TCP port numbers). -1 is a
+	// special value, meaning "use default" (e.g. for ICMP).
+	FromPort int `json:"from_port"`
+	ToPort   int `json:"to_port"`
+
+	// Cidr cannot be specified with GroupId. Ingress rules need a valid
+	// subnet mast in CIDR format here, while if GroupID is specifed, it
+	// means you're adding a group rule, specifying source group ID, which
+	// must exists already and can be equal to ParentGroupId).
+	// need Cidr, while
+	Cidr    string `json:"cidr"`
+	GroupId *int   `json:"group_id"`
+
+	// ParentGroupId is always required and specifies the group to which
+	// the rule is added.
+	ParentGroupId int `json:"parent_group_id"`
 }
 
-/// CreateSecurityGroupRule creates a security group rule.
+// CreateSecurityGroupRule creates a security group rule.
 // It can either be an ingress rule or group rule (see the
 // description of RuleInfo).
 func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (SecurityGroupRule, error) {

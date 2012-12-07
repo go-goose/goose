@@ -19,6 +19,10 @@ func (s *NovaHTTPSuite) SetUpSuite(c *C) {
 	s.service = New(s.Server.URL, baseURL, token)
 }
 
+func (s *NovaHTTPSuite) TearDownSuite(c *C) {
+	s.HTTPSuite.TearDownSuite(c)
+}
+
 func (s *NovaHTTPSuite) SetUpTest(c *C) {
 	s.HTTPSuite.SetUpTest(c)
 	s.Mux.Handle(baseURL, s.service)
@@ -26,8 +30,4 @@ func (s *NovaHTTPSuite) SetUpTest(c *C) {
 
 func (s *NovaHTTPSuite) TearDownTest(c *C) {
 	s.HTTPSuite.TearDownTest(c)
-}
-
-func (s *NovaHTTPSuite) TearDownSuite(c *C) {
-	s.HTTPSuite.TearDownSuite(c)
 }

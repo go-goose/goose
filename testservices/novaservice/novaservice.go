@@ -8,56 +8,47 @@ import (
 	"net/http"
 )
 
-// Flavor holds either one or both of the flavor information.
-type Flavor struct {
-	entity *nova.Entity
-	detail *nova.FlavorDetail
-}
-
-// Server holds either one or both of the server information.
-type Server struct {
-	server *nova.Entity
-	detail *nova.ServerDetail
-}
-
 // NovaService presents an direct-API to manipulate the internal
 // state, as well as an HTTP API double for OpenStack Nova.
 type NovaService interface {
 	// AddFlavor creates a new flavor.
-	AddFlavor(flavor Flavor) error
-
-	// HasFlavor verifies the given flavor exists or not.
-	HasFlavor(flavorId string) bool
+	AddFlavor(flavor nova.FlavorDetail) error
 
 	// GetFlavor retrieves an existing flavor by ID.
-	GetFlavor(flavorId string) (Flavor, error)
+	GetFlavor(flavorId string) (nova.FlavorDetail, error)
+
+	// GetFlavorAsEntity returns the stored FlavorDetail as Entity.
+	GetFlavorAsEntity(flavorId string) (nova.Entity, error)
 
 	// AllFlavors returns a list of all existing flavors.
-	AllFlavors() ([]Flavor, error)
+	AllFlavors() ([]nova.FlavorDetail, error)
+
+	// AllFlavorsAsEntities returns all flavors as Entity structs.
+	AllFlavorsAsEntities() ([]nova.Entity, error)
 
 	// RemoveFlavor deletes an existing flavor.
 	RemoveFlavor(flavorId string) error
 
 	// AddServer creates a new server.
-	AddServer(server Server) error
-
-	// HasServer verifies the given server exists or not.
-	HasServer(serverId string) bool
+	AddServer(server nova.ServerDetail) error
 
 	// GetServer retrieves an existing server by ID.
-	GetServer(serverId string) (Server, error)
+	GetServer(serverId string) (nova.ServerDetail, error)
+
+	// GetServerAsEntity returns the stored ServerDetail as Entity.
+	GetServerAsEntity(serverId string) (nova.Entity, error)
 
 	// AllServers returns a list of all existing servers.
-	AllServers() ([]Server, error)
+	AllServers() ([]nova.ServerDetail, error)
+
+	// AllServersAsEntities returns all servers as Entity structs.
+	AllServersAsEntities() ([]nova.Entity, error)
 
 	// RemoveServer deletes an existing server.
 	RemoveServer(serverId string) error
 
 	// AddSecurityGroup creates a new security group.
 	AddSecurityGroup(group nova.SecurityGroup) error
-
-	// HasSecurityGroup verifies the given security group exists.
-	HasSecurityGroup(groupId int) bool
 
 	// GetSecurityGroup retrieves an existing group by ID.
 	GetSecurityGroup(groupId int) (nova.SecurityGroup, error)
@@ -71,7 +62,7 @@ type NovaService interface {
 	// AddSecurityGroupRule creates a new rule in an existing group.
 	AddSecurityGroupRule(ruleId int, rule nova.RuleInfo) error
 
-	// HasSecurityGroupRule verifies the given group contains the given rule.
+	// HasSecurityGroupRule returns whether the given group contains the rule.
 	HasSecurityGroupRule(groupId, ruleId int) bool
 
 	// GetSecurityGroupRule retrieves an existing rule by ID.
@@ -83,7 +74,7 @@ type NovaService interface {
 	// AddServerSecurityGroup attaches an existing server to a group.
 	AddServerSecurityGroup(serverId string, groupId int) error
 
-	// HasServerSecurityGroup verifies the given server is part of the group.
+	// HasServerSecurityGroup returns whether the given server belongs to the group.
 	HasServerSecurityGroup(serverId string, groupId int) bool
 
 	// RemoveServerSecurityGroup detaches an existing server from a group.
@@ -92,14 +83,14 @@ type NovaService interface {
 	// AddFloatingIP creates a new floating IP address in the pool.
 	AddFloatingIP(ip nova.FloatingIP) error
 
-	// HasFloatingIP verifies the given floating IP address exists.
+	// HasFloatingIP returns whether the given floating IP address exists.
 	HasFloatingIP(address string) bool
 
 	// GetFloatingIP retrieves the floating IP by ID.
 	GetFloatingIP(ipId int) (nova.FloatingIP, error)
 
-	// AllFlotingIPs returns a list of all created floating IPs.
-	AllFlotingIPs() ([]nova.FloatingIP, error)
+	// AllFloatingIPs returns a list of all created floating IPs.
+	AllFloatingIPs() ([]nova.FloatingIP, error)
 
 	// RemoveFloatingIP deletes an existing floating IP by ID.
 	RemoveFloatingIP(ipId int) error
