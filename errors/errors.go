@@ -1,5 +1,5 @@
 // This package provides an Error implementation which knows about types of error, and which has support
-// for nested errors.
+// for error causes.
 
 package errors
 
@@ -15,68 +15,82 @@ const (
 	DuplicateValueError = Code("DuplicateValue")
 )
 
-// Error instances store an error code so that the type can be inferred, as well as an optional error cause.
+// Error instances store an optional error cause.
 type Error interface {
 	error
-	Code() Code
 	Context() interface{}
-	CausedBy(code Code) bool
+	Cause() error
 }
 
 type gooseError struct {
 	error
 	context interface{}
-	code    Code
+	errcode Code
 	cause   error
 }
 
+// Type checks.
+var _ Error = (*gooseError)(nil)
+
 // Code returns the error code.
-func (err *gooseError) Code() Code {
-	return err.code
+func (err *gooseError) code() Code {
+	return err.errcode
+}
+
+// Cause returns the error cause.
+func (err *gooseError) Cause() error {
+	return err.cause
 }
 
 // Context returns any context associated with the error.
+// If the top level error has no context, return the context from the root cause error (if any).
 func (err *gooseError) Context() interface{} {
-	return err.context
+	if err.context != nil {
+		return err.context
+	}
+	if e, ok := err.cause.(*gooseError); ok {
+		return e.context
+	}
+	return nil
 }
 
-// CausedBy returns true if this error or any of its nested errors are of the specified error code.
-func (err *gooseError) CausedBy(code Code) bool {
-	if err.code == code {
+// CausedBy returns true if this error or its cause are of the specified error code.
+func (err *gooseError) causedBy(code Code) bool {
+	if err.code() == code {
 		return true
 	}
-	if cause, ok := err.cause.(Error); ok {
-		return cause.CausedBy(code)
+	if cause, ok := err.cause.(*gooseError); ok {
+		return cause.code() == code
 	}
 	return false
 }
 
-// Error fulfills the error interface, taking account of any nested errors.
+// Error fulfills the error interface, taking account of any caused by error.
 func (err *gooseError) Error() string {
 	result := err.error.Error()
-	if cause, ok := err.cause.(Error); ok {
-		return fmt.Sprintf("%s, caused by: %s", result, cause.Error())
+	if err.cause != nil {
+		return fmt.Sprintf("%s, caused by: %s", result, err.cause.Error())
 	}
 	return result
 }
 
 func IsNotFound(err error) bool {
-	if e, ok := err.(Error); ok {
-		return e.CausedBy(NotFoundError)
+	if e, ok := err.(*gooseError); ok {
+		return e.causedBy(NotFoundError)
 	}
 	return false
 }
 
 func IsDuplicateValue(err error) bool {
-	if e, ok := err.(Error); ok {
-		return e.CausedBy(DuplicateValueError)
+	if e, ok := err.(*gooseError); ok {
+		return e.causedBy(DuplicateValueError)
 	}
 	return false
 }
 
 // New creates a new Error instance, using the specified context or cause.
-// If an error is provided, the new Error instance becomes a nested error, otherwise
-// the context is recorded.
+// If an error is provided, it becomes the cause of the newly created error, otherwise it is
+// recorded as the context.
 func Newf(contextOrCause interface{}, format string, args ...interface{}) Error {
 	var context interface{}
 	var cause error
@@ -84,30 +98,37 @@ func Newf(contextOrCause interface{}, format string, args ...interface{}) Error 
 	if cause, ok = contextOrCause.(error); !ok {
 		context = contextOrCause
 	}
-	return makeErrorf(unspecifiedError, context, cause, format, args...)
+	errcode := unspecifiedError
+	gooseError, ok := cause.(*gooseError)
+	if ok {
+		errcode = gooseError.code()
+	}
+	return makeErrorf(errcode, cause, context, format, args...)
 }
 
 // NewNotFound creates a NotFound error with the specified (optional) cause and error text.
-func NewNotFoundf(context interface{}, cause error, format string, args ...interface{}) Error {
+// context represents the object which could not be found eg name, entity etc.
+func NewNotFoundf(cause error, context interface{}, format string, args ...interface{}) Error {
 	if format == "" {
 		format = fmt.Sprintf("Not found: %s", context)
 	}
-	return makeErrorf(NotFoundError, context, cause, format, args...)
+	return makeErrorf(NotFoundError, cause, context, format, args...)
 }
 
 // NewDuplicateValue creates a DuplicateValue error with the specified (optional) cause and error text.
-func NewDuplicateValuef(context interface{}, cause error, format string, args ...interface{}) Error {
+// context represents the object which is duplicated.
+func NewDuplicateValuef(cause error, context interface{}, format string, args ...interface{}) Error {
 	if format == "" {
 		format = fmt.Sprintf("Duplicate: %s", context)
 	}
-	return makeErrorf(DuplicateValueError, context, cause, format, args...)
+	return makeErrorf(DuplicateValueError, cause, context, format, args...)
 }
 
 // makeError is a private method for creating Error instances.
-func makeErrorf(code Code, context interface{}, cause error, format string, args ...interface{}) Error {
+func makeErrorf(code Code, cause error, context interface{}, format string, args ...interface{}) Error {
 	return &gooseError{
 		context: context,
-		code:    code,
+		errcode: code,
 		error:   fmt.Errorf(format, args...),
 		cause:   cause,
 	}

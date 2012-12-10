@@ -209,13 +209,13 @@ func handleError(URL *url.URL, resp *http.Response, payloadInfo string) error {
 	switch resp.StatusCode {
 	case http.StatusNotFound:
 		{
-			return errors.NewNotFoundf(URL, nil, "Resource at %s not found", URL)
+			return errors.NewNotFoundf(nil, URL, "Resource at %s not found", URL)
 		}
 	case http.StatusBadRequest:
 		{
 			dupExp, _ := regexp.Compile(".*already exists.*")
 			if dupExp.Match(errBytes) {
-				return errors.NewDuplicateValuef(URL, nil, string(errBytes))
+				return errors.NewDuplicateValuef(nil, URL, string(errBytes))
 			}
 		}
 	}
