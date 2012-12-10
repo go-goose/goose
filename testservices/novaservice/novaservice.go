@@ -12,7 +12,7 @@ import (
 // state, as well as an HTTP API double for OpenStack Nova.
 type NovaService interface {
 	// buildFlavorLinks populates the Links field as needed.
-	buildFlavorLinks(flavor nova.FlavorDetail) nova.FlavorDetail
+	buildFlavorLinks(flavor *nova.FlavorDetail)
 
 	// addFlavor creates a new flavor.
 	addFlavor(flavor nova.FlavorDetail) error
@@ -33,7 +33,7 @@ type NovaService interface {
 	removeFlavor(flavorId string) error
 
 	// buildServerLinks populates the Links field as needed.
-	buildServerLinks(server nova.ServerDetail) nova.ServerDetail
+	buildServerLinks(server *nova.ServerDetail)
 
 	// addServer creates a new server.
 	addServer(server nova.ServerDetail) error

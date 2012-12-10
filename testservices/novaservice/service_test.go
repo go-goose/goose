@@ -113,7 +113,8 @@ func (s *NovaServiceSuite) TestAddRemoveFlavor(c *C) {
 }
 
 func (s *NovaServiceSuite) TestBuildLinksAndAddFlavor(c *C) {
-	flavor := s.service.buildFlavorLinks(nova.FlavorDetail{Id: "test"})
+	flavor := nova.FlavorDetail{Id: "test"}
+	s.service.buildFlavorLinks(&flavor)
 	s.createFlavor(c, flavor)
 	defer s.deleteFlavor(c, flavor)
 	fl, _ := s.service.getFlavor(flavor.Id)
@@ -232,7 +233,8 @@ func (s *NovaServiceSuite) TestAddRemoveServer(c *C) {
 }
 
 func (s *NovaServiceSuite) TestBuildLinksAndAddServer(c *C) {
-	server := s.service.buildServerLinks(nova.ServerDetail{Id: "test"})
+	server := nova.ServerDetail{Id: "test"}
+	s.service.buildServerLinks(&server)
 	s.createServer(c, server)
 	defer s.deleteServer(c, server)
 	sr, _ := s.service.getServer(server.Id)

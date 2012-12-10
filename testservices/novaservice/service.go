@@ -42,7 +42,7 @@ func New(hostname, baseURL, token string) *Nova {
 // buildFlavorLinks populates the Links field of the passed
 // FlavorDetail as needed by OpenStack HTTP API. Call this
 // before addFlavor().
-func (n *Nova) buildFlavorLinks(flavor nova.FlavorDetail) nova.FlavorDetail {
+func (n *Nova) buildFlavorLinks(flavor *nova.FlavorDetail) {
 	ep := n.hostname
 	ver := strings.TrimLeft(n.baseURL, "/")
 	url := n.token + "/flavors/" + flavor.Id
@@ -50,7 +50,6 @@ func (n *Nova) buildFlavorLinks(flavor nova.FlavorDetail) nova.FlavorDetail {
 		nova.Link{Href: ep + ver + url, Rel: "self"},
 		nova.Link{Href: ep + url, Rel: "bookmark"},
 	}
-	return flavor
 }
 
 // addFlavor creates a new flavor.
@@ -118,7 +117,7 @@ func (n *Nova) removeFlavor(flavorId string) error {
 // buildServerLinks populates the Links field of the passed
 // ServerDetail as needed by OpenStack HTTP API. Call this
 // before addServer().
-func (n *Nova) buildServerLinks(server nova.ServerDetail) nova.ServerDetail {
+func (n *Nova) buildServerLinks(server *nova.ServerDetail) {
 	ep := n.hostname
 	ver := strings.TrimLeft(n.baseURL, "/")
 	url := n.token + "/servers/" + server.Id
@@ -126,7 +125,6 @@ func (n *Nova) buildServerLinks(server nova.ServerDetail) nova.ServerDetail {
 		nova.Link{Href: ep + ver + url, Rel: "self"},
 		nova.Link{Href: ep + url, Rel: "bookmark"},
 	}
-	return server
 }
 
 // addServer creates a new server.
