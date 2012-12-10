@@ -44,7 +44,7 @@ func New(hostname, baseURL, token string) *Nova {
 // FlavorDetail as needed by OpenStack HTTP API. Call this
 // before addFlavor().
 func (n *Nova) buildFlavorLinks(flavor *nova.FlavorDetail) {
-	ep := n.hostname
+	ep := strings.TrimRight(n.hostname, "/") + "/"
 	ver := strings.TrimLeft(n.baseURL, "/")
 	url := n.token + "/flavors/" + flavor.Id
 	flavor.Links = []nova.Link{
@@ -119,7 +119,7 @@ func (n *Nova) removeFlavor(flavorId string) error {
 // ServerDetail as needed by OpenStack HTTP API. Call this
 // before addServer().
 func (n *Nova) buildServerLinks(server *nova.ServerDetail) {
-	ep := n.hostname
+	ep := strings.TrimRight(n.hostname, "/") + "/"
 	ver := strings.TrimLeft(n.baseURL, "/")
 	url := n.token + "/servers/" + server.Id
 	server.Links = []nova.Link{

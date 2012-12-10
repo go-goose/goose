@@ -22,9 +22,10 @@ var hostname = "http://example.com/"
 var _ = Suite(&NovaSuite{})
 
 func (s *NovaSuite) SetUpSuite(c *C) {
+	ep := strings.TrimRight(hostname, "/") + "/"
 	s.service = New(hostname, baseURL, token)
-	s.endpointNoVersion = hostname + token
-	s.endpoint = hostname + strings.TrimLeft(baseURL, "/") + token
+	s.endpointNoVersion = ep + token
+	s.endpoint = ep + strings.TrimLeft(baseURL, "/") + token
 }
 
 func (s *NovaSuite) ensureNoFlavor(c *C, flavor nova.FlavorDetail) {
