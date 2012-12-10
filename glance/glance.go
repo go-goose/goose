@@ -43,7 +43,10 @@ func (c *Client) ListImages() ([]Image, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
 	err := c.client.SendRequest(client.GET, "compute", apiImages, &requestData,
 		"failed to get list of images")
-	return resp.Images, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.Images, nil
 }
 
 type ImageMetadata struct {
@@ -77,11 +80,14 @@ func (c *Client) ListImagesDetail() ([]ImageDetail, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiImagesDetail, &requestData,
 		"failed to get list of images details")
-	return resp.Images, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.Images, nil
 }
 
 // GetImageDetail lists details of the specified image.
-func (c *Client) GetImageDetail(imageId string) (ImageDetail, error) {
+func (c *Client) GetImageDetail(imageId string) (*ImageDetail, error) {
 	var resp struct {
 		Image ImageDetail
 	}
@@ -89,5 +95,8 @@ func (c *Client) GetImageDetail(imageId string) (ImageDetail, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", url, &requestData,
 		"failed to get details for imageId=%s", imageId)
-	return resp.Image, err
+	if err != nil {
+		return nil, err
+	}
+	return &resp.Image, nil
 }

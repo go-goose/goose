@@ -8,6 +8,7 @@ import (
 	"launchpad.net/goose/client"
 	goosehttp "launchpad.net/goose/http"
 	"net/http"
+	"net/url"
 )
 
 const (
@@ -20,6 +21,35 @@ const (
 	apiFloatingIPs        = "/os-floating-ips"
 )
 
+const (
+	// Server status values.
+	StatusActive       = "ACTIVE"        // The server is active.
+	StatusBuild        = "BUILD"         // The server has not finished the original build process.
+	StatusDeleted      = "DELETED"       // The server is deleted.
+	StatusError        = "ERROR"         // The server is in error.
+	StatusHardReboot   = "HARD_REBOOT"   // The server is hard rebooting.
+	StatusPassword     = "PASSWORD"      // The password is being reset on the server.
+	StatusReboot       = "REBOOT"        // The server is in a soft reboot state.
+	StatusRebuild      = "REBUILD"       // The server is currently being rebuilt from an image.
+	StatusRescue       = "RESCUE"        // The server is in rescue mode.
+	StatusResize       = "RESIZE"        // Server is performing the differential copy of data that changed during its initial copy.
+	StatusShutoff      = "SHUTOFF"       // The virtual machine (VM) was powered down by the user, but not through the OpenStack Compute API.
+	StatusSuspended    = "SUSPENDED"     // The server is suspended, either by request or necessity.
+	StatusUnknown      = "UNKNOWN"       // The state of the server is unknown. Contact your cloud provider.
+	StatusVerifyResize = "VERIFY_RESIZE" // System is awaiting confirmation that the server is operational after a move or resize.
+)
+
+const (
+	// Filter keys.
+	FilterStatus       = "status"        // The server status. See Server Status Values.
+	FilterImage        = "image"         // The image reference specified as an ID or full URL.
+	FilterFlavor       = "flavor"        // The flavor reference specified as an ID or full URL.
+	FilterServer       = "name"          // The server name.
+	FilterMarker       = "marker"        // The ID of the last item in the previous list.
+	FilterLimit        = "limit"         // The page size.
+	FilterChangesSince = "changes-since" // The changes-since time. The list contains servers that have been deleted since the changes-since time.
+)
+
 // Client provides a means to access the OpenStack Compute Service.
 type Client struct {
 	client client.Client
@@ -27,6 +57,26 @@ type Client struct {
 
 func New(client client.Client) *Client {
 	return &Client{client}
+}
+
+// ----------------------------------------------------------------------------
+// Filtering helper.
+
+// Filter builds filtering parameters to be used in an OpenStack query which supports
+// filtering.  For example:
+//
+//     filter := NewFilter()
+//     filter.Add(nova.FilterServer, "server_name")
+//     filter.Add(nova.FilterStatus, nova.StatusBuild)
+//     resp, err := nova.ListServers(filter)
+//
+type Filter struct {
+	url.Values
+}
+
+// NewFilter creates a new Filter.
+func NewFilter() *Filter {
+	return &Filter{make(url.Values)}
 }
 
 type Link struct {
@@ -71,18 +121,24 @@ func (c *Client) ListFlavorsDetail() ([]FlavorDetail, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiFlavorsDetail, &requestData,
 		"failed to get list of flavors details")
-	return resp.Flavors, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.Flavors, nil
 }
 
 // ListServers lists IDs, names, and links for all servers.
-func (c *Client) ListServers() ([]Entity, error) {
+func (c *Client) ListServers(filter *Filter) ([]Entity, error) {
 	var resp struct {
 		Servers []Entity
 	}
-	requestData := goosehttp.RequestData{RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
+	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.Values, ExpectedStatus: []int{http.StatusOK}}
 	err := c.client.SendRequest(client.GET, "compute", apiServers, &requestData,
 		"failed to get list of servers")
-	return resp.Servers, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.Servers, nil
 }
 
 type ServerDetail struct {
@@ -103,18 +159,21 @@ type ServerDetail struct {
 }
 
 // ListServersDetail lists all details for available servers.
-func (c *Client) ListServersDetail() ([]ServerDetail, error) {
+func (c *Client) ListServersDetail(filter *Filter) ([]ServerDetail, error) {
 	var resp struct {
 		Servers []ServerDetail
 	}
-	requestData := goosehttp.RequestData{RespValue: &resp}
+	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.Values}
 	err := c.client.SendRequest(client.GET, "compute", apiServersDetail, &requestData,
 		"failed to get list of servers details")
-	return resp.Servers, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.Servers, nil
 }
 
 // GetServer lists details for the specified server.
-func (c *Client) GetServer(serverId string) (ServerDetail, error) {
+func (c *Client) GetServer(serverId string) (*ServerDetail, error) {
 	var resp struct {
 		Server ServerDetail
 	}
@@ -122,7 +181,10 @@ func (c *Client) GetServer(serverId string) (ServerDetail, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", url, &requestData,
 		"failed to get details for serverId=%s", serverId)
-	return resp.Server, err
+	if err != nil {
+		return nil, err
+	}
+	return &resp.Server, nil
 }
 
 // DeleteServer terminates the specified server.
@@ -148,7 +210,7 @@ type RunServerOpts struct {
 }
 
 // RunServer creates a new server.
-func (c *Client) RunServer(opts RunServerOpts) error {
+func (c *Client) RunServer(opts RunServerOpts) (*Entity, error) {
 	var req struct {
 		Server RunServerOpts `json:"server"`
 	}
@@ -158,10 +220,16 @@ func (c *Client) RunServer(opts RunServerOpts) error {
 		encoded := base64.StdEncoding.EncodeToString(data)
 		req.Server.UserData = &encoded
 	}
-	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
+	var resp struct {
+		Server Entity `json:"server"`
+	}
+	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp, ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.POST, "compute", apiServers, &requestData,
 		"failed to run a server with %#v", opts)
-	return err
+	if err != nil {
+		return nil, err
+	}
+	return &resp.Server, nil
 }
 
 // SecurityGroupRef refers to an existing named security group
@@ -196,7 +264,10 @@ func (c *Client) ListSecurityGroups() ([]SecurityGroup, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiSecurityGroups, &requestData,
 		"failed to list security groups")
-	return resp.Groups, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.Groups, nil
 }
 
 // GetServerSecurityGroups list security groups for a specific server.
@@ -209,11 +280,14 @@ func (c *Client) GetServerSecurityGroups(serverId string) ([]SecurityGroup, erro
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", url, &requestData,
 		"failed to list server (%s) security groups", serverId)
-	return resp.Groups, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.Groups, nil
 }
 
 // CreateSecurityGroup creates a new security group.
-func (c *Client) CreateSecurityGroup(name, description string) (SecurityGroup, error) {
+func (c *Client) CreateSecurityGroup(name, description string) (*SecurityGroup, error) {
 	var req struct {
 		SecurityGroup struct {
 			Name        string `json:"name"`
@@ -229,7 +303,10 @@ func (c *Client) CreateSecurityGroup(name, description string) (SecurityGroup, e
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
 	err := c.client.SendRequest(client.POST, "compute", apiSecurityGroups, &requestData,
 		"failed to create a security group with name=%s", name)
-	return resp.SecurityGroup, err
+	if err != nil {
+		return nil, err
+	}
+	return &resp.SecurityGroup, nil
 }
 
 // DeleteSecurityGroup deletes the specified security group.
@@ -263,7 +340,7 @@ func (c *Client) DeleteSecurityGroup(groupId int) error {
 // Nova source: https://github.com/openstack/nova.git
 type RuleInfo struct {
 	/// IPProtocol is optional, and if specified must be "tcp", "udp" or
-	//  "icmp" (in this case, both FromPort and ToPort can be -1). 
+	//  "icmp" (in this case, both FromPort and ToPort can be -1).
 	IPProtocol string `json:"ip_protocol"`
 
 	// FromPort and ToPort are both optional, and if specifed must be
@@ -288,7 +365,7 @@ type RuleInfo struct {
 // CreateSecurityGroupRule creates a security group rule.
 // It can either be an ingress rule or group rule (see the
 // description of RuleInfo).
-func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (SecurityGroupRule, error) {
+func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (*SecurityGroupRule, error) {
 	var req struct {
 		SecurityGroupRule RuleInfo `json:"security_group_rule"`
 	}
@@ -301,7 +378,10 @@ func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (SecurityGroupRule, 
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp}
 	err := c.client.SendRequest(client.POST, "compute", apiSecurityGroupRules, &requestData,
 		"failed to create a rule for the security group with id=%s", ruleInfo.GroupId)
-	return resp.SecurityGroupRule, err
+	if err != nil {
+		return nil, err
+	}
+	return &resp.SecurityGroupRule, nil
 }
 
 // DeleteSecurityGroupRule deletes the specified security group rule.
@@ -362,11 +442,14 @@ func (c *Client) ListFloatingIPs() ([]FloatingIP, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiFloatingIPs, &requestData,
 		"failed to list floating ips")
-	return resp.FloatingIPs, err
+	if err != nil {
+		return nil, err
+	}
+	return resp.FloatingIPs, nil
 }
 
 // GetFloatingIP lists details of the floating IP address associated with specified id.
-func (c *Client) GetFloatingIP(ipId int) (FloatingIP, error) {
+func (c *Client) GetFloatingIP(ipId int) (*FloatingIP, error) {
 	var resp struct {
 		FloatingIP FloatingIP `json:"floating_ip"`
 	}
@@ -375,11 +458,14 @@ func (c *Client) GetFloatingIP(ipId int) (FloatingIP, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", url, &requestData,
 		"failed to get floating ip %d details", ipId)
-	return resp.FloatingIP, err
+	if err != nil {
+		return nil, err
+	}
+	return &resp.FloatingIP, nil
 }
 
 // AllocateFloatingIP allocates a new floating IP address to a tenant or account.
-func (c *Client) AllocateFloatingIP() (FloatingIP, error) {
+func (c *Client) AllocateFloatingIP() (*FloatingIP, error) {
 	var resp struct {
 		FloatingIP FloatingIP `json:"floating_ip"`
 	}
@@ -387,7 +473,10 @@ func (c *Client) AllocateFloatingIP() (FloatingIP, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.POST, "compute", apiFloatingIPs, &requestData,
 		"failed to allocate a floating ip")
-	return resp.FloatingIP, err
+	if err != nil {
+		return nil, err
+	}
+	return &resp.FloatingIP, nil
 }
 
 // DeleteFloatingIP deallocates the floating IP address associated with the specified id.

@@ -92,9 +92,12 @@ func (c *OpenStackClient) MakeServiceURL(serviceType string, parts []string) (st
 
 func (c *OpenStackClient) SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData,
 	context string, contextArgs ...interface{}) (err error) {
-	if !c.IsAuthenticated() {
-		err = gooseerrors.AddContext(errors.New("not authenticated"), context, contextArgs...)
-		return
+	if c.creds != nil && !c.IsAuthenticated() {
+		err = c.Authenticate()
+		if err != nil {
+			err = gooseerrors.AddContext(err, context, contextArgs...)
+			return
+		}
 	}
 
 	url, err := c.MakeServiceURL(svcType, []string{apiCall})

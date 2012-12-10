@@ -65,3 +65,39 @@ func (s *CredentialsTestSuite) TestCredentialsFromEnv(c *C) {
 		c.Check(creds.TenantName, Equals, scenario.tenant)
 	}
 }
+
+func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvValid(c *C) {
+	env := map[string]string{
+		"OS_AUTH_URL":    "http://auth",
+		"OS_USERNAME":    "test-user",
+		"OS_PASSWORD":    "test-pass",
+		"OS_TENANT_NAME": "tenant-name",
+		"OS_REGION_NAME": "region",
+	}
+	for key, value := range env {
+		os.Setenv(key, value)
+	}
+	creds, err := CompleteCredentialsFromEnv()
+	c.Assert(err, IsNil)
+	c.Check(creds.URL, Equals, "http://auth")
+	c.Check(creds.User, Equals, "test-user")
+	c.Check(creds.Secrets, Equals, "test-pass")
+	c.Check(creds.Region, Equals, "region")
+	c.Check(creds.TenantName, Equals, "tenant-name")
+}
+
+// An error is returned if not all required environment variables are set.
+func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvInvalid(c *C) {
+	env := map[string]string{
+		"OS_AUTH_URL":    "http://auth",
+		"OS_USERNAME":    "test-user",
+		"OS_TENANT_NAME": "tenant-name",
+		"OS_REGION_NAME": "region",
+	}
+	for key, value := range env {
+		os.Setenv(key, value)
+	}
+	_, err := CompleteCredentialsFromEnv()
+	c.Assert(err, Not(IsNil))
+	c.Assert(err.Error(), Matches, "required environment variable not set.*: Secrets")
+}
