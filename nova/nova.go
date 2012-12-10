@@ -53,11 +53,12 @@ func (c *Client) ListFlavors() ([]Entity, error) {
 	return resp.Flavors, err
 }
 
+// FlavorDetail describes detailed information about a flavor.
 type FlavorDetail struct {
 	Name  string
-	RAM   int
-	VCPUs int
-	Disk  int
+	RAM   int // Available RAM, in MB
+	VCPUs int // Number of virtual CPU (cores)
+	Disk  int // Available root partition space, in GB
 	Id    string
 	Links []Link
 }

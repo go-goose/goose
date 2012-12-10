@@ -11,8 +11,11 @@ import (
 // NovaService presents an direct-API to manipulate the internal
 // state, as well as an HTTP API double for OpenStack Nova.
 type NovaService interface {
-	// addFlavor creates a new flavor, optionally populating the links.
-	addFlavor(flavor nova.FlavorDetail, buildLinks bool) error
+	// buildFlavorLinks populates the Links field as needed.
+	buildFlavorLinks(flavor nova.FlavorDetail) nova.FlavorDetail
+
+	// addFlavor creates a new flavor.
+	addFlavor(flavor nova.FlavorDetail) error
 
 	// getFlavor retrieves an existing flavor by ID.
 	getFlavor(flavorId string) (*nova.FlavorDetail, error)
@@ -29,8 +32,11 @@ type NovaService interface {
 	// removeFlavor deletes an existing flavor.
 	removeFlavor(flavorId string) error
 
-	// addServer creates a new server, optionally populating the links.
-	addServer(server nova.ServerDetail, buildLinks bool) error
+	// buildServerLinks populates the Links field as needed.
+	buildServerLinks(server nova.ServerDetail) nova.ServerDetail
+
+	// addServer creates a new server.
+	addServer(server nova.ServerDetail) error
 
 	// getServer retrieves an existing server by ID.
 	getServer(serverId string) (*nova.ServerDetail, error)

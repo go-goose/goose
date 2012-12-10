@@ -39,19 +39,24 @@ func New(hostname, baseURL, token string) *Nova {
 	return nova
 }
 
-// addFlavor creates a new flavor, optionally populating the links.
-func (n *Nova) addFlavor(flavor nova.FlavorDetail, buildLinks bool) error {
+// buildFlavorLinks populates the Links field of the passed
+// FlavorDetail as needed by OpenStack HTTP API. Call this
+// before addFlavor().
+func (n *Nova) buildFlavorLinks(flavor nova.FlavorDetail) nova.FlavorDetail {
+	ep := n.hostname
+	ver := strings.TrimLeft(n.baseURL, "/")
+	url := n.token + "/flavors/" + flavor.Id
+	flavor.Links = []nova.Link{
+		nova.Link{Href: ep + ver + url, Rel: "self"},
+		nova.Link{Href: ep + url, Rel: "bookmark"},
+	}
+	return flavor
+}
+
+// addFlavor creates a new flavor.
+func (n *Nova) addFlavor(flavor nova.FlavorDetail) error {
 	if _, err := n.getFlavor(flavor.Id); err == nil {
 		return fmt.Errorf("a flavor with id %q already exists", flavor.Id)
-	}
-	if buildLinks {
-		ep := n.hostname
-		ver := strings.TrimLeft(n.baseURL, "/")
-		url := n.token + "/flavors/" + flavor.Id
-		flavor.Links = []nova.Link{
-			nova.Link{Href: ep + ver + url, Rel: "self"},
-			nova.Link{Href: ep + url, Rel: "bookmark"},
-		}
 	}
 	n.flavors[flavor.Id] = flavor
 	return nil
@@ -110,19 +115,24 @@ func (n *Nova) removeFlavor(flavorId string) error {
 	return nil
 }
 
-// addServer creates a new server, optionally populating the links.
-func (n *Nova) addServer(server nova.ServerDetail, buildLinks bool) error {
+// buildServerLinks populates the Links field of the passed
+// ServerDetail as needed by OpenStack HTTP API. Call this
+// before addServer().
+func (n *Nova) buildServerLinks(server nova.ServerDetail) nova.ServerDetail {
+	ep := n.hostname
+	ver := strings.TrimLeft(n.baseURL, "/")
+	url := n.token + "/servers/" + server.Id
+	server.Links = []nova.Link{
+		nova.Link{Href: ep + ver + url, Rel: "self"},
+		nova.Link{Href: ep + url, Rel: "bookmark"},
+	}
+	return server
+}
+
+// addServer creates a new server.
+func (n *Nova) addServer(server nova.ServerDetail) error {
 	if _, err := n.getServer(server.Id); err == nil {
 		return fmt.Errorf("a server with id %q already exists", server.Id)
-	}
-	if buildLinks {
-		ep := n.hostname
-		ver := strings.TrimLeft(n.baseURL, "/")
-		url := n.token + "/servers/" + server.Id
-		server.Links = []nova.Link{
-			nova.Link{Href: ep + ver + url, Rel: "self"},
-			nova.Link{Href: ep + url, Rel: "bookmark"},
-		}
 	}
 	n.servers[server.Id] = server
 	return nil
