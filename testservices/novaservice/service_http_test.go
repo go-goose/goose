@@ -9,7 +9,7 @@ import (
 
 type NovaHTTPSuite struct {
 	httpsuite.HTTPSuite
-	service NovaService
+	service *NovaService
 }
 
 var _ = Suite(&NovaHTTPSuite{})

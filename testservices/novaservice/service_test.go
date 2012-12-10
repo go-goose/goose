@@ -10,7 +10,7 @@ import (
 )
 
 type NovaServiceSuite struct {
-	service           NovaService
+	service           *NovaService
 	endpointNoVersion string
 	endpoint          string
 }
@@ -28,27 +28,27 @@ func (s *NovaServiceSuite) SetUpSuite(c *C) {
 }
 
 func (s *NovaServiceSuite) ensureNoFlavor(c *C, flavor nova.FlavorDetail) {
-	_, err := s.service.getFlavor(flavor.Id)
+	_, err := s.service.flavor(flavor.Id)
 	c.Assert(err, ErrorMatches, fmt.Sprintf("no such flavor %q", flavor.Id))
 }
 
 func (s *NovaServiceSuite) ensureNoServer(c *C, server nova.ServerDetail) {
-	_, err := s.service.getServer(server.Id)
+	_, err := s.service.server(server.Id)
 	c.Assert(err, ErrorMatches, fmt.Sprintf("no such server %q", server.Id))
 }
 
 func (s *NovaServiceSuite) ensureNoGroup(c *C, group nova.SecurityGroup) {
-	_, err := s.service.getSecurityGroup(group.Id)
+	_, err := s.service.securityGroup(group.Id)
 	c.Assert(err, ErrorMatches, fmt.Sprintf("no such security group %d", group.Id))
 }
 
 func (s *NovaServiceSuite) ensureNoRule(c *C, rule nova.SecurityGroupRule) {
-	_, err := s.service.getSecurityGroupRule(rule.Id)
+	_, err := s.service.securityGroupRule(rule.Id)
 	c.Assert(err, ErrorMatches, fmt.Sprintf("no such security group rule %d", rule.Id))
 }
 
 func (s *NovaServiceSuite) ensureNoIP(c *C, ip nova.FloatingIP) {
-	_, err := s.service.getFloatingIP(ip.Id)
+	_, err := s.service.floatingIP(ip.Id)
 	c.Assert(err, ErrorMatches, fmt.Sprintf("no such floating IP %d", ip.Id))
 }
 
@@ -117,7 +117,7 @@ func (s *NovaServiceSuite) TestBuildLinksAndAddFlavor(c *C) {
 	s.service.buildFlavorLinks(&flavor)
 	s.createFlavor(c, flavor)
 	defer s.deleteFlavor(c, flavor)
-	fl, _ := s.service.getFlavor(flavor.Id)
+	fl, _ := s.service.flavor(flavor.Id)
 	url := "/flavors/" + flavor.Id
 	links := []nova.Link{
 		nova.Link{Href: s.endpoint + url, Rel: "self"},
@@ -135,7 +135,7 @@ func (s *NovaServiceSuite) TestAddFlavorWithLinks(c *C) {
 	}
 	s.createFlavor(c, flavor)
 	defer s.deleteFlavor(c, flavor)
-	fl, _ := s.service.getFlavor(flavor.Id)
+	fl, _ := s.service.flavor(flavor.Id)
 	c.Assert(*fl, DeepEquals, flavor)
 }
 
@@ -207,7 +207,7 @@ func (s *NovaServiceSuite) TestGetFlavor(c *C) {
 	}
 	s.createFlavor(c, flavor)
 	defer s.deleteFlavor(c, flavor)
-	fl, _ := s.service.getFlavor(flavor.Id)
+	fl, _ := s.service.flavor(flavor.Id)
 	c.Assert(*fl, DeepEquals, flavor)
 }
 
@@ -222,7 +222,7 @@ func (s *NovaServiceSuite) TestGetFlavorAsEntity(c *C) {
 	}
 	s.createFlavor(c, flavor)
 	defer s.deleteFlavor(c, flavor)
-	ent, _ := s.service.getFlavorAsEntity(flavor.Id)
+	ent, _ := s.service.flavorAsEntity(flavor.Id)
 	c.Assert(*ent, DeepEquals, entity)
 }
 
@@ -237,7 +237,7 @@ func (s *NovaServiceSuite) TestBuildLinksAndAddServer(c *C) {
 	s.service.buildServerLinks(&server)
 	s.createServer(c, server)
 	defer s.deleteServer(c, server)
-	sr, _ := s.service.getServer(server.Id)
+	sr, _ := s.service.server(server.Id)
 	url := "/servers/" + server.Id
 	links := []nova.Link{
 		nova.Link{Href: s.endpoint + url, Rel: "self"},
@@ -255,7 +255,7 @@ func (s *NovaServiceSuite) TestAddServerWithLinks(c *C) {
 	}
 	s.createServer(c, server)
 	defer s.deleteServer(c, server)
-	sr, _ := s.service.getServer(server.Id)
+	sr, _ := s.service.server(server.Id)
 	c.Assert(*sr, DeepEquals, server)
 }
 
@@ -335,7 +335,7 @@ func (s *NovaServiceSuite) TestGetServer(c *C) {
 	}
 	s.createServer(c, server)
 	defer s.deleteServer(c, server)
-	sr, _ := s.service.getServer(server.Id)
+	sr, _ := s.service.server(server.Id)
 	c.Assert(*sr, DeepEquals, server)
 }
 
@@ -350,7 +350,7 @@ func (s *NovaServiceSuite) TestGetServerAsEntity(c *C) {
 	}
 	s.createServer(c, server)
 	defer s.deleteServer(c, server)
-	ent, _ := s.service.getServerAsEntity(server.Id)
+	ent, _ := s.service.serverAsEntity(server.Id)
 	c.Assert(*ent, DeepEquals, entity)
 }
 
@@ -371,7 +371,7 @@ func (s *NovaServiceSuite) TestAddSecurityGroupWithRules(c *C) {
 	}
 	s.createGroup(c, group)
 	defer s.deleteGroup(c, group)
-	gr, _ := s.service.getSecurityGroup(group.Id)
+	gr, _ := s.service.securityGroup(group.Id)
 	c.Assert(*gr, DeepEquals, group)
 }
 
@@ -420,7 +420,7 @@ func (s *NovaServiceSuite) TestGetSecurityGroup(c *C) {
 	}
 	s.createGroup(c, group)
 	defer s.deleteGroup(c, group)
-	gr, _ := s.service.getSecurityGroup(group.Id)
+	gr, _ := s.service.securityGroup(group.Id)
 	c.Assert(*gr, DeepEquals, group)
 }
 
@@ -471,7 +471,7 @@ func (s *NovaServiceSuite) TestAddGetIngressSecurityGroupRule(c *C) {
 	err := s.service.addSecurityGroupRule(rule.Id, ri)
 	c.Assert(err, IsNil)
 	defer s.deleteRule(c, rule)
-	ru, err := s.service.getSecurityGroupRule(rule.Id)
+	ru, err := s.service.securityGroupRule(rule.Id)
 	c.Assert(err, IsNil)
 	c.Assert(ru.Id, Equals, rule.Id)
 	c.Assert(ru.ParentGroupId, Equals, rule.ParentGroupId)
@@ -510,7 +510,7 @@ func (s *NovaServiceSuite) TestAddGetGroupSecurityGroupRule(c *C) {
 	err := s.service.addSecurityGroupRule(rule.Id, ri)
 	c.Assert(err, IsNil)
 	defer s.deleteRule(c, rule)
-	ru, err := s.service.getSecurityGroupRule(rule.Id)
+	ru, err := s.service.securityGroupRule(rule.Id)
 	c.Assert(err, IsNil)
 	c.Assert(ru.Id, Equals, rule.Id)
 	c.Assert(ru.ParentGroupId, Equals, rule.ParentGroupId)
@@ -585,7 +585,7 @@ func (s *NovaServiceSuite) TestAddSecurityGroupRuleUpdatesParent(c *C) {
 	c.Assert(err, IsNil)
 	defer s.deleteRule(c, rule)
 	group.Rules = []nova.SecurityGroupRule{rule}
-	gr, err := s.service.getSecurityGroup(group.Id)
+	gr, err := s.service.securityGroup(group.Id)
 	c.Assert(err, IsNil)
 	c.Assert(*gr, DeepEquals, group)
 }
@@ -773,7 +773,7 @@ func (s *NovaServiceSuite) TestGetFloatingIP(c *C) {
 	}
 	s.createIP(c, fip)
 	defer s.deleteIP(c, fip)
-	ip, _ := s.service.getFloatingIP(fip.Id)
+	ip, _ := s.service.floatingIP(fip.Id)
 	c.Assert(*ip, DeepEquals, fip)
 }
 

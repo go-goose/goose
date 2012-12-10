@@ -7,5 +7,5 @@ import (
 )
 
 // ServeHTTP is the main entry point in the HTTP request processing.
-func (s *Nova) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *NovaService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
