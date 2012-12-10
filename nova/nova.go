@@ -102,7 +102,7 @@ func (c *Client) ListFlavors() ([]Entity, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiFlavors, &requestData)
 	if err != nil {
-		return nil, errors.Newf(err, "failed to get list of flavours")
+		return nil, errors.Newf(errors.UnspecifiedError, err, nil, "failed to get list of flavours")
 	}
 	return resp.Flavors, err
 }
@@ -124,7 +124,7 @@ func (c *Client) ListFlavorsDetail() ([]FlavorDetail, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiFlavorsDetail, &requestData)
 	if err != nil {
-		return nil, errors.Newf(err, "failed to get list of flavour details")
+		return nil, errors.Newf(errors.UnspecifiedError, err, nil, "failed to get list of flavour details")
 	}
 	return resp.Flavors, nil
 }
@@ -137,7 +137,7 @@ func (c *Client) ListServers(filter *Filter) ([]Entity, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.Values, ExpectedStatus: []int{http.StatusOK}}
 	err := c.client.SendRequest(client.GET, "compute", apiServers, &requestData)
 	if err != nil {
-		return nil, errors.Newf(err, "failed to get list of servers")
+		return nil, errors.Newf(errors.UnspecifiedError, err, nil, "failed to get list of servers")
 	}
 	return resp.Servers, nil
 }
@@ -167,7 +167,7 @@ func (c *Client) ListServersDetail(filter *Filter) ([]ServerDetail, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.Values}
 	err := c.client.SendRequest(client.GET, "compute", apiServersDetail, &requestData)
 	if err != nil {
-		return nil, errors.Newf(err, "failed to get list of server details")
+		return nil, errors.Newf(errors.UnspecifiedError, err, nil, "failed to get list of server details")
 	}
 	return resp.Servers, nil
 }
@@ -181,7 +181,7 @@ func (c *Client) GetServer(serverId string) (*ServerDetail, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", url, &requestData)
 	if err != nil {
-		return nil, errors.Newf(err, "failed to get details for serverId: %s", serverId)
+		return nil, errors.Newf(errors.UnspecifiedError, err, nil, "failed to get details for serverId: %s", serverId)
 	}
 	return &resp.Server, nil
 }
@@ -195,7 +195,7 @@ func (c *Client) DeleteServer(serverId string) error {
 	requestData := goosehttp.RequestData{RespValue: &resp, ExpectedStatus: []int{http.StatusNoContent}}
 	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, "failed to delete server with serverId: %s", serverId)
+		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed to delete server with serverId: %s", serverId)
 	}
 	return err
 }
@@ -229,7 +229,7 @@ func (c *Client) RunServer(opts RunServerOpts) (*Entity, error) {
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp, ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.POST, "compute", apiServers, &requestData)
 	if err != nil {
-		return nil, errors.Newf(err, "failed to run a server with %#v", opts)
+		return nil, errors.Newf(errors.UnspecifiedError, err, nil, "failed to run a server with %#v", opts)
 	}
 	return &resp.Server, nil
 }
@@ -260,7 +260,7 @@ func (c *Client) ListSecurityGroups() ([]SecurityGroup, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiSecurityGroups, &requestData)
 	if err != nil {
-		return nil, errors.Newf(err, "failed to list security groups")
+		return nil, errors.Newf(errors.UnspecifiedError, err, nil, "failed to list security groups")
 	}
 	return resp.Groups, nil
 }
@@ -275,7 +275,7 @@ func (c *Client) GetServerSecurityGroups(serverId string) ([]SecurityGroup, erro
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", url, &requestData)
 	if err != nil {
-		return nil, errors.Newf(err, "failed to list server (%s) security groups", serverId)
+		return nil, errors.Newf(errors.UnspecifiedError, err, nil, "failed to list server (%s) security groups", serverId)
 	}
 	return resp.Groups, nil
 }
@@ -297,7 +297,7 @@ func (c *Client) CreateSecurityGroup(name, description string) (*SecurityGroup, 
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
 	err := c.client.SendRequest(client.POST, "compute", apiSecurityGroups, &requestData)
 	if err != nil {
-		return nil, errors.Newf(err, "failed to create a security group with name: %s", name)
+		return nil, errors.Newf(errors.UnspecifiedError, err, nil, "failed to create a security group with name: %s", name)
 	}
 	return &resp.SecurityGroup, nil
 }
@@ -308,7 +308,7 @@ func (c *Client) DeleteSecurityGroup(groupId int) error {
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, "failed to delete security group with id: %s", groupId)
+		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed to delete security group with id: %s", groupId)
 	}
 	return err
 }
@@ -336,7 +336,7 @@ func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (*SecurityGroupRule,
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp}
 	err := c.client.SendRequest(client.POST, "compute", apiSecurityGroupRules, &requestData)
 	if err != nil {
-		return nil, errors.Newf(err, "failed to create a rule for the security group with id: %s", ruleInfo.GroupId)
+		return nil, errors.Newf(errors.UnspecifiedError, err, nil, "failed to create a rule for the security group with id: %s", ruleInfo.GroupId)
 	}
 	return &resp.SecurityGroupRule, nil
 }
@@ -347,7 +347,7 @@ func (c *Client) DeleteSecurityGroupRule(ruleId int) error {
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, "failed to delete security group rule with id: %s", ruleId)
+		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed to delete security group rule with id: %s", ruleId)
 	}
 	return err
 }
@@ -365,7 +365,7 @@ func (c *Client) AddServerSecurityGroup(serverId, groupName string) error {
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.POST, "compute", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, "failed to add security group '%s' to server with id: %s", groupName, serverId)
+		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed to add security group '%s' to server with id: %s", groupName, serverId)
 	}
 	return err
 }
@@ -383,7 +383,7 @@ func (c *Client) RemoveServerSecurityGroup(serverId, groupName string) error {
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.POST, "compute", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, "failed to remove security group '%s' from server with id: %s", groupName, serverId)
+		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed to remove security group '%s' from server with id: %s", groupName, serverId)
 	}
 	return err
 }
@@ -405,7 +405,7 @@ func (c *Client) ListFloatingIPs() ([]FloatingIP, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiFloatingIPs, &requestData)
 	if err != nil {
-		return nil, errors.Newf(err, "failed to list floating ips")
+		return nil, errors.Newf(errors.UnspecifiedError, err, nil, "failed to list floating ips")
 	}
 	return resp.FloatingIPs, nil
 }
@@ -420,7 +420,7 @@ func (c *Client) GetFloatingIP(ipId int) (*FloatingIP, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", url, &requestData)
 	if err != nil {
-		return nil, errors.Newf(err, "failed to get floating ip %d details", ipId)
+		return nil, errors.Newf(errors.UnspecifiedError, err, nil, "failed to get floating ip %d details", ipId)
 	}
 	return &resp.FloatingIP, nil
 }
@@ -434,7 +434,7 @@ func (c *Client) AllocateFloatingIP() (*FloatingIP, error) {
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.POST, "compute", apiFloatingIPs, &requestData)
 	if err != nil {
-		return nil, errors.Newf(err, "failed to allocate a floating ip")
+		return nil, errors.Newf(errors.UnspecifiedError, err, nil, "failed to allocate a floating ip")
 	}
 	return &resp.FloatingIP, nil
 }
@@ -445,7 +445,7 @@ func (c *Client) DeleteFloatingIP(ipId int) error {
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, "failed to delete floating ip %d details", ipId)
+		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed to delete floating ip %d details", ipId)
 	}
 	return err
 }
@@ -463,7 +463,7 @@ func (c *Client) AddServerFloatingIP(serverId, address string) error {
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.POST, "compute", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, "failed to add floating ip %s to server with id: %s", address, serverId)
+		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed to add floating ip %s to server with id: %s", address, serverId)
 	}
 	return err
 }
@@ -481,7 +481,7 @@ func (c *Client) RemoveServerFloatingIP(serverId, address string) error {
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.POST, "compute", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, "failed to remove floating ip %s from server with id: %s", address, serverId)
+		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed to remove floating ip %s from server with id: %s", address, serverId)
 	}
 	return err
 }

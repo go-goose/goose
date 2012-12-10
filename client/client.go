@@ -61,7 +61,7 @@ func (c *OpenStackClient) Authenticate() (err error) {
 	}
 	authDetails, err := c.auth.Auth(c.creds)
 	if err != nil {
-		err = gooseerrors.Newf(err, "authentication failed")
+		err = gooseerrors.Newf(gooseerrors.UnspecifiedError, err, nil, "authentication failed")
 		return
 	}
 

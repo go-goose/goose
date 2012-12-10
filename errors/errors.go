@@ -8,9 +8,9 @@ import "fmt"
 type Code string
 
 const (
-	unspecifiedError = Code("Unspecified")
 	// Public available error types.
 	// These errors are provided because they are specifically required by business logic in the callers.
+	UnspecifiedError    = Code("Unspecified")
 	NotFoundError       = Code("NotFound")
 	DuplicateValueError = Code("DuplicateValue")
 )
@@ -34,7 +34,13 @@ var _ Error = (*gooseError)(nil)
 
 // Code returns the error code.
 func (err *gooseError) code() Code {
-	return err.errcode
+	if err.errcode != UnspecifiedError {
+		return err.errcode
+	}
+	if e, ok := err.cause.(*gooseError); ok {
+		return e.code()
+	}
+	return UnspecifiedError
 }
 
 // Cause returns the error cause.
@@ -88,44 +94,16 @@ func IsDuplicateValue(err error) bool {
 	return false
 }
 
-// New creates a new Error instance, using the specified context or cause.
-// If an error is provided, it becomes the cause of the newly created error, otherwise it is
-// recorded as the context.
-func Newf(contextOrCause interface{}, format string, args ...interface{}) Error {
-	var context interface{}
-	var cause error
-	var ok bool
-	if cause, ok = contextOrCause.(error); !ok {
-		context = contextOrCause
-	}
-	errcode := unspecifiedError
-	gooseError, ok := cause.(*gooseError)
-	if ok {
-		errcode = gooseError.code()
-	}
-	return makeErrorf(errcode, cause, context, format, args...)
-}
-
-// NewNotFound creates a NotFound error with the specified (optional) cause and error text.
-// context represents the object which could not be found eg name, entity etc.
-func NewNotFoundf(cause error, context interface{}, format string, args ...interface{}) Error {
+// New creates a new Error instance with the specified cause.
+func Newf(code Code, cause error, context interface{}, format string, args ...interface{}) Error {
 	if format == "" {
-		format = fmt.Sprintf("Not found: %s", context)
+		switch code {
+		case NotFoundError:
+			format = fmt.Sprintf("Not found: %s", context)
+		case DuplicateValueError:
+			format = fmt.Sprintf("Duplicate: %s", context)
+		}
 	}
-	return makeErrorf(NotFoundError, cause, context, format, args...)
-}
-
-// NewDuplicateValue creates a DuplicateValue error with the specified (optional) cause and error text.
-// context represents the object which is duplicated.
-func NewDuplicateValuef(cause error, context interface{}, format string, args ...interface{}) Error {
-	if format == "" {
-		format = fmt.Sprintf("Duplicate: %s", context)
-	}
-	return makeErrorf(DuplicateValueError, cause, context, format, args...)
-}
-
-// makeError is a private method for creating Error instances.
-func makeErrorf(code Code, cause error, context interface{}, format string, args ...interface{}) Error {
 	return &gooseError{
 		context: context,
 		errcode: code,

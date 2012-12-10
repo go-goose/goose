@@ -30,7 +30,7 @@ func (c *Client) CreateContainer(containerName string) error {
 	requestData := goosehttp.RequestData{ReqHeaders: headers, ExpectedStatus: []int{http.StatusAccepted, http.StatusCreated}}
 	err := c.client.SendRequest(client.PUT, "object-store", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, "failed to create container: %s", containerName)
+		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed to create container: %s", containerName)
 	}
 	return err
 }
@@ -41,7 +41,7 @@ func (c *Client) DeleteContainer(containerName string) error {
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusNoContent}}
 	err := c.client.SendRequest(client.DELETE, "object-store", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, "failed to delete container: %s", containerName)
+		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed to delete container: %s", containerName)
 	}
 	return err
 }
@@ -50,7 +50,7 @@ func (c *Client) touchObject(requestData *goosehttp.RequestData, op, containerNa
 	path := fmt.Sprintf("/%s/%s", containerName, objectName)
 	err := c.client.SendRequest(op, "object-store", path, requestData)
 	if err != nil {
-		err = errors.Newf(err, "failed to %s object %s from container %s", op, objectName, containerName)
+		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed to %s object %s from container %s", op, objectName, containerName)
 	}
 	return err
 }
