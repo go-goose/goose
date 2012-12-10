@@ -60,7 +60,6 @@ type FlavorDetail struct {
 	Disk  int
 	Id    string
 	Links []Link
-	Swap  *string // Can be empty (nil)
 }
 
 // ListFlavorsDetail lists all details for available flavors.
