@@ -21,7 +21,7 @@ type LiveTests struct {
 }
 
 func (s *LiveTests) SetUpSuite(c *C) {
-	s.client = client.NewClient(s.cred, identity.AuthUserPass)
+	s.client = client.NewClient(s.cred, identity.AuthUserPass, nil)
 	s.swift = swift.New(s.client)
 }
 

@@ -6,6 +6,7 @@ import (
 	gooseerrors "launchpad.net/goose/errors"
 	goosehttp "launchpad.net/goose/http"
 	"launchpad.net/goose/identity"
+	"log"
 	"net/http"
 )
 
@@ -28,6 +29,7 @@ type Client interface {
 
 type OpenStackClient struct {
 	client *goosehttp.Client
+	logger *log.Logger
 
 	creds *identity.Credentials
 	auth  identity.Authenticator
@@ -39,10 +41,10 @@ type OpenStackClient struct {
 	UserId      string
 }
 
-func NewClient(creds *identity.Credentials, auth_method identity.AuthMethod) *OpenStackClient {
+func NewClient(creds *identity.Credentials, auth_method identity.AuthMethod, logger *log.Logger) *OpenStackClient {
 	client_creds := *creds
 	client_creds.URL = client_creds.URL + apiTokens
-	client := OpenStackClient{creds: &client_creds}
+	client := OpenStackClient{creds: &client_creds, logger: logger}
 	switch auth_method {
 	default:
 		panic(fmt.Errorf("Invalid identity authorisation method: %d", auth_method))
@@ -103,7 +105,7 @@ func (c *OpenStackClient) SendRequest(method, svcType, apiCall string, requestDa
 	}
 
 	if c.client == nil {
-		c.client = &goosehttp.Client{http.Client{CheckRedirect: nil}, c.Token}
+		c.client = goosehttp.New(http.Client{CheckRedirect: nil}, c.logger, c.Token)
 	}
 	if requestData.ReqValue != nil || requestData.RespValue != nil {
 		err = c.client.JsonRequest(method, url, requestData)

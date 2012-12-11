@@ -272,6 +272,21 @@ func (c *Client) ListSecurityGroups() ([]SecurityGroup, error) {
 	return resp.Groups, nil
 }
 
+// GetSecurityGroupByName returns the named security group.
+func (c *Client) GetSecurityGroupByName(name string) (*SecurityGroup, error) {
+	// OpenStack does not support group filtering, so we need to load them all and manually search by name.
+	groups, err := c.ListSecurityGroups()
+	if err != nil {
+		return nil, err
+	}
+	for _, group := range groups {
+		if group.Name == name {
+			return &group, nil
+		}
+	}
+	return nil, errors.Newf(errors.NotFoundError, nil, name, "Security group %s not found.", name)
+}
+
 // GetServerSecurityGroups list security groups for a specific server.
 func (c *Client) GetServerSecurityGroups(serverId string) ([]SecurityGroup, error) {
 
@@ -381,6 +396,10 @@ func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (*SecurityGroupRule,
 	err := c.client.SendRequest(client.POST, "compute", apiSecurityGroupRules, &requestData)
 	if err != nil {
 		return nil, errors.Newf(errors.UnspecifiedError, err, nil, "failed to create a rule for the security group with id: %s", ruleInfo.GroupId)
+	}
+	var zeroSecurityGroupRef SecurityGroupRef
+	if *resp.SecurityGroupRule.Group == zeroSecurityGroupRef {
+		resp.SecurityGroupRule.Group = nil
 	}
 	return &resp.SecurityGroupRule, nil
 }

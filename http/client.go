@@ -6,16 +6,21 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"launchpad.net/goose/errors"
+	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
-	"strings"
+	"strconv"
+	"time"
 )
 
 type Client struct {
 	http.Client
+	logger    *log.Logger
 	AuthToken string
 }
 
@@ -43,6 +48,13 @@ type RequestData struct {
 	RespData       *[]byte
 }
 
+func New(httpClient http.Client, logger *log.Logger, token string) *Client {
+	if logger == nil {
+		logger = log.New(os.Stderr, "", log.LstdFlags)
+	}
+	return &Client{httpClient, logger, token}
+}
+
 // JsonRequest JSON encodes and sends the supplied object (if any) to the specified URL.
 // Optional method arguments are pass using the RequestData object.
 // Relevant RequestData fields:
@@ -52,10 +64,7 @@ type RequestData struct {
 // RespValue: the data object to decode the result into.
 func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err error) {
 	err = nil
-	var (
-		req  *http.Request
-		body []byte
-	)
+	var body []byte
 	if reqData.Params != nil {
 		url += "?" + reqData.Params.Encode()
 	}
@@ -65,19 +74,18 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 			err = errors.Newf(errors.UnspecifiedError, err, nil, "failed marshalling the request body")
 			return
 		}
-		reqBody := strings.NewReader(string(body))
-		req, err = http.NewRequest(method, url, reqBody)
-	} else {
-		req, err = http.NewRequest(method, url, nil)
 	}
-	if err != nil {
-		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed creating the request")
-		return
+	headers := make(http.Header)
+	if reqData.ReqHeaders != nil {
+		for header, values := range reqData.ReqHeaders {
+			for _, value := range values {
+				headers.Add(header, value)
+			}
+		}
 	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-
-	respBody, err := c.sendRequest(req, reqData.ReqHeaders, reqData.ExpectedStatus, string(body))
+	headers.Add("Content-Type", "application/json")
+	headers.Add("Accept", "application/json")
+	respBody, err := c.sendRequest(method, url, body, headers, reqData.ExpectedStatus)
 	if err != nil {
 		return
 	}
@@ -103,25 +111,20 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err error) {
 	err = nil
 
-	var req *http.Request
-
 	if reqData.Params != nil {
 		url += "?" + reqData.Params.Encode()
 	}
-	if reqData.ReqData != nil {
-		rawReqReader := bytes.NewReader(reqData.ReqData)
-		req, err = http.NewRequest(method, url, rawReqReader)
-	} else {
-		req, err = http.NewRequest(method, url, nil)
+	headers := make(http.Header)
+	if reqData.ReqHeaders != nil {
+		for header, values := range reqData.ReqHeaders {
+			for _, value := range values {
+				headers.Add(header, value)
+			}
+		}
 	}
-	if err != nil {
-		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed creating the request")
-		return
-	}
-	req.Header.Add("Content-Type", "application/octet-stream")
-	req.Header.Add("Accept", "application/octet-stream")
-
-	respBody, err := c.sendRequest(req, reqData.ReqHeaders, reqData.ExpectedStatus, string(reqData.ReqData))
+	headers.Add("Content-Type", "application/octet-stream")
+	headers.Add("Accept", "application/octet-stream")
+	respBody, err := c.sendRequest(method, url, reqData.ReqData, headers, reqData.ExpectedStatus)
 	if err != nil {
 		return
 	}
@@ -139,20 +142,12 @@ func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err er
 // extraHeaders: additional HTTP headers to include with the request.
 // expectedStatus: a slice of allowed response status codes.
 // payloadInfo: a string to include with an error message if something goes wrong.
-func (c *Client) sendRequest(req *http.Request, extraHeaders http.Header, expectedStatus []int, payloadInfo string) (respBody []byte, err error) {
-	if extraHeaders != nil {
-		for header, values := range extraHeaders {
-			for _, value := range values {
-				req.Header.Add(header, value)
-			}
-		}
-	}
+func (c *Client) sendRequest(method, URL string, reqBody []byte, headers http.Header, expectedStatus []int) (respBody []byte, err error) {
 	if c.AuthToken != "" {
-		req.Header.Add("X-Auth-Token", c.AuthToken)
+		headers.Add("X-Auth-Token", c.AuthToken)
 	}
-	rawResp, err := c.Do(req)
+	rawResp, err := c.sendRateLimitedRequest(method, URL, headers, reqBody)
 	if err != nil {
-		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed executing the request")
 		return
 	}
 	foundStatus := false
@@ -167,7 +162,7 @@ func (c *Client) sendRequest(req *http.Request, extraHeaders http.Header, expect
 	}
 	defer rawResp.Body.Close()
 	if !foundStatus && len(expectedStatus) > 0 {
-		err = handleError(req.URL, rawResp, payloadInfo)
+		err = handleError(URL, rawResp, string(reqBody))
 		return
 	}
 
@@ -179,6 +174,46 @@ func (c *Client) sendRequest(req *http.Request, extraHeaders http.Header, expect
 	return
 }
 
+const (
+	maxRetries = 3
+)
+
+func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header, reqData []byte) (resp *http.Response, err error) {
+	for i := 0; i < maxRetries; i++ {
+		var reqReader io.Reader
+		if reqData != nil {
+			reqReader = bytes.NewReader(reqData)
+		}
+		req, err := http.NewRequest(method, URL, reqReader)
+		if err != nil {
+			err = errors.Newf(errors.UnspecifiedError, err, URL, "failed creating the request")
+			return nil, err
+		}
+		for header, values := range headers {
+			for _, value := range values {
+				req.Header.Add(header, value)
+			}
+		}
+		resp, err = c.Do(req)
+		if err != nil {
+			return nil, errors.Newf(errors.UnspecifiedError, err, URL, "failed executing the request")
+		}
+		if resp.StatusCode != http.StatusRequestEntityTooLarge {
+			return resp, nil
+		}
+		retryAfter, err := strconv.Atoi(resp.Header.Get("Retry-After"))
+		if err != nil {
+			return nil, errors.Newf(errors.UnspecifiedError, err, URL, "Invalid Retry-After header")
+		}
+		if retryAfter == 0 {
+			return nil, errors.Newf(errors.UnspecifiedError, err, URL, "Resource limit exeeded at URL %s.", URL)
+		}
+		c.logger.Printf("Too many requests, retrying in %s seconds.", retryAfter)
+		time.Sleep(time.Duration(retryAfter) * time.Second)
+	}
+	return nil, errors.Newf(errors.UnspecifiedError, err, URL, "Maximum number of retries (%d) reached sending request to %s.", maxRetries, URL)
+}
+
 type ResponseData struct {
 	StatusCode int
 	Data       map[string][]string
@@ -187,7 +222,7 @@ type ResponseData struct {
 // The HTTP response status code was not one of those expected, so we construct an error.
 // NotFound (404) codes have their own NotFound error type.
 // We also make a guess at duplicate value errors.
-func handleError(URL *url.URL, resp *http.Response, payloadInfo string) error {
+func handleError(URL string, resp *http.Response, payloadInfo string) error {
 	var errInfo, errContext interface{}
 	errBytes, _ := ioutil.ReadAll(resp.Body)
 	errInfo = string(errBytes)
