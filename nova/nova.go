@@ -107,13 +107,14 @@ func (c *Client) ListFlavors() ([]Entity, error) {
 	return resp.Flavors, err
 }
 
+// FlavorDetail describes detailed information about a flavor.
 type FlavorDetail struct {
 	Name  string
-	RAM   int
-	VCPUs int
-	Disk  int
+	RAM   int // Available RAM, in MB
+	VCPUs int // Number of virtual CPU (cores)
+	Disk  int // Available root partition space, in GB
 	Id    string
-	Swap  interface{} // Can be an empty string (?!)
+	Links []Link
 }
 
 // ListFlavorsDetail lists all details for available flavors.
@@ -234,6 +235,12 @@ func (c *Client) RunServer(opts RunServerOpts) (*Entity, error) {
 	return &resp.Server, nil
 }
 
+// SecurityGroupRef refers to an existing named security group
+type SecurityGroupRef struct {
+	TenantId string `json:"tenant_id"`
+	Name     string `json:"name"`
+}
+
 type SecurityGroupRule struct {
 	FromPort      *int              `json:"from_port"`   // Can be nil
 	IPProtocol    *string           `json:"ip_protocol"` // Can be nil
@@ -241,7 +248,7 @@ type SecurityGroupRule struct {
 	ParentGroupId int               `json:"parent_group_id"`
 	IPRange       map[string]string `json:"ip_range"` // Can be empty
 	Id            int
-	Group         map[string]string // Can be empty
+	Group         *SecurityGroupRef // Can be nil
 }
 
 type SecurityGroup struct {
@@ -313,16 +320,53 @@ func (c *Client) DeleteSecurityGroup(groupId int) error {
 	return err
 }
 
+// RuleInfo allows the callers of CreateSecurityGroupRule() to
+// create 2 types of security group rules: ingress rules and group
+// rules. The difference stems from how the "source" is defined.
+// It can be either:
+// 1. Ingress rules - specified directly with any valid subnet mask
+//    in CIDR format (e.g. "192.168.0.0/16");
+// 2. Group rules - specified indirectly by giving a source group,
+// which can be any user's group (different tenant ID).
+//
+// Every rule works as an iptables ACCEPT rule, thus a group/ with no
+// rules does not allow ingress at all. Rules can be added and removed
+// while the server(s) are running. The set of security groups that
+// apply to a server is changed only when the server is
+// started. Adding or removing a security group on a running server
+// will not take effect until that server is restarted. However,
+// changing rules of existing groups will take effect immediately.
+//
+// For more information:
+// http://docs.openstack.org/developer/nova/nova.concepts.html#concept-security-groups
+// Nova source: https://github.com/openstack/nova.git
 type RuleInfo struct {
-	IPProtocol    string `json:"ip_protocol"`     // Required, if GroupId is nil
-	FromPort      int    `json:"from_port"`       // Required, if GroupId is nil
-	ToPort        int    `json:"to_port"`         // Required, if GroupId is nil
-	Cidr          string `json:"cidr"`            // Required, if GroupId is nil
-	GroupId       *int   `json:"group_id"`        // If nil, FromPort/ToPort/IPProtocol must be set
-	ParentGroupId int    `json:"parent_group_id"` // Required always
+	/// IPProtocol is optional, and if specified must be "tcp", "udp" or
+	//  "icmp" (in this case, both FromPort and ToPort can be -1).
+	IPProtocol string `json:"ip_protocol"`
+
+	// FromPort and ToPort are both optional, and if specifed must be
+	// integers between 1 and 65535 (valid TCP port numbers). -1 is a
+	// special value, meaning "use default" (e.g. for ICMP).
+	FromPort int `json:"from_port"`
+	ToPort   int `json:"to_port"`
+
+	// Cidr cannot be specified with GroupId. Ingress rules need a valid
+	// subnet mast in CIDR format here, while if GroupID is specifed, it
+	// means you're adding a group rule, specifying source group ID, which
+	// must exists already and can be equal to ParentGroupId).
+	// need Cidr, while
+	Cidr    string `json:"cidr"`
+	GroupId *int   `json:"group_id"`
+
+	// ParentGroupId is always required and specifies the group to which
+	// the rule is added.
+	ParentGroupId int `json:"parent_group_id"`
 }
 
 // CreateSecurityGroupRule creates a security group rule.
+// It can either be an ingress rule or group rule (see the
+// description of RuleInfo).
 func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (*SecurityGroupRule, error) {
 	var req struct {
 		SecurityGroupRule RuleInfo `json:"security_group_rule"`
