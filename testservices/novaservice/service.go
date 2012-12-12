@@ -21,10 +21,25 @@ type Nova struct {
 	hostname     string
 	baseURL      string
 	token        string
+	tenantId     string
+}
+
+// endpoint returns either a versioned or non-versioned service
+// endpoint URL from the passed path.
+func (n *Nova) endpoint(version bool, path string) string {
+	ep := n.hostname
+	if version {
+		ep += baseURL + "/"
+	}
+	ep += tenantId + "/" + strings.TrimLeft(path, "/")
+	return ep
 }
 
 // New creates an instance of the Nova object, given the parameters.
-func New(hostname, baseURL, token string) *Nova {
+func New(hostname, baseURL, token, tenantId string) *Nova {
+	if !strings.HasSuffix(hostname, "/") {
+		hostname += "/"
+	}
 	nova := &Nova{
 		flavors:      make(map[string]nova.FlavorDetail),
 		servers:      make(map[string]nova.ServerDetail),
@@ -36,21 +51,25 @@ func New(hostname, baseURL, token string) *Nova {
 		hostname:     hostname,
 		baseURL:      baseURL,
 		token:        token,
+		tenantId:     tenantId,
 	}
 	return nova
+}
+
+// links returns a populated list of links for a flavor or server.
+func (n *Nova) links(path, id string) []nova.Link {
+	url := path + id
+	return []nova.Link{
+		nova.Link{Href: n.endpoint(true, url), Rel: "self"},
+		nova.Link{Href: n.endpoint(false, url), Rel: "bookmark"},
+	}
 }
 
 // buildFlavorLinks populates the Links field of the passed
 // FlavorDetail as needed by OpenStack HTTP API. Call this
 // before addFlavor().
 func (n *Nova) buildFlavorLinks(flavor *nova.FlavorDetail) {
-	ep := strings.TrimRight(n.hostname, "/") + "/"
-	ver := strings.TrimLeft(n.baseURL, "/")
-	url := n.token + "/flavors/" + flavor.Id
-	flavor.Links = []nova.Link{
-		nova.Link{Href: ep + ver + url, Rel: "self"},
-		nova.Link{Href: ep + url, Rel: "bookmark"},
-	}
+	flavor.Links = n.links("/flavors/", flavor.Id)
 }
 
 // addFlavor creates a new flavor.
@@ -119,13 +138,7 @@ func (n *Nova) removeFlavor(flavorId string) error {
 // ServerDetail as needed by OpenStack HTTP API. Call this
 // before addServer().
 func (n *Nova) buildServerLinks(server *nova.ServerDetail) {
-	ep := strings.TrimRight(n.hostname, "/") + "/"
-	ver := strings.TrimLeft(n.baseURL, "/")
-	url := n.token + "/servers/" + server.Id
-	server.Links = []nova.Link{
-		nova.Link{Href: ep + ver + url, Rel: "self"},
-		nova.Link{Href: ep + url, Rel: "bookmark"},
-	}
+	server.Links = n.links("/servers/", server.Id)
 }
 
 // addServer creates a new server.

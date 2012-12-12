@@ -10,6 +10,7 @@ import (
 	"launchpad.net/goose/nova"
 	"launchpad.net/goose/testing/httpsuite"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -22,8 +23,7 @@ var _ = Suite(&NovaHTTPSuite{})
 
 func (s *NovaHTTPSuite) SetUpSuite(c *C) {
 	s.HTTPSuite.SetUpSuite(c)
-	s.service = New(s.Server.URL, baseURL, token)
-	hostname = strings.TrimRight(s.Server.URL, "/") + "/"
+	s.service = New(s.Server.URL, baseURL, token, tenantId)
 }
 
 func (s *NovaHTTPSuite) TearDownSuite(c *C) {
@@ -32,7 +32,7 @@ func (s *NovaHTTPSuite) TearDownSuite(c *C) {
 
 func (s *NovaHTTPSuite) SetUpTest(c *C) {
 	s.HTTPSuite.SetUpTest(c)
-	s.Mux.Handle("/", s.service)
+	s.service.setupHTTP(s.Mux)
 }
 
 func (s *NovaHTTPSuite) TearDownTest(c *C) {
@@ -43,8 +43,8 @@ func (s *NovaHTTPSuite) TearDownTest(c *C) {
 // unmarshalled into the passed expected object.
 func (s *NovaHTTPSuite) assertJSON(c *C, resp *http.Response, expected interface{}) {
 	body, err := ioutil.ReadAll(resp.Body)
-	c.Assert(err, IsNil)
 	defer resp.Body.Close()
+	c.Assert(err, IsNil)
 	err = json.Unmarshal(body, &expected)
 	c.Assert(err, IsNil)
 }
@@ -53,16 +53,19 @@ func (s *NovaHTTPSuite) assertJSON(c *C, resp *http.Response, expected interface
 // expected response, replacing any variables in the expected body.
 func (s *NovaHTTPSuite) assertBody(c *C, resp *http.Response, expected response) {
 	body, err := ioutil.ReadAll(resp.Body)
-	c.Assert(err, IsNil)
 	defer resp.Body.Close()
+	c.Assert(err, IsNil)
 	expBody := expected.replaceVars(resp.Request)
-	c.Assert(string(body), Equals, expBody)
+	// cast to string for easier asserts debugging
+	c.Assert(string(body), Equals, string(expBody))
 }
 
 // sendRequest constructs an HTTP request from the parameters and
 // sends it, returning the response or an error.
 func (s *NovaHTTPSuite) sendRequest(method, url string, body []byte, headers http.Header) (*http.Response, error) {
-	url = s.Server.URL + url
+	if !strings.HasPrefix(url, s.service.hostname) {
+		url = s.service.hostname + strings.TrimLeft(url, "/")
+	}
 	bodyReader := bytes.NewReader(body)
 	req, err := http.NewRequest(method, url, bodyReader)
 	if err != nil {
@@ -75,32 +78,30 @@ func (s *NovaHTTPSuite) sendRequest(method, url string, body []byte, headers htt
 			}
 		}
 	}
-	if len(body) == 0 {
-		// workaround https://code.google.com/p/go/issues/detail?id=4454
-		req.Header.Set("Content-Length", "0")
-	}
+	// workaround for https://code.google.com/p/go/issues/detail?id=4454
+	req.Header.Set("Content-Length", strconv.Itoa(len(body)))
 	return http.DefaultClient.Do(req)
 }
 
 // authRequest is a shortcut for sending requests with pre-set token
 // header and correct version prefix and tenant ID in the URL.
-func (s *NovaHTTPSuite) authRequest(method, url string, body []byte, headers http.Header) (*http.Response, error) {
+func (s *NovaHTTPSuite) authRequest(method, path string, body []byte, headers http.Header) (*http.Response, error) {
 	if headers == nil {
 		headers = make(http.Header)
 	}
-	headers.Set(authToken, token)
-	url = baseURL + tenantId + url
+	headers.Set(authToken, s.service.token)
+	url := s.service.endpoint(true, path)
 	return s.sendRequest(method, url, body, headers)
 }
 
 // jsonRequest serializes the passed body object to JSON and sends a
 // the request with authRequest().
-func (s *NovaHTTPSuite) jsonRequest(method, url string, body interface{}, headers http.Header) (*http.Response, error) {
+func (s *NovaHTTPSuite) jsonRequest(method, path string, body interface{}, headers http.Header) (*http.Response, error) {
 	jsonBody, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
-	return s.authRequest(method, url, jsonBody, headers)
+	return s.authRequest(method, path, jsonBody, headers)
 }
 
 func (s *NovaHTTPSuite) TestUnauthorizedResponse(c *C) {
@@ -117,7 +118,7 @@ func (s *NovaHTTPSuite) TestUnauthorizedResponse(c *C) {
 
 func (s *NovaHTTPSuite) TestNoVersionResponse(c *C) {
 	headers := make(http.Header)
-	headers.Set(authToken, token)
+	headers.Set(authToken, s.service.token)
 	resp, err := s.sendRequest("GET", "/", nil, headers)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
@@ -126,7 +127,7 @@ func (s *NovaHTTPSuite) TestNoVersionResponse(c *C) {
 
 func (s *NovaHTTPSuite) TestMultipleChoicesResponse(c *C) {
 	headers := make(http.Header)
-	headers.Set(authToken, token)
+	headers.Set(authToken, s.service.token)
 	resp, err := s.sendRequest("GET", "/any", nil, headers)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusMultipleChoices)
@@ -144,12 +145,15 @@ func (s *NovaHTTPSuite) TestNotFoundResponse(c *C) {
 	resp, err = s.authRequest("POST", "/any/unknown/one", nil, nil)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
+	resp, err = s.authRequest("GET", "/flavors/id", nil, nil)
+	c.Assert(err, IsNil)
+	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
 }
 
 func (s *NovaHTTPSuite) TestBadRequestResponse(c *C) {
 	headers := make(http.Header)
 	headers.Set(authToken, token)
-	resp, err := s.sendRequest("GET", baseURL+"phony_token", nil, headers)
+	resp, err := s.sendRequest("GET", s.service.baseURL+"/phony_token", nil, headers)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusBadRequest)
 	s.assertBody(c, resp, badRequestResponse)
