@@ -209,7 +209,7 @@ type RunServerOpts struct {
 	Name               string              `json:"name"`
 	FlavorId           string              `json:"flavorRef"`
 	ImageId            string              `json:"imageRef"`
-	UserData           *string             `json:"user_data"`
+	UserData           []byte              `json:"user_data"`
 	SecurityGroupNames []SecurityGroupName `json:"security_groups"`
 }
 
@@ -220,9 +220,8 @@ func (c *Client) RunServer(opts RunServerOpts) (*Entity, error) {
 	}
 	req.Server = opts
 	if opts.UserData != nil {
-		data := []byte(*opts.UserData)
-		encoded := base64.StdEncoding.EncodeToString(data)
-		req.Server.UserData = &encoded
+		encoded := base64.StdEncoding.EncodeToString(opts.UserData)
+		req.Server.UserData = []byte(encoded)
 	}
 	var resp struct {
 		Server Entity `json:"server"`
