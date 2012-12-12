@@ -19,12 +19,27 @@ type Nova struct {
 	serverGroups map[string][]int
 	serverIPs    map[string][]int
 	hostname     string
-	baseURL      string
+	versionPath  string
 	token        string
+	tenantId     string
+}
+
+// endpoint returns either a versioned or non-versioned service
+// endpoint URL from the given path.
+func (n *Nova) endpoint(version bool, path string) string {
+	ep := n.hostname
+	if version {
+		ep += n.versionPath + "/"
+	}
+	ep += n.tenantId + "/" + strings.TrimLeft(path, "/")
+	return ep
 }
 
 // New creates an instance of the Nova object, given the parameters.
-func New(hostname, baseURL, token string) *Nova {
+func New(hostname, versionPath, token, tenantId string) *Nova {
+	if !strings.HasSuffix(hostname, "/") {
+		hostname += "/"
+	}
 	nova := &Nova{
 		flavors:      make(map[string]nova.FlavorDetail),
 		servers:      make(map[string]nova.ServerDetail),
@@ -34,8 +49,9 @@ func New(hostname, baseURL, token string) *Nova {
 		serverGroups: make(map[string][]int),
 		serverIPs:    make(map[string][]int),
 		hostname:     hostname,
-		baseURL:      baseURL,
+		versionPath:  versionPath,
 		token:        token,
+		tenantId:     tenantId,
 	}
 	return nova
 }
@@ -44,12 +60,10 @@ func New(hostname, baseURL, token string) *Nova {
 // FlavorDetail as needed by OpenStack HTTP API. Call this
 // before addFlavor().
 func (n *Nova) buildFlavorLinks(flavor *nova.FlavorDetail) {
-	ep := n.hostname
-	ver := strings.TrimLeft(n.baseURL, "/")
-	url := n.token + "/flavors/" + flavor.Id
+	url := "/flavors/" + flavor.Id
 	flavor.Links = []nova.Link{
-		nova.Link{Href: ep + ver + url, Rel: "self"},
-		nova.Link{Href: ep + url, Rel: "bookmark"},
+		nova.Link{Href: n.endpoint(true, url), Rel: "self"},
+		nova.Link{Href: n.endpoint(false, url), Rel: "bookmark"},
 	}
 }
 
@@ -119,12 +133,10 @@ func (n *Nova) removeFlavor(flavorId string) error {
 // ServerDetail as needed by OpenStack HTTP API. Call this
 // before addServer().
 func (n *Nova) buildServerLinks(server *nova.ServerDetail) {
-	ep := n.hostname
-	ver := strings.TrimLeft(n.baseURL, "/")
-	url := n.token + "/servers/" + server.Id
+	url := "/servers/" + server.Id
 	server.Links = []nova.Link{
-		nova.Link{Href: ep + ver + url, Rel: "self"},
-		nova.Link{Href: ep + url, Rel: "bookmark"},
+		nova.Link{Href: n.endpoint(true, url), Rel: "self"},
+		nova.Link{Href: n.endpoint(false, url), Rel: "bookmark"},
 	}
 }
 

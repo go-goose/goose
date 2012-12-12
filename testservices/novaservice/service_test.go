@@ -6,25 +6,23 @@ import (
 	"fmt"
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/nova"
-	"strings"
 )
 
 type NovaSuite struct {
-	service           *Nova
-	endpointNoVersion string
-	endpoint          string
+	service *Nova
 }
 
-var baseURL = "/v2/"
-var token = "token"
-var hostname = "http://example.com/"
+const (
+	versionPath = "v2"
+	token       = "token"
+	hostname    = "http://example.com/"
+	tenantId    = "tenant_id"
+)
 
 var _ = Suite(&NovaSuite{})
 
 func (s *NovaSuite) SetUpSuite(c *C) {
-	s.service = New(hostname, baseURL, token)
-	s.endpointNoVersion = hostname + token
-	s.endpoint = hostname + strings.TrimLeft(baseURL, "/") + token
+	s.service = New(hostname, versionPath, token, tenantId)
 }
 
 func (s *NovaSuite) ensureNoFlavor(c *C, flavor nova.FlavorDetail) {
@@ -120,8 +118,8 @@ func (s *NovaSuite) TestBuildLinksAndAddFlavor(c *C) {
 	fl, _ := s.service.flavor(flavor.Id)
 	url := "/flavors/" + flavor.Id
 	links := []nova.Link{
-		nova.Link{Href: s.endpoint + url, Rel: "self"},
-		nova.Link{Href: s.endpointNoVersion + url, Rel: "bookmark"},
+		nova.Link{Href: s.service.endpoint(true, url), Rel: "self"},
+		nova.Link{Href: s.service.endpoint(false, url), Rel: "bookmark"},
 	}
 	c.Assert(fl.Links, DeepEquals, links)
 }
@@ -240,8 +238,8 @@ func (s *NovaSuite) TestBuildLinksAndAddServer(c *C) {
 	sr, _ := s.service.server(server.Id)
 	url := "/servers/" + server.Id
 	links := []nova.Link{
-		nova.Link{Href: s.endpoint + url, Rel: "self"},
-		nova.Link{Href: s.endpointNoVersion + url, Rel: "bookmark"},
+		nova.Link{Href: s.service.endpoint(true, url), Rel: "self"},
+		nova.Link{Href: s.service.endpoint(false, url), Rel: "bookmark"},
 	}
 	c.Assert(sr.Links, DeepEquals, links)
 }
