@@ -19,24 +19,24 @@ type Nova struct {
 	serverGroups map[string][]int
 	serverIPs    map[string][]int
 	hostname     string
-	baseURL      string
+	versionPath  string
 	token        string
 	tenantId     string
 }
 
 // endpoint returns either a versioned or non-versioned service
-// endpoint URL from the passed path.
+// endpoint URL from the given path.
 func (n *Nova) endpoint(version bool, path string) string {
 	ep := n.hostname
 	if version {
-		ep += baseURL + "/"
+		ep += n.versionPath + "/"
 	}
-	ep += tenantId + "/" + strings.TrimLeft(path, "/")
+	ep += n.tenantId + "/" + strings.TrimLeft(path, "/")
 	return ep
 }
 
 // New creates an instance of the Nova object, given the parameters.
-func New(hostname, baseURL, token, tenantId string) *Nova {
+func New(hostname, versionPath, token, tenantId string) *Nova {
 	if !strings.HasSuffix(hostname, "/") {
 		hostname += "/"
 	}
@@ -49,27 +49,22 @@ func New(hostname, baseURL, token, tenantId string) *Nova {
 		serverGroups: make(map[string][]int),
 		serverIPs:    make(map[string][]int),
 		hostname:     hostname,
-		baseURL:      baseURL,
+		versionPath:  versionPath,
 		token:        token,
 		tenantId:     tenantId,
 	}
 	return nova
 }
 
-// links returns a populated list of links for a flavor or server.
-func (n *Nova) links(path, id string) []nova.Link {
-	url := path + id
-	return []nova.Link{
-		nova.Link{Href: n.endpoint(true, url), Rel: "self"},
-		nova.Link{Href: n.endpoint(false, url), Rel: "bookmark"},
-	}
-}
-
 // buildFlavorLinks populates the Links field of the passed
 // FlavorDetail as needed by OpenStack HTTP API. Call this
 // before addFlavor().
 func (n *Nova) buildFlavorLinks(flavor *nova.FlavorDetail) {
-	flavor.Links = n.links("/flavors/", flavor.Id)
+	url := "/flavors/" + flavor.Id
+	flavor.Links = []nova.Link{
+		nova.Link{Href: n.endpoint(true, url), Rel: "self"},
+		nova.Link{Href: n.endpoint(false, url), Rel: "bookmark"},
+	}
 }
 
 // addFlavor creates a new flavor.
@@ -138,7 +133,11 @@ func (n *Nova) removeFlavor(flavorId string) error {
 // ServerDetail as needed by OpenStack HTTP API. Call this
 // before addServer().
 func (n *Nova) buildServerLinks(server *nova.ServerDetail) {
-	server.Links = n.links("/servers/", server.Id)
+	url := "/servers/" + server.Id
+	server.Links = []nova.Link{
+		nova.Link{Href: n.endpoint(true, url), Rel: "self"},
+		nova.Link{Href: n.endpoint(false, url), Rel: "bookmark"},
+	}
 }
 
 // addServer creates a new server.

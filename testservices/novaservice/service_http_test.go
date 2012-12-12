@@ -23,7 +23,7 @@ var _ = Suite(&NovaHTTPSuite{})
 
 func (s *NovaHTTPSuite) SetUpSuite(c *C) {
 	s.HTTPSuite.SetUpSuite(c)
-	s.service = New(s.Server.URL, baseURL, token, tenantId)
+	s.service = New(s.Server.URL, versionPath, token, tenantId)
 }
 
 func (s *NovaHTTPSuite) TearDownSuite(c *C) {
@@ -41,17 +41,18 @@ func (s *NovaHTTPSuite) TearDownTest(c *C) {
 
 // assertJSON asserts the passed http.Response's body can be
 // unmarshalled into the passed expected object.
-func (s *NovaHTTPSuite) assertJSON(c *C, resp *http.Response, expected interface{}) {
+func assertJSON(c *C, resp *http.Response, expected interface{}) {
 	body, err := ioutil.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	c.Assert(err, IsNil)
 	err = json.Unmarshal(body, &expected)
 	c.Assert(err, IsNil)
+	// TODO(dimitern) Validate expected's contents (possibly "laxer" DeepEquals)
 }
 
 // assertBody asserts the passed http.Response's body matches the
 // expected response, replacing any variables in the expected body.
-func (s *NovaHTTPSuite) assertBody(c *C, resp *http.Response, expected response) {
+func assertBody(c *C, resp *http.Response, expected response) {
 	body, err := ioutil.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	c.Assert(err, IsNil)
@@ -66,16 +67,13 @@ func (s *NovaHTTPSuite) sendRequest(method, url string, body []byte, headers htt
 	if !strings.HasPrefix(url, s.service.hostname) {
 		url = s.service.hostname + strings.TrimLeft(url, "/")
 	}
-	bodyReader := bytes.NewReader(body)
-	req, err := http.NewRequest(method, url, bodyReader)
+	req, err := http.NewRequest(method, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
-	if headers != nil {
-		for header, values := range headers {
-			for _, value := range values {
-				req.Header.Add(header, value)
-			}
+	for header, values := range headers {
+		for _, value := range values {
+			req.Header.Add(header, value)
 		}
 	}
 	// workaround for https://code.google.com/p/go/issues/detail?id=4454
@@ -104,110 +102,182 @@ func (s *NovaHTTPSuite) jsonRequest(method, path string, body interface{}, heade
 	return s.authRequest(method, path, jsonBody, headers)
 }
 
-func (s *NovaHTTPSuite) TestUnauthorizedResponse(c *C) {
-	resp, err := s.sendRequest("GET", "/any", nil, nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusUnauthorized)
-	headers := make(http.Header)
-	headers.Set(authToken, "phony")
-	resp, err = s.sendRequest("POST", "/any", nil, headers)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusUnauthorized)
-	s.assertBody(c, resp, unauthorizedResponse)
+// makeFlavors takes any number of nova.FlavorDetail objects and
+// returns them as a list.
+func makeFlavors(flavor ...nova.FlavorDetail) []nova.FlavorDetail {
+	return append([]nova.FlavorDetail{}, flavor...)
 }
 
-func (s *NovaHTTPSuite) TestNoVersionResponse(c *C) {
-	headers := make(http.Header)
-	headers.Set(authToken, s.service.token)
-	resp, err := s.sendRequest("GET", "/", nil, headers)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusOK)
-	s.assertBody(c, resp, noVersionResponse)
+// setHeader creates http.Header map, sets the given header, and
+// returns the map.
+func setHeader(header, value string) http.Header {
+	h := make(http.Header)
+	h.Set(header, value)
+	return h
 }
 
-func (s *NovaHTTPSuite) TestMultipleChoicesResponse(c *C) {
-	headers := make(http.Header)
-	headers.Set(authToken, s.service.token)
-	resp, err := s.sendRequest("GET", "/any", nil, headers)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusMultipleChoices)
-	s.assertBody(c, resp, multipleChoicesResponse)
-	resp, err = s.sendRequest("POST", "/any/other/one", nil, headers)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusMultipleChoices)
-	s.assertBody(c, resp, multipleChoicesResponse)
+var simpleTests = []struct {
+	unauth  bool
+	method  string
+	url     string
+	headers http.Header
+	expect  response
+	flavors []nova.FlavorDetail
+}{
+	{
+		unauth:  true,
+		method:  "GET",
+		url:     "/any",
+		headers: make(http.Header),
+		expect:  unauthorizedResponse,
+	},
+	{
+		unauth:  true,
+		method:  "POST",
+		url:     "/any",
+		headers: setHeader(authToken, "phony"),
+		expect:  unauthorizedResponse,
+	},
+	{
+		unauth:  true,
+		method:  "GET",
+		url:     "/",
+		headers: setHeader(authToken, token),
+		expect:  noVersionResponse,
+	},
+	{
+		unauth:  true,
+		method:  "GET",
+		url:     "/any",
+		headers: setHeader(authToken, token),
+		expect:  multipleChoicesResponse,
+	},
+	{
+		unauth:  true,
+		method:  "POST",
+		url:     "/any/unknown/one",
+		headers: setHeader(authToken, token),
+		expect:  multipleChoicesResponse,
+	},
+	{
+		method: "POST",
+		url:    "/any/unknown/one",
+		expect: notFoundResponse,
+	},
+	{
+		unauth:  true,
+		method:  "GET",
+		url:     versionPath + "/phony_token",
+		headers: setHeader(authToken, token),
+		expect:  badRequestResponse,
+	},
+	{
+		method: "GET",
+		url:    "/flavors",
+		expect: noContentResponse,
+	},
+	{
+		method: "GET",
+		url:    "/flavors/",
+		expect: notFoundResponse,
+	},
+	{
+		method: "GET",
+		url:    "/flavors/invalid",
+		expect: notFoundResponse,
+	},
+	{
+		method:  "GET",
+		url:     "/flavors/invalid",
+		expect:  notFoundResponse,
+		flavors: makeFlavors(nova.FlavorDetail{Id: "fl1"}),
+	},
+	{
+		method: "POST",
+		url:    "/flavors/invalid",
+		expect: notFoundResponse,
+	},
+	{
+		method: "POST",
+		url:    "/flavors",
+		expect: badRequest2Response,
+	},
+	{
+		method: "PUT",
+		url:    "/flavors",
+		expect: notFoundResponse,
+	},
+	{
+		method: "DELETE",
+		url:    "/flavors",
+		expect: notFoundResponse,
+	},
+	{
+		method: "POST",
+		url:    "/flavors/detail",
+		expect: notFoundResponse,
+	},
+	{
+		method: "PUT",
+		url:    "/flavors/detail",
+		expect: notFoundJSONResponse,
+	},
+	{
+		method: "DELETE",
+		url:    "/flavors/detail",
+		expect: forbiddenResponse,
+	},
 }
 
-func (s *NovaHTTPSuite) TestNotFoundResponse(c *C) {
-	resp, err := s.authRequest("GET", "/flavors/", nil, nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
-	resp, err = s.authRequest("POST", "/any/unknown/one", nil, nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
-	resp, err = s.authRequest("GET", "/flavors/id", nil, nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
-}
-
-func (s *NovaHTTPSuite) TestBadRequestResponse(c *C) {
-	headers := make(http.Header)
-	headers.Set(authToken, token)
-	resp, err := s.sendRequest("GET", s.service.baseURL+"/phony_token", nil, headers)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusBadRequest)
-	s.assertBody(c, resp, badRequestResponse)
+func (s *NovaHTTPSuite) TestSimpleRequestTests(c *C) {
+	for i, t := range simpleTests {
+		c.Logf("#%d. %s %s -> %d\n", i+1, t.method, t.url, t.expect.code)
+		for _, flavor := range t.flavors {
+			s.service.buildFlavorLinks(&flavor)
+			err := s.service.addFlavor(flavor)
+			defer s.service.removeFlavor(flavor.Id)
+			c.Assert(err, IsNil)
+		}
+		if t.headers == nil {
+			t.headers = make(http.Header)
+			t.headers.Set(authToken, s.service.token)
+		}
+		var (
+			resp *http.Response
+			err  error
+		)
+		if t.unauth {
+			resp, err = s.sendRequest(t.method, t.url, nil, t.headers)
+		} else {
+			resp, err = s.authRequest(t.method, t.url, nil, t.headers)
+		}
+		c.Assert(err, IsNil)
+		c.Assert(resp.StatusCode, Equals, t.expect.code)
+		assertBody(c, resp, t.expect)
+	}
 }
 
 func (s *NovaHTTPSuite) TestGetFlavors(c *C) {
 	entities := s.service.allFlavorsAsEntities()
 	c.Assert(entities, HasLen, 0)
-	resp, err := s.authRequest("GET", "/flavors", nil, nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
 	flavors := []nova.FlavorDetail{
 		nova.FlavorDetail{Id: "fl1", Name: "flavor 1"},
 		nova.FlavorDetail{Id: "fl2", Name: "flavor 2"},
 	}
 	for _, flavor := range flavors {
 		s.service.buildFlavorLinks(&flavor)
-		err = s.service.addFlavor(flavor)
+		err := s.service.addFlavor(flavor)
 		defer s.service.removeFlavor(flavor.Id)
 		c.Assert(err, IsNil)
 	}
 	entities = s.service.allFlavorsAsEntities()
-	resp, err = s.authRequest("GET", "/flavors", nil, nil)
+	resp, err := s.authRequest("GET", "/flavors", nil, nil)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
 	var expected struct {
 		Flavors []nova.Entity
 	}
-	s.assertJSON(c, resp, expected)
-}
-
-func (s *NovaHTTPSuite) TestGetInvalidFlavorsFails(c *C) {
-	flavor := nova.FlavorDetail{Id: "1"}
-	err := s.service.addFlavor(flavor)
-	c.Assert(err, IsNil)
-	defer s.service.removeFlavor("1")
-	resp, err := s.authRequest("GET", "/flavors/invalid", nil, nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
-	s.assertBody(c, resp, notFoundResponse)
-}
-
-func (s *NovaHTTPSuite) TestPostInvalidFlavorsFails(c *C) {
-	resp, err := s.authRequest("POST", "/flavors/invalid", nil, nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
-	s.assertBody(c, resp, notFoundResponse)
-}
-
-func (s *NovaHTTPSuite) TestPostEmptyFlavorsFails(c *C) {
-	resp, err := s.authRequest("POST", "/flavors", nil, nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusBadRequest)
-	s.assertBody(c, resp, badRequest2Response)
+	assertJSON(c, resp, expected)
 }
 
 func (s *NovaHTTPSuite) TestPostValidFlavorSucceeds(c *C) {
@@ -220,68 +290,30 @@ func (s *NovaHTTPSuite) TestPostValidFlavorSucceeds(c *C) {
 	resp, err := s.jsonRequest("POST", "/flavors", req, nil)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusCreated)
-	s.assertBody(c, resp, createdResponse)
+	assertBody(c, resp, createdResponse)
 	_, err = s.service.flavor("fl1")
 	c.Assert(err, IsNil)
 	s.service.removeFlavor("fl1")
 }
 
-func (s *NovaHTTPSuite) TestPutFlavorsFails(c *C) {
-	resp, err := s.authRequest("PUT", "/flavors", nil, nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
-	s.assertBody(c, resp, notFoundResponse)
-}
-
-func (s *NovaHTTPSuite) TestDeleteFlavorsFails(c *C) {
-	resp, err := s.authRequest("DELETE", "/flavors", nil, nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
-	s.assertBody(c, resp, notFoundResponse)
-}
-
 func (s *NovaHTTPSuite) TestGetFlavorsDetail(c *C) {
 	flavors := s.service.allFlavors()
 	c.Assert(flavors, HasLen, 0)
-	resp, err := s.authRequest("GET", "/flavors/detail", nil, nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
 	flavors = []nova.FlavorDetail{
 		nova.FlavorDetail{Id: "fl1", Name: "flavor 1"},
 		nova.FlavorDetail{Id: "fl2", Name: "flavor 2"},
 	}
 	for _, flavor := range flavors {
 		s.service.buildFlavorLinks(&flavor)
-		err = s.service.addFlavor(flavor)
+		err := s.service.addFlavor(flavor)
 		defer s.service.removeFlavor(flavor.Id)
 		c.Assert(err, IsNil)
 	}
-	resp, err = s.authRequest("GET", "/flavors/detail", nil, nil)
+	resp, err := s.authRequest("GET", "/flavors/detail", nil, nil)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
 	var expected struct {
 		Flavors []nova.FlavorDetail
 	}
-	s.assertJSON(c, resp, expected)
-}
-
-func (s *NovaHTTPSuite) TestPostFlavorsDetailFails(c *C) {
-	resp, err := s.authRequest("POST", "/flavors/detail", nil, nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
-	s.assertBody(c, resp, notFoundResponse)
-}
-
-func (s *NovaHTTPSuite) TestPutFlavorsDetailFails(c *C) {
-	resp, err := s.authRequest("PUT", "/flavors/detail", nil, nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNotFound)
-	s.assertBody(c, resp, notFoundJSONResponse)
-}
-
-func (s *NovaHTTPSuite) TestDeleteFlavorsDetailFails(c *C) {
-	resp, err := s.authRequest("DELETE", "/flavors/detail", nil, nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusForbidden)
-	s.assertBody(c, resp, forbiddenResponse)
+	assertJSON(c, resp, expected)
 }

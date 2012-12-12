@@ -112,6 +112,12 @@ The resource could not be found.
 		"text/plain; charset=UTF-8",
 		"",
 	}
+	noContentResponse = response{
+		http.StatusNoContent,
+		"",
+		"text/plain; charset=UTF-8",
+		"",
+	}
 	errorResponse = response{
 		http.StatusInternalServerError,
 		`{"internalServerError":{"message":"$ERROR$",code:500}}`,
@@ -122,7 +128,7 @@ The resource could not be found.
 
 // endpoint returns the current testing server's endpoint URL.
 func endpoint() string {
-	return hostname + baseURL + "/"
+	return hostname + versionPath + "/"
 }
 
 // replaceVars replaces $ENDPOINT$, $URL$, and $ERROR$ in the response body
@@ -131,10 +137,10 @@ func endpoint() string {
 func (resp response) replaceVars(r *http.Request) []byte {
 	url := strings.TrimLeft(r.URL.Path, "/")
 	body := resp.body
-	body = strings.Replace(body, "$ENDPOINT$", endpoint(), 1)
-	body = strings.Replace(body, "$URL$", url, 1)
+	body = strings.Replace(body, "$ENDPOINT$", endpoint(), -1)
+	body = strings.Replace(body, "$URL$", url, -1)
 	if resp.errorText != "" {
-		body = strings.Replace(body, "$ERROR$", resp.errorText, 1)
+		body = strings.Replace(body, "$ERROR$", resp.errorText, -1)
 	}
 	return []byte(body)
 }
@@ -173,36 +179,35 @@ func sendJSON(code int, resp interface{}, w http.ResponseWriter, r *http.Request
 		data, err = json.Marshal(resp)
 		if err != nil {
 			sendError(err, w, r)
+			return
 		}
 	}
-	if len(data) == 0 {
-		// workaround for https://code.google.com/p/go/issues/detail?id=4454
-		w.Header().Set("Content-Length", "0")
-	}
+	// workaround for https://code.google.com/p/go/issues/detail?id=4454
+	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
 	w.WriteHeader(code)
 	w.Write(data)
 }
 
 // handleUnauthorizedNotFound is called for each request to check for
 // common errors (X-Auth-Token and trailing slash in URL). Returns
-// true if handled, false if no errors found.
+// true if it's OK, false if a response was sent.
 func (n *Nova) handleUnauthorizedNotFound(w http.ResponseWriter, r *http.Request) bool {
 	path := r.URL.Path
 	if r.Header.Get(authToken) != n.token {
 		unauthorizedResponse.send(w, r)
-		return true
+		return false
 	}
 	if strings.HasSuffix(path, "/") && path != "/" {
 		notFoundResponse.send(w, r)
-		return true
+		return false
 	}
-	return false
+	return true
 }
 
 // handle registers the given Nova handler method for the URL prefix.
 func (n *Nova) handle(prefix string, handler func(*Nova, http.ResponseWriter, *http.Request)) http.Handler {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !n.handleUnauthorizedNotFound(w, r) {
+		if n.handleUnauthorizedNotFound(w, r) {
 			handler(n, w, r)
 		}
 	})
@@ -212,7 +217,7 @@ func (n *Nova) handle(prefix string, handler func(*Nova, http.ResponseWriter, *h
 // respond returns an http Handler sending the given response.
 func (n *Nova) respond(resp response) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !n.handleUnauthorizedNotFound(w, r) {
+		if n.handleUnauthorizedNotFound(w, r) {
 			resp.send(w, r)
 		}
 	})
@@ -220,13 +225,8 @@ func (n *Nova) respond(resp response) http.Handler {
 
 // handleFlavors handles the flavors HTTP API.
 func (n *Nova) handleFlavors(w http.ResponseWriter, r *http.Request) {
-	hasSlash := strings.Index(r.URL.Path, "/") != -1
 	switch r.Method {
 	case "GET":
-		if hasSlash {
-			notFoundJSONResponse.send(w, r)
-			return
-		}
 		entities := n.allFlavorsAsEntities()
 		if len(entities) == 0 {
 			sendJSON(http.StatusNoContent, nil, w, r)
@@ -238,10 +238,6 @@ func (n *Nova) handleFlavors(w http.ResponseWriter, r *http.Request) {
 		resp.Flavors = entities
 		sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
-		if hasSlash {
-			notFoundResponse.send(w, r)
-			return
-		}
 		body, err := ioutil.ReadAll(r.Body)
 		r.Body.Close()
 		if err != nil {
@@ -267,9 +263,7 @@ func (n *Nova) handleFlavors(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		createdResponse.send(w, r)
-	case "PUT":
-		fallthrough
-	case "DELETE":
+	case "PUT", "DELETE":
 		notFoundResponse.send(w, r)
 	default:
 		panic("unknown request method: " + r.Method)
@@ -278,13 +272,8 @@ func (n *Nova) handleFlavors(w http.ResponseWriter, r *http.Request) {
 
 // handleFlavorsDetail handles the flavors/detail HTTP API.
 func (n *Nova) handleFlavorsDetail(w http.ResponseWriter, r *http.Request) {
-	hasSlash := strings.Count(r.URL.Path, "/") > 1
 	switch r.Method {
 	case "GET":
-		if hasSlash {
-			notFoundJSONResponse.send(w, r)
-			return
-		}
 		flavors := n.allFlavors()
 		if len(flavors) == 0 {
 			sendJSON(http.StatusNoContent, nil, w, r)
@@ -309,7 +298,7 @@ func (n *Nova) handleFlavorsDetail(w http.ResponseWriter, r *http.Request) {
 // setupHTTP attaches all the needed handlers to provide the HTTP API.
 func (n *Nova) setupHTTP(mux *http.ServeMux) {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if n.handleUnauthorizedNotFound(w, r) {
+		if !n.handleUnauthorizedNotFound(w, r) {
 			return
 		}
 		if r.URL.Path == "/" {
@@ -318,11 +307,11 @@ func (n *Nova) setupHTTP(mux *http.ServeMux) {
 			multipleChoicesResponse.send(w, r)
 		}
 	})
-	urlVersion := "/" + n.baseURL + "/"
+	urlVersion := "/" + n.versionPath + "/"
 	urlTenant := urlVersion + n.tenantId + "/"
 	mux.Handle(urlVersion, n.respond(badRequestResponse))
 	mux.HandleFunc(urlTenant, func(w http.ResponseWriter, r *http.Request) {
-		if n.handleUnauthorizedNotFound(w, r) {
+		if !n.handleUnauthorizedNotFound(w, r) {
 			return
 		}
 		// any unknown path

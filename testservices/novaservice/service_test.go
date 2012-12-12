@@ -13,16 +13,16 @@ type NovaSuite struct {
 }
 
 const (
-	baseURL  = "v2"
-	token    = "token"
-	hostname = "http://example.com/"
-	tenantId = "tenant_id"
+	versionPath = "v2"
+	token       = "token"
+	hostname    = "http://example.com/"
+	tenantId    = "tenant_id"
 )
 
 var _ = Suite(&NovaSuite{})
 
 func (s *NovaSuite) SetUpSuite(c *C) {
-	s.service = New(hostname, baseURL, token, tenantId)
+	s.service = New(hostname, versionPath, token, tenantId)
 }
 
 func (s *NovaSuite) ensureNoFlavor(c *C, flavor nova.FlavorDetail) {
