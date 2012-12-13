@@ -334,7 +334,7 @@ func (s *LiveTests) TestServerAddGetRemoveSecurityGroup(c *C) {
 	group, err := s.nova.CreateSecurityGroup("test_server_secgroup", "test desc")
 	if err != nil {
 		c.Assert(errors.IsDuplicateValue(err), Equals, true)
-		group, err = s.nova.GetSecurityGroupByName("test_server_secgroup")
+		group, err = s.nova.SecurityGroupByName("test_server_secgroup")
 		c.Assert(err, IsNil)
 	}
 
@@ -433,7 +433,7 @@ func (s *LiveTests) TestRateLimitRetry(c *C) {
 	client := client.NewClient(s.cred, identity.AuthUserPass, logger)
 	nova := nova.New(client)
 	// Delete the artifact if it already exists.
-	testGroup, err := nova.GetSecurityGroupByName("test_group")
+	testGroup, err := nova.SecurityGroupByName("test_group")
 	if err != nil {
 		c.Assert(errors.IsNotFound(err), Equals, true)
 	} else {
