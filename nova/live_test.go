@@ -78,10 +78,10 @@ func (s *LiveTests) createInstance(c *C, name string) (instance *nova.Entity, er
 
 // Assert that the server record matches the details of the test server image.
 func (s *LiveTests) assertServerDetails(c *C, sr *nova.ServerDetail) {
-	c.Assert(sr.Id, Equals, s.testServer.Id)
-	c.Assert(sr.Name, Equals, testImageName)
-	c.Assert(sr.Flavor.Id, Equals, testFlavourId)
-	c.Assert(sr.Image.Id, Equals, testImageId)
+	c.Check(sr.Id, Equals, s.testServer.Id)
+	c.Check(sr.Name, Equals, testImageName)
+	c.Check(sr.Flavor.Id, Equals, testFlavourId)
+	c.Check(sr.Image.Id, Equals, testImageId)
 }
 
 func (s *LiveTests) TestListFlavors(c *C) {
@@ -91,11 +91,11 @@ func (s *LiveTests) TestListFlavors(c *C) {
 		c.Fatalf("no flavors to list")
 	}
 	for _, f := range flavors {
-		c.Assert(f.Id, Not(Equals), "")
-		c.Assert(f.Name, Not(Equals), "")
+		c.Check(f.Id, Not(Equals), "")
+		c.Check(f.Name, Not(Equals), "")
 		for _, l := range f.Links {
-			c.Assert(l.Href, Matches, "https?://.*")
-			c.Assert(l.Rel, Matches, "self|bookmark")
+			c.Check(l.Href, Matches, "https?://.*")
+			c.Check(l.Rel, Matches, "self|bookmark")
 		}
 	}
 }
@@ -107,8 +107,8 @@ func (s *LiveTests) TestListFlavorsDetail(c *C) {
 		c.Fatalf("no flavors (details) to list")
 	}
 	for _, f := range flavors {
-		c.Assert(f.Name, Not(Equals), "")
-		c.Assert(f.Id, Not(Equals), "")
+		c.Check(f.Name, Not(Equals), "")
+		c.Check(f.Id, Not(Equals), "")
 		if f.RAM < 0 || f.VCPUs < 0 || f.Disk < 0 {
 			c.Fatalf("invalid flavor found: %#v", f)
 		}
@@ -120,15 +120,15 @@ func (s *LiveTests) TestListServers(c *C) {
 	c.Assert(err, IsNil)
 	foundTest := false
 	for _, sr := range servers {
-		c.Assert(sr.Id, Not(Equals), "")
-		c.Assert(sr.Name, Not(Equals), "")
+		c.Check(sr.Id, Not(Equals), "")
+		c.Check(sr.Name, Not(Equals), "")
 		if sr.Id == s.testServer.Id {
-			c.Assert(sr.Name, Equals, testImageName)
+			c.Check(sr.Name, Equals, testImageName)
 			foundTest = true
 		}
 		for _, l := range sr.Links {
-			c.Assert(l.Href, Matches, "https?://.*")
-			c.Assert(l.Rel, Matches, "self|bookmark")
+			c.Check(l.Href, Matches, "https?://.*")
+			c.Check(l.Rel, Matches, "self|bookmark")
 		}
 	}
 	if !foundTest {
@@ -166,31 +166,31 @@ func (s *LiveTests) TestListServersDetail(c *C) {
 	}
 	foundTest := false
 	for _, sr := range servers {
-		c.Assert(sr.Created, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
-		c.Assert(sr.Updated, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
-		c.Assert(sr.Id, Not(Equals), "")
-		c.Assert(sr.HostId, Not(Equals), "")
-		c.Assert(sr.TenantId, Equals, s.tenantId)
-		c.Assert(sr.UserId, Equals, s.userId)
-		c.Assert(sr.Status, Not(Equals), "")
-		c.Assert(sr.Name, Not(Equals), "")
+		c.Check(sr.Created, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
+		c.Check(sr.Updated, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
+		c.Check(sr.Id, Not(Equals), "")
+		c.Check(sr.HostId, Not(Equals), "")
+		c.Check(sr.TenantId, Equals, s.tenantId)
+		c.Check(sr.UserId, Equals, s.userId)
+		c.Check(sr.Status, Not(Equals), "")
+		c.Check(sr.Name, Not(Equals), "")
 		if sr.Id == s.testServer.Id {
 			s.assertServerDetails(c, &sr)
 			foundTest = true
 		}
 		for _, l := range sr.Links {
-			c.Assert(l.Href, Matches, "https?://.*")
-			c.Assert(l.Rel, Matches, "self|bookmark")
+			c.Check(l.Href, Matches, "https?://.*")
+			c.Check(l.Rel, Matches, "self|bookmark")
 		}
-		c.Assert(sr.Flavor.Id, Not(Equals), "")
+		c.Check(sr.Flavor.Id, Not(Equals), "")
 		for _, f := range sr.Flavor.Links {
-			c.Assert(f.Href, Matches, "https?://.*")
-			c.Assert(f.Rel, Matches, "self|bookmark")
+			c.Check(f.Href, Matches, "https?://.*")
+			c.Check(f.Rel, Matches, "self|bookmark")
 		}
-		c.Assert(sr.Image.Id, Not(Equals), "")
+		c.Check(sr.Image.Id, Not(Equals), "")
 		for _, i := range sr.Image.Links {
-			c.Assert(i.Href, Matches, "https?://.*")
-			c.Assert(i.Rel, Matches, "self|bookmark")
+			c.Check(i.Href, Matches, "https?://.*")
+			c.Check(i.Rel, Matches, "self|bookmark")
 		}
 	}
 	if !foundTest {
@@ -227,10 +227,10 @@ func (s *LiveTests) TestListSecurityGroups(c *C) {
 		c.Fatalf("no security groups found (expected at least 1)")
 	}
 	for _, g := range groups {
-		c.Assert(g.TenantId, Equals, s.tenantId)
-		c.Assert(g.Name, Not(Equals), "")
-		c.Assert(g.Description, Not(Equals), "")
-		c.Assert(g.Rules, NotNil)
+		c.Check(g.TenantId, Equals, s.tenantId)
+		c.Check(g.Name, Not(Equals), "")
+		c.Check(g.Description, Not(Equals), "")
+		c.Check(g.Rules, NotNil)
 	}
 }
 
@@ -323,7 +323,8 @@ func (s *LiveTests) waitTestServerToStart(c *C) {
 		if server.Status == nova.StatusActive {
 			break
 		}
-		// There's a rate limit of max 10 POSTs per minute!
+		// We dont' want to flood the connection while polling the server waiting for it to start.
+		c.Logf("server has status %s, waiting 10 seconds before polling again...", server.Status)
 		time.Sleep(10 * time.Second)
 	}
 	c.Logf("started")
@@ -363,6 +364,7 @@ func (s *LiveTests) TestServerAddGetRemoveSecurityGroup(c *C) {
 func (s *LiveTests) TestFloatingIPs(c *C) {
 	ip, err := s.nova.AllocateFloatingIP()
 	c.Assert(err, IsNil)
+	defer s.nova.DeleteFloatingIP(ip.Id)
 	c.Check(ip.IP, Not(Equals), "")
 	c.Check(ip.Pool, Not(Equals), "")
 	c.Check(ip.FixedIP, IsNil)
@@ -393,18 +395,20 @@ func (s *LiveTests) TestFloatingIPs(c *C) {
 		c.Check(fip.IP, Equals, ip.IP)
 		c.Check(fip.Pool, Equals, ip.Pool)
 	}
-	err = s.nova.DeleteFloatingIP(ip.Id)
-	c.Check(err, IsNil)
 }
 
 func (s *LiveTests) TestServerFloatingIPs(c *C) {
 	ip, err := s.nova.AllocateFloatingIP()
 	c.Assert(err, IsNil)
+	defer s.nova.DeleteFloatingIP(ip.Id)
 	c.Check(ip.IP, Matches, `\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`)
 
 	s.waitTestServerToStart(c)
 	err = s.nova.AddServerFloatingIP(s.testServer.Id, ip.IP)
 	c.Assert(err, IsNil)
+	// TODO (wallyworld) - where we are creating a real server, test that the IP address created above can be used
+	// to connected to the server
+	defer s.nova.RemoveServerFloatingIP(s.testServer.Id, ip.IP)
 
 	fip, err := s.nova.GetFloatingIP(ip.Id)
 	c.Assert(err, IsNil)
@@ -417,13 +421,11 @@ func (s *LiveTests) TestServerFloatingIPs(c *C) {
 	c.Assert(err, IsNil)
 	c.Check(fip.FixedIP, IsNil)
 	c.Check(fip.InstanceId, IsNil)
-
-	err = s.nova.DeleteFloatingIP(ip.Id)
-	c.Check(err, IsNil)
 }
 
 // TestRateLimitRetry checks that when we make too many requests and receive a Retry-After response, the retry
 // occurs and the request ultimately succeeds.
+// TODO(wallyworld) - this needs to be moved to local_test when the nova test double is ready.
 func (s *LiveTests) TestRateLimitRetry(c *C) {
 	// Capture the logged output so we can check for retry messages.
 	var logout bytes.Buffer

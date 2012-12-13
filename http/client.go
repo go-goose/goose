@@ -18,10 +18,16 @@ import (
 	"time"
 )
 
+const (
+	contentTypeJson        = "application/json"
+	contentTypeOctetStream = "application/octet-stream"
+)
+
 type Client struct {
 	http.Client
-	logger    *log.Logger
-	AuthToken string
+	logger     *log.Logger
+	AuthToken  string
+	maxRetries int
 }
 
 type ErrorResponse struct {
@@ -52,7 +58,7 @@ func New(httpClient http.Client, logger *log.Logger, token string) *Client {
 	if logger == nil {
 		logger = log.New(os.Stderr, "", log.LstdFlags)
 	}
-	return &Client{httpClient, logger, token}
+	return &Client{httpClient, logger, token, 3}
 }
 
 // JsonRequest JSON encodes and sends the supplied object (if any) to the specified URL.
@@ -83,8 +89,8 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 			}
 		}
 	}
-	headers.Add("Content-Type", "application/json")
-	headers.Add("Accept", "application/json")
+	headers.Add("Content-Type", contentTypeJson)
+	headers.Add("Accept", contentTypeJson)
 	respBody, err := c.sendRequest(method, url, body, headers, reqData.ExpectedStatus)
 	if err != nil {
 		return
@@ -122,8 +128,8 @@ func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err er
 			}
 		}
 	}
-	headers.Add("Content-Type", "application/octet-stream")
-	headers.Add("Accept", "application/octet-stream")
+	headers.Add("Content-Type", contentTypeOctetStream)
+	headers.Add("Accept", contentTypeOctetStream)
 	respBody, err := c.sendRequest(method, url, reqData.ReqData, headers, reqData.ExpectedStatus)
 	if err != nil {
 		return
@@ -174,12 +180,8 @@ func (c *Client) sendRequest(method, URL string, reqBody []byte, headers http.He
 	return
 }
 
-const (
-	maxRetries = 3
-)
-
 func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header, reqData []byte) (resp *http.Response, err error) {
-	for i := 0; i < maxRetries; i++ {
+	for i := 0; i < c.maxRetries; i++ {
 		var reqReader io.Reader
 		if reqData != nil {
 			reqReader = bytes.NewReader(reqData)
@@ -211,7 +213,7 @@ func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header,
 		c.logger.Printf("Too many requests, retrying in %s seconds.", retryAfter)
 		time.Sleep(time.Duration(retryAfter) * time.Second)
 	}
-	return nil, errors.Newf(errors.UnspecifiedError, err, URL, "Maximum number of retries (%d) reached sending request to %s.", maxRetries, URL)
+	return nil, errors.Newf(errors.UnspecifiedError, err, URL, "Maximum number of retries (%d) reached sending request to %s.", c.maxRetries, URL)
 }
 
 type ResponseData struct {
@@ -227,7 +229,7 @@ func handleError(URL string, resp *http.Response, payloadInfo string) error {
 	errBytes, _ := ioutil.ReadAll(resp.Body)
 	errInfo = string(errBytes)
 	// Check if we have a JSON representation of the failure, if so decode it.
-	if resp.Header.Get("Content-Type") == "application/json" {
+	if resp.Header.Get("Content-Type") == contentTypeJson {
 		var wrappedErr ErrorWrapper
 		if err := json.Unmarshal(errBytes, &wrappedErr); err == nil {
 			errInfo = wrappedErr.Error

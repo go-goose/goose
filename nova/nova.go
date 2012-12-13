@@ -272,6 +272,8 @@ func (c *Client) ListSecurityGroups() ([]SecurityGroup, error) {
 }
 
 // GetSecurityGroupByName returns the named security group.
+// Note: due to lack of filtering support when querying security groups, this is not an efficient implementation
+// but it's all we can do for now.
 func (c *Client) GetSecurityGroupByName(name string) (*SecurityGroup, error) {
 	// OpenStack does not support group filtering, so we need to load them all and manually search by name.
 	groups, err := c.ListSecurityGroups()
