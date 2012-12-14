@@ -1,9 +1,11 @@
 package swift_test
 
 import (
+	"bytes"
+	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/client"
-	gooseerrors "launchpad.net/goose/errors"
+	"launchpad.net/goose/errors"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/swift"
 )
@@ -15,9 +17,10 @@ func registerOpenStackTests(cred *identity.Credentials) {
 }
 
 type LiveTests struct {
-	cred   *identity.Credentials
-	client *client.OpenStackClient
-	swift  *swift.Client
+	cred          *identity.Credentials
+	client        *client.OpenStackClient
+	swift         *swift.Client
+	containerName string
 }
 
 func (s *LiveTests) SetUpSuite(c *C) {
@@ -26,15 +29,16 @@ func (s *LiveTests) SetUpSuite(c *C) {
 }
 
 func (s *LiveTests) TearDownSuite(c *C) {
-	// noop, called by local test suite.
 }
 
 func (s *LiveTests) SetUpTest(c *C) {
-	// noop, called by local test suite.
+	s.containerName = "test_container"
+	s.assertCreateContainer(c, s.containerName)
 }
 
 func (s *LiveTests) TearDownTest(c *C) {
-	// noop, called by local test suite.
+	err := s.swift.DeleteContainer(s.containerName)
+	c.Check(err, IsNil)
 }
 
 func (s *LiveTests) assertCreateContainer(c *C, container string) {
@@ -42,31 +46,35 @@ func (s *LiveTests) assertCreateContainer(c *C, container string) {
 	// If the result is a NotFound error, we don't care.
 	err := s.swift.DeleteContainer(container)
 	if err != nil {
-		c.Check(gooseerrors.IsNotFound(err), Equals, true)
+		c.Check(errors.IsNotFound(err), Equals, true)
 	}
 	err = s.swift.CreateContainer(container)
 	c.Assert(err, IsNil)
 }
 
-func (s *LiveTests) TestCreateAndDeleteContainer(c *C) {
-	container := "test_container"
-	s.assertCreateContainer(c, container)
-	err := s.swift.DeleteContainer(container)
+func (s *LiveTests) TestObject(c *C) {
+	object := "test_obj1"
+	data := "...some data..."
+	err := s.swift.PutObject(s.containerName, object, []byte(data))
+	c.Check(err, IsNil)
+	objdata, err := s.swift.GetObject(s.containerName, object)
+	c.Check(err, IsNil)
+	c.Check(string(objdata), Equals, data)
+	err = s.swift.DeleteObject(s.containerName, object)
 	c.Assert(err, IsNil)
 }
 
-func (s *LiveTests) TestObjects(c *C) {
-	container := "test_container"
-	s.assertCreateContainer(c, container)
-	object := "test_obj"
+func (s *LiveTests) TestObjectReader(c *C) {
+	object := "test_obj2"
 	data := "...some data..."
-	err := s.swift.PutObject(container, object, []byte(data))
+	err := s.swift.PutReader(s.containerName, object, bytes.NewReader([]byte(data)))
 	c.Check(err, IsNil)
-	objdata, err := s.swift.GetObject(container, object)
+	r, err := s.swift.GetReader(s.containerName, object)
 	c.Check(err, IsNil)
-	c.Check(string(objdata), Equals, data)
-	err = s.swift.DeleteObject(container, object)
+	readData, err := ioutil.ReadAll(r)
 	c.Check(err, IsNil)
-	err = s.swift.DeleteContainer(container)
+	r.Close()
+	c.Check(string(readData), Equals, data)
+	err = s.swift.DeleteObject(s.containerName, object)
 	c.Assert(err, IsNil)
 }
