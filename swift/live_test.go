@@ -29,6 +29,7 @@ func (s *LiveTests) SetUpSuite(c *C) {
 }
 
 func (s *LiveTests) TearDownSuite(c *C) {
+	// noop, called by local test suite.
 }
 
 func (s *LiveTests) SetUpTest(c *C) {
