@@ -70,7 +70,7 @@ func (s *LiveTests) TestObject(c *C) {
 func (s *LiveTests) TestObjectReader(c *C) {
 	object := "test_obj2"
 	data := "...some data..."
-	err := s.swift.PutReader(s.containerName, object, bytes.NewReader([]byte(data)))
+	err := s.swift.PutReader(s.containerName, object, bytes.NewReader([]byte(data)), int64(len(data)))
 	c.Check(err, IsNil)
 	r, err := s.swift.GetReader(s.containerName, object)
 	c.Check(err, IsNil)

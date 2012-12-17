@@ -51,6 +51,7 @@ type RequestData struct {
 	ReqValue       interface{}
 	RespValue      interface{}
 	ReqReader      io.Reader
+	ReqLength      int
 	RespReader     io.ReadCloser
 }
 
@@ -91,7 +92,7 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 	}
 	headers.Add("Content-Type", contentTypeJson)
 	headers.Add("Accept", contentTypeJson)
-	respBody, err := c.sendRequest(method, url, bytes.NewReader(body), headers, reqData.ExpectedStatus)
+	respBody, err := c.sendRequest(method, url, bytes.NewReader(body), len(body), headers, reqData.ExpectedStatus)
 	if err != nil {
 		return
 	}
@@ -136,7 +137,7 @@ func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err er
 	}
 	headers.Add("Content-Type", contentTypeOctetStream)
 	headers.Add("Accept", contentTypeOctetStream)
-	respBody, err := c.sendRequest(method, url, reqData.ReqReader, headers, reqData.ExpectedStatus)
+	respBody, err := c.sendRequest(method, url, reqData.ReqReader, reqData.ReqLength, headers, reqData.ExpectedStatus)
 	if err != nil {
 		return
 	}
@@ -151,16 +152,16 @@ func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err er
 // extraHeaders: additional HTTP headers to include with the request.
 // expectedStatus: a slice of allowed response status codes.
 // payloadInfo: a string to include with an error message if something goes wrong.
-func (c *Client) sendRequest(method, URL string, reqReader io.Reader, headers http.Header, expectedStatus []int) (rc io.ReadCloser, err error) {
+func (c *Client) sendRequest(method, URL string, reqReader io.Reader, length int, headers http.Header, expectedStatus []int) (rc io.ReadCloser, err error) {
 	if c.AuthToken != "" {
 		headers.Add("X-Auth-Token", c.AuthToken)
 	}
-	var reqData []byte
+	var reqData []byte = make([]byte, length)
 	if reqReader != nil {
-		reqData, err = ioutil.ReadAll(reqReader)
-		if err != nil {
-			err = errors.Newf(errors.UnspecifiedError, err, nil, "failed reading the request data")
-			return
+		nrRead, err := reqReader.Read(reqData)
+		if nrRead != length || err != nil {
+			err = errors.Newf(errors.UnspecifiedError, err, nil, "failed reading the request data, read %v of %v bytes", nrRead, length)
+			return rc, err
 		}
 	}
 	rawResp, err := c.sendRateLimitedRequest(method, URL, headers, reqData)

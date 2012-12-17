@@ -102,12 +102,12 @@ func (c *Client) DeleteObject(containerName, objectName string) error {
 // PutObject writes, or overwrites, an object's content and metadata.
 func (c *Client) PutObject(containerName, objectName string, data []byte) error {
 	r := bytes.NewReader(data)
-	return c.PutReader(containerName, objectName, r)
+	return c.PutReader(containerName, objectName, r, int64(len(data)))
 }
 
 // PutReader writes, or overwrites, an object's content and metadata.
-func (c *Client) PutReader(containerName, objectName string, r io.Reader) error {
-	requestData := goosehttp.RequestData{ReqReader: r, ExpectedStatus: []int{http.StatusCreated}}
+func (c *Client) PutReader(containerName, objectName string, r io.Reader, length int64) error {
+	requestData := goosehttp.RequestData{ReqReader: r, ReqLength: int(length), ExpectedStatus: []int{http.StatusCreated}}
 	err := c.touchObject(&requestData, client.PUT, containerName, objectName)
 	return err
 }
