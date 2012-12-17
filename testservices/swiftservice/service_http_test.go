@@ -4,8 +4,10 @@ package swiftservice
 
 import (
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
+	"launchpad.net/goose/swift"
 	"launchpad.net/goose/testing/httpsuite"
 	"net/http"
 )
@@ -123,8 +125,19 @@ func (s *SwiftHTTPSuite) TestGETContainerMissingNotFound(c *C) {
 
 func (s *SwiftHTTPSuite) TestGETContainerExistsOK(c *C) {
 	s.ensureContainer("test", c)
+	data := []byte("test data")
+	s.ensureObject("test", "obj", data, c)
 
-	s.sendRequest(c, "GET", "test", nil, http.StatusOK)
+	resp := s.sendRequest(c, "GET", "test", nil, http.StatusOK)
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	c.Assert(err, IsNil)
+	var containerData []swift.ContainerContents
+	err = json.Unmarshal(body, &containerData)
+	c.Assert(err, IsNil)
+	c.Assert(len(containerData), Equals, 1)
+	c.Assert(containerData[0].Name, Equals, "obj")
 
 	s.removeContainer("test", c)
 }
