@@ -813,17 +813,17 @@ func (s *NovaSuite) TestGetFloatingIP(c *C) {
 }
 
 func (s *NovaSuite) TestGetFloatingIPByAddr(c *C) {
-    fip := nova.FloatingIP{Id: 1, IP: "1.2.3.4"}
-    s.ensureNoIP(c, fip)
-    ip, err := s.service.floatingIPByAddr(fip.IP)
-    c.Assert(err, NotNil)
-    s.createIP(c, fip)
-    defer s.deleteIP(c, fip)
-    ip, err = s.service.floatingIPByAddr(fip.IP)
-    c.Assert(err, IsNil)
-    c.Assert(*ip, DeepEquals, fip)
-    _, err = s.service.floatingIPByAddr("invalid")
-    c.Assert(err, ErrorMatches, `no such floating IP with address "invalid"`)
+	fip := nova.FloatingIP{Id: 1, IP: "1.2.3.4"}
+	s.ensureNoIP(c, fip)
+	ip, err := s.service.floatingIPByAddr(fip.IP)
+	c.Assert(err, NotNil)
+	s.createIP(c, fip)
+	defer s.deleteIP(c, fip)
+	ip, err = s.service.floatingIPByAddr(fip.IP)
+	c.Assert(err, IsNil)
+	c.Assert(*ip, DeepEquals, fip)
+	_, err = s.service.floatingIPByAddr("invalid")
+	c.Assert(err, ErrorMatches, `no such floating IP with address "invalid"`)
 }
 
 func (s *NovaSuite) TestAddHasRemoveServerFloatingIP(c *C) {
