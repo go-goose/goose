@@ -220,6 +220,16 @@ func (n *Nova) securityGroup(groupId int) (*nova.SecurityGroup, error) {
 	return &group, nil
 }
 
+// securityGroupByName retrieves an existing named group.
+func (n *Nova) securityGroupByName(groupName string) (*nova.SecurityGroup, error) {
+	for _, group := range n.groups {
+		if group.Name == groupName {
+			return &group, nil
+		}
+	}
+	return nil, fmt.Errorf("no such security group named %q", groupName)
+}
+
 // allSecurityGroups returns a list of all existing groups.
 func (n *Nova) allSecurityGroups() []nova.SecurityGroup {
 	var groups []nova.SecurityGroup
@@ -371,6 +381,20 @@ func (n *Nova) hasServerSecurityGroup(serverId string, groupId int) bool {
 	return false
 }
 
+// allServerSecurtyGroups returns all security groups attached to the
+// given server.
+func (n *Nova) allServerSecurityGroups(serverId string) []nova.SecurityGroup {
+	var groups []nova.SecurityGroup
+	for _, gid := range n.serverGroups[serverId] {
+		group, err := n.securityGroup(gid)
+		if err != nil {
+			return nil
+		}
+		groups = append(groups, *group)
+	}
+	return groups
+}
+
 // removeServerSecurityGroup detaches an existing server from a group.
 func (n *Nova) removeServerSecurityGroup(serverId string, groupId int) error {
 	if _, err := n.server(serverId); err != nil {
@@ -427,6 +451,16 @@ func (n *Nova) floatingIP(ipId int) (*nova.FloatingIP, error) {
 		return nil, fmt.Errorf("no such floating IP %d", ipId)
 	}
 	return &ip, nil
+}
+
+// floatingIPByAddr retrieves the floating IP by address.
+func (n *Nova) floatingIPByAddr(address string) (*nova.FloatingIP, error) {
+	for _, fip := range n.floatingIPs {
+		if fip.IP == address {
+			return &fip, nil
+		}
+	}
+	return nil, fmt.Errorf("no such floating IP with address %q", address)
 }
 
 // allFloatingIPs returns a list of all created floating IPs.
