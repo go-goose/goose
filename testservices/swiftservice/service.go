@@ -2,7 +2,11 @@
 
 package swiftservice
 
-import "fmt"
+import (
+	"fmt"
+	"launchpad.net/goose/swift"
+	"time"
+)
 
 type object map[string][]byte
 
@@ -48,6 +52,27 @@ func (s *Swift) AddContainer(name string) error {
 	}
 	s.containers[name] = make(object)
 	return nil
+}
+
+// ListContainer lists the objects in the given container.
+func (s *Swift) ListContainer(name string) ([]swift.ContainerContents, error) {
+	if ok := s.HasContainer(name); !ok {
+		return nil, fmt.Errorf("no such container %q", name)
+	}
+	items := s.containers[name]
+	contents := make([]swift.ContainerContents, len(items))
+	var i = 0
+	for k, v := range items {
+		contents[i] = swift.ContainerContents{
+			Name:         k,
+			Hash:         "", // not implemented
+			LengthBytes:  len(v),
+			ContentType:  "application/octet-stream",
+			LastModified: time.Now().Format("2006-01-02 15:04:05"), //not implemented
+		}
+		i++
+	}
+	return contents, nil
 }
 
 // AddObject creates a new object with the given name in the specified

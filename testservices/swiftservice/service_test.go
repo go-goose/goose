@@ -84,3 +84,17 @@ func (s *SwiftServiceSuite) TestGetURL(c *C) {
 	ok = s.service.HasContainer("test")
 	c.Assert(ok, Equals, false)
 }
+
+func (s *SwiftServiceSuite) TestListContainer(c *C) {
+	err := s.service.AddContainer("test")
+	c.Assert(err, IsNil)
+	data := []byte("test data")
+	err = s.service.AddObject("test", "obj", data)
+	c.Assert(err, IsNil)
+	containerData, err := s.service.ListContainer("test")
+	c.Assert(err, IsNil)
+	c.Assert(len(containerData), Equals, 1)
+	c.Assert(containerData[0].Name, Equals, "obj")
+	err = s.service.RemoveContainer("test")
+	c.Assert(err, IsNil)
+}
