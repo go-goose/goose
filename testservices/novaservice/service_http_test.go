@@ -58,7 +58,7 @@ func assertBody(c *C, resp *http.Response, expected *errorResponse) {
 	body, err := ioutil.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	c.Assert(err, IsNil)
-	expBody := expected.replaceVars(resp.Request)
+	expBody := expected.requestBody(resp.Request)
 	// cast to string for easier asserts debugging
 	c.Assert(string(body), Equals, string(expBody))
 }
@@ -827,7 +827,7 @@ func (s *NovaHTTPSuite) TestAddServerSecurityGroup(c *C) {
 	req.Group.Name = group.Name
 	resp, err := s.jsonRequest("POST", "/servers/"+server.Id+"/action", req, nil)
 	c.Assert(err, IsNil)
-	assertBody(c, resp, errNoContent)
+	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
 	ok = s.service.hasServerSecurityGroup(server.Id, group.Id)
 	c.Assert(ok, Equals, true)
 	err = s.service.removeServerSecurityGroup(server.Id, group.Id)
@@ -884,7 +884,7 @@ func (s *NovaHTTPSuite) TestDeleteServerSecurityGroup(c *C) {
 	req.Group.Name = group.Name
 	resp, err := s.jsonRequest("POST", "/servers/"+server.Id+"/action", req, nil)
 	c.Assert(err, IsNil)
-	assertBody(c, resp, errNoContent)
+	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
 	ok = s.service.hasServerSecurityGroup(server.Id, group.Id)
 	c.Assert(ok, Equals, false)
 }
@@ -948,7 +948,7 @@ func (s *NovaHTTPSuite) TestDeleteFloatingIP(c *C) {
 	c.Assert(err, IsNil)
 	resp, err := s.authRequest("DELETE", "/os-floating-ips/1", nil, nil)
 	c.Assert(err, IsNil)
-	assertBody(c, resp, errAccepted)
+	c.Assert(resp.StatusCode, Equals, http.StatusAccepted)
 	_, err = s.service.floatingIP(fip.Id)
 	c.Assert(err, NotNil)
 }
@@ -971,7 +971,7 @@ func (s *NovaHTTPSuite) TestAddServerFloatingIP(c *C) {
 	req.AddFloatingIP.Address = fip.IP
 	resp, err := s.jsonRequest("POST", "/servers/"+server.Id+"/action", req, nil)
 	c.Assert(err, IsNil)
-	assertBody(c, resp, errNoContent)
+	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
 	c.Assert(s.service.hasServerFloatingIP(server.Id, fip.IP), Equals, true)
 	err = s.service.removeServerFloatingIP(server.Id, fip.Id)
 	c.Assert(err, IsNil)
@@ -998,6 +998,6 @@ func (s *NovaHTTPSuite) TestRemoveServerFloatingIP(c *C) {
 	req.RemoveFloatingIP.Address = fip.IP
 	resp, err := s.jsonRequest("POST", "/servers/"+server.Id+"/action", req, nil)
 	c.Assert(err, IsNil)
-	assertBody(c, resp, errNoContent)
+	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
 	c.Assert(s.service.hasServerFloatingIP(server.Id, fip.IP), Equals, false)
 }
