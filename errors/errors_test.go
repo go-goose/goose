@@ -44,7 +44,7 @@ func (s *ErrorsSuite) TestCreateDuplicateValueError(c *C) {
 func (s *ErrorsSuite) TestErrorCause(c *C) {
 	rootCause := errors.NewNotFoundf(nil, "some value", "")
 	// Construct a new error, based on a not found root cause.
-	err := errors.Newf(rootCause, nil, "an error occurred")
+	err := errors.Newf(rootCause, "an error occurred")
 	c.Assert(err.Cause(), Equals, rootCause)
 	// Check the other error attributes.
 	c.Assert(err.Error(), Equals, "an error occurred, caused by: Not found: some value")
@@ -53,7 +53,7 @@ func (s *ErrorsSuite) TestErrorCause(c *C) {
 func (s *ErrorsSuite) TestErrorIsType(c *C) {
 	rootCause := errors.NewNotFoundf(nil, "some value", "")
 	// Construct a new error, based on a not found root cause.
-	err := errors.Newf(rootCause, nil, "an error occurred")
+	err := errors.Newf(rootCause, "an error occurred")
 	// Check that the error is not falsely identified as something it is not.
 	c.Assert(errors.IsDuplicateValue(err), Equals, false)
 	// Check that the error is correctly identified as a not found error.

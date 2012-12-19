@@ -23,7 +23,6 @@ type Error interface {
 
 type gooseError struct {
 	error
-	context interface{}
 	errcode Code
 	cause   error
 }
@@ -82,34 +81,31 @@ func IsDuplicateValue(err error) bool {
 }
 
 // New creates a new Error instance with the specified cause.
-func makeErrorf(code Code, cause error, context interface{}, format string, args ...interface{}) Error {
-	if format == "" {
-		switch code {
-		case NotFoundError:
-			format = fmt.Sprintf("Not found: %s", context)
-		case DuplicateValueError:
-			format = fmt.Sprintf("Duplicate: %s", context)
-		}
-	}
+func makeErrorf(code Code, cause error, format string, args ...interface{}) Error {
 	return &gooseError{
-		context: context,
 		errcode: code,
 		error:   fmt.Errorf(format, args...),
 		cause:   cause,
 	}
 }
 
-// New creates a new Error instance with the specified cause.
-func Newf(cause error, context interface{}, format string, args ...interface{}) Error {
-	return makeErrorf(UnspecifiedError, cause, context, format, args...)
+// New creates a new Unspecified Error instance with the specified cause.
+func Newf(cause error, format string, args ...interface{}) Error {
+	return makeErrorf(UnspecifiedError, cause, format, args...)
 }
 
 // New creates a new NotFound Error instance with the specified cause.
 func NewNotFoundf(cause error, context interface{}, format string, args ...interface{}) Error {
-	return makeErrorf(NotFoundError, cause, context, format, args...)
+	if format == "" {
+		format = fmt.Sprintf("Not found: %s", context)
+	}
+	return makeErrorf(NotFoundError, cause, format, args...)
 }
 
 // New creates a new DuplicateValue Error instance with the specified cause.
 func NewDuplicateValuef(cause error, context interface{}, format string, args ...interface{}) Error {
-	return makeErrorf(DuplicateValueError, cause, context, format, args...)
+	if format == "" {
+		format = fmt.Sprintf("Duplicate: %s", context)
+	}
+	return makeErrorf(DuplicateValueError, cause, format, args...)
 }
