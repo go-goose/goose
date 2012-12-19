@@ -157,7 +157,7 @@ func (c *Client) SignedURL(containerName, file string, expires time.Time) (strin
 	return rawURL, nil
 }
 
-func maybeNotFound(err error, format string, arg... interface{}) error {
+func maybeNotFound(err error, format string, arg ...interface{}) error {
 	if !errors.IsNotFound(err) {
 		if error, ok := err.(*goosehttp.HttpError); ok {
 			// The OpenStack API says that attempts to operate on non existent containers or objects return a status code

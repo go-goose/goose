@@ -2,7 +2,9 @@ package swift_test
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
+	"io"
 	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/client"
@@ -10,8 +12,6 @@ import (
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/swift"
 	"net/http"
-	"io"
-	"crypto/rand"
 )
 
 func registerOpenStackTests(cred *identity.Credentials) {
