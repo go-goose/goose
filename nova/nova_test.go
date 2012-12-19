@@ -4,6 +4,7 @@ import (
 	"flag"
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/client"
+	gooseerrors "launchpad.net/goose/errors"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/nova"
 	"testing"
@@ -249,6 +250,14 @@ func (s *NovaSuite) TestCreateAndDeleteSecurityGroup(c *C) {
 	} else {
 		c.Fatalf("test security group (%d) not found", group.Id)
 	}
+}
+
+func (s *NovaSuite) TestDuplicateSecurityGroupError(c *C) {
+	group, err := s.nova.CreateSecurityGroup("test_dupgroup", "test_desc")
+	c.Assert(err, IsNil)
+	defer s.nova.DeleteSecurityGroup(group.Id)
+	group, err = s.nova.CreateSecurityGroup("test_dupgroup", "test_desc")
+	c.Assert(gooseerrors.IsDuplicateValue(err), Equals, true)
 }
 
 func (s *NovaSuite) TestCreateAndDeleteSecurityGroupRules(c *C) {

@@ -23,8 +23,7 @@ const (
 
 type Client interface {
 	MakeServiceURL(serviceType string, parts []string) (string, error)
-	SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData,
-		context string, contextArgs ...interface{}) (err error)
+	SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) (err error)
 }
 
 type OpenStackClient struct {
@@ -62,7 +61,7 @@ func (c *OpenStackClient) Authenticate() (err error) {
 	}
 	authDetails, err := c.auth.Auth(c.creds)
 	if err != nil {
-		err = gooseerrors.AddContext(err, "authentication failed")
+		err = gooseerrors.Newf(err, "authentication failed")
 		return
 	}
 
@@ -90,19 +89,16 @@ func (c *OpenStackClient) MakeServiceURL(serviceType string, parts []string) (st
 	return url, nil
 }
 
-func (c *OpenStackClient) SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData,
-	context string, contextArgs ...interface{}) (err error) {
+func (c *OpenStackClient) SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) (err error) {
 	if c.creds != nil && !c.IsAuthenticated() {
 		err = c.Authenticate()
 		if err != nil {
-			err = gooseerrors.AddContext(err, context, contextArgs...)
 			return
 		}
 	}
 
 	url, err := c.MakeServiceURL(svcType, []string{apiCall})
 	if err != nil {
-		err = gooseerrors.AddContext(err, "cannot find a '%s' node endpoint", svcType)
 		return
 	}
 
@@ -113,9 +109,6 @@ func (c *OpenStackClient) SendRequest(method, svcType, apiCall string, requestDa
 		err = c.client.JsonRequest(method, url, requestData)
 	} else {
 		err = c.client.BinaryRequest(method, url, requestData)
-	}
-	if err != nil {
-		err = gooseerrors.AddContext(err, context, contextArgs...)
 	}
 	return
 }
