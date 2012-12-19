@@ -10,12 +10,23 @@ import (
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/swift"
 	"net/http"
+	"io"
+	"crypto/rand"
 )
 
 func registerOpenStackTests(cred *identity.Credentials) {
 	Suite(&LiveTests{
 		cred: cred,
 	})
+}
+
+func randomName() string {
+	buf := make([]byte, 8)
+	_, err := io.ReadFull(rand.Reader, buf)
+	if err != nil {
+		panic(fmt.Sprintf("error from crypto rand: %v", err))
+	}
+	return fmt.Sprintf("%x", buf)
 }
 
 type LiveTests struct {
@@ -26,6 +37,7 @@ type LiveTests struct {
 }
 
 func (s *LiveTests) SetUpSuite(c *C) {
+	s.containerName = "test_container" + randomName()
 	s.client = client.NewClient(s.cred, identity.AuthUserPass, nil)
 	s.swift = swift.New(s.client)
 }
@@ -35,7 +47,6 @@ func (s *LiveTests) TearDownSuite(c *C) {
 }
 
 func (s *LiveTests) SetUpTest(c *C) {
-	s.containerName = "test_container"
 	s.assertCreateContainer(c, s.containerName)
 }
 

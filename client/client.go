@@ -8,7 +8,7 @@ import (
 	"launchpad.net/goose/identity"
 	"log"
 	"net/http"
-	"strings"
+	"path"
 )
 
 const (
@@ -89,13 +89,7 @@ func (c *OpenStackClient) MakeServiceURL(serviceType string, parts []string) (st
 	if !ok {
 		return "", errors.New("no endpoints known for service type: " + serviceType)
 	}
-	for _, part := range parts {
-		if strings.HasPrefix(part, "/") {
-			url += part
-		} else {
-			url += "/" + part
-		}
-	}
+	url += path.Join(append([]string{"/"}, parts...)...)
 	return url, nil
 }
 
