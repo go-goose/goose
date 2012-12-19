@@ -209,7 +209,7 @@ type RunServerOpts struct {
 	Name               string              `json:"name"`
 	FlavorId           string              `json:"flavorRef"`
 	ImageId            string              `json:"imageRef"`
-	UserData           *string             `json:"user_data"`
+	UserData           []byte              `json:"user_data"`
 	SecurityGroupNames []SecurityGroupName `json:"security_groups"`
 }
 
@@ -220,9 +220,8 @@ func (c *Client) RunServer(opts RunServerOpts) (*Entity, error) {
 	}
 	req.Server = opts
 	if opts.UserData != nil {
-		data := []byte(*opts.UserData)
-		encoded := base64.StdEncoding.EncodeToString(data)
-		req.Server.UserData = &encoded
+		encoded := base64.StdEncoding.EncodeToString(opts.UserData)
+		req.Server.UserData = []byte(encoded)
 	}
 	var resp struct {
 		Server Entity `json:"server"`
@@ -270,6 +269,23 @@ func (c *Client) ListSecurityGroups() ([]SecurityGroup, error) {
 		return nil, errors.Newf(err, "failed to list security groups")
 	}
 	return resp.Groups, nil
+}
+
+// GetSecurityGroupByName returns the named security group.
+// Note: due to lack of filtering support when querying security groups, this is not an efficient implementation
+// but it's all we can do for now.
+func (c *Client) SecurityGroupByName(name string) (*SecurityGroup, error) {
+	// OpenStack does not support group filtering, so we need to load them all and manually search by name.
+	groups, err := c.ListSecurityGroups()
+	if err != nil {
+		return nil, err
+	}
+	for _, group := range groups {
+		if group.Name == name {
+			return &group, nil
+		}
+	}
+	return nil, errors.NewNotFoundf(nil, "", "Security group %s not found.", name)
 }
 
 // GetServerSecurityGroups list security groups for a specific server.
@@ -381,6 +397,10 @@ func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (*SecurityGroupRule,
 	err := c.client.SendRequest(client.POST, "compute", apiSecurityGroupRules, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to create a rule for the security group with id: %s", ruleInfo.GroupId)
+	}
+	var zeroSecurityGroupRef SecurityGroupRef
+	if *resp.SecurityGroupRule.Group == zeroSecurityGroupRef {
+		resp.SecurityGroupRule.Group = nil
 	}
 	return &resp.SecurityGroupRule, nil
 }

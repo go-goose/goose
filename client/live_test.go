@@ -41,14 +41,14 @@ func (s *LiveTests) TestAuthenticateFail(c *C) {
 	cred.User = "fred"
 	cred.Secrets = "broken"
 	cred.Region = ""
-	osclient := client.NewClient(&cred, s.authMethod)
+	osclient := client.NewClient(&cred, s.authMethod, nil)
 	c.Assert(osclient.IsAuthenticated(), Equals, false)
 	err := osclient.Authenticate()
 	c.Assert(err, ErrorMatches, "authentication failed.*")
 }
 
 func (s *LiveTests) TestAuthenticate(c *C) {
-	client := client.NewClient(s.cred, s.authMethod)
+	client := client.NewClient(s.cred, s.authMethod, nil)
 	err := client.Authenticate()
 	c.Assert(err, IsNil)
 	c.Assert(client.IsAuthenticated(), Equals, true)
