@@ -70,3 +70,11 @@ func (s *LiveTests) TestObjects(c *C) {
 	err = s.swift.DeleteContainer(container)
 	c.Assert(err, IsNil)
 }
+
+func (s *LiveTests) TestMissingContainer(c *C) {
+	object := "test_obj"
+//	data := "...some data..."
+	_, err := s.swift.GetObject("nonexistantcontainer", object)
+	c.Check(err, IsNil)
+}
+

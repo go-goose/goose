@@ -62,7 +62,7 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 	if reqData.ReqValue != nil {
 		body, err = json.Marshal(reqData.ReqValue)
 		if err != nil {
-			err = errors.Newf(errors.UnspecifiedError, err, nil, "failed marshalling the request body")
+			err = errors.Newf(err, nil, "failed marshalling the request body")
 			return
 		}
 		reqBody := strings.NewReader(string(body))
@@ -71,7 +71,7 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 		req, err = http.NewRequest(method, url, nil)
 	}
 	if err != nil {
-		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed creating the request")
+		err = errors.Newf(err, nil, "failed creating the request")
 		return
 	}
 	req.Header.Add("Content-Type", "application/json")
@@ -86,7 +86,7 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 		if reqData.RespValue != nil {
 			err = json.Unmarshal(respBody, &reqData.RespValue)
 			if err != nil {
-				err = errors.Newf(errors.UnspecifiedError, err, nil, "failed unmarshaling the response body: %s", respBody)
+				err = errors.Newf(err, nil, "failed unmarshaling the response body: %s", respBody)
 			}
 		}
 	}
@@ -115,7 +115,7 @@ func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err er
 		req, err = http.NewRequest(method, url, nil)
 	}
 	if err != nil {
-		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed creating the request")
+		err = errors.Newf(err, nil, "failed creating the request")
 		return
 	}
 	req.Header.Add("Content-Type", "application/octet-stream")
@@ -152,7 +152,7 @@ func (c *Client) sendRequest(req *http.Request, extraHeaders http.Header, expect
 	}
 	rawResp, err := c.Do(req)
 	if err != nil {
-		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed executing the request")
+		err = errors.Newf(err, nil, "failed executing the request")
 		return
 	}
 	foundStatus := false
@@ -173,7 +173,7 @@ func (c *Client) sendRequest(req *http.Request, extraHeaders http.Header, expect
 
 	respBody, err = ioutil.ReadAll(rawResp.Body)
 	if err != nil {
-		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed reading the response body")
+		err = errors.Newf(err, nil, "failed reading the response body")
 		return
 	}
 	return
@@ -209,18 +209,17 @@ func handleError(URL *url.URL, resp *http.Response, payloadInfo string) error {
 	switch resp.StatusCode {
 	case http.StatusNotFound:
 		{
-			return errors.Newf(errors.NotFoundError, nil, URL, "Resource at %s not found", URL)
+			return errors.NewNotFoundf(nil, errContext, "Resource at %s not found", URL)
 		}
 	case http.StatusBadRequest:
 		{
 			dupExp, _ := regexp.Compile(".*already exists.*")
 			if dupExp.Match(errBytes) {
-				return errors.Newf(errors.DuplicateValueError, nil, URL, string(errBytes))
+				return errors.NewDuplicateValuef(nil, errContext, string(errBytes))
 			}
 		}
 	}
 	return errors.Newf(
-		errors.UnspecifiedError,
 		nil,
 		errContext,
 		"request (%s) returned unexpected status: %s; error info: %v; request body: [%s]",
