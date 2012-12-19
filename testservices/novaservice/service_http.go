@@ -8,23 +8,24 @@ import (
 	"io/ioutil"
 	"launchpad.net/goose/nova"
 	"net/http"
+	"path"
 	"strconv"
 	"strings"
 )
 
 const authToken = "X-Auth-Token"
 
-// response defines a single HTTP response.
-type response struct {
+// errorResponse defines a single HTTP error response.
+type errorResponse struct {
 	code        int
 	body        string
 	contentType string
 	errorText   string
 }
 
-// verbatim real Nova responses
+// verbatim real Nova responses (as errors).
 var (
-	unauthorizedResponse = response{
+	errUnauthorized = &errorResponse{
 		http.StatusUnauthorized,
 		`401 Unauthorized
 
@@ -38,33 +39,33 @@ This server could not verify that you are authorized to access the ` +
 		"text/plain; charset=UTF-8",
 		"",
 	}
-	forbiddenResponse = response{
+	errForbidden = &errorResponse{
 		http.StatusForbidden,
 		`{"forbidden": {"message": "Policy doesn't allow compute_extension:` +
 			`flavormanage to be performed.", "code": 403}}`,
 		"application/json; charset=UTF-8",
 		"",
 	}
-	badRequestResponse = response{
+	errBadRequest = &errorResponse{
 		http.StatusBadRequest,
 		`{"badRequest": {"message": "Malformed request url", "code": 400}}`,
 		"application/json; charset=UTF-8",
 		"",
 	}
-	badRequest2Response = response{
+	errBadRequest2 = &errorResponse{
 		http.StatusBadRequest,
 		`{"badRequest": {"message": "The server could not comply with the ` +
 			`request since it is either malformed or otherwise incorrect.", "code": 400}}`,
 		"application/json; charset=UTF-8",
 		"",
 	}
-	badRequestSGResponse = response{
+	errBadRequestSG = &errorResponse{
 		http.StatusBadRequest,
 		`{"badRequest": {"message": "Security group id should be integer", "code": 400}}`,
 		"application/json; charset=UTF-8",
 		"",
 	}
-	notFoundResponse = response{
+	errNotFound = &errorResponse{
 		http.StatusNotFound,
 		`404 Not Found
 
@@ -75,25 +76,25 @@ The resource could not be found.
 		"text/plain; charset=UTF-8",
 		"",
 	}
-	notFoundJSONResponse = response{
+	errNotFoundJSON = &errorResponse{
 		http.StatusNotFound,
 		`{"itemNotFound": {"message": "The resource could not be found.", "code": 404}}`,
 		"application/json; charset=UTF-8",
 		"",
 	}
-	notFoundJSONSGResponse = response{
+	errNotFoundJSONSG = &errorResponse{
 		http.StatusNotFound,
 		`{"itemNotFound": {"message": "Security group $ID$ not found.", "code": 404}}`,
 		"application/json; charset=UTF-8",
 		"",
 	}
-	notFoundJSONSGRResponse = response{
+	errNotFoundJSONSGR = &errorResponse{
 		http.StatusNotFound,
 		`{"itemNotFound": {"message": "Rule ($ID$) not found.", "code": 404}}`,
 		"application/json; charset=UTF-8",
 		"",
 	}
-	multipleChoicesResponse = response{
+	errMultipleChoices = &errorResponse{
 		http.StatusMultipleChoices,
 		`{"choices": [{"status": "CURRENT", "media-types": [{"base": ` +
 			`"application/xml", "type": "application/vnd.openstack.compute+` +
@@ -103,14 +104,14 @@ The resource could not be found.
 		"application/json",
 		"",
 	}
-	noVersionResponse = response{
+	errNoVersion = &errorResponse{
 		http.StatusOK,
 		`{"versions": [{"status": "CURRENT", "updated": "2011-01-21` +
 			`T11:33:21Z", "id": "v2.0", "links": [{"href": "$ENDPOINT$", "rel": "self"}]}]}`,
 		"application/json",
 		"",
 	}
-	versionsLinksResponse = response{
+	errVersionsLinks = &errorResponse{
 		http.StatusOK,
 		`{"version": {"status": "CURRENT", "updated": "2011-01-21T11` +
 			`:33:21Z", "media-types": [{"base": "application/xml", "type": ` +
@@ -125,47 +126,51 @@ The resource could not be found.
 		"application/json",
 		"",
 	}
-	noContentResponse = response{
+	errNoContent = &errorResponse{
 		http.StatusNoContent,
 		"",
 		"text/plain; charset=UTF-8",
 		"",
 	}
-	acceptedResponse = response{
+	errAccepted = &errorResponse{
 		http.StatusAccepted,
 		"",
 		"text/plain; charset=UTF-8",
 		"",
 	}
-	notImplementedResponse = response{
+	errNotImplemented = &errorResponse{
 		http.StatusNotImplemented,
 		"501 Not Implemented",
 		"text/plain; charset=UTF-8",
 		"",
 	}
-	errorResponse = response{
+	errInternal = &errorResponse{
 		http.StatusInternalServerError,
 		`{"internalServerError":{"message":"$ERROR$",code:500}}`,
 		"application/json",
-		"", // set by sendError()
+		"",
 	}
 )
+
+func (e *errorResponse) Error() string {
+	return e.errorText
+}
 
 // endpoint returns the current testing server's endpoint URL.
 func endpoint() string {
 	return hostname + versionPath + "/"
 }
 
-// replaceVars replaces $ENDPOINT$, $URL$, $ID, and $ERROR$ in the
-// response body with their values, taking the original requset into
-// account, and returns the result as a []byte.
-func (resp response) replaceVars(r *http.Request) []byte {
+// replaceVars replaces $ENDPOINT$, $URL$, $ID$, and $ERROR$ in the
+// error response body with their values, taking the original request
+// into account, and returns the result as a []byte.
+func (e *errorResponse) replaceVars(r *http.Request) []byte {
 	url := strings.TrimLeft(r.URL.Path, "/")
-	body := resp.body
+	body := e.body
 	body = strings.Replace(body, "$ENDPOINT$", endpoint(), -1)
 	body = strings.Replace(body, "$URL$", url, -1)
-	if resp.errorText != "" {
-		body = strings.Replace(body, "$ERROR$", resp.errorText, -1)
+	if e.Error() != "" {
+		body = strings.Replace(body, "$ERROR$", e.Error(), -1)
 	}
 	if slash := strings.LastIndex(url, "/"); slash != -1 {
 		body = strings.Replace(body, "$ID$", url[slash+1:], -1)
@@ -173,111 +178,105 @@ func (resp response) replaceVars(r *http.Request) []byte {
 	return []byte(body)
 }
 
-// send serializes the response as needed and sends it.
-func (resp response) send(w http.ResponseWriter, r *http.Request) {
-	if resp.contentType != "" {
-		w.Header().Set("Content-Type", resp.contentType)
+func (e *errorResponse) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if e.contentType != "" {
+		w.Header().Set("Content-Type", e.contentType)
 	}
 	var body []byte
-	if resp.body != "" {
-		body = resp.replaceVars(r)
+	if e.body != "" {
+		body = e.replaceVars(r)
 	}
 	// workaround for https://code.google.com/p/go/issues/detail?id=4454
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
-	if resp.code != 0 {
-		w.WriteHeader(resp.code)
+	if e.code != 0 {
+		w.WriteHeader(e.code)
 	}
 	if len(body) > 0 {
 		w.Write(body)
 	}
 }
 
-// sendError responds with the given error to the given http request.
-func sendError(err error, w http.ResponseWriter, r *http.Request) {
-	eresp := errorResponse
-	eresp.errorText = err.Error()
-	eresp.send(w, r)
+type novaHandler struct {
+	n      *Nova
+	method func(n *Nova, w http.ResponseWriter, r *http.Request) error
 }
 
-// sendJSON sends the specified response serialized as JSON.
-func sendJSON(code int, resp interface{}, w http.ResponseWriter, r *http.Request) {
+func (h *novaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	// handle invalid X-Auth-Token header
+	if r.Header.Get(authToken) != h.n.token {
+		errUnauthorized.ServeHTTP(w, r)
+		return
+	}
+	// handle trailing slash in the path
+	if strings.HasSuffix(path, "/") && path != "/" {
+		errNotFound.ServeHTTP(w, r)
+		return
+	}
+	err := h.method(h.n, w, r)
+	if err == nil {
+		return
+	}
+	resp, _ := err.(http.Handler)
+	if resp == nil {
+		resp := errInternal
+		resp.errorText = err.Error()
+	}
+	resp.ServeHTTP(w, r)
+}
+
+// sendError converts the given error and sends it as errInternal
+// error response, returning the error (as a shortcut for handlers).
+func sendError(err error, w http.ResponseWriter, r *http.Request) error {
+	resp := errInternal
+	resp.errorText = err.Error()
+	resp.ServeHTTP(w, r)
+	return err
+}
+
+// sendJSON sends the specified response serialized as JSON, returning
+// nil (as a shortcut for handlers) or an error (when marshaling fails).
+func sendJSON(code int, resp interface{}, w http.ResponseWriter, r *http.Request) error {
 	var data []byte
 	if resp != nil {
 		var err error
 		data, err = json.Marshal(resp)
 		if err != nil {
-			sendError(err, w, r)
-			return
+			return sendError(err, w, r)
 		}
 	}
 	// workaround for https://code.google.com/p/go/issues/detail?id=4454
 	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
 	w.WriteHeader(code)
 	w.Write(data)
+	return nil
 }
 
-// handleUnauthorizedNotFound is called for each request to check for
-// common errors (X-Auth-Token and trailing slash in URL). Returns
-// true if it's OK, false if a response was sent.
-func (n *Nova) handleUnauthorizedNotFound(w http.ResponseWriter, r *http.Request) bool {
-	path := r.URL.Path
-	if r.Header.Get(authToken) != n.token {
-		unauthorizedResponse.send(w, r)
-		return false
+func (n *Nova) handler(method func(n *Nova, w http.ResponseWriter, r *http.Request) error) http.Handler {
+	return &novaHandler{n, method}
+}
+
+func (n *Nova) handleRoot(w http.ResponseWriter, r *http.Request) error {
+	if r.URL.Path == "/" {
+		return errNoVersion
 	}
-	if strings.HasSuffix(path, "/") && path != "/" {
-		notFoundResponse.send(w, r)
-		return false
-	}
-	return true
-}
-
-// handle registers the given Nova handler method for the URL prefix.
-func (n *Nova) handle(prefix string, handler func(*Nova, http.ResponseWriter, *http.Request)) http.Handler {
-	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if n.handleUnauthorizedNotFound(w, r) {
-			handler(n, w, r)
-		}
-	})
-	return http.StripPrefix(prefix, h)
-}
-
-// respond returns an http Handler sending the given response.
-func (n *Nova) respond(resp response) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if n.handleUnauthorizedNotFound(w, r) {
-			resp.send(w, r)
-		}
-	})
-}
-
-// getId extracts and returns the last part of r.URL.Path, after the
-// last slash (if any), which is used as ID of an API object,
-// stripping first the given prefix from the path.
-func getId(prefix string, r *http.Request) string {
-	path := strings.Replace(r.URL.Path, prefix, "", 1)
-	if slash := strings.LastIndex(path, "/"); slash != -1 {
-		return path[slash+1:]
-	}
-	return ""
+	return errMultipleChoices
 }
 
 // handleFlavors handles the flavors HTTP API.
-func (n *Nova) handleFlavors(w http.ResponseWriter, r *http.Request) {
+func (n *Nova) handleFlavors(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
 	case "GET":
-		if flavorId := getId("flavors", r); flavorId != "" {
+		if flavorId := path.Base(r.URL.Path); flavorId != "flavors" {
 			flavor, err := n.flavor(flavorId)
 			if err != nil {
-				notFoundResponse.send(w, r)
-				return
+				return errNotFound
 			}
 			var resp struct {
 				Flavor nova.FlavorDetail `json:"flavor"`
 			}
 			resp.Flavor = *flavor
-			sendJSON(http.StatusOK, resp, w, r)
-			return
+			return sendJSON(http.StatusOK, resp, w, r)
 		}
 		entities := n.allFlavorsAsEntities()
 		var resp struct {
@@ -287,47 +286,42 @@ func (n *Nova) handleFlavors(w http.ResponseWriter, r *http.Request) {
 		if len(entities) == 0 {
 			resp.Flavors = []nova.Entity{}
 		}
-		sendJSON(http.StatusOK, resp, w, r)
+		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
-		if flavorId := getId("flavors", r); flavorId != "" {
-			notFoundResponse.send(w, r)
-			return
+		if flavorId := path.Base(r.URL.Path); flavorId != "flavors" {
+			return errNotFound
 		}
 		body, err := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
 		if err != nil {
-			sendError(err, w, r)
-			return
+			return sendError(err, w, r)
 		}
 		if len(body) == 0 {
-			badRequest2Response.send(w, r)
-			return
+			return errBadRequest2
 		}
-		notImplementedResponse.send(w, r)
+		return errNotImplemented
 	case "PUT":
-		if flavorId := getId("flavors", r); flavorId != "" {
-			notFoundJSONResponse.send(w, r)
-			return
+		if flavorId := path.Base(r.URL.Path); flavorId != "flavors" {
+			return errNotFoundJSON
 		}
-		notFoundResponse.send(w, r)
+		return errNotFound
 	case "DELETE":
-		if flavorId := getId("flavors", r); flavorId != "" {
-			forbiddenResponse.send(w, r)
-			return
+		if flavorId := path.Base(r.URL.Path); flavorId != "flavors" {
+			return errForbidden
 		}
-		notFoundResponse.send(w, r)
+		return errNotFound
 	default:
 		panic("unknown request method: " + r.Method)
 	}
+	return nil
 }
 
 // handleFlavorsDetail handles the flavors/detail HTTP API.
-func (n *Nova) handleFlavorsDetail(w http.ResponseWriter, r *http.Request) {
+func (n *Nova) handleFlavorsDetail(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
 	case "GET":
-		if flavorId := getId("flavors/detail", r); flavorId != "" {
-			notFoundResponse.send(w, r)
-			return
+		if flavorId := path.Base(r.URL.Path); flavorId != "detail" {
+			return errNotFound
 		}
 		flavors := n.allFlavors()
 		var resp struct {
@@ -337,125 +331,122 @@ func (n *Nova) handleFlavorsDetail(w http.ResponseWriter, r *http.Request) {
 		if len(flavors) == 0 {
 			resp.Flavors = []nova.FlavorDetail{}
 		}
-		sendJSON(http.StatusOK, resp, w, r)
+		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
-		notFoundResponse.send(w, r)
+		return errNotFound
 	case "PUT":
-		if flavorId := getId("flavors/detail", r); flavorId != "" {
-			notFoundResponse.send(w, r)
-			return
+		if flavorId := path.Base(r.URL.Path); flavorId != "detail" {
+			return errNotFound
 		}
-		notFoundJSONResponse.send(w, r)
+		return errNotFoundJSON
 	case "DELETE":
-		if flavorId := getId("flavors/detail", r); flavorId != "" {
-			notFoundResponse.send(w, r)
-			return
+		if flavorId := path.Base(r.URL.Path); flavorId != "detail" {
+			return errNotFound
 		}
-		forbiddenResponse.send(w, r)
+		return errForbidden
 	default:
 		panic("unknown request method: " + r.Method)
 	}
+	return nil
 }
 
-// handleServerActions handles the servers/<id/action HTTP API.
-func (n *Nova) handleServerActions(server nova.ServerDetail, w http.ResponseWriter, r *http.Request) {
+// handleServerActions handles the servers/<id>/action HTTP API.
+func (n *Nova) handleServerActions(server *nova.ServerDetail, w http.ResponseWriter, r *http.Request) error {
+	if server == nil {
+		return errNotFound
+	}
 	body, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 	if err != nil || len(body) == 0 {
-		notFoundResponse.send(w, r)
-		return
+		return errNotFound
 	}
-	var action map[string]interface{}
-	err = json.Unmarshal(body, &action)
-	if err != nil {
-		sendError(err, w, r)
-		return
+	var action struct {
+		AddSecurityGroup *struct {
+			Name string
+		}
+		RemoveSecurityGroup *struct {
+			Name string
+		}
+		AddFloatingIP *struct {
+			Address string
+		}
+		RemoveFloatingIP *struct {
+			Address string
+		}
 	}
-	if ac := action["addSecurityGroup"]; ac != nil {
-		name := ac.(map[string]interface{})["name"].(string)
+	if err := json.Unmarshal(body, &action); err != nil {
+		return sendError(err, w, r)
+	}
+	switch {
+	case action.AddSecurityGroup != nil:
+		name := action.AddSecurityGroup.Name
 		group, err := n.securityGroupByName(name)
 		if err != nil || n.hasServerSecurityGroup(server.Id, group.Id) {
-			notFoundResponse.send(w, r)
-			return
+			return errNotFound
 		}
-		err = n.addServerSecurityGroup(server.Id, group.Id)
-		if err != nil {
-			sendError(err, w, r)
-			return
+		if err = n.addServerSecurityGroup(server.Id, group.Id); err != nil {
+			return sendError(err, w, r)
 		}
-		noContentResponse.send(w, r)
-		return
-	}
-	if ac := action["removeSecurityGroup"]; ac != nil {
-		name := ac.(map[string]interface{})["name"].(string)
+		return errNoContent
+	case action.RemoveSecurityGroup != nil:
+		name := action.RemoveSecurityGroup.Name
 		group, err := n.securityGroupByName(name)
 		if err != nil || !n.hasServerSecurityGroup(server.Id, group.Id) {
-			notFoundResponse.send(w, r)
-			return
+			return errNotFound
 		}
-		err = n.removeServerSecurityGroup(server.Id, group.Id)
-		if err != nil {
-			sendError(err, w, r)
-			return
+		if err = n.removeServerSecurityGroup(server.Id, group.Id); err != nil {
+			return sendError(err, w, r)
 		}
-		noContentResponse.send(w, r)
-		return
-	}
-	if ac := action["addFloatingIp"]; ac != nil {
-		addr := ac.(map[string]interface{})["address"].(string)
+		return errNoContent
+	case action.AddFloatingIP != nil:
+		addr := action.AddFloatingIP.Address
 		if n.hasServerFloatingIP(server.Id, addr) {
-			notFoundResponse.send(w, r)
-			return
+			return errNotFound
 		}
 		fip, err := n.floatingIPByAddr(addr)
 		if err != nil {
-			notFoundResponse.send(w, r)
-			return
+			return errNotFound
 		}
 		if err = n.addServerFloatingIP(server.Id, fip.Id); err != nil {
-			sendError(err, w, r)
-			return
+			return sendError(err, w, r)
 		}
-		noContentResponse.send(w, r)
-		return
-	}
-	if ac := action["removeFloatingIp"]; ac != nil {
-		addr := ac.(map[string]interface{})["address"].(string)
+		return errNoContent
+	case action.RemoveFloatingIP != nil:
+		addr := action.RemoveFloatingIP.Address
 		if !n.hasServerFloatingIP(server.Id, addr) {
-			notFoundResponse.send(w, r)
-			return
+			return errNotFound
 		}
 		fip, err := n.floatingIPByAddr(addr)
 		if err != nil {
-			notFoundResponse.send(w, r)
-			return
+			return errNotFound
 		}
 		if err = n.removeServerFloatingIP(server.Id, fip.Id); err != nil {
-			sendError(err, w, r)
-			return
+			return sendError(err, w, r)
 		}
-		noContentResponse.send(w, r)
-		return
+		return errNoContent
+	default:
+		panic("unknown server action: " + string(body))
 	}
-	panic("unknown server action: " + string(body))
+	return nil
 }
 
 // handleServers handles the servers HTTP API.
-func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) {
+func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
 	case "GET":
-		if serverId := getId("servers", r); serverId != "" {
+		if suffix := path.Base(r.URL.Path); suffix != "servers" {
 			groups := false
-			if serverId == "os-security-groups" {
+			serverId := ""
+			if suffix == "os-security-groups" {
 				// handle GET /servers/<id>/os-security-groups
-				serverId = strings.Replace(r.URL.Path, "servers/", "", 1)
-				serverId = serverId[:strings.Index(serverId, "/")]
+				serverId = path.Base(strings.Replace(r.URL.Path, "/os-security-groups", "", 1))
 				groups = true
+			} else {
+				serverId = suffix
 			}
 			server, err := n.server(serverId)
 			if err != nil {
-				notFoundJSONResponse.send(w, r)
-				return
+				return errNotFoundJSON
 			}
 			if groups {
 				var resp struct {
@@ -466,15 +457,13 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) {
 				if len(srvGroups) == 0 {
 					resp.Groups = []nova.SecurityGroup{}
 				}
-				sendJSON(http.StatusOK, resp, w, r)
-			} else {
-				var resp struct {
-					Server nova.ServerDetail `json:"server"`
-				}
-				resp.Server = *server
-				sendJSON(http.StatusOK, resp, w, r)
+				return sendJSON(http.StatusOK, resp, w, r)
 			}
-			return
+			var resp struct {
+				Server nova.ServerDetail `json:"server"`
+			}
+			resp.Server = *server
+			return sendJSON(http.StatusOK, resp, w, r)
 		}
 		entities := n.allServersAsEntities()
 		var resp struct {
@@ -484,66 +473,57 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) {
 		if len(entities) == 0 {
 			resp.Servers = []nova.Entity{}
 		}
-		sendJSON(http.StatusOK, resp, w, r)
+		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
-		if serverId := getId("servers", r); serverId != "" {
-			if serverId == "action" {
+		if suffix := path.Base(r.URL.Path); suffix != "servers" {
+			serverId := ""
+			if suffix == "action" {
 				// handle POST /servers/<id>/action
-				serverId = strings.Replace(r.URL.Path, "servers/", "", 1)
-				serverId = serverId[:strings.Index(serverId, "/")]
-				if server, err := n.server(serverId); err == nil {
-					n.handleServerActions(*server, w, r)
-					return
-				}
+				serverId = path.Base(strings.Replace(r.URL.Path, "/action", "", 1))
+				server, _ := n.server(serverId)
+				return n.handleServerActions(server, w, r)
+			} else {
+				serverId = suffix
 			}
-			notFoundResponse.send(w, r)
-			return
+			return errNotFound
 		}
 		body, err := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
 		if err != nil {
-			sendError(err, w, r)
-			return
+			return sendError(err, w, r)
 		}
 		if len(body) == 0 {
-			badRequest2Response.send(w, r)
-			return
+			return errBadRequest2
 		}
-		notImplementedResponse.send(w, r)
+		return errNotImplemented
 	case "PUT":
-		if serverId := getId("servers", r); serverId != "" {
-			badRequest2Response.send(w, r)
-			return
+		if serverId := path.Base(r.URL.Path); serverId != "servers" {
+			return errBadRequest2
 		}
-		notFoundResponse.send(w, r)
+		return errNotFound
 	case "DELETE":
-		if serverId := getId("servers", r); serverId != "" {
-			_, err := n.server(serverId)
-			if err != nil {
-				notFoundJSONResponse.send(w, r)
-				return
+		if serverId := path.Base(r.URL.Path); serverId != "servers" {
+			if _, err := n.server(serverId); err != nil {
+				return errNotFoundJSON
 			}
-			err = n.removeServer(serverId)
-			if err != nil {
-				sendError(err, w, r)
-				return
+			if err := n.removeServer(serverId); err != nil {
+				return sendError(err, w, r)
 			}
-			noContentResponse.send(w, r)
-			return
+			return errNoContent
 		}
-		notFoundResponse.send(w, r)
+		return errNotFound
 	default:
 		panic("unknown request method: " + r.Method)
 	}
+	return nil
 }
 
 // handleServersDetail handles the servers/detail HTTP API.
-func (n *Nova) handleServersDetail(w http.ResponseWriter, r *http.Request) {
+func (n *Nova) handleServersDetail(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
 	case "GET":
-		if serverId := getId("servers/detail", r); serverId != "" {
-			notFoundResponse.send(w, r)
-			return
+		if serverId := path.Base(r.URL.Path); serverId != "detail" {
+			return errNotFound
 		}
 		servers := n.allServers()
 		var resp struct {
@@ -553,61 +533,55 @@ func (n *Nova) handleServersDetail(w http.ResponseWriter, r *http.Request) {
 		if len(servers) == 0 {
 			resp.Servers = []nova.ServerDetail{}
 		}
-		sendJSON(http.StatusOK, resp, w, r)
+		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
-		notFoundResponse.send(w, r)
+		return errNotFound
 	case "PUT":
-		if serverId := getId("servers/detail", r); serverId != "" {
-			notFoundResponse.send(w, r)
-			return
+		if serverId := path.Base(r.URL.Path); serverId != "detail" {
+			return errNotFound
 		}
-		badRequest2Response.send(w, r)
+		return errBadRequest2
 	case "DELETE":
-		if serverId := getId("servers/detail", r); serverId != "" {
-			notFoundResponse.send(w, r)
-			return
+		if serverId := path.Base(r.URL.Path); serverId != "detail" {
+			return errNotFound
 		}
-		notFoundJSONResponse.send(w, r)
+		return errNotFoundJSON
 	default:
 		panic("unknown request method: " + r.Method)
 	}
+	return nil
 }
 
 // processGroupId extracts and validates group ID from the given
-// request, returning -1 when an error response was sent, 0 when no ID
-// was present, and the parsed valid ID on success.
-func (n *Nova) processGroupId(w http.ResponseWriter, r *http.Request) int {
-	if groupId := getId("os-security-groups", r); groupId != "" {
+// request, returning the group (if valid); nil and no error (no group
+// ID was present in the path); or nil and an error (the error
+// response was sent in this case)
+func (n *Nova) processGroupId(w http.ResponseWriter, r *http.Request) (*nova.SecurityGroup, error) {
+	if groupId := path.Base(r.URL.Path); groupId != "os-security-groups" {
 		id, err := strconv.Atoi(groupId)
 		if err != nil {
-			badRequestSGResponse.send(w, r)
-			return -1
+			return nil, errBadRequestSG
 		}
-		if _, err = n.securityGroup(id); err != nil {
-			notFoundJSONSGResponse.send(w, r)
-			return -1
+		group, err := n.securityGroup(id)
+		if err != nil {
+			return nil, errNotFoundJSONSG
 		}
-		return id
+		return group, nil
 	}
-	return 0
+	return nil, nil
 }
 
 // handleSecurityGroups handles the os-security-groups HTTP API.
-func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) {
+func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
 	case "GET":
-		if groupId := n.processGroupId(w, r); groupId > 0 {
-			group, err := n.securityGroup(groupId)
-			if err != nil {
-				sendError(err, w, r)
-				return
-			}
+		if group, err := n.processGroupId(w, r); group != nil {
 			var resp struct {
 				Group nova.SecurityGroup `json:"security_group"`
 			}
 			resp.Group = *group
-			sendJSON(http.StatusOK, resp, w, r)
-		} else if groupId == 0 {
+			return sendJSON(http.StatusOK, resp, w, r)
+		} else if err == nil {
 			groups := n.allSecurityGroups()
 			var resp struct {
 				Groups []nova.SecurityGroup `json:"security_groups"`
@@ -616,18 +590,18 @@ func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) {
 			if len(groups) == 0 {
 				resp.Groups = []nova.SecurityGroup{}
 			}
-			sendJSON(http.StatusOK, resp, w, r)
+			return sendJSON(http.StatusOK, resp, w, r)
+		} else {
+			return err
 		}
 	case "POST":
-		if groupId := getId("os-security-groups", r); groupId != "" {
-			notFoundResponse.send(w, r)
-			return
+		if groupId := path.Base(r.URL.Path); groupId != "os-security-groups" {
+			return errNotFound
 		}
 		body, err := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
 		if err != nil || len(body) == 0 {
-			badRequest2Response.send(w, r)
-			return
+			return errBadRequest2
 		}
 		var req struct {
 			Group struct {
@@ -636,142 +610,137 @@ func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) {
 			} `json:"security_group"`
 		}
 		if err = json.Unmarshal(body, &req); err != nil {
-			sendError(err, w, r)
+			return sendError(err, w, r)
 		} else {
-			nextId := len(n.allSecurityGroups()) + 1
+			n.nextGroupId++
+			nextId := n.nextGroupId
 			err = n.addSecurityGroup(nova.SecurityGroup{
 				Id:          nextId,
 				Name:        req.Group.Name,
 				Description: req.Group.Description,
 			})
 			if err != nil {
-				sendError(err, w, r)
-				return
+				return sendError(err, w, r)
 			}
 			group, err := n.securityGroup(nextId)
 			if err != nil {
-				sendError(err, w, r)
-				return
+				return sendError(err, w, r)
 			}
 			var resp struct {
 				Group nova.SecurityGroup `json:"security_group"`
 			}
 			resp.Group = *group
-			sendJSON(http.StatusOK, resp, w, r)
+			return sendJSON(http.StatusOK, resp, w, r)
 		}
 	case "PUT":
-		if groupId := getId("os-security-groups", r); groupId != "" {
-			notFoundJSONResponse.send(w, r)
-			return
+		if groupId := path.Base(r.URL.Path); groupId != "os-security-groups" {
+			return errNotFoundJSON
 		}
-		notFoundResponse.send(w, r)
+		return errNotFound
 	case "DELETE":
-		if groupId := n.processGroupId(w, r); groupId > 0 {
-			err := n.removeSecurityGroup(groupId)
-			if err != nil {
-				sendError(err, w, r)
-				return
+		if group, err := n.processGroupId(w, r); group != nil {
+			if err := n.removeSecurityGroup(group.Id); err != nil {
+				return sendError(err, w, r)
 			}
-			noContentResponse.send(w, r)
-		} else if groupId == 0 {
-			notFoundResponse.send(w, r)
+			if n.nextGroupId > 0 {
+				n.nextGroupId--
+			}
+			return errNoContent
+		} else if err == nil {
+			return errNotFound
+		} else {
+			return err
 		}
 	default:
 		panic("unknown request method: " + r.Method)
 	}
+	return nil
 }
 
 // handleSecurityGroupRules handles the os-security-group-rules HTTP API.
-func (n *Nova) handleSecurityGroupRules(w http.ResponseWriter, r *http.Request) {
+func (n *Nova) handleSecurityGroupRules(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
 	case "GET":
-		notFoundJSONResponse.send(w, r)
+		return errNotFoundJSON
 	case "POST":
-		if ruleId := getId("os-security-group-rules", r); ruleId != "" {
-			notFoundResponse.send(w, r)
-			return
+		if ruleId := path.Base(r.URL.Path); ruleId != "os-security-group-rules" {
+			return errNotFound
 		}
 		body, err := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
 		if err != nil || len(body) == 0 {
-			badRequest2Response.send(w, r)
-			return
+			return errBadRequest2
 		}
 		var req struct {
 			Rule nova.RuleInfo `json:"security_group_rule"`
 		}
 		if err = json.Unmarshal(body, &req); err != nil {
-			sendError(err, w, r)
+			return sendError(err, w, r)
 		} else {
-			nextId := len(n.rules) + 1
+			n.nextRuleId++
+			nextId := n.nextRuleId
 			err = n.addSecurityGroupRule(nextId, req.Rule)
 			if err != nil {
-				sendError(err, w, r)
-				return
+				return sendError(err, w, r)
 			}
 			rule, err := n.securityGroupRule(nextId)
 			if err != nil {
-				sendError(err, w, r)
-				return
+				return sendError(err, w, r)
 			}
 			var resp struct {
 				Rule nova.SecurityGroupRule `json:"security_group_rule"`
 			}
 			resp.Rule = *rule
-			sendJSON(http.StatusOK, resp, w, r)
+			return sendJSON(http.StatusOK, resp, w, r)
 		}
 	case "PUT":
-		if ruleId := getId("os-security-group-rules", r); ruleId != "" {
-			notFoundJSONResponse.send(w, r)
-			return
+		if ruleId := path.Base(r.URL.Path); ruleId != "os-security-group-rules" {
+			return errNotFoundJSON
 		}
-		notFoundResponse.send(w, r)
+		return errNotFound
 	case "DELETE":
-		if ruleId := getId("os-security-group-rules", r); ruleId != "" {
+		if ruleId := path.Base(r.URL.Path); ruleId != "os-security-group-rules" {
 			id, err := strconv.Atoi(ruleId)
 			if err != nil {
 				// weird, but this is how nova responds
-				badRequestSGResponse.send(w, r)
-				return
+				return errBadRequestSG
 			}
 			if _, err = n.securityGroupRule(id); err != nil {
-				notFoundJSONSGRResponse.send(w, r)
-				return
+				return errNotFoundJSONSGR
 			}
 			if err = n.removeSecurityGroupRule(id); err != nil {
-				sendError(err, w, r)
-				return
+				return sendError(err, w, r)
 			}
-			noContentResponse.send(w, r)
-			return
+			if n.nextRuleId > 0 {
+				n.nextRuleId--
+			}
+			return errNoContent
 		}
-		notFoundResponse.send(w, r)
+		return errNotFound
 	default:
 		panic("unknown request method: " + r.Method)
 	}
+	return nil
 }
 
 // handleFloatingIPs handles the os-floating-ips HTTP API.
-func (n *Nova) handleFloatingIPs(w http.ResponseWriter, r *http.Request) {
+func (n *Nova) handleFloatingIPs(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
 	case "GET":
-		if ipId := getId("os-floating-ips", r); ipId != "" {
+		if ipId := path.Base(r.URL.Path); ipId != "os-floating-ips" {
 			nId, err := strconv.Atoi(ipId)
 			if err != nil {
-				notFoundJSONResponse.send(w, r)
-				return
+				return errNotFoundJSON
 			}
 			fip, err := n.floatingIP(nId)
 			if err != nil {
-				notFoundJSONResponse.send(w, r)
-				return
+				return errNotFoundJSON
 			}
 			var resp struct {
 				IP nova.FloatingIP `json:"floating_ip"`
 			}
 			resp.IP = *fip
-			sendJSON(http.StatusOK, resp, w, r)
-			return
+			return sendJSON(http.StatusOK, resp, w, r)
 		}
 		fips := n.allFloatingIPs()
 		var resp struct {
@@ -781,97 +750,68 @@ func (n *Nova) handleFloatingIPs(w http.ResponseWriter, r *http.Request) {
 		if len(fips) == 0 {
 			resp.IPs = []nova.FloatingIP{}
 		}
-		sendJSON(http.StatusOK, resp, w, r)
+		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
-		if ipId := getId("os-floating-ips", r); ipId != "" {
-			notFoundResponse.send(w, r)
-			return
+		if ipId := path.Base(r.URL.Path); ipId != "os-floating-ips" {
+			return errNotFound
 		}
-		nextId := len(n.allFloatingIPs()) + 1
+		n.nextIPId++
+		nextId := n.nextIPId
 		addr := fmt.Sprintf("10.0.0.%d", nextId)
 		fip := nova.FloatingIP{Id: nextId, IP: addr, Pool: "nova"}
 		err := n.addFloatingIP(fip)
 		if err != nil {
-			sendError(err, w, r)
-			return
+			return sendError(err, w, r)
 		}
 		var resp struct {
 			IP nova.FloatingIP `json:"floating_ip"`
 		}
 		resp.IP = fip
-		sendJSON(http.StatusOK, resp, w, r)
+		return sendJSON(http.StatusOK, resp, w, r)
 	case "PUT":
-		if ipId := getId("os-floating-ips", r); ipId != "" {
-			notFoundJSONResponse.send(w, r)
-			return
+		if ipId := path.Base(r.URL.Path); ipId != "os-floating-ips" {
+			return errNotFoundJSON
 		}
-		notFoundResponse.send(w, r)
+		return errNotFound
 	case "DELETE":
-		if ipId := getId("os-floating-ips", r); ipId != "" {
-			// weird, but true - even on success 404 is returned
-			nId, err := strconv.Atoi(ipId)
-			if err == nil {
+		if ipId := path.Base(r.URL.Path); ipId != "os-floating-ips" {
+			if nId, err := strconv.Atoi(ipId); err == nil {
 				if err := n.removeFloatingIP(nId); err == nil {
-					acceptedResponse.send(w, r)
-					return
+					if n.nextIPId > 0 {
+						n.nextIPId--
+					}
+					return errAccepted
 				}
 			}
-			notFoundJSONResponse.send(w, r)
+			return errNotFoundJSON
 		}
-		notFoundResponse.send(w, r)
+		return errNotFound
 	default:
 		panic("unknown request method: " + r.Method)
 	}
-}
-
-var handlersMap = map[string]func(*Nova, http.ResponseWriter, *http.Request){
-	"flavors":                 (*Nova).handleFlavors,
-	"flavors/detail":          (*Nova).handleFlavorsDetail,
-	"servers":                 (*Nova).handleServers,
-	"servers/detail":          (*Nova).handleServersDetail,
-	"os-security-groups":      (*Nova).handleSecurityGroups,
-	"os-security-group-rules": (*Nova).handleSecurityGroupRules,
-	"os-floating-ips":         (*Nova).handleFloatingIPs,
+	return nil
 }
 
 // setupHTTP attaches all the needed handlers to provide the HTTP API.
 func (n *Nova) setupHTTP(mux *http.ServeMux) {
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if !n.handleUnauthorizedNotFound(w, r) {
-			return
+	handlers := map[string]http.Handler{
+		"/":                              n.handler((*Nova).handleRoot),
+		"/$v/":                           errBadRequest,
+		"/$v/$t/":                        errNotFound,
+		"/$v/$t/flavors":                 n.handler((*Nova).handleFlavors),
+		"/$v/$t/flavors/detail":          n.handler((*Nova).handleFlavorsDetail),
+		"/$v/$t/servers":                 n.handler((*Nova).handleServers),
+		"/$v/$t/servers/detail":          n.handler((*Nova).handleServersDetail),
+		"/$v/$t/os-security-groups":      n.handler((*Nova).handleSecurityGroups),
+		"/$v/$t/os-security-group-rules": n.handler((*Nova).handleSecurityGroupRules),
+		"/$v/$t/os-floating-ips":         n.handler((*Nova).handleFloatingIPs),
+	}
+	for path, h := range handlers {
+		path = strings.Replace(path, "$v", n.versionPath, 1)
+		path = strings.Replace(path, "$t", n.tenantId, 1)
+		if !strings.HasSuffix(path, "/") {
+			mux.Handle(path+"/", h)
 		}
-		if r.URL.Path == "/" {
-			noVersionResponse.send(w, r)
-		} else {
-			multipleChoicesResponse.send(w, r)
-		}
-	})
-	urlVersion := "/" + n.versionPath + "/"
-	urlTenant := urlVersion + n.tenantId + "/"
-	mux.Handle(urlVersion, n.respond(badRequestResponse))
-	mux.HandleFunc(urlTenant, func(w http.ResponseWriter, r *http.Request) {
-		path := strings.Replace(r.URL.Path, urlTenant, "", 1)
-		if !n.handleUnauthorizedNotFound(w, r) {
-			return
-		}
-		// forward subpaths to registered handlers
-		if strings.HasPrefix(path, "servers/") && strings.Index(path, "detail") == -1 {
-			// forward /servers/<id>/os-security-groups (or ../action)
-			n.handle(urlTenant, (*Nova).handleServers).ServeHTTP(w, r)
-			return
-		}
-		// handle other, e.g. /.../flavors/xyz -> handleFlavors
-		if slash := strings.LastIndex(path, "/"); slash != -1 {
-			if handler, ok := handlersMap[path[:slash]]; ok {
-				n.handle(urlTenant, handler).ServeHTTP(w, r)
-				return
-			}
-		}
-		// any unknown path
-		fmt.Printf("unknown path: %q\n", path)
-		notFoundResponse.send(w, r)
-	})
-	for pathSuffix, handler := range handlersMap {
-		mux.Handle(urlTenant+pathSuffix, n.handle(urlTenant, handler))
+		mux.Handle(path, h)
 	}
 }

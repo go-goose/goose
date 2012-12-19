@@ -54,7 +54,7 @@ func assertJSON(c *C, resp *http.Response, expected interface{}) {
 
 // assertBody asserts the passed http.Response's body matches the
 // expected response, replacing any variables in the expected body.
-func assertBody(c *C, resp *http.Response, expected response) {
+func assertBody(c *C, resp *http.Response, expected *errorResponse) {
 	body, err := ioutil.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	c.Assert(err, IsNil)
@@ -118,324 +118,324 @@ var simpleTests = []struct {
 	method  string
 	url     string
 	headers http.Header
-	expect  response
+	expect  *errorResponse
 }{
 	{
 		unauth:  true,
 		method:  "GET",
 		url:     "/any",
 		headers: make(http.Header),
-		expect:  unauthorizedResponse,
+		expect:  errUnauthorized,
 	},
 	{
 		unauth:  true,
 		method:  "POST",
 		url:     "/any",
 		headers: setHeader(authToken, "phony"),
-		expect:  unauthorizedResponse,
+		expect:  errUnauthorized,
 	},
 	{
 		unauth:  true,
 		method:  "GET",
 		url:     "/",
 		headers: setHeader(authToken, token),
-		expect:  noVersionResponse,
+		expect:  errNoVersion,
 	},
 	{
 		unauth:  true,
 		method:  "GET",
 		url:     "/any",
 		headers: setHeader(authToken, token),
-		expect:  multipleChoicesResponse,
+		expect:  errMultipleChoices,
 	},
 	{
 		unauth:  true,
 		method:  "POST",
 		url:     "/any/unknown/one",
 		headers: setHeader(authToken, token),
-		expect:  multipleChoicesResponse,
+		expect:  errMultipleChoices,
 	},
 	{
 		method: "POST",
 		url:    "/any/unknown/one",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		unauth:  true,
 		method:  "GET",
 		url:     versionPath + "/phony_token",
 		headers: setHeader(authToken, token),
-		expect:  badRequestResponse,
+		expect:  errBadRequest,
 	},
 	{
 		method: "GET",
 		url:    "/flavors/",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "GET",
 		url:    "/flavors/invalid",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "POST",
 		url:    "/flavors",
-		expect: badRequest2Response,
+		expect: errBadRequest2,
 	},
 	{
 		method: "POST",
 		url:    "/flavors/invalid",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "PUT",
 		url:    "/flavors",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "PUT",
 		url:    "/flavors/invalid",
-		expect: notFoundJSONResponse,
+		expect: errNotFoundJSON,
 	},
 	{
 		method: "DELETE",
 		url:    "/flavors",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "DELETE",
 		url:    "/flavors/invalid",
-		expect: forbiddenResponse,
+		expect: errForbidden,
 	},
 	{
 		method: "GET",
 		url:    "/flavors/detail/invalid",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "POST",
 		url:    "/flavors/detail",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "POST",
 		url:    "/flavors/detail/invalid",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "PUT",
 		url:    "/flavors/detail",
-		expect: notFoundJSONResponse,
+		expect: errNotFoundJSON,
 	},
 	{
 		method: "PUT",
 		url:    "/flavors/detail/invalid",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "DELETE",
 		url:    "/flavors/detail",
-		expect: forbiddenResponse,
+		expect: errForbidden,
 	},
 	{
 		method: "DELETE",
 		url:    "/flavors/detail/invalid",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "GET",
 		url:    "/servers/invalid",
-		expect: notFoundJSONResponse,
+		expect: errNotFoundJSON,
 	},
 	{
 		method: "POST",
 		url:    "/servers",
-		expect: badRequest2Response,
+		expect: errBadRequest2,
 	},
 	{
 		method: "POST",
 		url:    "/servers/invalid",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "PUT",
 		url:    "/servers",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "PUT",
 		url:    "/servers/invalid",
-		expect: badRequest2Response,
+		expect: errBadRequest2,
 	},
 	{
 		method: "DELETE",
 		url:    "/servers",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "DELETE",
 		url:    "/servers/invalid",
-		expect: notFoundJSONResponse,
+		expect: errNotFoundJSON,
 	},
 	{
 		method: "GET",
 		url:    "/servers/detail/invalid",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "POST",
 		url:    "/servers/detail",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "POST",
 		url:    "/servers/detail/invalid",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "PUT",
 		url:    "/servers/detail",
-		expect: badRequest2Response,
+		expect: errBadRequest2,
 	},
 	{
 		method: "PUT",
 		url:    "/servers/detail/invalid",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "DELETE",
 		url:    "/servers/detail",
-		expect: notFoundJSONResponse,
+		expect: errNotFoundJSON,
 	},
 	{
 		method: "DELETE",
 		url:    "/servers/detail/invalid",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "GET",
 		url:    "/os-security-groups/invalid",
-		expect: badRequestSGResponse,
+		expect: errBadRequestSG,
 	},
 	{
 		method: "GET",
 		url:    "/os-security-groups/42",
-		expect: notFoundJSONSGResponse,
+		expect: errNotFoundJSONSG,
 	},
 	{
 		method: "POST",
 		url:    "/os-security-groups",
-		expect: badRequest2Response,
+		expect: errBadRequest2,
 	},
 	{
 		method: "POST",
 		url:    "/os-security-groups/invalid",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "PUT",
 		url:    "/os-security-groups",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "PUT",
 		url:    "/os-security-groups/invalid",
-		expect: notFoundJSONResponse,
+		expect: errNotFoundJSON,
 	},
 	{
 		method: "DELETE",
 		url:    "/os-security-groups",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "DELETE",
 		url:    "/os-security-groups/invalid",
-		expect: badRequestSGResponse,
+		expect: errBadRequestSG,
 	},
 	{
 		method: "DELETE",
 		url:    "/os-security-groups/42",
-		expect: notFoundJSONSGResponse,
+		expect: errNotFoundJSONSG,
 	},
 	{
 		method: "GET",
 		url:    "/os-security-group-rules",
-		expect: notFoundJSONResponse,
+		expect: errNotFoundJSON,
 	},
 	{
 		method: "GET",
 		url:    "/os-security-group-rules/invalid",
-		expect: notFoundJSONResponse,
+		expect: errNotFoundJSON,
 	},
 	{
 		method: "GET",
 		url:    "/os-security-group-rules/42",
-		expect: notFoundJSONResponse,
+		expect: errNotFoundJSON,
 	},
 	{
 		method: "POST",
 		url:    "/os-security-group-rules",
-		expect: badRequest2Response,
+		expect: errBadRequest2,
 	},
 	{
 		method: "POST",
 		url:    "/os-security-group-rules/invalid",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "PUT",
 		url:    "/os-security-group-rules",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "PUT",
 		url:    "/os-security-group-rules/invalid",
-		expect: notFoundJSONResponse,
+		expect: errNotFoundJSON,
 	},
 	{
 		method: "DELETE",
 		url:    "/os-security-group-rules",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "DELETE",
 		url:    "/os-security-group-rules/invalid",
-		expect: badRequestSGResponse, // sic; should've been rule-specific
+		expect: errBadRequestSG, // sic; should've been rule-specific
 	},
 	{
 		method: "DELETE",
 		url:    "/os-security-group-rules/42",
-		expect: notFoundJSONSGRResponse,
+		expect: errNotFoundJSONSGR,
 	},
 	{
 		method: "GET",
 		url:    "/os-floating-ips/42",
-		expect: notFoundJSONResponse,
+		expect: errNotFoundJSON,
 	},
 	{
 		method: "POST",
 		url:    "/os-floating-ips/invalid",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "PUT",
 		url:    "/os-floating-ips",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "PUT",
 		url:    "/os-floating-ips/invalid",
-		expect: notFoundJSONResponse,
+		expect: errNotFoundJSON,
 	},
 	{
 		method: "DELETE",
 		url:    "/os-floating-ips",
-		expect: notFoundResponse,
+		expect: errNotFound,
 	},
 	{
 		method: "DELETE",
 		url:    "/os-floating-ips/invalid",
-		expect: notFoundJSONResponse,
+		expect: errNotFoundJSON,
 	},
 }
 
@@ -535,7 +535,7 @@ func (s *NovaHTTPSuite) TestGetFlavorsDetail(c *C) {
 	c.Assert(expected.Flavors, DeepEquals, flavors)
 	resp, err = s.authRequest("GET", "/flavors/detail/fl1", nil, nil)
 	c.Assert(err, IsNil)
-	assertBody(c, resp, notFoundResponse)
+	assertBody(c, resp, errNotFound)
 }
 
 func (s *NovaHTTPSuite) TestGetServers(c *C) {
@@ -625,7 +625,7 @@ func (s *NovaHTTPSuite) TestGetServersDetail(c *C) {
 	c.Assert(expected.Servers, DeepEquals, servers)
 	resp, err = s.authRequest("GET", "/servers/detail/sr1", nil, nil)
 	c.Assert(err, IsNil)
-	assertBody(c, resp, notFoundResponse)
+	assertBody(c, resp, errNotFound)
 }
 
 func (s *NovaHTTPSuite) TestGetSecurityGroups(c *C) {
@@ -827,7 +827,7 @@ func (s *NovaHTTPSuite) TestAddServerSecurityGroup(c *C) {
 	req.Group.Name = group.Name
 	resp, err := s.jsonRequest("POST", "/servers/"+server.Id+"/action", req, nil)
 	c.Assert(err, IsNil)
-	assertBody(c, resp, noContentResponse)
+	assertBody(c, resp, errNoContent)
 	ok = s.service.hasServerSecurityGroup(server.Id, group.Id)
 	c.Assert(ok, Equals, true)
 	err = s.service.removeServerSecurityGroup(server.Id, group.Id)
@@ -884,7 +884,7 @@ func (s *NovaHTTPSuite) TestDeleteServerSecurityGroup(c *C) {
 	req.Group.Name = group.Name
 	resp, err := s.jsonRequest("POST", "/servers/"+server.Id+"/action", req, nil)
 	c.Assert(err, IsNil)
-	assertBody(c, resp, noContentResponse)
+	assertBody(c, resp, errNoContent)
 	ok = s.service.hasServerSecurityGroup(server.Id, group.Id)
 	c.Assert(ok, Equals, false)
 }
@@ -948,7 +948,7 @@ func (s *NovaHTTPSuite) TestDeleteFloatingIP(c *C) {
 	c.Assert(err, IsNil)
 	resp, err := s.authRequest("DELETE", "/os-floating-ips/1", nil, nil)
 	c.Assert(err, IsNil)
-	assertBody(c, resp, acceptedResponse)
+	assertBody(c, resp, errAccepted)
 	_, err = s.service.floatingIP(fip.Id)
 	c.Assert(err, NotNil)
 }
@@ -971,7 +971,7 @@ func (s *NovaHTTPSuite) TestAddServerFloatingIP(c *C) {
 	req.AddFloatingIP.Address = fip.IP
 	resp, err := s.jsonRequest("POST", "/servers/"+server.Id+"/action", req, nil)
 	c.Assert(err, IsNil)
-	assertBody(c, resp, noContentResponse)
+	assertBody(c, resp, errNoContent)
 	c.Assert(s.service.hasServerFloatingIP(server.Id, fip.IP), Equals, true)
 	err = s.service.removeServerFloatingIP(server.Id, fip.Id)
 	c.Assert(err, IsNil)
@@ -998,6 +998,6 @@ func (s *NovaHTTPSuite) TestRemoveServerFloatingIP(c *C) {
 	req.RemoveFloatingIP.Address = fip.IP
 	resp, err := s.jsonRequest("POST", "/servers/"+server.Id+"/action", req, nil)
 	c.Assert(err, IsNil)
-	assertBody(c, resp, noContentResponse)
+	assertBody(c, resp, errNoContent)
 	c.Assert(s.service.hasServerFloatingIP(server.Id, fip.IP), Equals, false)
 }

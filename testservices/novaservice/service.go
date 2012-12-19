@@ -22,6 +22,9 @@ type Nova struct {
 	versionPath  string
 	token        string
 	tenantId     string
+	nextGroupId  int
+	nextRuleId   int
+	nextIPId     int
 }
 
 // endpoint returns either a versioned or non-versioned service
@@ -381,7 +384,7 @@ func (n *Nova) hasServerSecurityGroup(serverId string, groupId int) bool {
 	return false
 }
 
-// allServerSecurtyGroups returns all security groups attached to the
+// allServerSecurityGroups returns all security groups attached to the
 // given server.
 func (n *Nova) allServerSecurityGroups(serverId string) []nova.SecurityGroup {
 	var groups []nova.SecurityGroup
