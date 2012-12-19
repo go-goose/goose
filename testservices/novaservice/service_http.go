@@ -37,33 +37,33 @@ This server could not verify that you are authorized to access the ` +
  Authentication required
 `,
 		"text/plain; charset=UTF-8",
-		"Unauthorized request",
+		"unauthorized request",
 	}
 	errForbidden = &errorResponse{
 		http.StatusForbidden,
 		`{"forbidden": {"message": "Policy doesn't allow compute_extension:` +
 			`flavormanage to be performed.", "code": 403}}`,
 		"application/json; charset=UTF-8",
-		"Forbidden flavors request",
+		"forbidden flavors request",
 	}
 	errBadRequest = &errorResponse{
 		http.StatusBadRequest,
 		`{"badRequest": {"message": "Malformed request url", "code": 400}}`,
 		"application/json; charset=UTF-8",
-		"Bad request base path or URL",
+		"bad request base path or URL",
 	}
 	errBadRequest2 = &errorResponse{
 		http.StatusBadRequest,
 		`{"badRequest": {"message": "The server could not comply with the ` +
 			`request since it is either malformed or otherwise incorrect.", "code": 400}}`,
 		"application/json; charset=UTF-8",
-		"Bad request URL",
+		"bad request URL",
 	}
 	errBadRequestSG = &errorResponse{
 		http.StatusBadRequest,
 		`{"badRequest": {"message": "Security group id should be integer", "code": 400}}`,
 		"application/json; charset=UTF-8",
-		"Bad security group id type",
+		"bad security group id type",
 	}
 	errNotFound = &errorResponse{
 		http.StatusNotFound,
@@ -74,13 +74,13 @@ The resource could not be found.
 
 `,
 		"text/plain; charset=UTF-8",
-		"Not found plain body",
+		"resource not found",
 	}
 	errNotFoundJSON = &errorResponse{
 		http.StatusNotFound,
 		`{"itemNotFound": {"message": "The resource could not be found.", "code": 404}}`,
 		"application/json; charset=UTF-8",
-		"Not found JSON body",
+		"resource not found",
 	}
 	errNotFoundJSONSG = &errorResponse{
 		http.StatusNotFound,
@@ -92,7 +92,7 @@ The resource could not be found.
 		http.StatusNotFound,
 		`{"itemNotFound": {"message": "Rule ($ID$) not found.", "code": 404}}`,
 		"application/json; charset=UTF-8",
-		"Not found security rule id",
+		"security rule not found",
 	}
 	errMultipleChoices = &errorResponse{
 		http.StatusMultipleChoices,
@@ -102,7 +102,7 @@ The resource could not be found.
 			`vnd.openstack.compute+json;version=2"}], "id": "v2.0", "links": ` +
 			`[{"href": "$ENDPOINT$$URL$", "rel": "self"}]}]}`,
 		"application/json",
-		"Multiple URL redirection choices ",
+		"multiple URL redirection choices",
 	}
 	errNoVersion = &errorResponse{
 		http.StatusOK,
@@ -124,16 +124,16 @@ The resource could not be found.
 			`openstack-compute/1.1/wadl/os-compute-1.1.wadl", "type": ` +
 			`"application/vnd.sun.wadl+xml", "rel": "describedby"}]}}`,
 		"application/json",
-		"Version missing from URL",
+		"version missing from URL",
 	}
 	errNotImplemented = &errorResponse{
 		http.StatusNotImplemented,
 		"501 Not Implemented",
 		"text/plain; charset=UTF-8",
-		"Not implemented",
+		"not implemented",
 	}
 	errNoGroupId = &errorResponse{
-		errorText: "No security group id given",
+		errorText: "no security group id given",
 	}
 )
 
@@ -146,9 +146,9 @@ func endpoint() string {
 	return hostname + versionPath + "/"
 }
 
-// requestBody replaces $ENDPOINT$, $URL$, $ID$, and $ERROR$ in the
-// error response body with their values, taking the original request
-// into account, and returns the result as a []byte.
+// requestBody returns the body for the error response, replacing
+// $ENDPOINT$, $URL$, $ID$, and $ERROR$ in e.body with the values from
+// the request.
 func (e *errorResponse) requestBody(r *http.Request) []byte {
 	url := strings.TrimLeft(r.URL.Path, "/")
 	body := e.body
@@ -211,31 +211,21 @@ func (h *novaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp.ServeHTTP(w, r)
 }
 
-// sendCode is a shortcut for a simple response without a body,
-// returning nil (so can be used in handlers).
-func sendCode(code int, w http.ResponseWriter, r *http.Request) error {
+func writeResponse(code int, body []byte, w http.ResponseWriter, r *http.Request) {
 	// workaround for https://code.google.com/p/go/issues/detail?id=4454
-	w.Header().Set("Content-Length", "0")
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	w.WriteHeader(code)
-	return nil
+	w.Write(body)
 }
 
-// sendJSON sends the specified response serialized as JSON, returning
-// nil (as a shortcut for handlers) or an error (when marshaling fails).
+// sendJSON sends the specified response serialized as JSON.
+// If JSON mashaling fails, an error is returned.
 func sendJSON(code int, resp interface{}, w http.ResponseWriter, r *http.Request) error {
-	var (
-		data []byte
-		err  error
-	)
-	if resp != nil {
-		if data, err = json.Marshal(resp); err != nil {
-			return err
-		}
+	data, err := json.Marshal(resp)
+	if err != nil {
+		return err
 	}
-	// workaround for https://code.google.com/p/go/issues/detail?id=4454
-	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
-	w.WriteHeader(code)
-	w.Write(data)
+	writeResponse(code, data, w, r)
 	return nil
 }
 
@@ -362,20 +352,22 @@ func (n *Nova) handleServerActions(server *nova.ServerDetail, w http.ResponseWri
 		if err != nil || n.hasServerSecurityGroup(server.Id, group.Id) {
 			return errNotFound
 		}
-		if err = n.addServerSecurityGroup(server.Id, group.Id); err != nil {
+		if err := n.addServerSecurityGroup(server.Id, group.Id); err != nil {
 			return err
 		}
-		return sendCode(http.StatusNoContent, w, r)
+		writeResponse(http.StatusNoContent, nil, w, r)
+		return nil
 	case action.RemoveSecurityGroup != nil:
 		name := action.RemoveSecurityGroup.Name
 		group, err := n.securityGroupByName(name)
 		if err != nil || !n.hasServerSecurityGroup(server.Id, group.Id) {
 			return errNotFound
 		}
-		if err = n.removeServerSecurityGroup(server.Id, group.Id); err != nil {
+		if err := n.removeServerSecurityGroup(server.Id, group.Id); err != nil {
 			return err
 		}
-		return sendCode(http.StatusNoContent, w, r)
+		writeResponse(http.StatusNoContent, nil, w, r)
+		return nil
 	case action.AddFloatingIP != nil:
 		addr := action.AddFloatingIP.Address
 		if n.hasServerFloatingIP(server.Id, addr) {
@@ -385,10 +377,11 @@ func (n *Nova) handleServerActions(server *nova.ServerDetail, w http.ResponseWri
 		if err != nil {
 			return errNotFound
 		}
-		if err = n.addServerFloatingIP(server.Id, fip.Id); err != nil {
+		if err := n.addServerFloatingIP(server.Id, fip.Id); err != nil {
 			return err
 		}
-		return sendCode(http.StatusNoContent, w, r)
+		writeResponse(http.StatusNoContent, nil, w, r)
+		return nil
 	case action.RemoveFloatingIP != nil:
 		addr := action.RemoveFloatingIP.Address
 		if !n.hasServerFloatingIP(server.Id, addr) {
@@ -398,10 +391,11 @@ func (n *Nova) handleServerActions(server *nova.ServerDetail, w http.ResponseWri
 		if err != nil {
 			return errNotFound
 		}
-		if err = n.removeServerFloatingIP(server.Id, fip.Id); err != nil {
+		if err := n.removeServerFloatingIP(server.Id, fip.Id); err != nil {
 			return err
 		}
-		return sendCode(http.StatusNoContent, w, r)
+		writeResponse(http.StatusNoContent, nil, w, r)
+		return nil
 	}
 	return fmt.Errorf("unknown server action: %q", string(body))
 }
@@ -481,7 +475,8 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 			if err := n.removeServer(serverId); err != nil {
 				return err
 			}
-			return sendCode(http.StatusNoContent, w, r)
+			writeResponse(http.StatusNoContent, nil, w, r)
+			return nil
 		}
 		return errNotFound
 	}
@@ -540,12 +535,8 @@ func (n *Nova) processGroupId(w http.ResponseWriter, r *http.Request) (*nova.Sec
 func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
 	case "GET":
-		if group, err := n.processGroupId(w, r); group != nil {
-			resp := struct {
-				Group nova.SecurityGroup `json:"security_group"`
-			}{*group}
-			return sendJSON(http.StatusOK, resp, w, r)
-		} else if err == errNoGroupId {
+		group, err := n.processGroupId(w, r)
+		if err == errNoGroupId {
 			groups := n.allSecurityGroups()
 			if len(groups) == 0 {
 				groups = []nova.SecurityGroup{}
@@ -554,9 +545,14 @@ func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) erro
 				Groups []nova.SecurityGroup `json:"security_groups"`
 			}{groups}
 			return sendJSON(http.StatusOK, resp, w, r)
-		} else {
+		}
+		if err != nil {
 			return err
 		}
+		resp := struct {
+			Group nova.SecurityGroup `json:"security_group"`
+		}{*group}
+		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
 		if groupId := path.Base(r.URL.Path); groupId != "os-security-groups" {
 			return errNotFound
@@ -571,7 +567,7 @@ func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) erro
 				Description string
 			} `json:"security_group"`
 		}
-		if err = json.Unmarshal(body, &req); err != nil {
+		if err := json.Unmarshal(body, &req); err != nil {
 			return err
 		} else {
 			n.nextGroupId++
@@ -607,7 +603,8 @@ func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) erro
 			if n.nextGroupId > 0 {
 				n.nextGroupId--
 			}
-			return sendCode(http.StatusNoContent, w, r)
+			writeResponse(http.StatusNoContent, nil, w, r)
+			return nil
 		} else if err == errNoGroupId {
 			return errNotFound
 		} else {
@@ -673,7 +670,8 @@ func (n *Nova) handleSecurityGroupRules(w http.ResponseWriter, r *http.Request) 
 			if n.nextRuleId > 0 {
 				n.nextRuleId--
 			}
-			return sendCode(http.StatusNoContent, w, r)
+			writeResponse(http.StatusNoContent, nil, w, r)
+			return nil
 		}
 		return errNotFound
 	}
@@ -734,7 +732,8 @@ func (n *Nova) handleFloatingIPs(w http.ResponseWriter, r *http.Request) error {
 					if n.nextIPId > 0 {
 						n.nextIPId--
 					}
-					return sendCode(http.StatusAccepted, w, r)
+					writeResponse(http.StatusAccepted, nil, w, r)
+					return nil
 				}
 			}
 			return errNotFoundJSON
