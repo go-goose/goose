@@ -30,7 +30,7 @@ func (c *Client) CreateContainer(containerName string) error {
 	requestData := goosehttp.RequestData{ReqHeaders: headers, ExpectedStatus: []int{http.StatusAccepted, http.StatusCreated}}
 	err := c.client.SendRequest(client.PUT, "object-store", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, nil, "failed to create container: %s", containerName)
+		err = maybeNotFound(err, "failed to create container: %s", containerName)
 	}
 	return err
 }
@@ -41,7 +41,7 @@ func (c *Client) DeleteContainer(containerName string) error {
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusNoContent}}
 	err := c.client.SendRequest(client.DELETE, "object-store", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, nil, "failed to delete container: %s", containerName)
+		err = maybeNotFound(err, "failed to delete container: %s", containerName)
 	}
 	return err
 }
@@ -50,7 +50,7 @@ func (c *Client) touchObject(requestData *goosehttp.RequestData, op, containerNa
 	path := fmt.Sprintf("/%s/%s", containerName, objectName)
 	err := c.client.SendRequest(op, "object-store", path, requestData)
 	if err != nil {
-		err = errors.Newf(err, nil, "failed to %s object %s from container %s", op, objectName, containerName)
+		err = maybeNotFound(err, "failed to %s object %s from container %s", op, objectName, containerName)
 	}
 	return err
 }
@@ -81,4 +81,17 @@ func (c *Client) PutObject(containerName, objectName string, data []byte) error 
 	requestData := goosehttp.RequestData{ReqData: data, ExpectedStatus: []int{http.StatusCreated}}
 	err := c.touchObject(&requestData, client.PUT, containerName, objectName)
 	return err
+}
+
+func maybeNotFound(err error, format string, arg... interface{}) error {
+	if !errors.IsNotFound(err) {
+		if error, ok := err.(*goosehttp.HttpError); ok {
+			// The OpenStack API says that attempts to operate on non existent containers or objects return a status code
+			// of 412 (StatusPreconditionFailed).
+			if error.StatusCode == http.StatusPreconditionFailed {
+				err = errors.NewNotFoundf(err, "", format, arg...)
+			}
+		}
+	}
+	return errors.Newf(err, format, arg...)
 }

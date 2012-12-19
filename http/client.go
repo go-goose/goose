@@ -77,7 +77,7 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 	if reqData.ReqValue != nil {
 		body, err = json.Marshal(reqData.ReqValue)
 		if err != nil {
-			err = errors.Newf(err, nil, "failed marshalling the request body")
+			err = errors.Newf(err, "failed marshalling the request body")
 			return
 		}
 	}
@@ -100,7 +100,7 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 		if reqData.RespValue != nil {
 			err = json.Unmarshal(respBody, &reqData.RespValue)
 			if err != nil {
-				err = errors.Newf(err, nil, "failed unmarshaling the response body: %s", respBody)
+				err = errors.Newf(err, "failed unmarshaling the response body: %s", respBody)
 			}
 		}
 	}
@@ -174,7 +174,7 @@ func (c *Client) sendRequest(method, URL string, reqBody []byte, headers http.He
 
 	respBody, err = ioutil.ReadAll(rawResp.Body)
 	if err != nil {
-		err = errors.Newf(err, nil, "failed reading the response body")
+		err = errors.Newf(err, "failed reading the response body")
 		return
 	}
 	return
@@ -216,53 +216,51 @@ func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header,
 	return nil, errors.Newf(err, URL, "Maximum number of retries (%d) reached sending request to %s.", c.maxRetries, URL)
 }
 
-type ResponseData struct {
+type HttpError struct {
 	StatusCode int
 	Data       map[string][]string
+	url string
+	responseMessage string
+	requestPayload string
+}
+
+func (e *HttpError) Error() string {
+	return fmt.Sprintf("request (%s) returned unexpected status: %s; error info: %v; request body: [%s]",
+		e.url,
+		e.StatusCode,
+		e.responseMessage,
+		e.requestPayload,
+	)
 }
 
 // The HTTP response status code was not one of those expected, so we construct an error.
 // NotFound (404) codes have their own NotFound error type.
 // We also make a guess at duplicate value errors.
 func handleError(URL string, resp *http.Response, payloadInfo string) error {
-	var errInfo, errContext interface{}
 	errBytes, _ := ioutil.ReadAll(resp.Body)
-	errInfo = string(errBytes)
+	errInfo := string(errBytes)
 	// Check if we have a JSON representation of the failure, if so decode it.
 	if resp.Header.Get("Content-Type") == contentTypeJson {
 		var wrappedErr ErrorWrapper
 		if err := json.Unmarshal(errBytes, &wrappedErr); err == nil {
-			errInfo = wrappedErr.Error
-			errContext = errInfo
+			errInfo = wrappedErr.Error.Error()
 		}
 	}
-	// If there was no JSON error contextual data available, we will use the response code and headers.
-	if errContext == nil {
-		errContext = ResponseData{
-			StatusCode: resp.StatusCode,
-			Data:       map[string][]string(resp.Header),
-		}
+	httpError := &HttpError{
+		resp.StatusCode, map[string][]string(resp.Header), URL, errInfo, payloadInfo,
 	}
 	switch resp.StatusCode {
 	case http.StatusNotFound:
 		{
-			return errors.NewNotFoundf(nil, errContext, "Resource at %s not found", URL)
+			return errors.NewNotFoundf(httpError, "", "Resource at %s not found", URL)
 		}
 	case http.StatusBadRequest:
 		{
 			dupExp, _ := regexp.Compile(".*already exists.*")
 			if dupExp.Match(errBytes) {
-				return errors.NewDuplicateValuef(nil, errContext, string(errBytes))
+				return errors.NewDuplicateValuef(httpError, "", string(errBytes))
 			}
 		}
 	}
-	return errors.Newf(
-		nil,
-		errContext,
-		"request (%s) returned unexpected status: %s; error info: %v; request body: [%s]",
-		URL,
-		resp.Status,
-		errInfo,
-		payloadInfo,
-	)
+	return httpError
 }
