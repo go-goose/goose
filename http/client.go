@@ -77,7 +77,7 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 	if reqData.ReqValue != nil {
 		body, err = json.Marshal(reqData.ReqValue)
 		if err != nil {
-			err = errors.Newf(errors.UnspecifiedError, err, nil, "failed marshalling the request body")
+			err = errors.Newf(err, nil, "failed marshalling the request body")
 			return
 		}
 	}
@@ -100,7 +100,7 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 		if reqData.RespValue != nil {
 			err = json.Unmarshal(respBody, &reqData.RespValue)
 			if err != nil {
-				err = errors.Newf(errors.UnspecifiedError, err, nil, "failed unmarshaling the response body: %s", respBody)
+				err = errors.Newf(err, nil, "failed unmarshaling the response body: %s", respBody)
 			}
 		}
 	}
@@ -174,7 +174,7 @@ func (c *Client) sendRequest(method, URL string, reqBody []byte, headers http.He
 
 	respBody, err = ioutil.ReadAll(rawResp.Body)
 	if err != nil {
-		err = errors.Newf(errors.UnspecifiedError, err, nil, "failed reading the response body")
+		err = errors.Newf(err, nil, "failed reading the response body")
 		return
 	}
 	return
@@ -188,7 +188,7 @@ func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header,
 		}
 		req, err := http.NewRequest(method, URL, reqReader)
 		if err != nil {
-			err = errors.Newf(errors.UnspecifiedError, err, URL, "failed creating the request")
+			err = errors.Newf(err, URL, "failed creating the request")
 			return nil, err
 		}
 		for header, values := range headers {
@@ -198,22 +198,22 @@ func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header,
 		}
 		resp, err = c.Do(req)
 		if err != nil {
-			return nil, errors.Newf(errors.UnspecifiedError, err, URL, "failed executing the request")
+			return nil, errors.Newf(err, URL, "failed executing the request")
 		}
 		if resp.StatusCode != http.StatusRequestEntityTooLarge {
 			return resp, nil
 		}
 		retryAfter, err := strconv.Atoi(resp.Header.Get("Retry-After"))
 		if err != nil {
-			return nil, errors.Newf(errors.UnspecifiedError, err, URL, "Invalid Retry-After header")
+			return nil, errors.Newf(err, URL, "Invalid Retry-After header")
 		}
 		if retryAfter == 0 {
-			return nil, errors.Newf(errors.UnspecifiedError, err, URL, "Resource limit exeeded at URL %s.", URL)
+			return nil, errors.Newf(err, URL, "Resource limit exeeded at URL %s.", URL)
 		}
 		c.logger.Printf("Too many requests, retrying in %s seconds.", retryAfter)
 		time.Sleep(time.Duration(retryAfter) * time.Second)
 	}
-	return nil, errors.Newf(errors.UnspecifiedError, err, URL, "Maximum number of retries (%d) reached sending request to %s.", c.maxRetries, URL)
+	return nil, errors.Newf(err, URL, "Maximum number of retries (%d) reached sending request to %s.", c.maxRetries, URL)
 }
 
 type ResponseData struct {
@@ -246,18 +246,17 @@ func handleError(URL string, resp *http.Response, payloadInfo string) error {
 	switch resp.StatusCode {
 	case http.StatusNotFound:
 		{
-			return errors.Newf(errors.NotFoundError, nil, URL, "Resource at %s not found", URL)
+			return errors.NewNotFoundf(nil, errContext, "Resource at %s not found", URL)
 		}
 	case http.StatusBadRequest:
 		{
 			dupExp, _ := regexp.Compile(".*already exists.*")
 			if dupExp.Match(errBytes) {
-				return errors.Newf(errors.DuplicateValueError, nil, URL, string(errBytes))
+				return errors.NewDuplicateValuef(nil, errContext, string(errBytes))
 			}
 		}
 	}
 	return errors.Newf(
-		errors.UnspecifiedError,
 		nil,
 		errContext,
 		"request (%s) returned unexpected status: %s; error info: %v; request body: [%s]",

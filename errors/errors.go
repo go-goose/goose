@@ -18,7 +18,6 @@ const (
 // Error instances store an optional error cause.
 type Error interface {
 	error
-	Context() interface{}
 	Cause() error
 }
 
@@ -46,18 +45,6 @@ func (err *gooseError) code() Code {
 // Cause returns the error cause.
 func (err *gooseError) Cause() error {
 	return err.cause
-}
-
-// Context returns any context associated with the error.
-// If the top level error has no context, return the context from the root cause error (if any).
-func (err *gooseError) Context() interface{} {
-	if err.context != nil {
-		return err.context
-	}
-	if e, ok := err.cause.(*gooseError); ok {
-		return e.context
-	}
-	return nil
 }
 
 // CausedBy returns true if this error or its cause are of the specified error code.
@@ -95,7 +82,7 @@ func IsDuplicateValue(err error) bool {
 }
 
 // New creates a new Error instance with the specified cause.
-func Newf(code Code, cause error, context interface{}, format string, args ...interface{}) Error {
+func makeErrorf(code Code, cause error, context interface{}, format string, args ...interface{}) Error {
 	if format == "" {
 		switch code {
 		case NotFoundError:
@@ -110,4 +97,19 @@ func Newf(code Code, cause error, context interface{}, format string, args ...in
 		error:   fmt.Errorf(format, args...),
 		cause:   cause,
 	}
+}
+
+// New creates a new Error instance with the specified cause.
+func Newf(cause error, context interface{}, format string, args ...interface{}) Error {
+	return makeErrorf(UnspecifiedError, cause, context, format, args...)
+}
+
+// New creates a new NotFound Error instance with the specified cause.
+func NewNotFoundf(cause error, context interface{}, format string, args ...interface{}) Error {
+	return makeErrorf(NotFoundError, cause, context, format, args...)
+}
+
+// New creates a new DuplicateValue Error instance with the specified cause.
+func NewDuplicateValuef(cause error, context interface{}, format string, args ...interface{}) Error {
+	return makeErrorf(DuplicateValueError, cause, context, format, args...)
 }
