@@ -109,7 +109,7 @@ The resource could not be found.
 		`{"versions": [{"status": "CURRENT", "updated": "2011-01-21` +
 			`T11:33:21Z", "id": "v2.0", "links": [{"href": "$ENDPOINT$", "rel": "self"}]}]}`,
 		"application/json",
-		"No version specified in URL",
+		"no version specified in URL",
 	}
 	errVersionsLinks = &errorResponse{
 		http.StatusOK,
