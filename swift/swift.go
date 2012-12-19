@@ -35,7 +35,7 @@ func (c *Client) CreateContainer(containerName string) error {
 	requestData := goosehttp.RequestData{ReqHeaders: headers, ExpectedStatus: []int{http.StatusAccepted, http.StatusCreated}}
 	err := c.client.SendRequest(client.PUT, "object-store", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, nil, "failed to create container: %s", containerName)
+		err = maybeNotFound(err, "failed to create container: %s", containerName)
 	}
 	return err
 }
@@ -46,7 +46,7 @@ func (c *Client) DeleteContainer(containerName string) error {
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusNoContent}}
 	err := c.client.SendRequest(client.DELETE, "object-store", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, nil, "failed to delete container: %s", containerName)
+		err = maybeNotFound(err, "failed to delete container: %s", containerName)
 	}
 	return err
 }
@@ -55,7 +55,7 @@ func (c *Client) touchObject(requestData *goosehttp.RequestData, op, containerNa
 	path := fmt.Sprintf("/%s/%s", containerName, objectName)
 	err := c.client.SendRequest(op, "object-store", path, requestData)
 	if err != nil {
-		err = errors.Newf(err, nil, "failed to %s object %s from container %s", op, objectName, containerName)
+		err = maybeNotFound(err, "failed to %s object %s from container %s", op, objectName, containerName)
 	}
 	return err
 }
@@ -134,7 +134,7 @@ func (c *Client) List(containerName, prefix, delim, marker string, limit int) (c
 	url := fmt.Sprintf("/%s", containerName)
 	err = c.client.SendRequest(client.GET, "object-store", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, nil, "failed to list contents of container: %s", containerName)
+		err = errors.Newf(err, "failed to list contents of container: %s", containerName)
 	}
 	return
 }
@@ -155,4 +155,17 @@ func (c *Client) SignedURL(containerName, file string, expires time.Time) (strin
 		return "", err
 	}
 	return rawURL, nil
+}
+
+func maybeNotFound(err error, format string, arg... interface{}) error {
+	if !errors.IsNotFound(err) {
+		if error, ok := err.(*goosehttp.HttpError); ok {
+			// The OpenStack API says that attempts to operate on non existent containers or objects return a status code
+			// of 412 (StatusPreconditionFailed).
+			if error.StatusCode == http.StatusPreconditionFailed {
+				err = errors.NewNotFoundf(err, "", format, arg...)
+			}
+		}
+	}
+	return errors.Newf(err, format, arg...)
 }
