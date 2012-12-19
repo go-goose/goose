@@ -211,7 +211,7 @@ func (h *novaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp.ServeHTTP(w, r)
 }
 
-func writeResponse(code int, body []byte, w http.ResponseWriter, r *http.Request) {
+func writeResponse(w http.ResponseWriter, code int, body []byte) {
 	// workaround for https://code.google.com/p/go/issues/detail?id=4454
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	w.WriteHeader(code)
@@ -219,13 +219,12 @@ func writeResponse(code int, body []byte, w http.ResponseWriter, r *http.Request
 }
 
 // sendJSON sends the specified response serialized as JSON.
-// If JSON mashaling fails, an error is returned.
 func sendJSON(code int, resp interface{}, w http.ResponseWriter, r *http.Request) error {
 	data, err := json.Marshal(resp)
 	if err != nil {
 		return err
 	}
-	writeResponse(code, data, w, r)
+	writeResponse(w, code, data)
 	return nil
 }
 
@@ -355,7 +354,7 @@ func (n *Nova) handleServerActions(server *nova.ServerDetail, w http.ResponseWri
 		if err := n.addServerSecurityGroup(server.Id, group.Id); err != nil {
 			return err
 		}
-		writeResponse(http.StatusNoContent, nil, w, r)
+		writeResponse(w, http.StatusNoContent, nil)
 		return nil
 	case action.RemoveSecurityGroup != nil:
 		name := action.RemoveSecurityGroup.Name
@@ -366,7 +365,7 @@ func (n *Nova) handleServerActions(server *nova.ServerDetail, w http.ResponseWri
 		if err := n.removeServerSecurityGroup(server.Id, group.Id); err != nil {
 			return err
 		}
-		writeResponse(http.StatusNoContent, nil, w, r)
+		writeResponse(w, http.StatusNoContent, nil)
 		return nil
 	case action.AddFloatingIP != nil:
 		addr := action.AddFloatingIP.Address
@@ -380,7 +379,7 @@ func (n *Nova) handleServerActions(server *nova.ServerDetail, w http.ResponseWri
 		if err := n.addServerFloatingIP(server.Id, fip.Id); err != nil {
 			return err
 		}
-		writeResponse(http.StatusNoContent, nil, w, r)
+		writeResponse(w, http.StatusNoContent, nil)
 		return nil
 	case action.RemoveFloatingIP != nil:
 		addr := action.RemoveFloatingIP.Address
@@ -394,7 +393,7 @@ func (n *Nova) handleServerActions(server *nova.ServerDetail, w http.ResponseWri
 		if err := n.removeServerFloatingIP(server.Id, fip.Id); err != nil {
 			return err
 		}
-		writeResponse(http.StatusNoContent, nil, w, r)
+		writeResponse(w, http.StatusNoContent, nil)
 		return nil
 	}
 	return fmt.Errorf("unknown server action: %q", string(body))
@@ -475,7 +474,7 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 			if err := n.removeServer(serverId); err != nil {
 				return err
 			}
-			writeResponse(http.StatusNoContent, nil, w, r)
+			writeResponse(w, http.StatusNoContent, nil)
 			return nil
 		}
 		return errNotFound
@@ -603,7 +602,7 @@ func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) erro
 			if n.nextGroupId > 0 {
 				n.nextGroupId--
 			}
-			writeResponse(http.StatusNoContent, nil, w, r)
+			writeResponse(w, http.StatusNoContent, nil)
 			return nil
 		} else if err == errNoGroupId {
 			return errNotFound
@@ -670,7 +669,7 @@ func (n *Nova) handleSecurityGroupRules(w http.ResponseWriter, r *http.Request) 
 			if n.nextRuleId > 0 {
 				n.nextRuleId--
 			}
-			writeResponse(http.StatusNoContent, nil, w, r)
+			writeResponse(w, http.StatusNoContent, nil)
 			return nil
 		}
 		return errNotFound
@@ -732,7 +731,7 @@ func (n *Nova) handleFloatingIPs(w http.ResponseWriter, r *http.Request) error {
 					if n.nextIPId > 0 {
 						n.nextIPId--
 					}
-					writeResponse(http.StatusAccepted, nil, w, r)
+					writeResponse(w, http.StatusAccepted, nil)
 					return nil
 				}
 			}
