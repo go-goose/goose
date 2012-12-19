@@ -50,8 +50,9 @@ type RequestData struct {
 	ExpectedStatus []int
 	ReqValue       interface{}
 	RespValue      interface{}
-	ReqData        []byte
-	RespData       *[]byte
+	ReqReader      io.Reader
+	ReqLength      int
+	RespReader     io.ReadCloser
 }
 
 func New(httpClient http.Client, logger *log.Logger, token string) *Client {
@@ -91,16 +92,22 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 	}
 	headers.Add("Content-Type", contentTypeJson)
 	headers.Add("Accept", contentTypeJson)
-	respBody, err := c.sendRequest(method, url, body, headers, reqData.ExpectedStatus)
+	respBody, err := c.sendRequest(method, url, bytes.NewReader(body), len(body), headers, reqData.ExpectedStatus)
 	if err != nil {
 		return
 	}
+	defer respBody.Close()
+	respData, err := ioutil.ReadAll(respBody)
+	if err != nil {
+		err = errors.Newf(err, "failed reading the response body")
+		return
+	}
 
-	if len(respBody) > 0 {
+	if len(respData) > 0 {
 		if reqData.RespValue != nil {
-			err = json.Unmarshal(respBody, &reqData.RespValue)
+			err = json.Unmarshal(respData, &reqData.RespValue)
 			if err != nil {
-				err = errors.Newf(err, "failed unmarshaling the response body: %s", respBody)
+				err = errors.Newf(err, "failed unmarshaling the response body: %s", respData)
 			}
 		}
 	}
@@ -112,8 +119,8 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 // Relevant RequestData fields:
 // ReqHeaders: additional HTTP header values to add to the request.
 // ExpectedStatus: the allowed HTTP response status values, else an error is returned.
-// ReqData: the byte array to send.
-// RespData: the byte array to decode the result into.
+// ReqReader: an io.Reader providing the bytes to send.
+// RespReader: assigned an io.ReadCloser instance used to read the returned data..
 func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err error) {
 	err = nil
 
@@ -130,15 +137,12 @@ func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err er
 	}
 	headers.Add("Content-Type", contentTypeOctetStream)
 	headers.Add("Accept", contentTypeOctetStream)
-	respBody, err := c.sendRequest(method, url, reqData.ReqData, headers, reqData.ExpectedStatus)
+	respBody, err := c.sendRequest(method, url, reqData.ReqReader, reqData.ReqLength, headers, reqData.ExpectedStatus)
 	if err != nil {
 		return
 	}
-
-	if len(respBody) > 0 {
-		if reqData.RespData != nil {
-			*reqData.RespData = respBody
-		}
+	if reqData.RespReader != nil {
+		reqData.RespReader = respBody
 	}
 	return
 }
@@ -148,11 +152,19 @@ func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err er
 // extraHeaders: additional HTTP headers to include with the request.
 // expectedStatus: a slice of allowed response status codes.
 // payloadInfo: a string to include with an error message if something goes wrong.
-func (c *Client) sendRequest(method, URL string, reqBody []byte, headers http.Header, expectedStatus []int) (respBody []byte, err error) {
+func (c *Client) sendRequest(method, URL string, reqReader io.Reader, length int, headers http.Header, expectedStatus []int) (rc io.ReadCloser, err error) {
 	if c.AuthToken != "" {
 		headers.Add("X-Auth-Token", c.AuthToken)
 	}
-	rawResp, err := c.sendRateLimitedRequest(method, URL, headers, reqBody)
+	var reqData []byte = make([]byte, length)
+	if reqReader != nil {
+		nrRead, err := reqReader.Read(reqData)
+		if nrRead != length || err != nil {
+			err = errors.Newf(err, "failed reading the request data, read %v of %v bytes", nrRead, length)
+			return rc, err
+		}
+	}
+	rawResp, err := c.sendRateLimitedRequest(method, URL, headers, reqData)
 	if err != nil {
 		return
 	}
@@ -166,18 +178,12 @@ func (c *Client) sendRequest(method, URL string, reqBody []byte, headers http.He
 			break
 		}
 	}
-	defer rawResp.Body.Close()
 	if !foundStatus && len(expectedStatus) > 0 {
-		err = handleError(URL, rawResp, string(reqBody))
+		err = handleError(URL, rawResp)
+		rawResp.Body.Close()
 		return
 	}
-
-	respBody, err = ioutil.ReadAll(rawResp.Body)
-	if err != nil {
-		err = errors.Newf(err, "failed reading the response body")
-		return
-	}
-	return
+	return rawResp.Body, err
 }
 
 func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header, reqData []byte) (resp *http.Response, err error) {
@@ -221,22 +227,20 @@ type HttpError struct {
 	Data            map[string][]string
 	url             string
 	responseMessage string
-	requestPayload  string
 }
 
 func (e *HttpError) Error() string {
-	return fmt.Sprintf("request (%s) returned unexpected status: %s; error info: %v; request body: [%s]",
+	return fmt.Sprintf("request (%s) returned unexpected status: %s; error info: %v",
 		e.url,
 		e.StatusCode,
 		e.responseMessage,
-		e.requestPayload,
 	)
 }
 
 // The HTTP response status code was not one of those expected, so we construct an error.
 // NotFound (404) codes have their own NotFound error type.
 // We also make a guess at duplicate value errors.
-func handleError(URL string, resp *http.Response, payloadInfo string) error {
+func handleError(URL string, resp *http.Response) error {
 	errBytes, _ := ioutil.ReadAll(resp.Body)
 	errInfo := string(errBytes)
 	// Check if we have a JSON representation of the failure, if so decode it.
@@ -247,7 +251,7 @@ func handleError(URL string, resp *http.Response, payloadInfo string) error {
 		}
 	}
 	httpError := &HttpError{
-		resp.StatusCode, map[string][]string(resp.Header), URL, errInfo, payloadInfo,
+		resp.StatusCode, map[string][]string(resp.Header), URL, errInfo,
 	}
 	switch resp.StatusCode {
 	case http.StatusNotFound:

@@ -8,6 +8,7 @@ import (
 	"launchpad.net/goose/identity"
 	"log"
 	"net/http"
+	"path"
 )
 
 const (
@@ -81,13 +82,14 @@ func (c *OpenStackClient) IsAuthenticated() bool {
 // MakeServiceURL prepares a full URL to a service endpoint, with optional
 // URL parts. It uses the first endpoint it can find for the given service type.
 func (c *OpenStackClient) MakeServiceURL(serviceType string, parts []string) (string, error) {
+	if !c.IsAuthenticated() {
+		return "", errors.New("cannot get endpoint URL without being authenticated")
+	}
 	url, ok := c.ServiceURLs[serviceType]
 	if !ok {
 		return "", errors.New("no endpoints known for service type: " + serviceType)
 	}
-	for _, part := range parts {
-		url += part
-	}
+	url += path.Join(append([]string{"/"}, parts...)...)
 	return url, nil
 }
 
