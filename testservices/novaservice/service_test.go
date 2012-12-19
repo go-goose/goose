@@ -422,6 +422,18 @@ func (s *NovaSuite) TestGetSecurityGroup(c *C) {
 	c.Assert(*gr, DeepEquals, group)
 }
 
+func (s *NovaSuite) TestGetSecurityGroupByName(c *C) {
+	group := nova.SecurityGroup{Id: 1, Name: "test"}
+	s.ensureNoGroup(c, group)
+	gr, err := s.service.securityGroupByName(group.Name)
+	c.Assert(err, ErrorMatches, `no such security group named "test"`)
+	s.createGroup(c, group)
+	defer s.deleteGroup(c, group)
+	gr, err = s.service.securityGroupByName(group.Name)
+	c.Assert(err, IsNil)
+	c.Assert(*gr, DeepEquals, group)
+}
+
 func (s *NovaSuite) TestAddHasRemoveSecurityGroupRule(c *C) {
 	group := nova.SecurityGroup{Id: 1}
 	ri := nova.RuleInfo{ParentGroupId: group.Id}
@@ -662,6 +674,31 @@ func (s *NovaSuite) TestAddServerSecurityGroupTwiceFails(c *C) {
 	c.Assert(err, IsNil)
 }
 
+func (s *NovaSuite) TestAllServerSecurityGroups(c *C) {
+	server := nova.ServerDetail{Id: "sr1"}
+	srvGroups := s.service.allServerSecurityGroups(server.Id)
+	c.Assert(srvGroups, HasLen, 0)
+	s.createServer(c, server)
+	defer s.deleteServer(c, server)
+	groups := []nova.SecurityGroup{
+		nova.SecurityGroup{Id: 1, Name: "gr1"},
+		nova.SecurityGroup{Id: 2, Name: "gr2"},
+	}
+	for _, group := range groups {
+		s.createGroup(c, group)
+		defer s.deleteGroup(c, group)
+		err := s.service.addServerSecurityGroup(server.Id, group.Id)
+		defer s.service.removeServerSecurityGroup(server.Id, group.Id)
+		c.Assert(err, IsNil)
+	}
+	srvGroups = s.service.allServerSecurityGroups(server.Id)
+	c.Assert(srvGroups, HasLen, len(groups))
+	if srvGroups[0].Id != groups[0].Id {
+		srvGroups[0], srvGroups[1] = srvGroups[1], srvGroups[0]
+	}
+	c.Assert(srvGroups, DeepEquals, groups)
+}
+
 func (s *NovaSuite) TestRemoveServerSecurityGroupWithInvalidServerFails(c *C) {
 	server := nova.ServerDetail{Id: "sr1"}
 	group := nova.SecurityGroup{Id: 1}
@@ -773,6 +810,20 @@ func (s *NovaSuite) TestGetFloatingIP(c *C) {
 	defer s.deleteIP(c, fip)
 	ip, _ := s.service.floatingIP(fip.Id)
 	c.Assert(*ip, DeepEquals, fip)
+}
+
+func (s *NovaSuite) TestGetFloatingIPByAddr(c *C) {
+	fip := nova.FloatingIP{Id: 1, IP: "1.2.3.4"}
+	s.ensureNoIP(c, fip)
+	ip, err := s.service.floatingIPByAddr(fip.IP)
+	c.Assert(err, NotNil)
+	s.createIP(c, fip)
+	defer s.deleteIP(c, fip)
+	ip, err = s.service.floatingIPByAddr(fip.IP)
+	c.Assert(err, IsNil)
+	c.Assert(*ip, DeepEquals, fip)
+	_, err = s.service.floatingIPByAddr("invalid")
+	c.Assert(err, ErrorMatches, `no such floating IP with address "invalid"`)
 }
 
 func (s *NovaSuite) TestAddHasRemoveServerFloatingIP(c *C) {
