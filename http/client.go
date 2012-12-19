@@ -217,11 +217,11 @@ func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header,
 }
 
 type HttpError struct {
-	StatusCode int
-	Data       map[string][]string
-	url string
+	StatusCode      int
+	Data            map[string][]string
+	url             string
 	responseMessage string
-	requestPayload string
+	requestPayload  string
 }
 
 func (e *HttpError) Error() string {
