@@ -4,6 +4,7 @@
 package swiftservice
 
 import (
+	"launchpad.net/goose/swift"
 	"net/http"
 )
 
@@ -18,6 +19,9 @@ type SwiftService interface {
 
 	// HasContainer verifies the given container exists or not.
 	HasContainer(name string) bool
+
+	// ListContainer lists the objects in the given container.
+	ListContainer(name string) ([]swift.ContainerContents, error)
 
 	// GetObject retrieves a given object's data from its container.
 	GetObject(container, name string) ([]byte, error)

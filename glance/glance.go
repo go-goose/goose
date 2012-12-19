@@ -5,6 +5,7 @@ package glance
 import (
 	"fmt"
 	"launchpad.net/goose/client"
+	"launchpad.net/goose/errors"
 	goosehttp "launchpad.net/goose/http"
 	"net/http"
 )
@@ -41,10 +42,9 @@ func (c *Client) ListImages() ([]Image, error) {
 		Images []Image
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
-	err := c.client.SendRequest(client.GET, "compute", apiImages, &requestData,
-		"failed to get list of images")
+	err := c.client.SendRequest(client.GET, "compute", apiImages, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to get list of images")
 	}
 	return resp.Images, nil
 }
@@ -78,10 +78,9 @@ func (c *Client) ListImagesDetail() ([]ImageDetail, error) {
 		Images []ImageDetail
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.GET, "compute", apiImagesDetail, &requestData,
-		"failed to get list of images details")
+	err := c.client.SendRequest(client.GET, "compute", apiImagesDetail, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to get list of image details")
 	}
 	return resp.Images, nil
 }
@@ -93,10 +92,9 @@ func (c *Client) GetImageDetail(imageId string) (*ImageDetail, error) {
 	}
 	url := fmt.Sprintf("%s/%s", apiImages, imageId)
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.GET, "compute", url, &requestData,
-		"failed to get details for imageId=%s", imageId)
+	err := c.client.SendRequest(client.GET, "compute", url, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to get details of imageId: %s", imageId)
 	}
 	return &resp.Image, nil
 }
