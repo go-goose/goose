@@ -21,6 +21,7 @@ type errorResponse struct {
 	body        string
 	contentType string
 	errorText   string
+	nova	    *Nova
 }
 
 // verbatim real Nova responses (as errors).
@@ -38,6 +39,7 @@ This server could not verify that you are authorized to access the ` +
 `,
 		"text/plain; charset=UTF-8",
 		"unauthorized request",
+		nil,
 	}
 	errForbidden = &errorResponse{
 		http.StatusForbidden,
@@ -45,12 +47,14 @@ This server could not verify that you are authorized to access the ` +
 			`flavormanage to be performed.", "code": 403}}`,
 		"application/json; charset=UTF-8",
 		"forbidden flavors request",
+		nil,
 	}
 	errBadRequest = &errorResponse{
 		http.StatusBadRequest,
 		`{"badRequest": {"message": "Malformed request url", "code": 400}}`,
 		"application/json; charset=UTF-8",
 		"bad request base path or URL",
+		nil,
 	}
 	errBadRequest2 = &errorResponse{
 		http.StatusBadRequest,
@@ -58,12 +62,14 @@ This server could not verify that you are authorized to access the ` +
 			`request since it is either malformed or otherwise incorrect.", "code": 400}}`,
 		"application/json; charset=UTF-8",
 		"bad request URL",
+		nil,
 	}
 	errBadRequestSG = &errorResponse{
 		http.StatusBadRequest,
 		`{"badRequest": {"message": "Security group id should be integer", "code": 400}}`,
 		"application/json; charset=UTF-8",
 		"bad security group id type",
+		nil,
 	}
 	errNotFound = &errorResponse{
 		http.StatusNotFound,
@@ -75,24 +81,28 @@ The resource could not be found.
 `,
 		"text/plain; charset=UTF-8",
 		"resource not found",
+		nil,
 	}
 	errNotFoundJSON = &errorResponse{
 		http.StatusNotFound,
 		`{"itemNotFound": {"message": "The resource could not be found.", "code": 404}}`,
 		"application/json; charset=UTF-8",
 		"resource not found",
+		nil,
 	}
 	errNotFoundJSONSG = &errorResponse{
 		http.StatusNotFound,
 		`{"itemNotFound": {"message": "Security group $ID$ not found.", "code": 404}}`,
 		"application/json; charset=UTF-8",
 		"",
+		nil,
 	}
 	errNotFoundJSONSGR = &errorResponse{
 		http.StatusNotFound,
 		`{"itemNotFound": {"message": "Rule ($ID$) not found.", "code": 404}}`,
 		"application/json; charset=UTF-8",
 		"security rule not found",
+		nil,
 	}
 	errMultipleChoices = &errorResponse{
 		http.StatusMultipleChoices,
@@ -103,6 +113,7 @@ The resource could not be found.
 			`[{"href": "$ENDPOINT$$URL$", "rel": "self"}]}]}`,
 		"application/json",
 		"multiple URL redirection choices",
+		nil,
 	}
 	errNoVersion = &errorResponse{
 		http.StatusOK,
@@ -110,6 +121,7 @@ The resource could not be found.
 			`T11:33:21Z", "id": "v2.0", "links": [{"href": "$ENDPOINT$", "rel": "self"}]}]}`,
 		"application/json",
 		"no version specified in URL",
+		nil,
 	}
 	errVersionsLinks = &errorResponse{
 		http.StatusOK,
@@ -125,12 +137,14 @@ The resource could not be found.
 			`"application/vnd.sun.wadl+xml", "rel": "describedby"}]}}`,
 		"application/json",
 		"version missing from URL",
+		nil,
 	}
 	errNotImplemented = &errorResponse{
 		http.StatusNotImplemented,
 		"501 Not Implemented",
 		"text/plain; charset=UTF-8",
 		"not implemented",
+		nil,
 	}
 	errNoGroupId = &errorResponse{
 		errorText: "no security group id given",
@@ -141,11 +155,6 @@ func (e *errorResponse) Error() string {
 	return e.errorText
 }
 
-// endpoint returns the current testing server's endpoint URL.
-func endpoint() string {
-	return hostname + versionPath + "/"
-}
-
 // requestBody returns the body for the error response, replacing
 // $ENDPOINT$, $URL$, $ID$, and $ERROR$ in e.body with the values from
 // the request.
@@ -153,7 +162,9 @@ func (e *errorResponse) requestBody(r *http.Request) []byte {
 	url := strings.TrimLeft(r.URL.Path, "/")
 	body := e.body
 	if body != "" {
-		body = strings.Replace(body, "$ENDPOINT$", endpoint(), -1)
+		if e.nova != nil {
+			body = strings.Replace(body, "$ENDPOINT$", e.nova.endpoint(true, "/"), -1)
+		}
 		body = strings.Replace(body, "$URL$", url, -1)
 		body = strings.Replace(body, "$ERROR$", e.Error(), -1)
 		if slash := strings.LastIndex(url, "/"); slash != -1 {
@@ -206,6 +217,7 @@ func (h *novaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			`{"internalServerError":{"message":"$ERROR$",code:500}}`,
 			"application/json",
 			err.Error(),
+			h.n,
 		}
 	}
 	resp.ServeHTTP(w, r)
@@ -743,7 +755,7 @@ func (n *Nova) handleFloatingIPs(w http.ResponseWriter, r *http.Request) error {
 }
 
 // setupHTTP attaches all the needed handlers to provide the HTTP API.
-func (n *Nova) setupHTTP(mux *http.ServeMux) {
+func (n *Nova) SetupHTTP(mux *http.ServeMux) {
 	handlers := map[string]http.Handler{
 		"/":                              n.handler((*Nova).handleRoot),
 		"/$v/":                           errBadRequest,

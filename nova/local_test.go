@@ -24,7 +24,7 @@ type localLiveSuite struct {
 	// The following attributes are for using testing doubles.
 	httpsuite.HTTPSuite
 	identityDouble http.Handler
-	novaDouble     http.Handler
+	novaDouble     *novaservice.Nova
 }
 
 func (s *localLiveSuite) SetUpSuite(c *C) {
@@ -47,7 +47,9 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 	service := identityservice.Service{"nova", "compute", []identityservice.Endpoint{ep}}
 	s.identityDouble.(*identityservice.UserPass).AddService(service)
 	// Create a nova service at the registered endpoint.
-	s.novaDouble = novaservice.New("localhost", baseURL+"/", token)
+	// TODO: identityservice.UserPass always uses tenantId="1", patch this
+	//	 when that changes.
+	s.novaDouble = novaservice.New("localhost", baseURL+"/", token, "1")
 	s.LiveTests.SetUpSuite(c)
 }
 
@@ -58,7 +60,7 @@ func (s *localLiveSuite) TearDownSuite(c *C) {
 
 func (s *localLiveSuite) SetUpTest(c *C) {
 	s.HTTPSuite.SetUpTest(c)
-	s.Mux.Handle(baseURL+"/", s.novaDouble)
+	s.novaDouble.SetupHTTP(s.Mux)
 	s.Mux.Handle("/", s.identityDouble)
 	s.LiveTests.SetUpTest(c)
 }
