@@ -21,7 +21,7 @@ type errorResponse struct {
 	body        string
 	contentType string
 	errorText   string
-	nova	    *Nova
+	nova        *Nova
 }
 
 // verbatim real Nova responses (as errors).
