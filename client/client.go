@@ -1,14 +1,8 @@
-//
 // goose - Go packages to interact with the OpenStack API.
 //
 //   https://launchpad.net/goose/
 //
 // Copyright (c) 2012 Canonical Ltd.
-//
-// Written by Dimiter Naydenov <dimiter.naydenov@canonical.com>
-//            Ian Booth <ian.booth@canonical.com>
-//            John Meinel <john.meinel@canonical.com>
-//            Martin Packman <martin.packman@canonical.com>
 //
 
 package client
@@ -98,7 +92,7 @@ func (c *OpenStackClient) Authenticate() (err error) {
 	return nil
 }
 
-// IsAuthenticated returns true, if there is an establised session.
+// IsAuthenticated returns true if there is an establised session.
 func (c *OpenStackClient) IsAuthenticated() bool {
 	return c.Token != ""
 }
