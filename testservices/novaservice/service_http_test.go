@@ -33,7 +33,7 @@ func (s *NovaHTTPSuite) TearDownSuite(c *C) {
 
 func (s *NovaHTTPSuite) SetUpTest(c *C) {
 	s.HTTPSuite.SetUpTest(c)
-	s.service.setupHTTP(s.Mux)
+	s.service.SetupHTTP(s.Mux)
 }
 
 func (s *NovaHTTPSuite) TearDownTest(c *C) {
