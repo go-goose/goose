@@ -1,3 +1,10 @@
+// goose - Go packages to interact with the OpenStack API.
+//
+//   https://launchpad.net/goose/
+//
+// Copyright (c) 2012 Canonical Ltd.
+//
+
 package client
 
 import (
@@ -11,6 +18,7 @@ import (
 	"path"
 )
 
+// API URL parts and request types.
 const (
 	apiTokens = "/tokens"
 
@@ -28,6 +36,8 @@ type Client interface {
 	SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) (err error)
 }
 
+// OpenStackClient implements a subset of the OpenStack API, which is
+// needed for juju, including authentication, compute and swift services.
 type OpenStackClient struct {
 	client *goosehttp.Client
 	logger *log.Logger
@@ -35,11 +45,15 @@ type OpenStackClient struct {
 	creds *identity.Credentials
 	auth  identity.Authenticator
 
-	//TODO - store service urls by region.
+	// Discovered services and their endpoints.
+	// TODO - store service urls by region.
 	ServiceURLs map[string]string
-	Token       string
-	TenantId    string
-	UserId      string
+	// Current session authentication token.
+	Token string
+	// Tenant identifier for that user.
+	TenantId string
+	// User account identifier.
+	UserId string
 }
 
 func NewClient(creds *identity.Credentials, auth_method identity.AuthMethod, logger *log.Logger) *OpenStackClient {
@@ -57,6 +71,9 @@ func NewClient(creds *identity.Credentials, auth_method identity.AuthMethod, log
 	return &client
 }
 
+// Authenticate establishes an authenticated session with OpenStack
+// Identity service. It uses OS_* and NOVA_* environment variables to
+// discover the username, password, tenant and region.
 func (c *OpenStackClient) Authenticate() (err error) {
 	err = nil
 	if c.auth == nil {
@@ -75,6 +92,7 @@ func (c *OpenStackClient) Authenticate() (err error) {
 	return nil
 }
 
+// IsAuthenticated returns true if there is an establised session.
 func (c *OpenStackClient) IsAuthenticated() bool {
 	return c.Token != ""
 }
@@ -93,6 +111,9 @@ func (c *OpenStackClient) MakeServiceURL(serviceType string, parts []string) (st
 	return url, nil
 }
 
+// SendRequest sends an HTTP request with the given method, service
+// type (to get an endpoint to it), URL suffix of the API call and
+// extended request data.
 func (c *OpenStackClient) SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) (err error) {
 	if c.creds != nil && !c.IsAuthenticated() {
 		err = c.Authenticate()

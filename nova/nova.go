@@ -1,5 +1,6 @@
-// The nova package provides a way to access the OpenStack Compute APIs.
+// goose/nova - Go package to interact with OpenStack Compute (Nova) API.
 // See http://docs.openstack.org/api/openstack-compute/2/content/.
+
 package nova
 
 import (
@@ -12,6 +13,7 @@ import (
 	"net/url"
 )
 
+// API URL parts.
 const (
 	apiFlavors            = "/flavors"
 	apiFlavorsDetail      = "/flavors/detail"
@@ -22,8 +24,8 @@ const (
 	apiFloatingIPs        = "/os-floating-ips"
 )
 
+// Server status values.
 const (
-	// Server status values.
 	StatusActive       = "ACTIVE"        // The server is active.
 	StatusBuild        = "BUILD"         // The server has not finished the original build process.
 	StatusDeleted      = "DELETED"       // The server is deleted.
@@ -40,8 +42,8 @@ const (
 	StatusVerifyResize = "VERIFY_RESIZE" // System is awaiting confirmation that the server is operational after a move or resize.
 )
 
+// Filter keys.
 const (
-	// Filter keys.
 	FilterStatus       = "status"        // The server status. See Server Status Values.
 	FilterImage        = "image"         // The image reference specified as an ID or full URL.
 	FilterFlavor       = "flavor"        // The flavor reference specified as an ID or full URL.
@@ -56,13 +58,14 @@ type Client struct {
 	client client.Client
 }
 
+// New creates a new Client.
 func New(client client.Client) *Client {
 	return &Client{client}
 }
 
 // ----------------------------------------------------------------------------
 // Filtering helper.
-
+//
 // Filter builds filtering parameters to be used in an OpenStack query which supports
 // filtering.  For example:
 //
@@ -80,14 +83,14 @@ func NewFilter() *Filter {
 	return &Filter{make(url.Values)}
 }
 
+// Link describes a link to a flavor or server.
 type Link struct {
 	Href string
 	Rel  string
 	Type string
 }
 
-// Entity can describe a flavor, flavor detail or server.
-// Contains a list of links.
+// Entity describe a basic information about a flavor or server.
 type Entity struct {
 	Id    string
 	Links []Link
@@ -143,6 +146,7 @@ func (c *Client) ListServers(filter *Filter) ([]Entity, error) {
 	return resp.Servers, nil
 }
 
+// ServerDetail describes a server in more detail.
 type ServerDetail struct {
 	AddressIPv4 string
 	AddressIPv6 string
@@ -154,7 +158,7 @@ type ServerDetail struct {
 	Links       []Link
 	Name        string
 	Progress    int
-	Status      string
+	Status      string // One of the Status* constants
 	TenantId    string `json:"tenant_id"`
 	Updated     string
 	UserId      string `json:"user_id"`
@@ -205,15 +209,16 @@ type SecurityGroupName struct {
 	Name string `json:"name"`
 }
 
+// RunServerOpts defines required and optional arguments for RunServer().
 type RunServerOpts struct {
-	Name               string              `json:"name"`
-	FlavorId           string              `json:"flavorRef"`
-	ImageId            string              `json:"imageRef"`
-	UserData           []byte              `json:"user_data"`
-	SecurityGroupNames []SecurityGroupName `json:"security_groups"`
+	Name               string              `json:"name"`            // Required
+	FlavorId           string              `json:"flavorRef"`       // Required
+	ImageId            string              `json:"imageRef"`        // Required
+	UserData           []byte              `json:"user_data"`       // Optional
+	SecurityGroupNames []SecurityGroupName `json:"security_groups"` // Optional
 }
 
-// RunServer creates a new server.
+// RunServer creates a new server, based on the given RunServerOpts.
 func (c *Client) RunServer(opts RunServerOpts) (*Entity, error) {
 	var req struct {
 		Server RunServerOpts `json:"server"`
@@ -240,6 +245,8 @@ type SecurityGroupRef struct {
 	Name     string `json:"name"`
 }
 
+// SecurityGroupRule describes a rule of a security group. There are 2
+// basic rule types: ingress and group rules (see RuleInfo struct).
 type SecurityGroupRule struct {
 	FromPort      *int              `json:"from_port"`   // Can be nil
 	IPProtocol    *string           `json:"ip_protocol"` // Can be nil
@@ -250,6 +257,7 @@ type SecurityGroupRule struct {
 	Group         *SecurityGroupRef // Can be nil
 }
 
+// SecurityGroup describes a single security group in OpenStack.
 type SecurityGroup struct {
 	Rules       []SecurityGroupRule
 	TenantId    string `json:"tenant_id"`
@@ -452,6 +460,8 @@ func (c *Client) RemoveServerSecurityGroup(serverId, groupName string) error {
 	return err
 }
 
+// FloatingIP describes a floating (public) IP address, which can be
+// assigned to a server, thus allowing connections from outside.
 type FloatingIP struct {
 	FixedIP    interface{} `json:"fixed_ip"` // Can be a string or null
 	Id         int         `json:"id"`

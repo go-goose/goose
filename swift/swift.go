@@ -1,5 +1,6 @@
-// The swift package provides a way to access the OpenStack Object Storage APIs.
+// goose/swift - Go package to interact with OpenStack Object-Storage (Swift) API.
 // See http://docs.openstack.org/api/openstack-object-storage/1.0/content/.
+
 package swift
 
 import (
@@ -20,6 +21,7 @@ type Client struct {
 	client client.Client
 }
 
+// New creates a new Client.
 func New(client client.Client) *Client {
 	return &Client{client}
 }
@@ -112,6 +114,7 @@ func (c *Client) PutReader(containerName, objectName string, r io.Reader, length
 	return err
 }
 
+// ContainerContents describes a single container and its contents.
 type ContainerContents struct {
 	Name         string `json:"name"`
 	Hash         string `json:"hash"`
