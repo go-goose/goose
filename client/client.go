@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"path"
+	"strings"
 )
 
 const (
@@ -110,7 +111,11 @@ func (c *client) SendRequest(method, svcType, apiCall string, requestData *goose
 }
 
 func (c *client) MakeServiceURL(serviceType string, parts []string) (string, error) {
-	return c.baseURL + path.Join(parts...), nil
+	urlParts := parts
+	if !strings.HasSuffix(c.baseURL, "/") {
+		urlParts = append([]string{"/"}, parts...)
+	}
+	return c.baseURL + path.Join(urlParts...), nil
 }
 
 func (c *authenticatingClient) SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) (err error) {
