@@ -1,5 +1,6 @@
-// The glance package provides a way to access the OpenStack Image Service APIs.
+// goose/glance - Go package to interact with OpenStack Image Service (Glance) API.
 // See http://docs.openstack.org/api/openstack-image-service/2.0/content/.
+
 package glance
 
 import (
@@ -10,6 +11,7 @@ import (
 	"net/http"
 )
 
+// API URL parts.
 const (
 	apiImages       = "/images"
 	apiImagesDetail = "/images/detail"
@@ -20,16 +22,19 @@ type Client struct {
 	client client.Client
 }
 
+// New creates a new Client.
 func New(client client.Client) *Client {
 	return &Client{client}
 }
 
+// Link describes a link to an image in OpenStack.
 type Link struct {
 	Href string
 	Rel  string
 	Type string
 }
 
+// Image describes an OpenStack image.
 type Image struct {
 	Id    string
 	Name  string
@@ -49,6 +54,7 @@ func (c *Client) ListImages() ([]Image, error) {
 	return resp.Images, nil
 }
 
+// ImageMetadata describes metadata of an image
 type ImageMetadata struct {
 	Architecture string
 	State        string      `json:"image_state"`
@@ -59,6 +65,7 @@ type ImageMetadata struct {
 	OwnerId      interface{} `json:"owner_id"`
 }
 
+// ImageDetail describes extended information about an image.
 type ImageDetail struct {
 	Id          string
 	Name        string
