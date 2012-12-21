@@ -54,6 +54,10 @@ func (s *LiveTests) TestAuthenticate(c *C) {
 	c.Assert(client.IsAuthenticated(), Equals, true)
 
 	// Check service endpoints are discovered
-	c.Assert(client.ServiceURLs["compute"], NotNil)
-	c.Assert(client.ServiceURLs["swift"], NotNil)
+	url, err := client.MakeServiceURL("compute", nil)
+	c.Check(err, IsNil)
+	c.Check(url, NotNil)
+	url, err = client.MakeServiceURL("object-store", nil)
+	c.Check(err, IsNil)
+	c.Check(url, NotNil)
 }

@@ -146,7 +146,7 @@ func (c *Client) List(containerName, prefix, delim, marker string, limit int) (c
 // URL returns a non-signed URL that allows retrieving the object at path.
 // It only works if the object is publicly readable (see SignedURL).
 func (c *Client) URL(containerName, file string) (string, error) {
-	return c.client.(client.Authenticator).MakeServiceURL("object-store", []string{containerName, file})
+	return c.client.MakeServiceURL("object-store", []string{containerName, file})
 }
 
 // SignedURL returns a signed URL that allows anyone holding the URL

@@ -126,7 +126,7 @@ func (s *LiveTests) TestURL(c *C) {
 	c.Check(err, IsNil)
 	httpClient := http.Client{CheckRedirect: nil}
 	req, err := http.NewRequest("GET", url, nil)
-	req.Header.Add("X-Auth-Token", s.client.(client.Authenticator).Token())
+	req.Header.Add("X-Auth-Token", s.client.(client.AuthenticatingClient).Token())
 	c.Check(err, IsNil)
 	resp, err := httpClient.Do(req)
 	defer resp.Body.Close()
@@ -159,9 +159,9 @@ func (s *LiveTestsPublicContainer) TearDownSuite(c *C) {
 }
 
 func (s *LiveTestsPublicContainer) SetUpTest(c *C) {
-	err := s.client.(client.Authenticator).Authenticate()
+	err := s.client.(client.AuthenticatingClient).Authenticate()
 	c.Assert(err, IsNil)
-	baseURL, err := s.client.(client.Authenticator).MakeServiceURL("object-store", nil)
+	baseURL, err := s.client.MakeServiceURL("object-store", nil)
 	c.Assert(err, IsNil)
 	s.publicClient = client.NewPublicClient(baseURL, nil)
 	s.publicSwift = swift.New(s.publicClient)
