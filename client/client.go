@@ -23,7 +23,7 @@ const (
 	COPY   = "COPY"
 )
 
-// Client implementations send service requests to an OpenStack deployment.
+// Client implementations sends service requests to an OpenStack deployment.
 type Client interface {
 	SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) (err error)
 	// MakeServiceURL prepares a full URL to a service endpoint, with optional
@@ -31,10 +31,10 @@ type Client interface {
 	MakeServiceURL(serviceType string, parts []string) (string, error)
 }
 
-// Authenticator defines methods used to perform client authentication.
-// In the case of unauthentictedClient instances, these are essentially NOOPs.
+// AuthenticatingClient sends service requests to an OpenStack deployment after first validating
+// a user's credentials.
 type AuthenticatingClient interface {
-Client
+	Client
 	Authenticate() error
 	IsAuthenticated() bool
 	Token() string
@@ -48,6 +48,8 @@ type client struct {
 	logger     *log.Logger
 	baseURL    string
 }
+
+var _ Client = (*client)(nil)
 
 // This client authenticates before sending requests.
 type authenticatingClient struct {
@@ -63,6 +65,8 @@ type authenticatingClient struct {
 	tenantId    string
 	userId      string
 }
+
+var _ AuthenticatingClient = (*authenticatingClient)(nil)
 
 func NewPublicClient(baseURL string, logger *log.Logger) Client {
 	client := client{baseURL: baseURL, logger: logger}

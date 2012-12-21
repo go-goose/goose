@@ -34,7 +34,7 @@ func randomName() string {
 
 type LiveTests struct {
 	cred          *identity.Credentials
-	client        client.Client
+	client        client.AuthenticatingClient
 	swift         *swift.Client
 	containerName string
 }
@@ -126,7 +126,7 @@ func (s *LiveTests) TestURL(c *C) {
 	c.Check(err, IsNil)
 	httpClient := http.Client{CheckRedirect: nil}
 	req, err := http.NewRequest("GET", url, nil)
-	req.Header.Add("X-Auth-Token", s.client.(client.AuthenticatingClient).Token())
+	req.Header.Add("X-Auth-Token", s.client.Token())
 	c.Check(err, IsNil)
 	resp, err := httpClient.Do(req)
 	defer resp.Body.Close()
@@ -141,7 +141,7 @@ func (s *LiveTests) TestURL(c *C) {
 
 type LiveTestsPublicContainer struct {
 	cred          *identity.Credentials
-	client        client.Client
+	client        client.AuthenticatingClient
 	publicClient  client.Client
 	swift         *swift.Client
 	publicSwift   *swift.Client
@@ -159,7 +159,7 @@ func (s *LiveTestsPublicContainer) TearDownSuite(c *C) {
 }
 
 func (s *LiveTestsPublicContainer) SetUpTest(c *C) {
-	err := s.client.(client.AuthenticatingClient).Authenticate()
+	err := s.client.Authenticate()
 	c.Assert(err, IsNil)
 	baseURL, err := s.client.MakeServiceURL("object-store", nil)
 	c.Assert(err, IsNil)

@@ -24,7 +24,7 @@ func (s *LegacyTestSuite) TestAuthAgainstServer(c *C) {
 	c.Assert(auth.Token, Equals, token)
 	c.Assert(
 		auth.ServiceURLs, DeepEquals,
-		map[string]string{"compute":"http://management/url/compute", "object-store":"http://management/url/object-store"})
+		map[string]string{"compute": "http://management/url/compute", "object-store": "http://management/url/object-store"})
 }
 
 func (s *LegacyTestSuite) TestBadAuth(c *C) {

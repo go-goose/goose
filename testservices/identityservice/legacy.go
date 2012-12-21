@@ -39,7 +39,7 @@ func (lis *Legacy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	header := w.Header()
 	header.Set("X-Auth-Token", info.token)
-	header.Set("X-Server-Management-Url", lis.managementURL + "/compute")
-	header.Set("X-Storage-Url", lis.managementURL + "/object-store")
+	header.Set("X-Server-Management-Url", lis.managementURL+"/compute")
+	header.Set("X-Storage-Url", lis.managementURL+"/object-store")
 	w.WriteHeader(http.StatusNoContent)
 }
