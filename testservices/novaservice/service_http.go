@@ -3,6 +3,7 @@
 package novaservice
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -62,6 +63,34 @@ This server could not verify that you are authorized to access the ` +
 			`request since it is either malformed or otherwise incorrect.", "code": 400}}`,
 		"application/json; charset=UTF-8",
 		"bad request URL",
+		nil,
+	}
+	errBadRequest3 = &errorResponse{
+		http.StatusBadRequest,
+		`{"badRequest": {"message": "Malformed request body", "code": 400}}`,
+		"application/json; charset=UTF-8",
+		"bad request body",
+		nil,
+	}
+	errBadRequestSrvName = &errorResponse{
+		http.StatusBadRequest,
+		`{"badRequest": {"message": "Server name is not defined", "code": 400}}`,
+		"application/json; charset=UTF-8",
+		"bad request - missing server name",
+		nil,
+	}
+	errBadRequestSrvFlavor = &errorResponse{
+		http.StatusBadRequest,
+		`{"badRequest": {"message": "Missing imageRef attribute", "code": 400}}`,
+		"application/json; charset=UTF-8",
+		"bad request - missing flavorRef",
+		nil,
+	}
+	errBadRequestSrvImage = &errorResponse{
+		http.StatusBadRequest,
+		`{"badRequest": {"message": "Missing flavorRef attribute", "code": 400}}`,
+		"application/json; charset=UTF-8",
+		"bad request - missing imageRef",
 		nil,
 	}
 	errBadRequestSG = &errorResponse{
@@ -165,6 +194,7 @@ func (e *errorResponse) requestBody(r *http.Request) []byte {
 		if e.nova != nil {
 			body = strings.Replace(body, "$ENDPOINT$", e.nova.endpoint(true, "/"), -1)
 		}
+		body = strings.Replace(body, "$TENANT$", tenantId, -1)
 		body = strings.Replace(body, "$URL$", url, -1)
 		body = strings.Replace(body, "$ERROR$", e.Error(), -1)
 		if slash := strings.LastIndex(url, "/"); slash != -1 {
@@ -411,6 +441,108 @@ func (n *Nova) handleServerActions(server *nova.ServerDetail, w http.ResponseWri
 	return fmt.Errorf("unknown server action: %q", string(body))
 }
 
+// generateUUID generates a random UUID
+// (taken from: http://www.ashishbanerjee.com/home/go/go-generate-uuid/0
+func generateUUID() (string, error) {
+	uuid := make([]byte, 16)
+	n, err := rand.Read(uuid)
+	if n != len(uuid) || err != nil {
+		return "", err
+	}
+	// see RFC 4122
+	uuid[8] = 0x80 // variant bits see page 5
+	uuid[4] = 0x40 // version 4 Pseudo Random, see page 7
+	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
+}
+
+// handleRunServer handles creating and running a server.
+func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Request) error {
+	var req struct {
+		Server struct {
+			FlavorRef      string
+			ImageRef       string
+			Name           string
+			Metadata       map[string]string
+			SecurityGroups []map[string]string `json:"security_groups"`
+		}
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		return errBadRequest3
+	}
+	if req.Server.Name == "" {
+		return errBadRequestSrvName
+	}
+	if req.Server.ImageRef == "" {
+		return errBadRequestSrvImage
+	}
+	if req.Server.FlavorRef == "" {
+		return errBadRequestSrvFlavor
+	}
+	id, err := generateUUID()
+	if err != nil {
+		return err
+	}
+	// TODO(dimitern): make sure flavor/image exist (if needed)
+	flavor := nova.FlavorDetail{Id: req.Server.FlavorRef}
+	n.buildFlavorLinks(&flavor)
+	flavorEnt := nova.Entity{Id: flavor.Id, Links: flavor.Links}
+	image := nova.Entity{Id: req.Server.ImageRef}
+	server := nova.ServerDetail{
+		Id:       id,
+		Name:     req.Server.Name,
+		TenantId: n.tenantId,
+		Image:    image,
+		Flavor:   flavorEnt,
+		Status:   nova.StatusActive,
+	}
+	n.buildServerLinks(&server)
+	if err := n.addServer(server); err != nil {
+		return err
+	}
+	var resp struct {
+		Server struct {
+			SecurityGroups []map[string]string `json:"security_groups"`
+			Id             string              `json:"id"`
+			Links          []nova.Link         `json:"links"`
+			AdminPass      string              `json:"adminPass"`
+		} `json:"server"`
+	}
+	if len(req.Server.SecurityGroups) > 0 {
+		errNoGroup := &errorResponse{
+			http.StatusBadRequest,
+			`{"badRequest": {"message": "Security group $SG$ not found for project $TENANT$.", "code": 400}}`,
+			"application/json; charset=UTF-8",
+			"bad request URL",
+			nil,
+		}
+		for _, group := range req.Server.SecurityGroups {
+			groupName := group["name"]
+			if groupName == "default" {
+				// assume default security group exists
+				continue
+			}
+			if sg, err := n.securityGroupByName(groupName); err != nil {
+				tmp := errNoGroup
+				tmp.body = strings.Replace(tmp.body, "$SG$", groupName, -1)
+				return tmp
+			} else if err := n.addServerSecurityGroup(id, sg.Id); err != nil {
+				return err
+			}
+		}
+		resp.Server.SecurityGroups = req.Server.SecurityGroups
+	} else {
+		resp.Server.SecurityGroups = make([]map[string]string, 1)
+		groups := make(map[string]string)
+		groups["name"] = "default"
+		resp.Server.SecurityGroups[0] = groups
+	}
+	// TODO(dimitern): verify the security group names & add them to the server
+	resp.Server.Id = id
+	resp.Server.Links = server.Links
+	resp.Server.AdminPass = "secret"
+	return sendJSON(http.StatusAccepted, resp, w, r)
+}
+
 // handleServers handles the servers HTTP API.
 func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
@@ -476,7 +608,7 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 		if len(body) == 0 {
 			return errBadRequest2
 		}
-		return errNotImplemented
+		return n.handleRunServer(body, w, r)
 	case "PUT":
 		if serverId := path.Base(r.URL.Path); serverId != "servers" {
 			return errBadRequest2

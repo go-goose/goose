@@ -161,6 +161,16 @@ func (n *Nova) server(serverId string) (*nova.ServerDetail, error) {
 	return &server, nil
 }
 
+// serverByName retrieves the first existing server with the given name.
+func (n *Nova) serverByName(name string) (*nova.ServerDetail, error) {
+	for _, server := range n.servers {
+		if server.Name == name {
+			return &server, nil
+		}
+	}
+	return nil, fmt.Errorf("no such server named %q", name)
+}
+
 // serverAsEntity returns the stored ServerDetail as Entity.
 func (n *Nova) serverAsEntity(serverId string) (*nova.Entity, error) {
 	server, err := n.server(serverId)

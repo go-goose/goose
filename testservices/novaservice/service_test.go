@@ -448,6 +448,28 @@ func (s *NovaSuite) TestGetServerAsEntity(c *C) {
 	c.Assert(*ent, DeepEquals, entity)
 }
 
+func (s *NovaSuite) TestGetServerByName(c *C) {
+	named, err := s.service.serverByName("test")
+	c.Assert(err, ErrorMatches, `no such server named "test"`)
+	servers := []nova.ServerDetail{
+		nova.ServerDetail{Id: "sr1", Name: "test"},
+		nova.ServerDetail{Id: "sr2", Name: "test"},
+		nova.ServerDetail{Id: "sr3", Name: "not test"},
+	}
+	for _, server := range servers {
+		s.createServer(c, server)
+		defer s.deleteServer(c, server)
+	}
+	named, err = s.service.serverByName("test")
+	c.Assert(err, IsNil)
+	// order is not guaranteed, so check both possible results
+	if named.Id == servers[0].Id {
+		c.Assert(*named, DeepEquals, servers[0])
+	} else {
+		c.Assert(*named, DeepEquals, servers[1])
+	}
+}
+
 func (s *NovaSuite) TestAddRemoveSecurityGroup(c *C) {
 	group := nova.SecurityGroup{Id: 1}
 	s.createGroup(c, group)
