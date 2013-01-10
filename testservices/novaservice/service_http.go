@@ -536,7 +536,6 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 		groups["name"] = "default"
 		resp.Server.SecurityGroups[0] = groups
 	}
-	// TODO(dimitern): verify the security group names & add them to the server
 	resp.Server.Id = id
 	resp.Server.Links = server.Links
 	resp.Server.AdminPass = "secret"
