@@ -194,7 +194,6 @@ func (e *errorResponse) requestBody(r *http.Request) []byte {
 		if e.nova != nil {
 			body = strings.Replace(body, "$ENDPOINT$", e.nova.endpoint(true, "/"), -1)
 		}
-		body = strings.Replace(body, "$TENANT$", tenantId, -1)
 		body = strings.Replace(body, "$URL$", url, -1)
 		body = strings.Replace(body, "$ERROR$", e.Error(), -1)
 		if slash := strings.LastIndex(url, "/"); slash != -1 {
@@ -524,6 +523,7 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 			if sg, err := n.securityGroupByName(groupName); err != nil {
 				tmp := errNoGroup
 				tmp.body = strings.Replace(tmp.body, "$SG$", groupName, -1)
+				tmp.body = strings.Replace(tmp.body, "$TENANT$", n.tenantId, -1)
 				return tmp
 			} else if err := n.addServerSecurityGroup(id, sg.Id); err != nil {
 				return err
