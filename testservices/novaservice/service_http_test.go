@@ -474,15 +474,15 @@ func (s *NovaHTTPSuite) TestGetFlavors(c *C) {
 	assertJSON(c, resp, &expected)
 	c.Assert(expected.Flavors, HasLen, 0)
 	flavors := []nova.FlavorDetail{
-		nova.FlavorDetail{Id: "fl1", Name: "flavor 1"},
-		nova.FlavorDetail{Id: "fl2", Name: "flavor 2"},
+		{Id: "fl1", Name: "flavor 1"},
+		{Id: "fl2", Name: "flavor 2"},
 	}
 	for i, flavor := range flavors {
 		s.service.buildFlavorLinks(&flavor)
 		flavors[i] = flavor
 		err := s.service.addFlavor(flavor)
-		defer s.service.removeFlavor(flavor.Id)
 		c.Assert(err, IsNil)
+		defer s.service.removeFlavor(flavor.Id)
 	}
 	entities = s.service.allFlavorsAsEntities()
 	resp, err = s.authRequest("GET", "/flavors", nil, nil)
