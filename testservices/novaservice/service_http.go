@@ -490,6 +490,7 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		return err
 	}
+	var groups []int
 	if len(req.Server.SecurityGroups) > 0 {
 		for _, group := range req.Server.SecurityGroups {
 			groupName := group["name"]
@@ -497,8 +498,10 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 				// assume default security group exists
 				continue
 			}
-			if _, err := n.securityGroupByName(groupName); err != nil {
+			if sg, err := n.securityGroupByName(groupName); err != nil {
 				return noGroupError(groupName, n.tenantId)
+			} else {
+				groups = append(groups, sg.Id)
 			}
 		}
 	}
@@ -528,16 +531,9 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 		} `json:"server"`
 	}
 	if len(req.Server.SecurityGroups) > 0 {
-		for _, group := range req.Server.SecurityGroups {
-			groupName := group["name"]
-			if groupName == "default" {
-				// assume default security group exists
-				continue
-			} else {
-				sg, _ := n.securityGroupByName(groupName)
-				if err := n.addServerSecurityGroup(id, sg.Id); err != nil {
-					return err
-				}
+		for _, gid := range groups {
+			if err := n.addServerSecurityGroup(id, gid); err != nil {
+				return err
 			}
 		}
 		resp.Server.SecurityGroups = req.Server.SecurityGroups
