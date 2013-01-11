@@ -42,10 +42,10 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 		s.identityDouble = identityservice.NewUserPass()
 		s.identityDouble.(*identityservice.UserPass).AddUser(s.cred.User, s.cred.Secrets)
 		ep := identityservice.Endpoint{
-			s.Server.URL, //admin
-			s.Server.URL, //internal
-			s.Server.URL, //public
-			s.LiveTests.cred.Region,
+			AdminURL:    s.Server.URL,
+			InternalURL: s.Server.URL,
+			PublicURL:   s.Server.URL,
+			Region:      s.LiveTests.cred.Region,
 		}
 		service := identityservice.Service{"nova", "compute", []identityservice.Endpoint{ep}}
 		s.identityDouble.(*identityservice.UserPass).AddService(service)

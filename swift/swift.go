@@ -35,9 +35,9 @@ const (
 
 // CreateContainer creates a container with the given name.
 func (c *Client) CreateContainer(containerName string, acl ACL) error {
-	// Juju expects there to be a (semi) public url for some objects. This
-	// could probably be more restrictive or placed in a separate container
-	// with some refactoring, but for now just make everything public.
+	// Normally accessing a container or objects within requires a token
+	// for the tenant. Setting an ACL using the X-Container-Read header
+	// can be used to allow unauthenticated HTTP access.
 	headers := make(http.Header)
 	headers.Add("X-Container-Read", string(acl))
 	requestData := goosehttp.RequestData{ReqHeaders: headers, ExpectedStatus: []int{http.StatusAccepted, http.StatusCreated}}
