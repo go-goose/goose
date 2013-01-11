@@ -161,6 +161,16 @@ func (n *Nova) server(serverId string) (*nova.ServerDetail, error) {
 	return &server, nil
 }
 
+// serverByName retrieves the first existing server with the given name.
+func (n *Nova) serverByName(name string) (*nova.ServerDetail, error) {
+	for _, server := range n.servers {
+		if server.Name == name {
+			return &server, nil
+		}
+	}
+	return nil, fmt.Errorf("no such server named %q", name)
+}
+
 // serverAsEntity returns the stored ServerDetail as Entity.
 func (n *Nova) serverAsEntity(serverId string) (*nova.Entity, error) {
 	server, err := n.server(serverId)
@@ -174,24 +184,52 @@ func (n *Nova) serverAsEntity(serverId string) (*nova.Entity, error) {
 	}, nil
 }
 
+// matchServer returns true if the given server is matched by the
+// given filter, or false otherwise.
+func (n *Nova) matchServer(filter *nova.Filter, server nova.ServerDetail) bool {
+	if filter == nil {
+		return true // empty filter matches everything
+	}
+	values := filter.Values
+	for _, val := range values[nova.FilterStatus] {
+		if server.Status == val {
+			return true
+		}
+	}
+	for _, val := range values[nova.FilterServer] {
+		if server.Name == val {
+			return true
+		}
+	}
+	// TODO(dimitern) maybe implement FilterFlavor, FilterImage,
+	// FilterMarker, FilterLimit and FilterChangesSince
+	return false
+}
+
 // allServers returns a list of all existing servers.
-func (n *Nova) allServers() []nova.ServerDetail {
+// Filtering is supported, see nova.Filter* for more info.
+func (n *Nova) allServers(filter *nova.Filter) []nova.ServerDetail {
 	var servers []nova.ServerDetail
 	for _, server := range n.servers {
-		servers = append(servers, server)
+		if n.matchServer(filter, server) {
+			servers = append(servers, server)
+		}
 	}
 	return servers
 }
 
 // allServersAsEntities returns all servers as Entity structs.
-func (n *Nova) allServersAsEntities() []nova.Entity {
+// Filtering is supported, see nova.Filter* for more info.
+func (n *Nova) allServersAsEntities(filter *nova.Filter) []nova.Entity {
 	var entities []nova.Entity
 	for _, server := range n.servers {
-		entities = append(entities, nova.Entity{
-			Id:    server.Id,
-			Name:  server.Name,
-			Links: server.Links,
-		})
+		if n.matchServer(filter, server) {
+			entities = append(entities, nova.Entity{
+				Id:    server.Id,
+				Name:  server.Name,
+				Links: server.Links,
+			})
+		}
 	}
 	return entities
 }
