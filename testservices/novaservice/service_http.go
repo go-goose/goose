@@ -441,17 +441,14 @@ func (n *Nova) handleServerActions(server *nova.ServerDetail, w http.ResponseWri
 	return fmt.Errorf("unknown server action: %q", string(body))
 }
 
-// generateUUID generates a random UUID
-// (taken from: http://www.ashishbanerjee.com/home/go/go-generate-uuid/0
-func generateUUID() (string, error) {
+// newUUID generates a random UUID conforming to RFC 4122.
+func newUUID() (string, error) {
 	uuid := make([]byte, 16)
-	n, err := io.ReadFull(rand.Reader, uuid)
-	if n != len(uuid) || err != nil {
+	if _, err := io.ReadFull(rand.Reader, uuid); err != nil {
 		return "", err
 	}
-	// see RFC 4122
-	uuid[8] = uuid[8]&^0xc0 | 0x80 // variant bits see page 5
-	uuid[6] = uuid[6]&^0xf0 | 0x40 // version 4 Pseudo Random, see page 7
+	uuid[8] = uuid[8]&^0xc0 | 0x80 // variant bits; see section 4.1.1.
+	uuid[6] = uuid[6]&^0xf0 | 0x40 // version 4; see section 4.1.3.
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
 }
 
@@ -489,9 +486,21 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	if req.Server.FlavorRef == "" {
 		return errBadRequestSrvFlavor
 	}
-	id, err := generateUUID()
+	id, err := newUUID()
 	if err != nil {
 		return err
+	}
+	if len(req.Server.SecurityGroups) > 0 {
+		for _, group := range req.Server.SecurityGroups {
+			groupName := group["name"]
+			if groupName == "default" {
+				// assume default security group exists
+				continue
+			}
+			if _, err := n.securityGroupByName(groupName); err != nil {
+				return noGroupError(groupName, n.tenantId)
+			}
+		}
 	}
 	// TODO(dimitern): make sure flavor/image exist (if needed)
 	flavor := nova.FlavorDetail{Id: req.Server.FlavorRef}
@@ -524,11 +533,11 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 			if groupName == "default" {
 				// assume default security group exists
 				continue
-			}
-			if sg, err := n.securityGroupByName(groupName); err != nil {
-				return noGroupError(groupName, n.tenantId)
-			} else if err := n.addServerSecurityGroup(id, sg.Id); err != nil {
-				return err
+			} else {
+				sg, _ := n.securityGroupByName(groupName)
+				if err := n.addServerSecurityGroup(id, sg.Id); err != nil {
+					return err
+				}
 			}
 		}
 		resp.Server.SecurityGroups = req.Server.SecurityGroups

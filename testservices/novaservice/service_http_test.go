@@ -515,8 +515,8 @@ func (s *NovaHTTPSuite) TestGetFlavorsDetail(c *C) {
 	assertJSON(c, resp, &expected)
 	c.Assert(expected.Flavors, HasLen, 0)
 	flavors = []nova.FlavorDetail{
-		nova.FlavorDetail{Id: "fl1", Name: "flavor 1"},
-		nova.FlavorDetail{Id: "fl2", Name: "flavor 2"},
+		{Id: "fl1", Name: "flavor 1"},
+		{Id: "fl2", Name: "flavor 2"},
 	}
 	for i, flavor := range flavors {
 		s.service.buildFlavorLinks(&flavor)
@@ -620,14 +620,14 @@ func (s *NovaHTTPSuite) TestGetServersWithFilters(c *C) {
 	c.Assert(expected.Servers, DeepEquals, entities[:2])
 }
 
-func (s *NovaHTTPSuite) TestGenerateUUID(c *C) {
-	uuid, err := generateUUID()
+func (s *NovaHTTPSuite) TestNewUUID(c *C) {
+	uuid, err := newUUID()
 	c.Assert(err, IsNil)
 	var p1, p2, p3, p4, p5 string
 	num, err := fmt.Sscanf(uuid, "%8x-%4x-%4x-%4x-%12x", &p1, &p2, &p3, &p4, &p5)
 	c.Assert(err, IsNil)
 	c.Assert(num, Equals, 5)
-	uuid2, err := generateUUID()
+	uuid2, err := newUUID()
 	c.Assert(err, IsNil)
 	c.Assert(uuid2, Not(Equals), uuid)
 }
