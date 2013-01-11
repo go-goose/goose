@@ -128,7 +128,7 @@ func (s *NovaSuite) TestAddFlavorWithLinks(c *C) {
 	flavor := nova.FlavorDetail{
 		Id: "test",
 		Links: []nova.Link{
-			nova.Link{Href: "href", Rel: "rel"},
+			{Href: "href", Rel: "rel"},
 		},
 	}
 	s.createFlavor(c, flavor)
@@ -157,8 +157,8 @@ func (s *NovaSuite) TestAllFlavors(c *C) {
 	flavors := s.service.allFlavors()
 	c.Assert(flavors, HasLen, 0)
 	flavors = []nova.FlavorDetail{
-		nova.FlavorDetail{Id: "fl1"},
-		nova.FlavorDetail{Id: "fl2"},
+		{Id: "fl1"},
+		{Id: "fl2"},
 	}
 	s.createFlavor(c, flavors[0])
 	defer s.deleteFlavor(c, flavors[0])
@@ -176,12 +176,12 @@ func (s *NovaSuite) TestAllFlavorsAsEntities(c *C) {
 	entities := s.service.allFlavorsAsEntities()
 	c.Assert(entities, HasLen, 0)
 	entities = []nova.Entity{
-		nova.Entity{Id: "fl1"},
-		nova.Entity{Id: "fl2"},
+		{Id: "fl1"},
+		{Id: "fl2"},
 	}
 	flavors := []nova.FlavorDetail{
-		nova.FlavorDetail{Id: entities[0].Id},
-		nova.FlavorDetail{Id: entities[1].Id},
+		{Id: entities[0].Id},
+		{Id: entities[1].Id},
 	}
 	s.createFlavor(c, flavors[0])
 	defer s.deleteFlavor(c, flavors[0])
@@ -238,8 +238,8 @@ func (s *NovaSuite) TestBuildLinksAndAddServer(c *C) {
 	sr, _ := s.service.server(server.Id)
 	url := "/servers/" + server.Id
 	links := []nova.Link{
-		nova.Link{Href: s.service.endpoint(true, url), Rel: "self"},
-		nova.Link{Href: s.service.endpoint(false, url), Rel: "bookmark"},
+		{Href: s.service.endpoint(true, url), Rel: "self"},
+		{Href: s.service.endpoint(false, url), Rel: "bookmark"},
 	}
 	c.Assert(sr.Links, DeepEquals, links)
 }
@@ -248,7 +248,7 @@ func (s *NovaSuite) TestAddServerWithLinks(c *C) {
 	server := nova.ServerDetail{
 		Id: "test",
 		Links: []nova.Link{
-			nova.Link{Href: "href", Rel: "rel"},
+			{Href: "href", Rel: "rel"},
 		},
 	}
 	s.createServer(c, server)
@@ -277,8 +277,8 @@ func (s *NovaSuite) TestAllServers(c *C) {
 	servers := s.service.allServers(nil)
 	c.Assert(servers, HasLen, 0)
 	servers = []nova.ServerDetail{
-		nova.ServerDetail{Id: "sr1"},
-		nova.ServerDetail{Id: "sr2"},
+		{Id: "sr1"},
+		{Id: "sr2"},
 	}
 	s.createServer(c, servers[0])
 	defer s.deleteServer(c, servers[1])
@@ -296,9 +296,9 @@ func (s *NovaSuite) TestAllServersWithFilters(c *C) {
 	servers := s.service.allServers(nil)
 	c.Assert(servers, HasLen, 0)
 	servers = []nova.ServerDetail{
-		nova.ServerDetail{Id: "sr1", Name: "test", Status: nova.StatusActive},
-		nova.ServerDetail{Id: "sr2", Name: "other", Status: nova.StatusBuild},
-		nova.ServerDetail{Id: "sr3", Name: "foo", Status: nova.StatusRescue},
+		{Id: "sr1", Name: "test", Status: nova.StatusActive},
+		{Id: "sr2", Name: "other", Status: nova.StatusBuild},
+		{Id: "sr3", Name: "foo", Status: nova.StatusRescue},
 	}
 	for _, server := range servers {
 		s.createServer(c, server)
@@ -341,12 +341,12 @@ func (s *NovaSuite) TestAllServersAsEntities(c *C) {
 	entities := s.service.allServersAsEntities(nil)
 	c.Assert(entities, HasLen, 0)
 	entities = []nova.Entity{
-		nova.Entity{Id: "sr1"},
-		nova.Entity{Id: "sr2"},
+		{Id: "sr1"},
+		{Id: "sr2"},
 	}
 	servers := []nova.ServerDetail{
-		nova.ServerDetail{Id: entities[0].Id},
-		nova.ServerDetail{Id: entities[1].Id},
+		{Id: entities[0].Id},
+		{Id: entities[1].Id},
 	}
 	s.createServer(c, servers[0])
 	defer s.deleteServer(c, servers[0])
@@ -364,9 +364,9 @@ func (s *NovaSuite) TestAllServersAsEntitiesWithFilters(c *C) {
 	servers := s.service.allServers(nil)
 	c.Assert(servers, HasLen, 0)
 	servers = []nova.ServerDetail{
-		nova.ServerDetail{Id: "sr1", Name: "test", Status: nova.StatusActive},
-		nova.ServerDetail{Id: "sr2", Name: "other", Status: nova.StatusBuild},
-		nova.ServerDetail{Id: "sr3", Name: "foo", Status: nova.StatusRescue},
+		{Id: "sr1", Name: "test", Status: nova.StatusActive},
+		{Id: "sr2", Name: "other", Status: nova.StatusBuild},
+		{Id: "sr3", Name: "foo", Status: nova.StatusRescue},
 	}
 	entities := []nova.Entity{}
 	for _, server := range servers {
@@ -452,9 +452,9 @@ func (s *NovaSuite) TestGetServerByName(c *C) {
 	named, err := s.service.serverByName("test")
 	c.Assert(err, ErrorMatches, `no such server named "test"`)
 	servers := []nova.ServerDetail{
-		nova.ServerDetail{Id: "sr1", Name: "test"},
-		nova.ServerDetail{Id: "sr2", Name: "test"},
-		nova.ServerDetail{Id: "sr3", Name: "not test"},
+		{Id: "sr1", Name: "test"},
+		{Id: "sr2", Name: "test"},
+		{Id: "sr3", Name: "not test"},
 	}
 	for _, server := range servers {
 		s.createServer(c, server)
@@ -481,8 +481,8 @@ func (s *NovaSuite) TestAddSecurityGroupWithRules(c *C) {
 		Id:   1,
 		Name: "test",
 		Rules: []nova.SecurityGroupRule{
-			nova.SecurityGroupRule{Id: 10, ParentGroupId: 1},
-			nova.SecurityGroupRule{Id: 20, ParentGroupId: 1},
+			{Id: 10, ParentGroupId: 1},
+			{Id: 20, ParentGroupId: 1},
 		},
 	}
 	s.createGroup(c, group)
@@ -511,8 +511,8 @@ func (s *NovaSuite) TestAllSecurityGroups(c *C) {
 	groups := s.service.allSecurityGroups()
 	c.Assert(groups, HasLen, 0)
 	groups = []nova.SecurityGroup{
-		nova.SecurityGroup{Id: 1, Name: "one"},
-		nova.SecurityGroup{Id: 2, Name: "two"},
+		{Id: 1, Name: "one"},
+		{Id: 2, Name: "two"},
 	}
 	s.createGroup(c, groups[0])
 	defer s.deleteGroup(c, groups[0])
@@ -666,7 +666,7 @@ func (s *NovaSuite) TestAddSecurityGroupRuleToParentTwiceFails(c *C) {
 	group := nova.SecurityGroup{
 		Id: 1,
 		Rules: []nova.SecurityGroupRule{
-			nova.SecurityGroupRule{Id: 10},
+			{Id: 10},
 		},
 	}
 	s.createGroup(c, group)
@@ -799,8 +799,8 @@ func (s *NovaSuite) TestAllServerSecurityGroups(c *C) {
 	s.createServer(c, server)
 	defer s.deleteServer(c, server)
 	groups := []nova.SecurityGroup{
-		nova.SecurityGroup{Id: 1, Name: "gr1"},
-		nova.SecurityGroup{Id: 2, Name: "gr2"},
+		{Id: 1, Name: "gr1"},
+		{Id: 2, Name: "gr2"},
 	}
 	for _, group := range groups {
 		s.createGroup(c, group)
@@ -901,8 +901,8 @@ func (s *NovaSuite) TestAllFloatingIPs(c *C) {
 	fips := s.service.allFloatingIPs()
 	c.Assert(fips, HasLen, 0)
 	fips = []nova.FloatingIP{
-		nova.FloatingIP{Id: 1},
-		nova.FloatingIP{Id: 2},
+		{Id: 1},
+		{Id: 2},
 	}
 	s.createIP(c, fips[0])
 	defer s.deleteIP(c, fips[0])

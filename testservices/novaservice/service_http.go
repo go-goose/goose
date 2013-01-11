@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"launchpad.net/goose/nova"
 	"net/http"
@@ -444,14 +445,25 @@ func (n *Nova) handleServerActions(server *nova.ServerDetail, w http.ResponseWri
 // (taken from: http://www.ashishbanerjee.com/home/go/go-generate-uuid/0
 func generateUUID() (string, error) {
 	uuid := make([]byte, 16)
-	n, err := rand.Read(uuid)
+	n, err := io.ReadFull(rand.Reader, uuid)
 	if n != len(uuid) || err != nil {
 		return "", err
 	}
 	// see RFC 4122
-	uuid[8] = 0x80 // variant bits see page 5
-	uuid[4] = 0x40 // version 4 Pseudo Random, see page 7
+	uuid[8] = uuid[8]&^0xc0 | 0x80 // variant bits see page 5
+	uuid[6] = uuid[6]&^0xf0 | 0x40 // version 4 Pseudo Random, see page 7
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
+}
+
+// noGroupError constructs a bad request response for an invalid group.
+func noGroupError(groupName, tenantId string) error {
+	return &errorResponse{
+		http.StatusBadRequest,
+		`{"badRequest": {"message": "Security group ` + groupName + ` not found for project ` + tenantId + `.", "code": 400}}`,
+		"application/json; charset=UTF-8",
+		"bad request URL",
+		nil,
+	}
 }
 
 // handleRunServer handles creating and running a server.
@@ -507,13 +519,6 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 		} `json:"server"`
 	}
 	if len(req.Server.SecurityGroups) > 0 {
-		errNoGroup := &errorResponse{
-			http.StatusBadRequest,
-			`{"badRequest": {"message": "Security group $SG$ not found for project $TENANT$.", "code": 400}}`,
-			"application/json; charset=UTF-8",
-			"bad request URL",
-			nil,
-		}
 		for _, group := range req.Server.SecurityGroups {
 			groupName := group["name"]
 			if groupName == "default" {
@@ -521,20 +526,14 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 				continue
 			}
 			if sg, err := n.securityGroupByName(groupName); err != nil {
-				tmp := errNoGroup
-				tmp.body = strings.Replace(tmp.body, "$SG$", groupName, -1)
-				tmp.body = strings.Replace(tmp.body, "$TENANT$", n.tenantId, -1)
-				return tmp
+				return noGroupError(groupName, n.tenantId)
 			} else if err := n.addServerSecurityGroup(id, sg.Id); err != nil {
 				return err
 			}
 		}
 		resp.Server.SecurityGroups = req.Server.SecurityGroups
 	} else {
-		resp.Server.SecurityGroups = make([]map[string]string, 1)
-		groups := make(map[string]string)
-		groups["name"] = "default"
-		resp.Server.SecurityGroups[0] = groups
+		resp.Server.SecurityGroups = []map[string]string{{"name": "default"}}
 	}
 	resp.Server.Id = id
 	resp.Server.Links = server.Links

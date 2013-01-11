@@ -184,31 +184,26 @@ func (n *Nova) serverAsEntity(serverId string) (*nova.Entity, error) {
 	}, nil
 }
 
-// filterServer returns true if the given does not match the given
-// filter, or false otherwise.
-func (n *Nova) filterServer(filter *nova.Filter, server nova.ServerDetail) bool {
+// matchServer returns true if the given server is matched by the
+// given filter, or false otherwise.
+func (n *Nova) matchServer(filter *nova.Filter, server nova.ServerDetail) bool {
 	if filter == nil {
-		return false
+		return true // empty filter matches everything
 	}
-	found := false
 	values := filter.Values
 	for _, val := range values[nova.FilterStatus] {
 		if server.Status == val {
-			found = true
+			return true
 		}
-	}
-	if found {
-		found = false
-		return false
 	}
 	for _, val := range values[nova.FilterServer] {
 		if server.Name == val {
-			found = true
+			return true
 		}
 	}
 	// TODO(dimitern) maybe implement FilterFlavor, FilterImage,
 	// FilterMarker, FilterLimit and FilterChangesSince
-	return !found
+	return false
 }
 
 // allServers returns a list of all existing servers.
@@ -216,7 +211,7 @@ func (n *Nova) filterServer(filter *nova.Filter, server nova.ServerDetail) bool 
 func (n *Nova) allServers(filter *nova.Filter) []nova.ServerDetail {
 	var servers []nova.ServerDetail
 	for _, server := range n.servers {
-		if !n.filterServer(filter, server) {
+		if n.matchServer(filter, server) {
 			servers = append(servers, server)
 		}
 	}
@@ -228,7 +223,7 @@ func (n *Nova) allServers(filter *nova.Filter) []nova.ServerDetail {
 func (n *Nova) allServersAsEntities(filter *nova.Filter) []nova.Entity {
 	var entities []nova.Entity
 	for _, server := range n.servers {
-		if !n.filterServer(filter, server) {
+		if n.matchServer(filter, server) {
 			entities = append(entities, nova.Entity{
 				Id:    server.Id,
 				Name:  server.Name,
