@@ -55,7 +55,7 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 		s.identityDouble = identityservice.NewLegacy()
 		var legacy = s.identityDouble.(*identityservice.Legacy)
 		legacy.AddUser(s.cred.User, s.cred.Secrets)
-		legacy.SetManagementURL("http://management/url")
+		legacy.SetManagementURL("http://management.test.invalid/url")
 	}
 	s.LiveTests.SetUpSuite(c)
 }
