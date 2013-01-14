@@ -26,16 +26,22 @@ func New(client client.Client) *Client {
 	return &Client{client}
 }
 
+type ACL string
+
+const (
+	Private    = ACL("")
+	PublicRead = ACL(".r:*,.rlistings")
+)
+
 // CreateContainer creates a container with the given name.
-func (c *Client) CreateContainer(containerName string) error {
-	// Juju expects there to be a (semi) public url for some objects. This
-	// could probably be more restrictive or placed in a separate container
-	// with some refactoring, but for now just make everything public.
+func (c *Client) CreateContainer(containerName string, acl ACL) error {
+	// Normally accessing a container or objects within requires a token
+	// for the tenant. Setting an ACL using the X-Container-Read header
+	// can be used to allow unauthenticated HTTP access.
 	headers := make(http.Header)
-	headers.Add("X-Container-Read", ".r:*")
-	url := fmt.Sprintf("/%s", containerName)
+	headers.Add("X-Container-Read", string(acl))
 	requestData := goosehttp.RequestData{ReqHeaders: headers, ExpectedStatus: []int{http.StatusAccepted, http.StatusCreated}}
-	err := c.client.SendRequest(client.PUT, "object-store", url, &requestData)
+	err := c.client.SendRequest(client.PUT, "object-store", containerName, &requestData)
 	if err != nil {
 		err = maybeNotFound(err, "failed to create container: %s", containerName)
 	}
@@ -44,9 +50,8 @@ func (c *Client) CreateContainer(containerName string) error {
 
 // DeleteContainer deletes the specified container.
 func (c *Client) DeleteContainer(containerName string) error {
-	url := fmt.Sprintf("/%s", containerName)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusNoContent}}
-	err := c.client.SendRequest(client.DELETE, "object-store", url, &requestData)
+	err := c.client.SendRequest(client.DELETE, "object-store", containerName, &requestData)
 	if err != nil {
 		err = maybeNotFound(err, "failed to delete container: %s", containerName)
 	}
@@ -54,7 +59,7 @@ func (c *Client) DeleteContainer(containerName string) error {
 }
 
 func (c *Client) touchObject(requestData *goosehttp.RequestData, op, containerName, objectName string) error {
-	path := fmt.Sprintf("/%s/%s", containerName, objectName)
+	path := fmt.Sprintf("%s/%s", containerName, objectName)
 	err := c.client.SendRequest(op, "object-store", path, requestData)
 	if err != nil {
 		err = maybeNotFound(err, "failed to %s object %s from container %s", op, objectName, containerName)
@@ -134,8 +139,7 @@ func (c *Client) List(containerName, prefix, delim, marker string, limit int) (c
 	}
 
 	requestData := goosehttp.RequestData{Params: &params, RespValue: &contents}
-	url := fmt.Sprintf("/%s", containerName)
-	err = c.client.SendRequest(client.GET, "object-store", url, &requestData)
+	err = c.client.SendRequest(client.GET, "object-store", containerName, &requestData)
 	if err != nil {
 		err = errors.Newf(err, "failed to list contents of container: %s", containerName)
 	}

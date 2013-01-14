@@ -28,7 +28,7 @@ func registerOpenStackTests(cred *identity.Credentials) {
 
 type LiveTests struct {
 	cred       *identity.Credentials
-	client     *client.OpenStackClient
+	client     client.AuthenticatingClient
 	nova       *nova.Client
 	testServer *nova.Entity
 	userId     string
@@ -43,8 +43,8 @@ func (s *LiveTests) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 	s.waitTestServerToStart(c)
 	// These will not be filled in until a client has authorised which will happen creating the instance above.
-	s.userId = s.client.UserId
-	s.tenantId = s.client.TenantId
+	s.userId = s.client.UserId()
+	s.tenantId = s.client.TenantId()
 }
 
 func (s *LiveTests) TearDownSuite(c *C) {

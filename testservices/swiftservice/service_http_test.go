@@ -254,8 +254,10 @@ func (s *SwiftHTTPSuite) TestUnauthorizedFails(c *C) {
 	defer func() {
 		token = oldtoken
 	}()
-	token = ""
-	s.sendRequest(c, "GET", "test", nil, http.StatusUnauthorized)
+	// TODO(wallyworld) - until ACLs are supported, empty tokens are assumed to be used when
+	// we need to access a public container.
+	// token = ""
+	// s.sendRequest(c, "GET", "test", nil, http.StatusUnauthorized)
 
 	token = "invalid"
 	s.sendRequest(c, "PUT", "test", nil, http.StatusUnauthorized)

@@ -26,7 +26,7 @@ const (
 type Client struct {
 	http.Client
 	logger     *log.Logger
-	AuthToken  string
+	authToken  string
 	maxRetries int
 }
 
@@ -153,8 +153,8 @@ func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err er
 // expectedStatus: a slice of allowed response status codes.
 // payloadInfo: a string to include with an error message if something goes wrong.
 func (c *Client) sendRequest(method, URL string, reqReader io.Reader, length int, headers http.Header, expectedStatus []int) (rc io.ReadCloser, err error) {
-	if c.AuthToken != "" {
-		headers.Add("X-Auth-Token", c.AuthToken)
+	if c.authToken != "" {
+		headers.Add("X-Auth-Token", c.authToken)
 	}
 	var reqData []byte = make([]byte, length)
 	if reqReader != nil {
@@ -216,7 +216,7 @@ func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header,
 		if retryAfter == 0 {
 			return nil, errors.Newf(err, URL, "Resource limit exeeded at URL %s.", URL)
 		}
-		c.logger.Printf("Too many requests, retrying in %s seconds.", retryAfter)
+		c.logger.Printf("Too many requests, retrying in %d seconds.", retryAfter)
 		time.Sleep(time.Duration(retryAfter) * time.Second)
 	}
 	return nil, errors.Newf(err, URL, "Maximum number of retries (%d) reached sending request to %s.", c.maxRetries, URL)
@@ -230,7 +230,7 @@ type HttpError struct {
 }
 
 func (e *HttpError) Error() string {
-	return fmt.Sprintf("request (%s) returned unexpected status: %s; error info: %v",
+	return fmt.Sprintf("request (%s) returned unexpected status: %d; error info: %v",
 		e.url,
 		e.StatusCode,
 		e.responseMessage,

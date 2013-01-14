@@ -35,11 +35,18 @@ func (l *Legacy) Auth(creds *Credentials) (*AuthDetails, error) {
 	if details.Token == "" {
 		return nil, fmt.Errorf("Did not get valid Token from auth request")
 	}
+	details.ServiceURLs = make(map[string]string)
 	nova_url := response.Header.Get("X-Server-Management-Url")
 	if nova_url == "" {
-		return nil, fmt.Errorf("Did not get valid management URL from auth request")
+		return nil, fmt.Errorf("Did not get valid nova management URL from auth request")
 	}
-	details.ServiceURLs = map[string]string{"compute": nova_url}
+	details.ServiceURLs["compute"] = nova_url
+
+	swift_url := response.Header.Get("X-Storage-Url")
+	if swift_url == "" {
+		return nil, fmt.Errorf("Did not get valid swift management URL from auth request")
+	}
+	details.ServiceURLs["object-store"] = swift_url
 
 	return details, nil
 }
