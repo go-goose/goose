@@ -775,11 +775,11 @@ func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) erro
 			if err == nil {
 				return errBadRequestDuplicateValue
 			}
-			if req.Group.Description == "test rate limit" && n.shouldSendFakeRateLimitResponse {
-				n.shouldSendFakeRateLimitResponse = false
+			if req.Group.Description == "test rate limit" && n.sendFakeRateLimitResponse {
+				n.sendFakeRateLimitResponse = false
 				return errRateLimitExceeded
 			} else {
-				n.shouldSendFakeRateLimitResponse = true
+				n.sendFakeRateLimitResponse = true
 			}
 			n.nextGroupId++
 			nextId := n.nextGroupId

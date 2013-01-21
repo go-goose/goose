@@ -26,7 +26,7 @@ type Nova struct {
 	nextGroupId                     int
 	nextRuleId                      int
 	nextIPId                        int
-	shouldSendFakeRateLimitResponse bool
+	sendFakeRateLimitResponse bool
 }
 
 // endpoint returns either a versioned or non-versioned service
@@ -72,7 +72,7 @@ func New(hostname, versionPath, token, tenantId string) *Nova {
 		userId: "14",
 		// The following attribute controls whether rate limit responses are sent back to the caller.
 		// This is switched off when we want to ensure the client eventually gets a proper response.
-		shouldSendFakeRateLimitResponse: true,
+		sendFakeRateLimitResponse: true,
 	}
 	for i, flavor := range defaultFlavors {
 		nova.buildFlavorLinks(&flavor)
