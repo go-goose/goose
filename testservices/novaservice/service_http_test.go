@@ -778,16 +778,16 @@ func (s *NovaHTTPSuite) TestGetSecurityGroups(c *C) {
 	c.Assert(expected.Groups, HasLen, 1)
 	groups = []nova.SecurityGroup{
 		{
-			Id: 1,
-			Name: "group 1",
+			Id:       1,
+			Name:     "group 1",
 			TenantId: s.service.tenantId,
-			Rules:[]nova.SecurityGroupRule{},
+			Rules:    []nova.SecurityGroupRule{},
 		},
 		{
-			Id: 2,
-			Name: "group 2",
+			Id:       2,
+			Name:     "group 2",
 			TenantId: s.service.tenantId,
-			Rules:[]nova.SecurityGroupRule{},
+			Rules:    []nova.SecurityGroupRule{},
 		},
 	}
 	for _, group := range groups {
@@ -799,7 +799,7 @@ func (s *NovaHTTPSuite) TestGetSecurityGroups(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
 	assertJSON(c, resp, &expected)
-	c.Assert(expected.Groups, HasLen, len(groups) + 1)
+	c.Assert(expected.Groups, HasLen, len(groups)+1)
 	checkGroupsInList(c, groups, expected.Groups)
 	var expectedGroup struct {
 		Group nova.SecurityGroup `json:"security_group"`
@@ -988,16 +988,16 @@ func (s *NovaHTTPSuite) TestGetServerSecurityGroups(c *C) {
 	server := nova.ServerDetail{Id: "sr1"}
 	groups := []nova.SecurityGroup{
 		{
-			Id: 1,
-			Name: "group1",
+			Id:       1,
+			Name:     "group1",
 			TenantId: s.service.tenantId,
-			Rules:[]nova.SecurityGroupRule{},
+			Rules:    []nova.SecurityGroupRule{},
 		},
 		{
-			Id: 2,
-			Name: "group2",
+			Id:       2,
+			Name:     "group2",
 			TenantId: s.service.tenantId,
-			Rules:[]nova.SecurityGroupRule{},
+			Rules:    []nova.SecurityGroupRule{},
 		},
 	}
 	srvGroups := s.service.allServerSecurityGroups(server.Id)
