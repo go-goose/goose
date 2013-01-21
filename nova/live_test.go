@@ -1,14 +1,11 @@
 package nova_test
 
 import (
-	"bytes"
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/errors"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/nova"
-	"log"
-	"strings"
 	"time"
 )
 
@@ -284,7 +281,7 @@ func (s *LiveTests) TestCreateAndDeleteSecurityGroupRules(c *C) {
 	c.Check(*rule.ToPort, Equals, 4321)
 	c.Check(rule.ParentGroupId, Equals, group1.Id)
 	c.Check(*rule.IPProtocol, Equals, "tcp")
-	c.Check(rule.Group, IsNil)
+	c.Check(rule.Group, Equals, nova.SecurityGroupRef{})
 	err = s.nova.DeleteSecurityGroupRule(rule.Id)
 	c.Check(err, IsNil)
 
@@ -421,34 +418,4 @@ func (s *LiveTests) TestServerFloatingIPs(c *C) {
 	c.Assert(err, IsNil)
 	c.Check(fip.FixedIP, IsNil)
 	c.Check(fip.InstanceId, IsNil)
-}
-
-// TestRateLimitRetry checks that when we make too many requests and receive a Retry-After response, the retry
-// occurs and the request ultimately succeeds.
-// TODO(wallyworld) - this needs to be moved to local_test when the nova test double is ready.
-func (s *LiveTests) TestRateLimitRetry(c *C) {
-	// Capture the logged output so we can check for retry messages.
-	var logout bytes.Buffer
-	logger := log.New(&logout, "", log.LstdFlags)
-	client := client.NewClient(s.cred, identity.AuthUserPass, logger)
-	nova := nova.New(client)
-	// Delete the artifact if it already exists.
-	testGroup, err := nova.SecurityGroupByName("test_group")
-	if err != nil {
-		c.Assert(errors.IsNotFound(err), Equals, true)
-	} else {
-		nova.DeleteSecurityGroup(testGroup.Id)
-		c.Assert(err, IsNil)
-	}
-	// Create some artifacts a number of times in succession and ensure each time is successful,
-	// even with retries being required.
-	for i := 0; i < 13; i++ {
-		testGroup, err = nova.CreateSecurityGroup("test_group", "test")
-		c.Assert(err, IsNil)
-		nova.DeleteSecurityGroup(testGroup.Id)
-		c.Assert(err, IsNil)
-	}
-	// Ensure we got at least one retry message.
-	output := logout.String()
-	c.Assert(strings.Contains(output, "Too many requests, retrying in"), Equals, true)
 }

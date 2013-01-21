@@ -254,7 +254,7 @@ type SecurityGroupRule struct {
 	ParentGroupId int               `json:"parent_group_id"`
 	IPRange       map[string]string `json:"ip_range"` // Can be empty
 	Id            int
-	Group         *SecurityGroupRef // Can be nil
+	Group         SecurityGroupRef
 }
 
 // SecurityGroup describes a single security group in OpenStack.
@@ -406,10 +406,6 @@ func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (*SecurityGroupRule,
 	if err != nil {
 		return nil, errors.Newf(err, "failed to create a rule for the security group with id: %s", ruleInfo.GroupId)
 	}
-	var zeroSecurityGroupRef SecurityGroupRef
-	if *resp.SecurityGroupRule.Group == zeroSecurityGroupRef {
-		resp.SecurityGroupRule.Group = nil
-	}
 	return &resp.SecurityGroupRule, nil
 }
 
@@ -524,7 +520,7 @@ func (c *Client) DeleteFloatingIP(ipId int) error {
 	return err
 }
 
-// AddServerFloatingIP assigns a floating IP addess to the specified server.
+// AddServerFloatingIP assigns a floating IP address to the specified server.
 func (c *Client) AddServerFloatingIP(serverId, address string) error {
 	var req struct {
 		AddFloatingIP struct {

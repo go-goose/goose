@@ -11,6 +11,7 @@ import (
 	"launchpad.net/goose/nova"
 	"launchpad.net/goose/testing/httpsuite"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 )
@@ -24,7 +25,8 @@ var _ = Suite(&NovaHTTPSuite{})
 
 func (s *NovaHTTPSuite) SetUpSuite(c *C) {
 	s.HTTPSuite.SetUpSuite(c)
-	s.service = New(s.Server.URL, versionPath, token, tenantId)
+	url, _ := url.Parse(s.Server.URL)
+	s.service = New(url.Host, versionPath, token, tenantId)
 }
 
 func (s *NovaHTTPSuite) TearDownSuite(c *C) {
@@ -66,8 +68,8 @@ func assertBody(c *C, resp *http.Response, expected *errorResponse) {
 // sendRequest constructs an HTTP request from the parameters and
 // sends it, returning the response or an error.
 func (s *NovaHTTPSuite) sendRequest(method, url string, body []byte, headers http.Header) (*http.Response, error) {
-	if !strings.HasPrefix(url, s.service.hostname) {
-		url = s.service.hostname + strings.TrimLeft(url, "/")
+	if !strings.HasPrefix(url, "http") { //s.service.hostname) {
+		url = "http://" + s.service.hostname + strings.TrimLeft(url, "/")
 	}
 	req, err := http.NewRequest(method, url, bytes.NewReader(body))
 	if err != nil {
@@ -463,8 +465,7 @@ func (s *NovaHTTPSuite) TestSimpleRequestTests(c *C) {
 }
 
 func (s *NovaHTTPSuite) TestGetFlavors(c *C) {
-	entities := s.service.allFlavorsAsEntities()
-	c.Assert(entities, HasLen, 0)
+	// The test service has 2 default flavours.
 	var expected struct {
 		Flavors []nova.Entity
 	}
@@ -472,23 +473,9 @@ func (s *NovaHTTPSuite) TestGetFlavors(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
 	assertJSON(c, resp, &expected)
-	c.Assert(expected.Flavors, HasLen, 0)
-	flavors := []nova.FlavorDetail{
-		{Id: "fl1", Name: "flavor 1"},
-		{Id: "fl2", Name: "flavor 2"},
-	}
-	for i, flavor := range flavors {
-		s.service.buildFlavorLinks(&flavor)
-		flavors[i] = flavor
-		err := s.service.addFlavor(flavor)
-		c.Assert(err, IsNil)
-		defer s.service.removeFlavor(flavor.Id)
-	}
-	entities = s.service.allFlavorsAsEntities()
-	resp, err = s.authRequest("GET", "/flavors", nil, nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusOK)
-	assertJSON(c, resp, &expected)
+	c.Assert(expected.Flavors, HasLen, 2)
+	entities := s.service.allFlavorsAsEntities()
+	c.Assert(entities, HasLen, 2)
 	if expected.Flavors[0].Id != entities[0].Id {
 		expected.Flavors[0], expected.Flavors[1] = expected.Flavors[1], expected.Flavors[0]
 	}
@@ -496,16 +483,17 @@ func (s *NovaHTTPSuite) TestGetFlavors(c *C) {
 	var expectedFlavor struct {
 		Flavor nova.FlavorDetail
 	}
-	resp, err = s.authRequest("GET", "/flavors/fl1", nil, nil)
+	resp, err = s.authRequest("GET", "/flavors/1", nil, nil)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
 	assertJSON(c, resp, &expectedFlavor)
-	c.Assert(expectedFlavor.Flavor, DeepEquals, flavors[0])
+	c.Assert(expectedFlavor.Flavor.Name, Equals, "m1.tiny")
 }
 
 func (s *NovaHTTPSuite) TestGetFlavorsDetail(c *C) {
+	// The test service has 2 default flavours.
 	flavors := s.service.allFlavors()
-	c.Assert(flavors, HasLen, 0)
+	c.Assert(flavors, HasLen, 2)
 	var expected struct {
 		Flavors []nova.FlavorDetail
 	}
@@ -513,27 +501,12 @@ func (s *NovaHTTPSuite) TestGetFlavorsDetail(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
 	assertJSON(c, resp, &expected)
-	c.Assert(expected.Flavors, HasLen, 0)
-	flavors = []nova.FlavorDetail{
-		{Id: "fl1", Name: "flavor 1"},
-		{Id: "fl2", Name: "flavor 2"},
-	}
-	for i, flavor := range flavors {
-		s.service.buildFlavorLinks(&flavor)
-		flavors[i] = flavor
-		err := s.service.addFlavor(flavor)
-		defer s.service.removeFlavor(flavor.Id)
-		c.Assert(err, IsNil)
-	}
-	resp, err = s.authRequest("GET", "/flavors/detail", nil, nil)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusOK)
-	assertJSON(c, resp, &expected)
+	c.Assert(expected.Flavors, HasLen, 2)
 	if expected.Flavors[0].Id != flavors[0].Id {
 		expected.Flavors[0], expected.Flavors[1] = expected.Flavors[1], expected.Flavors[0]
 	}
 	c.Assert(expected.Flavors, DeepEquals, flavors)
-	resp, err = s.authRequest("GET", "/flavors/detail/fl1", nil, nil)
+	resp, err = s.authRequest("GET", "/flavors/detail/1", nil, nil)
 	c.Assert(err, IsNil)
 	assertBody(c, resp, errNotFound)
 }
@@ -792,8 +765,9 @@ func (s *NovaHTTPSuite) TestGetServersDetailWithFilters(c *C) {
 }
 
 func (s *NovaHTTPSuite) TestGetSecurityGroups(c *C) {
+	// There is always a default security group.
 	groups := s.service.allSecurityGroups()
-	c.Assert(groups, HasLen, 0)
+	c.Assert(groups, HasLen, 1)
 	var expected struct {
 		Groups []nova.SecurityGroup `json:"security_groups"`
 	}
@@ -801,10 +775,20 @@ func (s *NovaHTTPSuite) TestGetSecurityGroups(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
 	assertJSON(c, resp, &expected)
-	c.Assert(expected.Groups, HasLen, 0)
+	c.Assert(expected.Groups, HasLen, 1)
 	groups = []nova.SecurityGroup{
-		{Id: 1, Name: "group 1"},
-		{Id: 2, Name: "group 2"},
+		{
+			Id: 1,
+			Name: "group 1",
+			TenantId: s.service.tenantId,
+			Rules:[]nova.SecurityGroupRule{},
+		},
+		{
+			Id: 2,
+			Name: "group 2",
+			TenantId: s.service.tenantId,
+			Rules:[]nova.SecurityGroupRule{},
+		},
 	}
 	for _, group := range groups {
 		err := s.service.addSecurityGroup(group)
@@ -815,10 +799,8 @@ func (s *NovaHTTPSuite) TestGetSecurityGroups(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
 	assertJSON(c, resp, &expected)
-	if expected.Groups[0].Id != groups[0].Id {
-		expected.Groups[0], expected.Groups[1] = expected.Groups[1], expected.Groups[0]
-	}
-	c.Assert(expected.Groups, DeepEquals, groups)
+	c.Assert(expected.Groups, HasLen, len(groups) + 1)
+	checkGroupsInList(c, groups, expected.Groups)
 	var expectedGroup struct {
 		Group nova.SecurityGroup `json:"security_group"`
 	}
@@ -830,7 +812,13 @@ func (s *NovaHTTPSuite) TestGetSecurityGroups(c *C) {
 }
 
 func (s *NovaHTTPSuite) TestAddSecurityGroup(c *C) {
-	group := nova.SecurityGroup{Id: 1, Name: "group 1", Description: "desc"}
+	group := nova.SecurityGroup{
+		Id:          1,
+		Name:        "group 1",
+		Description: "desc",
+		TenantId:    s.service.tenantId,
+		Rules:       []nova.SecurityGroupRule{},
+	}
 	_, err := s.service.securityGroup(group.Id)
 	c.Assert(err, NotNil)
 	var req struct {
@@ -862,13 +850,13 @@ func (s *NovaHTTPSuite) TestDeleteSecurityGroup(c *C) {
 	defer s.service.removeSecurityGroup(group.Id)
 	resp, err := s.authRequest("DELETE", "/os-security-groups/1", nil, nil)
 	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
+	c.Assert(resp.StatusCode, Equals, http.StatusAccepted)
 	_, err = s.service.securityGroup(group.Id)
 	c.Assert(err, NotNil)
 }
 
 func (s *NovaHTTPSuite) TestAddSecurityGroupRule(c *C) {
-	group1 := nova.SecurityGroup{Id: 1, Name: "src", TenantId: "joe"}
+	group1 := nova.SecurityGroup{Id: 1, Name: "src"}
 	group2 := nova.SecurityGroup{Id: 2, Name: "tgt"}
 	err := s.service.addSecurityGroup(group1)
 	c.Assert(err, IsNil)
@@ -900,9 +888,9 @@ func (s *NovaHTTPSuite) TestAddSecurityGroupRule(c *C) {
 	rule2 := nova.SecurityGroupRule{
 		Id:            2,
 		ParentGroupId: group2.Id,
-		Group: &nova.SecurityGroupRef{
+		Group: nova.SecurityGroupRef{
 			Name:     group1.Name,
-			TenantId: group1.TenantId,
+			TenantId: s.service.tenantId,
 		},
 	}
 	ok := s.service.hasSecurityGroupRule(group1.Id, rule1.Id)
@@ -922,7 +910,7 @@ func (s *NovaHTTPSuite) TestAddSecurityGroupRule(c *C) {
 	assertJSON(c, resp, &expected)
 	c.Assert(expected.Rule.Id, Equals, rule1.Id)
 	c.Assert(expected.Rule.ParentGroupId, Equals, rule1.ParentGroupId)
-	c.Assert(expected.Rule.Group, IsNil)
+	c.Assert(expected.Rule.Group, Equals, nova.SecurityGroupRef{})
 	c.Assert(*expected.Rule.FromPort, Equals, *rule1.FromPort)
 	c.Assert(*expected.Rule.ToPort, Equals, *rule1.ToPort)
 	c.Assert(*expected.Rule.IPProtocol, Equals, *rule1.IPProtocol)
@@ -935,13 +923,13 @@ func (s *NovaHTTPSuite) TestAddSecurityGroupRule(c *C) {
 	assertJSON(c, resp, &expected)
 	c.Assert(expected.Rule.Id, Equals, rule2.Id)
 	c.Assert(expected.Rule.ParentGroupId, Equals, rule2.ParentGroupId)
-	c.Assert(*expected.Rule.Group, DeepEquals, *rule2.Group)
+	c.Assert(expected.Rule.Group, DeepEquals, rule2.Group)
 	err = s.service.removeSecurityGroupRule(rule2.Id)
 	c.Assert(err, IsNil)
 }
 
 func (s *NovaHTTPSuite) TestDeleteSecurityGroupRule(c *C) {
-	group1 := nova.SecurityGroup{Id: 1, Name: "src", TenantId: "joe"}
+	group1 := nova.SecurityGroup{Id: 1, Name: "src"}
 	group2 := nova.SecurityGroup{Id: 2, Name: "tgt"}
 	err := s.service.addSecurityGroup(group1)
 	c.Assert(err, IsNil)
@@ -956,7 +944,7 @@ func (s *NovaHTTPSuite) TestDeleteSecurityGroupRule(c *C) {
 	rule := nova.SecurityGroupRule{
 		Id:            1,
 		ParentGroupId: group2.Id,
-		Group: &nova.SecurityGroupRef{
+		Group: nova.SecurityGroupRef{
 			Name:     group1.Name,
 			TenantId: group1.TenantId,
 		},
@@ -965,7 +953,7 @@ func (s *NovaHTTPSuite) TestDeleteSecurityGroupRule(c *C) {
 	c.Assert(err, IsNil)
 	resp, err := s.authRequest("DELETE", "/os-security-group-rules/1", nil, nil)
 	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
+	c.Assert(resp.StatusCode, Equals, http.StatusAccepted)
 	ok := s.service.hasSecurityGroupRule(group2.Id, rule.Id)
 	c.Assert(ok, Equals, false)
 }
@@ -989,7 +977,7 @@ func (s *NovaHTTPSuite) TestAddServerSecurityGroup(c *C) {
 	req.Group.Name = group.Name
 	resp, err := s.jsonRequest("POST", "/servers/"+server.Id+"/action", req, nil)
 	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
+	c.Assert(resp.StatusCode, Equals, http.StatusAccepted)
 	ok = s.service.hasServerSecurityGroup(server.Id, group.Id)
 	c.Assert(ok, Equals, true)
 	err = s.service.removeServerSecurityGroup(server.Id, group.Id)
@@ -999,8 +987,18 @@ func (s *NovaHTTPSuite) TestAddServerSecurityGroup(c *C) {
 func (s *NovaHTTPSuite) TestGetServerSecurityGroups(c *C) {
 	server := nova.ServerDetail{Id: "sr1"}
 	groups := []nova.SecurityGroup{
-		{Id: 1, Name: "group1"},
-		{Id: 2, Name: "group2"},
+		{
+			Id: 1,
+			Name: "group1",
+			TenantId: s.service.tenantId,
+			Rules:[]nova.SecurityGroupRule{},
+		},
+		{
+			Id: 2,
+			Name: "group2",
+			TenantId: s.service.tenantId,
+			Rules:[]nova.SecurityGroupRule{},
+		},
 	}
 	srvGroups := s.service.allServerSecurityGroups(server.Id)
 	c.Assert(srvGroups, HasLen, 0)
@@ -1046,7 +1044,7 @@ func (s *NovaHTTPSuite) TestDeleteServerSecurityGroup(c *C) {
 	req.Group.Name = group.Name
 	resp, err := s.jsonRequest("POST", "/servers/"+server.Id+"/action", req, nil)
 	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
+	c.Assert(resp.StatusCode, Equals, http.StatusAccepted)
 	ok = s.service.hasServerSecurityGroup(server.Id, group.Id)
 	c.Assert(ok, Equals, false)
 }
@@ -1133,7 +1131,7 @@ func (s *NovaHTTPSuite) TestAddServerFloatingIP(c *C) {
 	req.AddFloatingIP.Address = fip.IP
 	resp, err := s.jsonRequest("POST", "/servers/"+server.Id+"/action", req, nil)
 	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
+	c.Assert(resp.StatusCode, Equals, http.StatusAccepted)
 	c.Assert(s.service.hasServerFloatingIP(server.Id, fip.IP), Equals, true)
 	err = s.service.removeServerFloatingIP(server.Id, fip.Id)
 	c.Assert(err, IsNil)
@@ -1160,6 +1158,6 @@ func (s *NovaHTTPSuite) TestRemoveServerFloatingIP(c *C) {
 	req.RemoveFloatingIP.Address = fip.IP
 	resp, err := s.jsonRequest("POST", "/servers/"+server.Id+"/action", req, nil)
 	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
+	c.Assert(resp.StatusCode, Equals, http.StatusAccepted)
 	c.Assert(s.service.hasServerFloatingIP(server.Id, fip.IP), Equals, false)
 }
