@@ -11,21 +11,21 @@ import (
 // Nova implements a OpenStack Nova testing service and
 // contains the service double's internal state.
 type Nova struct {
-	flavors                         map[string]nova.FlavorDetail
-	servers                         map[string]nova.ServerDetail
-	groups                          map[int]nova.SecurityGroup
-	rules                           map[int]nova.SecurityGroupRule
-	floatingIPs                     map[int]nova.FloatingIP
-	serverGroups                    map[string][]int
-	serverIPs                       map[string][]int
-	hostname                        string
-	versionPath                     string
-	token                           string
-	tenantId                        string
-	userId                          string
-	nextGroupId                     int
-	nextRuleId                      int
-	nextIPId                        int
+	flavors                   map[string]nova.FlavorDetail
+	servers                   map[string]nova.ServerDetail
+	groups                    map[int]nova.SecurityGroup
+	rules                     map[int]nova.SecurityGroupRule
+	floatingIPs               map[int]nova.FloatingIP
+	serverGroups              map[string][]int
+	serverIPs                 map[string][]int
+	hostname                  string
+	versionPath               string
+	token                     string
+	tenantId                  string
+	userId                    string
+	nextGroupId               int
+	nextRuleId                int
+	nextIPId                  int
 	sendFakeRateLimitResponse bool
 }
 
