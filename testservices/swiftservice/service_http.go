@@ -3,6 +3,7 @@
 package swiftservice
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -42,8 +43,19 @@ func (s *Swift) handleContainers(container string, w http.ResponseWriter, r *htt
 	}
 	switch r.Method {
 	case "GET":
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("[]"))
+		contents, err := s.ListContainer(container)
+		var objdata []byte
+		if err == nil {
+			objdata, err = json.Marshal(contents)
+		}
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+		} else {
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/json; charset=UF-8")
+			w.Write([]byte(objdata))
+		}
 	case "DELETE":
 		if err = s.RemoveContainer(container); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -127,8 +139,11 @@ func (s *Swift) handleObjects(container, object string, w http.ResponseWriter, r
 
 // ServeHTTP is the main entry point in the HTTP request processing.
 func (s *Swift) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// TODO(wallyworld) - we need to support container ACLs so we can have pubic containers.
+	// For public containers, the token is not required to access the files. For now, if the request
+	// does not provide a token, we will let it through and assume a public container is being accessed.
 	token := r.Header.Get("X-Auth-Token")
-	if token != s.token {
+	if token != "" && token != s.token {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}

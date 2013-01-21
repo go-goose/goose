@@ -86,7 +86,7 @@ var exampleResponse = `{
                 ], 
                 "name": "nova", 
                 "type": "compute"
-            }, 
+            },
             {
                 "endpoints": [
                     {

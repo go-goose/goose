@@ -90,7 +90,8 @@ func (s *LegacySuite) TestLegacyAuth(c *C) {
 	content, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
 	c.Check(response.Header.Get("X-Auth-Token"), Equals, token)
-	c.Check(response.Header.Get("X-Server-Management-Url"), Equals, serverURL)
+	c.Check(response.Header.Get("X-Server-Management-Url"), Equals, serverURL+"/compute")
+	c.Check(response.Header.Get("X-Storage-Url"), Equals, serverURL+"/object-store")
 	c.Check(string(content), Equals, "")
 	c.Check(response.StatusCode, Equals, http.StatusNoContent)
 }

@@ -1,11 +1,11 @@
-package swift_test
+package nova_test
 
 import (
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/testing/httpsuite"
 	"launchpad.net/goose/testservices/identityservice"
-	"launchpad.net/goose/testservices/swiftservice"
+	"launchpad.net/goose/testservices/novaservice"
 	"net/http"
 )
 
@@ -14,63 +14,59 @@ func registerLocalTests() {
 }
 
 const (
-	baseURL = "/object-store"
+	baseURL = "/compute"
 )
 
 // localLiveSuite runs tests from LiveTests using a fake
-// swift server that runs within the test process itself.
+// nova server that runs within the test process itself.
 type localLiveSuite struct {
 	LiveTests
-	LiveTestsPublicContainer
 	// The following attributes are for using testing doubles.
 	httpsuite.HTTPSuite
 	identityDouble http.Handler
-	swiftDouble    http.Handler
+	novaDouble     *novaservice.Nova
 }
 
 func (s *localLiveSuite) SetUpSuite(c *C) {
-	c.Logf("Using identity and swift service test doubles")
+	c.Logf("Using identity and nova service test doubles")
 	s.HTTPSuite.SetUpSuite(c)
-	s.LiveTests.cred = &identity.Credentials{
+	s.cred = &identity.Credentials{
 		URL:     s.Server.URL,
 		User:    "fred",
 		Secrets: "secret",
 		Region:  "some region"}
-	s.LiveTestsPublicContainer.cred = s.LiveTests.cred
-	// Create an identity service and register a Swift endpoint.
+	// Create an identity service and register a Nova endpoint.
 	s.identityDouble = identityservice.NewUserPass()
-	token := s.identityDouble.(*identityservice.UserPass).AddUser(s.LiveTests.cred.User, s.LiveTests.cred.Secrets)
+	token := s.identityDouble.(*identityservice.UserPass).AddUser(s.cred.User, s.cred.Secrets)
 	ep := identityservice.Endpoint{
 		s.Server.URL + baseURL, //admin
 		s.Server.URL + baseURL, //internal
 		s.Server.URL + baseURL, //public
-		s.LiveTests.cred.Region,
+		s.cred.Region,
 	}
-	service := identityservice.Service{"swift", "object-store", []identityservice.Endpoint{ep}}
+	service := identityservice.Service{"nova", "compute", []identityservice.Endpoint{ep}}
 	s.identityDouble.(*identityservice.UserPass).AddService(service)
-	// Create a swift service at the registered endpoint.
-	s.swiftDouble = swiftservice.New("localhost", baseURL+"/", token)
+	// Create a nova service at the registered endpoint.
+	// TODO: identityservice.UserPass always uses tenantId="1", patch this
+	//	 when that changes.
+	s.novaDouble = novaservice.New("localhost", baseURL+"/", token, "1")
 	s.LiveTests.SetUpSuite(c)
-	s.LiveTestsPublicContainer.SetUpSuite(c)
 }
 
 func (s *localLiveSuite) TearDownSuite(c *C) {
 	s.LiveTests.TearDownSuite(c)
-	s.LiveTestsPublicContainer.TearDownSuite(c)
 	s.HTTPSuite.TearDownSuite(c)
 }
 
 func (s *localLiveSuite) SetUpTest(c *C) {
 	s.HTTPSuite.SetUpTest(c)
-	s.Mux.Handle(baseURL+"/", s.swiftDouble)
+	s.novaDouble.SetupHTTP(s.Mux)
 	s.Mux.Handle("/", s.identityDouble)
 	s.LiveTests.SetUpTest(c)
-	s.LiveTestsPublicContainer.SetUpTest(c)
 }
 
 func (s *localLiveSuite) TearDownTest(c *C) {
 	s.LiveTests.TearDownTest(c)
-	s.LiveTestsPublicContainer.TearDownTest(c)
 	s.HTTPSuite.TearDownTest(c)
 }
 

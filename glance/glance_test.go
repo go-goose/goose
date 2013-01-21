@@ -24,7 +24,7 @@ func (s *GlanceSuite) SetUpSuite(c *C) {
 
 	cred, err := identity.CompleteCredentialsFromEnv()
 	c.Assert(err, IsNil)
-	client := client.NewClient(cred, identity.AuthUserPass)
+	client := client.NewClient(cred, identity.AuthUserPass, nil)
 	c.Assert(err, IsNil)
 	s.glance = glance.New(client)
 }

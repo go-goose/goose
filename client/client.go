@@ -6,7 +6,10 @@ import (
 	gooseerrors "launchpad.net/goose/errors"
 	goosehttp "launchpad.net/goose/http"
 	"launchpad.net/goose/identity"
+	"log"
 	"net/http"
+	"path"
+	"strings"
 )
 
 const (
@@ -21,101 +24,157 @@ const (
 	COPY   = "COPY"
 )
 
+// Client implementations sends service requests to an OpenStack deployment.
 type Client interface {
+	SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) (err error)
+	// MakeServiceURL prepares a full URL to a service endpoint, with optional
+	// URL parts. It uses the first endpoint it can find for the given service type.
 	MakeServiceURL(serviceType string, parts []string) (string, error)
-	SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData,
-		context string, contextArgs ...interface{}) (err error)
 }
 
-type OpenStackClient struct {
-	client *goosehttp.Client
+// AuthenticatingClient sends service requests to an OpenStack deployment after first validating
+// a user's credentials.
+type AuthenticatingClient interface {
+	Client
+	Authenticate() error
+	IsAuthenticated() bool
+	Token() string
+	UserId() string
+	TenantId() string
+}
 
-	creds *identity.Credentials
-	auth  identity.Authenticator
+// This client sends requests without authenticating.
+type client struct {
+	httpClient *goosehttp.Client
+	logger     *log.Logger
+	baseURL    string
+}
 
+var _ Client = (*client)(nil)
+
+// This client authenticates before sending requests.
+type authenticatingClient struct {
+	client
+
+	creds      *identity.Credentials
+	authMethod identity.Authenticator
+
+	auth AuthenticatingClient
 	//TODO - store service urls by region.
 	ServiceURLs map[string]string
-	Token       string
-	TenantId    string
-	UserId      string
+	tokenId     string
+	tenantId    string
+	userId      string
 }
 
-func NewClient(creds *identity.Credentials, auth_method identity.AuthMethod) *OpenStackClient {
+var _ AuthenticatingClient = (*authenticatingClient)(nil)
+
+func NewPublicClient(baseURL string, logger *log.Logger) Client {
+	client := client{baseURL: baseURL, logger: logger}
+	return &client
+}
+
+func NewClient(creds *identity.Credentials, auth_method identity.AuthMethod, logger *log.Logger) AuthenticatingClient {
 	client_creds := *creds
 	client_creds.URL = client_creds.URL + apiTokens
-	client := OpenStackClient{creds: &client_creds}
+	client := authenticatingClient{
+		creds:  &client_creds,
+		client: client{logger: logger},
+	}
+	client.auth = &client
 	switch auth_method {
 	default:
 		panic(fmt.Errorf("Invalid identity authorisation method: %d", auth_method))
 	case identity.AuthLegacy:
-		client.auth = &identity.Legacy{}
+		client.authMethod = &identity.Legacy{}
 	case identity.AuthUserPass:
-		client.auth = &identity.UserPass{}
+		client.authMethod = &identity.UserPass{}
 	}
 	return &client
 }
 
-func (c *OpenStackClient) Authenticate() (err error) {
-	err = nil
-	if c.auth == nil {
-		return fmt.Errorf("Authentication method has not been specified")
+func (c *client) sendRequest(method, url, token string, requestData *goosehttp.RequestData) (err error) {
+	if c.httpClient == nil {
+		c.httpClient = goosehttp.New(http.Client{CheckRedirect: nil}, c.logger, token)
 	}
-	authDetails, err := c.auth.Auth(c.creds)
-	if err != nil {
-		err = gooseerrors.AddContext(err, "authentication failed")
+	if requestData.ReqValue != nil || requestData.RespValue != nil {
+		err = c.httpClient.JsonRequest(method, url, requestData)
+	} else {
+		err = c.httpClient.BinaryRequest(method, url, requestData)
+	}
+	return
+}
+
+func (c *client) SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) error {
+	url, _ := c.MakeServiceURL(svcType, []string{apiCall})
+	return c.sendRequest(method, url, "", requestData)
+}
+
+func (c *client) MakeServiceURL(serviceType string, parts []string) (string, error) {
+	urlParts := parts
+	if !strings.HasSuffix(c.baseURL, "/") {
+		urlParts = append([]string{"/"}, parts...)
+	}
+	return c.baseURL + path.Join(urlParts...), nil
+}
+
+func (c *authenticatingClient) SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) (err error) {
+	if err = c.Authenticate(); err != nil {
 		return
-	}
-
-	c.Token = authDetails.Token
-	c.TenantId = authDetails.TenantId
-	c.UserId = authDetails.UserId
-	c.ServiceURLs = authDetails.ServiceURLs
-	return nil
-}
-
-func (c *OpenStackClient) IsAuthenticated() bool {
-	return c.Token != ""
-}
-
-// MakeServiceURL prepares a full URL to a service endpoint, with optional
-// URL parts. It uses the first endpoint it can find for the given service type.
-func (c *OpenStackClient) MakeServiceURL(serviceType string, parts []string) (string, error) {
-	url, ok := c.ServiceURLs[serviceType]
-	if !ok {
-		return "", errors.New("no endpoints known for service type: " + serviceType)
-	}
-	for _, part := range parts {
-		url += part
-	}
-	return url, nil
-}
-
-func (c *OpenStackClient) SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData,
-	context string, contextArgs ...interface{}) (err error) {
-	if c.creds != nil && !c.IsAuthenticated() {
-		err = c.Authenticate()
-		if err != nil {
-			err = gooseerrors.AddContext(err, context, contextArgs...)
-			return
-		}
 	}
 
 	url, err := c.MakeServiceURL(svcType, []string{apiCall})
 	if err != nil {
-		err = gooseerrors.AddContext(err, "cannot find a '%s' node endpoint", svcType)
+		return
+	}
+	return c.sendRequest(method, url, c.tokenId, requestData)
+}
+
+func (c *authenticatingClient) MakeServiceURL(serviceType string, parts []string) (string, error) {
+	if !c.IsAuthenticated() {
+		return "", errors.New("cannot get endpoint URL without being authenticated")
+	}
+	url, ok := c.ServiceURLs[serviceType]
+	if !ok {
+		return "", errors.New("no endpoints known for service type: " + serviceType)
+	}
+	url += path.Join(append([]string{"/"}, parts...)...)
+	return url, nil
+}
+
+func (c *authenticatingClient) Token() string {
+	return c.tokenId
+}
+
+func (c *authenticatingClient) UserId() string {
+	return c.userId
+}
+
+func (c *authenticatingClient) TenantId() string {
+	return c.tenantId
+}
+
+func (c *authenticatingClient) IsAuthenticated() bool {
+	return c.tokenId != ""
+}
+
+func (c *authenticatingClient) Authenticate() (err error) {
+	if c.creds == nil || c.IsAuthenticated() {
+		return nil
+	}
+	err = nil
+	if c.authMethod == nil {
+		return fmt.Errorf("Authentication method has not been specified")
+	}
+	authDetails, err := c.authMethod.Auth(c.creds)
+	if err != nil {
+		err = gooseerrors.Newf(err, "authentication failed")
 		return
 	}
 
-	if c.client == nil {
-		c.client = &goosehttp.Client{http.Client{CheckRedirect: nil}, c.Token}
-	}
-	if requestData.ReqValue != nil || requestData.RespValue != nil {
-		err = c.client.JsonRequest(method, url, requestData)
-	} else {
-		err = c.client.BinaryRequest(method, url, requestData)
-	}
-	if err != nil {
-		err = gooseerrors.AddContext(err, context, contextArgs...)
-	}
-	return
+	c.tokenId = authDetails.Token
+	c.tenantId = authDetails.TenantId
+	c.userId = authDetails.UserId
+	c.ServiceURLs = authDetails.ServiceURLs
+	return nil
 }

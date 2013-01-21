@@ -1,16 +1,19 @@
-// The nova package provides a way to access the OpenStack Compute APIs.
+// goose/nova - Go package to interact with OpenStack Compute (Nova) API.
 // See http://docs.openstack.org/api/openstack-compute/2/content/.
+
 package nova
 
 import (
 	"encoding/base64"
 	"fmt"
 	"launchpad.net/goose/client"
+	"launchpad.net/goose/errors"
 	goosehttp "launchpad.net/goose/http"
 	"net/http"
 	"net/url"
 )
 
+// API URL parts.
 const (
 	apiFlavors            = "/flavors"
 	apiFlavorsDetail      = "/flavors/detail"
@@ -21,8 +24,8 @@ const (
 	apiFloatingIPs        = "/os-floating-ips"
 )
 
+// Server status values.
 const (
-	// Server status values.
 	StatusActive       = "ACTIVE"        // The server is active.
 	StatusBuild        = "BUILD"         // The server has not finished the original build process.
 	StatusDeleted      = "DELETED"       // The server is deleted.
@@ -39,8 +42,8 @@ const (
 	StatusVerifyResize = "VERIFY_RESIZE" // System is awaiting confirmation that the server is operational after a move or resize.
 )
 
+// Filter keys.
 const (
-	// Filter keys.
 	FilterStatus       = "status"        // The server status. See Server Status Values.
 	FilterImage        = "image"         // The image reference specified as an ID or full URL.
 	FilterFlavor       = "flavor"        // The flavor reference specified as an ID or full URL.
@@ -55,13 +58,14 @@ type Client struct {
 	client client.Client
 }
 
+// New creates a new Client.
 func New(client client.Client) *Client {
 	return &Client{client}
 }
 
 // ----------------------------------------------------------------------------
 // Filtering helper.
-
+//
 // Filter builds filtering parameters to be used in an OpenStack query which supports
 // filtering.  For example:
 //
@@ -79,14 +83,14 @@ func NewFilter() *Filter {
 	return &Filter{make(url.Values)}
 }
 
+// Link describes a link to a flavor or server.
 type Link struct {
 	Href string
 	Rel  string
 	Type string
 }
 
-// Entity can describe a flavor, flavor detail or server.
-// Contains a list of links.
+// Entity describe a basic information about a flavor or server.
 type Entity struct {
 	Id    string
 	Links []Link
@@ -99,7 +103,10 @@ func (c *Client) ListFlavors() ([]Entity, error) {
 		Flavors []Entity
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.GET, "compute", apiFlavors, &requestData, "failed to get list of flavors")
+	err := c.client.SendRequest(client.GET, "compute", apiFlavors, &requestData)
+	if err != nil {
+		return nil, errors.Newf(err, "failed to get list of flavours")
+	}
 	return resp.Flavors, err
 }
 
@@ -119,10 +126,9 @@ func (c *Client) ListFlavorsDetail() ([]FlavorDetail, error) {
 		Flavors []FlavorDetail
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.GET, "compute", apiFlavorsDetail, &requestData,
-		"failed to get list of flavors details")
+	err := c.client.SendRequest(client.GET, "compute", apiFlavorsDetail, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to get list of flavour details")
 	}
 	return resp.Flavors, nil
 }
@@ -133,14 +139,14 @@ func (c *Client) ListServers(filter *Filter) ([]Entity, error) {
 		Servers []Entity
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.Values, ExpectedStatus: []int{http.StatusOK}}
-	err := c.client.SendRequest(client.GET, "compute", apiServers, &requestData,
-		"failed to get list of servers")
+	err := c.client.SendRequest(client.GET, "compute", apiServers, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to get list of servers")
 	}
 	return resp.Servers, nil
 }
 
+// ServerDetail describes a server in more detail.
 type ServerDetail struct {
 	AddressIPv4 string
 	AddressIPv6 string
@@ -152,7 +158,7 @@ type ServerDetail struct {
 	Links       []Link
 	Name        string
 	Progress    int
-	Status      string
+	Status      string // One of the Status* constants
 	TenantId    string `json:"tenant_id"`
 	Updated     string
 	UserId      string `json:"user_id"`
@@ -164,10 +170,9 @@ func (c *Client) ListServersDetail(filter *Filter) ([]ServerDetail, error) {
 		Servers []ServerDetail
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.Values}
-	err := c.client.SendRequest(client.GET, "compute", apiServersDetail, &requestData,
-		"failed to get list of servers details")
+	err := c.client.SendRequest(client.GET, "compute", apiServersDetail, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to get list of server details")
 	}
 	return resp.Servers, nil
 }
@@ -179,10 +184,9 @@ func (c *Client) GetServer(serverId string) (*ServerDetail, error) {
 	}
 	url := fmt.Sprintf("%s/%s", apiServers, serverId)
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.GET, "compute", url, &requestData,
-		"failed to get details for serverId=%s", serverId)
+	err := c.client.SendRequest(client.GET, "compute", url, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to get details for serverId: %s", serverId)
 	}
 	return &resp.Server, nil
 }
@@ -194,40 +198,43 @@ func (c *Client) DeleteServer(serverId string) error {
 	}
 	url := fmt.Sprintf("%s/%s", apiServers, serverId)
 	requestData := goosehttp.RequestData{RespValue: &resp, ExpectedStatus: []int{http.StatusNoContent}}
-	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData,
-		"failed to delete server with serverId=%s", serverId)
+	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData)
+	if err != nil {
+		err = errors.Newf(err, "failed to delete server with serverId: %s", serverId)
+	}
 	return err
 }
 
-type RunServerOpts struct {
-	Name               string  `json:"name"`
-	FlavorId           string  `json:"flavorRef"`
-	ImageId            string  `json:"imageRef"`
-	UserData           *string `json:"user_data"`
-	SecurityGroupNames []struct {
-		Name string `json:"name"`
-	} `json:"security_groups"`
+type SecurityGroupName struct {
+	Name string `json:"name"`
 }
 
-// RunServer creates a new server.
+// RunServerOpts defines required and optional arguments for RunServer().
+type RunServerOpts struct {
+	Name               string              `json:"name"`            // Required
+	FlavorId           string              `json:"flavorRef"`       // Required
+	ImageId            string              `json:"imageRef"`        // Required
+	UserData           []byte              `json:"user_data"`       // Optional
+	SecurityGroupNames []SecurityGroupName `json:"security_groups"` // Optional
+}
+
+// RunServer creates a new server, based on the given RunServerOpts.
 func (c *Client) RunServer(opts RunServerOpts) (*Entity, error) {
 	var req struct {
 		Server RunServerOpts `json:"server"`
 	}
 	req.Server = opts
 	if opts.UserData != nil {
-		data := []byte(*opts.UserData)
-		encoded := base64.StdEncoding.EncodeToString(data)
-		req.Server.UserData = &encoded
+		encoded := base64.StdEncoding.EncodeToString(opts.UserData)
+		req.Server.UserData = []byte(encoded)
 	}
 	var resp struct {
 		Server Entity `json:"server"`
 	}
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp, ExpectedStatus: []int{http.StatusAccepted}}
-	err := c.client.SendRequest(client.POST, "compute", apiServers, &requestData,
-		"failed to run a server with %#v", opts)
+	err := c.client.SendRequest(client.POST, "compute", apiServers, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to run a server with %#v", opts)
 	}
 	return &resp.Server, nil
 }
@@ -238,6 +245,8 @@ type SecurityGroupRef struct {
 	Name     string `json:"name"`
 }
 
+// SecurityGroupRule describes a rule of a security group. There are 2
+// basic rule types: ingress and group rules (see RuleInfo struct).
 type SecurityGroupRule struct {
 	FromPort      *int              `json:"from_port"`   // Can be nil
 	IPProtocol    *string           `json:"ip_protocol"` // Can be nil
@@ -248,6 +257,7 @@ type SecurityGroupRule struct {
 	Group         *SecurityGroupRef // Can be nil
 }
 
+// SecurityGroup describes a single security group in OpenStack.
 type SecurityGroup struct {
 	Rules       []SecurityGroupRule
 	TenantId    string `json:"tenant_id"`
@@ -262,12 +272,28 @@ func (c *Client) ListSecurityGroups() ([]SecurityGroup, error) {
 		Groups []SecurityGroup `json:"security_groups"`
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.GET, "compute", apiSecurityGroups, &requestData,
-		"failed to list security groups")
+	err := c.client.SendRequest(client.GET, "compute", apiSecurityGroups, &requestData)
+	if err != nil {
+		return nil, errors.Newf(err, "failed to list security groups")
+	}
+	return resp.Groups, nil
+}
+
+// GetSecurityGroupByName returns the named security group.
+// Note: due to lack of filtering support when querying security groups, this is not an efficient implementation
+// but it's all we can do for now.
+func (c *Client) SecurityGroupByName(name string) (*SecurityGroup, error) {
+	// OpenStack does not support group filtering, so we need to load them all and manually search by name.
+	groups, err := c.ListSecurityGroups()
 	if err != nil {
 		return nil, err
 	}
-	return resp.Groups, nil
+	for _, group := range groups {
+		if group.Name == name {
+			return &group, nil
+		}
+	}
+	return nil, errors.NewNotFoundf(nil, "", "Security group %s not found.", name)
 }
 
 // GetServerSecurityGroups list security groups for a specific server.
@@ -278,10 +304,9 @@ func (c *Client) GetServerSecurityGroups(serverId string) ([]SecurityGroup, erro
 	}
 	url := fmt.Sprintf("%s/%s/%s", apiServers, serverId, apiSecurityGroups)
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.GET, "compute", url, &requestData,
-		"failed to list server (%s) security groups", serverId)
+	err := c.client.SendRequest(client.GET, "compute", url, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to list server (%s) security groups", serverId)
 	}
 	return resp.Groups, nil
 }
@@ -301,10 +326,9 @@ func (c *Client) CreateSecurityGroup(name, description string) (*SecurityGroup, 
 		SecurityGroup SecurityGroup `json:"security_group"`
 	}
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
-	err := c.client.SendRequest(client.POST, "compute", apiSecurityGroups, &requestData,
-		"failed to create a security group with name=%s", name)
+	err := c.client.SendRequest(client.POST, "compute", apiSecurityGroups, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to create a security group with name: %s", name)
 	}
 	return &resp.SecurityGroup, nil
 }
@@ -313,8 +337,10 @@ func (c *Client) CreateSecurityGroup(name, description string) (*SecurityGroup, 
 func (c *Client) DeleteSecurityGroup(groupId int) error {
 	url := fmt.Sprintf("%s/%d", apiSecurityGroups, groupId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
-	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData,
-		"failed to delete a security group with id=%d", groupId)
+	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData)
+	if err != nil {
+		err = errors.Newf(err, "failed to delete security group with id: %s", groupId)
+	}
 	return err
 }
 
@@ -376,10 +402,13 @@ func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (*SecurityGroupRule,
 	}
 
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp}
-	err := c.client.SendRequest(client.POST, "compute", apiSecurityGroupRules, &requestData,
-		"failed to create a rule for the security group with id=%s", ruleInfo.GroupId)
+	err := c.client.SendRequest(client.POST, "compute", apiSecurityGroupRules, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to create a rule for the security group with id: %s", ruleInfo.GroupId)
+	}
+	var zeroSecurityGroupRef SecurityGroupRef
+	if *resp.SecurityGroupRule.Group == zeroSecurityGroupRef {
+		resp.SecurityGroupRule.Group = nil
 	}
 	return &resp.SecurityGroupRule, nil
 }
@@ -388,8 +417,10 @@ func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (*SecurityGroupRule,
 func (c *Client) DeleteSecurityGroupRule(ruleId int) error {
 	url := fmt.Sprintf("%s/%d", apiSecurityGroupRules, ruleId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
-	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData,
-		"failed to delete a security group rule with id=%d", ruleId)
+	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData)
+	if err != nil {
+		err = errors.Newf(err, "failed to delete security group rule with id: %s", ruleId)
+	}
 	return err
 }
 
@@ -404,8 +435,10 @@ func (c *Client) AddServerSecurityGroup(serverId, groupName string) error {
 
 	url := fmt.Sprintf("%s/%s/action", apiServers, serverId)
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
-	err := c.client.SendRequest(client.POST, "compute", url, &requestData,
-		"failed to add security group '%s' to server with id=%s", groupName, serverId)
+	err := c.client.SendRequest(client.POST, "compute", url, &requestData)
+	if err != nil {
+		err = errors.Newf(err, "failed to add security group '%s' to server with id: %s", groupName, serverId)
+	}
 	return err
 }
 
@@ -420,11 +453,15 @@ func (c *Client) RemoveServerSecurityGroup(serverId, groupName string) error {
 
 	url := fmt.Sprintf("%s/%s/action", apiServers, serverId)
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
-	err := c.client.SendRequest(client.POST, "compute", url, &requestData,
-		"failed to remove security group '%s' from server with id=%s", groupName, serverId)
+	err := c.client.SendRequest(client.POST, "compute", url, &requestData)
+	if err != nil {
+		err = errors.Newf(err, "failed to remove security group '%s' from server with id: %s", groupName, serverId)
+	}
 	return err
 }
 
+// FloatingIP describes a floating (public) IP address, which can be
+// assigned to a server, thus allowing connections from outside.
 type FloatingIP struct {
 	FixedIP    interface{} `json:"fixed_ip"` // Can be a string or null
 	Id         int         `json:"id"`
@@ -440,10 +477,9 @@ func (c *Client) ListFloatingIPs() ([]FloatingIP, error) {
 	}
 
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.GET, "compute", apiFloatingIPs, &requestData,
-		"failed to list floating ips")
+	err := c.client.SendRequest(client.GET, "compute", apiFloatingIPs, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to list floating ips")
 	}
 	return resp.FloatingIPs, nil
 }
@@ -456,10 +492,9 @@ func (c *Client) GetFloatingIP(ipId int) (*FloatingIP, error) {
 
 	url := fmt.Sprintf("%s/%d", apiFloatingIPs, ipId)
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.GET, "compute", url, &requestData,
-		"failed to get floating ip %d details", ipId)
+	err := c.client.SendRequest(client.GET, "compute", url, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to get floating ip %d details", ipId)
 	}
 	return &resp.FloatingIP, nil
 }
@@ -471,10 +506,9 @@ func (c *Client) AllocateFloatingIP() (*FloatingIP, error) {
 	}
 
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.POST, "compute", apiFloatingIPs, &requestData,
-		"failed to allocate a floating ip")
+	err := c.client.SendRequest(client.POST, "compute", apiFloatingIPs, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to allocate a floating ip")
 	}
 	return &resp.FloatingIP, nil
 }
@@ -483,8 +517,10 @@ func (c *Client) AllocateFloatingIP() (*FloatingIP, error) {
 func (c *Client) DeleteFloatingIP(ipId int) error {
 	url := fmt.Sprintf("%s/%d", apiFloatingIPs, ipId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
-	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData,
-		"failed to delete floating ip %d details", ipId)
+	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData)
+	if err != nil {
+		err = errors.Newf(err, "failed to delete floating ip %d details", ipId)
+	}
 	return err
 }
 
@@ -499,8 +535,10 @@ func (c *Client) AddServerFloatingIP(serverId, address string) error {
 
 	url := fmt.Sprintf("%s/%s/action", apiServers, serverId)
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
-	err := c.client.SendRequest(client.POST, "compute", url, &requestData,
-		"failed to add floating ip %s to server %s", address, serverId)
+	err := c.client.SendRequest(client.POST, "compute", url, &requestData)
+	if err != nil {
+		err = errors.Newf(err, "failed to add floating ip %s to server with id: %s", address, serverId)
+	}
 	return err
 }
 
@@ -515,7 +553,9 @@ func (c *Client) RemoveServerFloatingIP(serverId, address string) error {
 
 	url := fmt.Sprintf("%s/%s/action", apiServers, serverId)
 	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusAccepted}}
-	err := c.client.SendRequest(client.POST, "compute", url, &requestData,
-		"failed to remove floating ip %s to server %s", address, serverId)
+	err := c.client.SendRequest(client.POST, "compute", url, &requestData)
+	if err != nil {
+		err = errors.Newf(err, "failed to remove floating ip %s from server with id: %s", address, serverId)
+	}
 	return err
 }

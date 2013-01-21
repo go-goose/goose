@@ -22,6 +22,9 @@ type Nova struct {
 	versionPath  string
 	token        string
 	tenantId     string
+	nextGroupId  int
+	nextRuleId   int
+	nextIPId     int
 }
 
 // endpoint returns either a versioned or non-versioned service
@@ -158,6 +161,16 @@ func (n *Nova) server(serverId string) (*nova.ServerDetail, error) {
 	return &server, nil
 }
 
+// serverByName retrieves the first existing server with the given name.
+func (n *Nova) serverByName(name string) (*nova.ServerDetail, error) {
+	for _, server := range n.servers {
+		if server.Name == name {
+			return &server, nil
+		}
+	}
+	return nil, fmt.Errorf("no such server named %q", name)
+}
+
 // serverAsEntity returns the stored ServerDetail as Entity.
 func (n *Nova) serverAsEntity(serverId string) (*nova.Entity, error) {
 	server, err := n.server(serverId)
@@ -171,24 +184,52 @@ func (n *Nova) serverAsEntity(serverId string) (*nova.Entity, error) {
 	}, nil
 }
 
+// matchServer returns true if the given server is matched by the
+// given filter, or false otherwise.
+func (n *Nova) matchServer(filter *nova.Filter, server nova.ServerDetail) bool {
+	if filter == nil {
+		return true // empty filter matches everything
+	}
+	values := filter.Values
+	for _, val := range values[nova.FilterStatus] {
+		if server.Status == val {
+			return true
+		}
+	}
+	for _, val := range values[nova.FilterServer] {
+		if server.Name == val {
+			return true
+		}
+	}
+	// TODO(dimitern) maybe implement FilterFlavor, FilterImage,
+	// FilterMarker, FilterLimit and FilterChangesSince
+	return false
+}
+
 // allServers returns a list of all existing servers.
-func (n *Nova) allServers() []nova.ServerDetail {
+// Filtering is supported, see nova.Filter* for more info.
+func (n *Nova) allServers(filter *nova.Filter) []nova.ServerDetail {
 	var servers []nova.ServerDetail
 	for _, server := range n.servers {
-		servers = append(servers, server)
+		if n.matchServer(filter, server) {
+			servers = append(servers, server)
+		}
 	}
 	return servers
 }
 
 // allServersAsEntities returns all servers as Entity structs.
-func (n *Nova) allServersAsEntities() []nova.Entity {
+// Filtering is supported, see nova.Filter* for more info.
+func (n *Nova) allServersAsEntities(filter *nova.Filter) []nova.Entity {
 	var entities []nova.Entity
 	for _, server := range n.servers {
-		entities = append(entities, nova.Entity{
-			Id:    server.Id,
-			Name:  server.Name,
-			Links: server.Links,
-		})
+		if n.matchServer(filter, server) {
+			entities = append(entities, nova.Entity{
+				Id:    server.Id,
+				Name:  server.Name,
+				Links: server.Links,
+			})
+		}
 	}
 	return entities
 }
@@ -218,6 +259,16 @@ func (n *Nova) securityGroup(groupId int) (*nova.SecurityGroup, error) {
 		return nil, fmt.Errorf("no such security group %d", groupId)
 	}
 	return &group, nil
+}
+
+// securityGroupByName retrieves an existing named group.
+func (n *Nova) securityGroupByName(groupName string) (*nova.SecurityGroup, error) {
+	for _, group := range n.groups {
+		if group.Name == groupName {
+			return &group, nil
+		}
+	}
+	return nil, fmt.Errorf("no such security group named %q", groupName)
 }
 
 // allSecurityGroups returns a list of all existing groups.
@@ -371,6 +422,20 @@ func (n *Nova) hasServerSecurityGroup(serverId string, groupId int) bool {
 	return false
 }
 
+// allServerSecurityGroups returns all security groups attached to the
+// given server.
+func (n *Nova) allServerSecurityGroups(serverId string) []nova.SecurityGroup {
+	var groups []nova.SecurityGroup
+	for _, gid := range n.serverGroups[serverId] {
+		group, err := n.securityGroup(gid)
+		if err != nil {
+			return nil
+		}
+		groups = append(groups, *group)
+	}
+	return groups
+}
+
 // removeServerSecurityGroup detaches an existing server from a group.
 func (n *Nova) removeServerSecurityGroup(serverId string, groupId int) error {
 	if _, err := n.server(serverId); err != nil {
@@ -427,6 +492,16 @@ func (n *Nova) floatingIP(ipId int) (*nova.FloatingIP, error) {
 		return nil, fmt.Errorf("no such floating IP %d", ipId)
 	}
 	return &ip, nil
+}
+
+// floatingIPByAddr retrieves the floating IP by address.
+func (n *Nova) floatingIPByAddr(address string) (*nova.FloatingIP, error) {
+	for _, fip := range n.floatingIPs {
+		if fip.IP == address {
+			return &fip, nil
+		}
+	}
+	return nil, fmt.Errorf("no such floating IP with address %q", address)
 }
 
 // allFloatingIPs returns a list of all created floating IPs.

@@ -41,11 +41,21 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 	case identity.AuthUserPass:
 		s.identityDouble = identityservice.NewUserPass()
 		s.identityDouble.(*identityservice.UserPass).AddUser(s.cred.User, s.cred.Secrets)
+		ep := identityservice.Endpoint{
+			AdminURL:    s.Server.URL,
+			InternalURL: s.Server.URL,
+			PublicURL:   s.Server.URL,
+			Region:      s.LiveTests.cred.Region,
+		}
+		service := identityservice.Service{"nova", "compute", []identityservice.Endpoint{ep}}
+		s.identityDouble.(*identityservice.UserPass).AddService(service)
+		service = identityservice.Service{"swift", "object-store", []identityservice.Endpoint{ep}}
+		s.identityDouble.(*identityservice.UserPass).AddService(service)
 	case identity.AuthLegacy:
 		s.identityDouble = identityservice.NewLegacy()
 		var legacy = s.identityDouble.(*identityservice.Legacy)
 		legacy.AddUser(s.cred.User, s.cred.Secrets)
-		legacy.SetManagementURL("http://management/url")
+		legacy.SetManagementURL("http://management.test.invalid/url")
 	}
 	s.LiveTests.SetUpSuite(c)
 }

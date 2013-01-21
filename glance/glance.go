@@ -1,14 +1,17 @@
-// The glance package provides a way to access the OpenStack Image Service APIs.
+// goose/glance - Go package to interact with OpenStack Image Service (Glance) API.
 // See http://docs.openstack.org/api/openstack-image-service/2.0/content/.
+
 package glance
 
 import (
 	"fmt"
 	"launchpad.net/goose/client"
+	"launchpad.net/goose/errors"
 	goosehttp "launchpad.net/goose/http"
 	"net/http"
 )
 
+// API URL parts.
 const (
 	apiImages       = "/images"
 	apiImagesDetail = "/images/detail"
@@ -19,16 +22,19 @@ type Client struct {
 	client client.Client
 }
 
+// New creates a new Client.
 func New(client client.Client) *Client {
 	return &Client{client}
 }
 
+// Link describes a link to an image in OpenStack.
 type Link struct {
 	Href string
 	Rel  string
 	Type string
 }
 
+// Image describes an OpenStack image.
 type Image struct {
 	Id    string
 	Name  string
@@ -41,14 +47,14 @@ func (c *Client) ListImages() ([]Image, error) {
 		Images []Image
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
-	err := c.client.SendRequest(client.GET, "compute", apiImages, &requestData,
-		"failed to get list of images")
+	err := c.client.SendRequest(client.GET, "compute", apiImages, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to get list of images")
 	}
 	return resp.Images, nil
 }
 
+// ImageMetadata describes metadata of an image
 type ImageMetadata struct {
 	Architecture string
 	State        string      `json:"image_state"`
@@ -59,6 +65,7 @@ type ImageMetadata struct {
 	OwnerId      interface{} `json:"owner_id"`
 }
 
+// ImageDetail describes extended information about an image.
 type ImageDetail struct {
 	Id          string
 	Name        string
@@ -78,10 +85,9 @@ func (c *Client) ListImagesDetail() ([]ImageDetail, error) {
 		Images []ImageDetail
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.GET, "compute", apiImagesDetail, &requestData,
-		"failed to get list of images details")
+	err := c.client.SendRequest(client.GET, "compute", apiImagesDetail, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to get list of image details")
 	}
 	return resp.Images, nil
 }
@@ -93,10 +99,9 @@ func (c *Client) GetImageDetail(imageId string) (*ImageDetail, error) {
 	}
 	url := fmt.Sprintf("%s/%s", apiImages, imageId)
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.GET, "compute", url, &requestData,
-		"failed to get details for imageId=%s", imageId)
+	err := c.client.SendRequest(client.GET, "compute", url, &requestData)
 	if err != nil {
-		return nil, err
+		return nil, errors.Newf(err, "failed to get details of imageId: %s", imageId)
 	}
 	return &resp.Image, nil
 }

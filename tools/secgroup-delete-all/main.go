@@ -15,8 +15,7 @@ func DeleteAll(authMode identity.AuthMethod) (err error) {
 	if err != nil {
 		return err
 	}
-	// Will need to add nil as final argument below with api changes
-	osc := client.NewClient(creds, authMode)
+	osc := client.NewClient(creds, authMode, nil)
 	osn := nova.New(osc)
 	groups, err := osn.ListSecurityGroups()
 	if err != nil {
