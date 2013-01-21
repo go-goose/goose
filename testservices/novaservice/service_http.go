@@ -757,7 +757,7 @@ func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) erro
 			if n.nextGroupId > 0 {
 				n.nextGroupId--
 			}
-			writeResponse(w, http.StatusNoContent, nil)
+			writeResponse(w, http.StatusAccepted, nil)
 			return nil
 		} else if err == errNoGroupId {
 			return errNotFound

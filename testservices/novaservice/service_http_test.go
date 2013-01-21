@@ -862,7 +862,7 @@ func (s *NovaHTTPSuite) TestDeleteSecurityGroup(c *C) {
 	defer s.service.removeSecurityGroup(group.Id)
 	resp, err := s.authRequest("DELETE", "/os-security-groups/1", nil, nil)
 	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, http.StatusNoContent)
+	c.Assert(resp.StatusCode, Equals, http.StatusAccepted)
 	_, err = s.service.securityGroup(group.Id)
 	c.Assert(err, NotNil)
 }

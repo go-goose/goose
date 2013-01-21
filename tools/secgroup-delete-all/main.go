@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"launchpad.net/gnuflag"
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/identity"
@@ -10,7 +11,7 @@ import (
 )
 
 // DeleteAll destroys all security groups except the default
-func DeleteAll(authMode identity.AuthMethod) (err error) {
+func DeleteAll(w io.Writer, authMode identity.AuthMethod) (err error) {
 	creds, err := identity.CompleteCredentialsFromEnv()
 	if err != nil {
 		return err
@@ -27,6 +28,7 @@ func DeleteAll(authMode identity.AuthMethod) (err error) {
 		if group.Name != "default" {
 			err := osn.DeleteSecurityGroup(group.Id)
 			if err != nil {
+				return err
 				failed += 1
 			} else {
 				deleted += 1
@@ -34,12 +36,12 @@ func DeleteAll(authMode identity.AuthMethod) (err error) {
 		}
 	}
 	if deleted != 0 {
-		fmt.Printf("%d security groups deleted.\n", deleted)
+		fmt.Fprintf(w, "%d security groups deleted.\n", deleted)
 	} else if failed == 0 {
-		fmt.Print("No security groups to delete.\n")
+		fmt.Fprint(w, "No security groups to delete.\n")
 	}
 	if failed != 0 {
-		fmt.Printf("%d security groups could not be deleted.\n", failed)
+		fmt.Fprintf(w, "%d security groups could not be deleted.\n", failed)
 	}
 	return nil
 }
@@ -58,7 +60,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error: no such auth-mode %q\n", *authModeFlag)
 		os.Exit(1)
 	}
-	err := DeleteAll(mode)
+	err := DeleteAll(os.Stdout, mode)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
