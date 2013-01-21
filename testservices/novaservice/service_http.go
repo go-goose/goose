@@ -13,6 +13,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const authToken = "X-Auth-Token"
@@ -23,6 +24,7 @@ type errorResponse struct {
 	body        string
 	contentType string
 	errorText   string
+	headers     map[string]string
 	nova        *Nova
 }
 
@@ -42,6 +44,7 @@ This server could not verify that you are authorized to access the ` +
 		"text/plain; charset=UTF-8",
 		"unauthorized request",
 		nil,
+		nil,
 	}
 	errForbidden = &errorResponse{
 		http.StatusForbidden,
@@ -50,12 +53,14 @@ This server could not verify that you are authorized to access the ` +
 		"application/json; charset=UTF-8",
 		"forbidden flavors request",
 		nil,
+		nil,
 	}
 	errBadRequest = &errorResponse{
 		http.StatusBadRequest,
 		`{"badRequest": {"message": "Malformed request url", "code": 400}}`,
 		"application/json; charset=UTF-8",
 		"bad request base path or URL",
+		nil,
 		nil,
 	}
 	errBadRequest2 = &errorResponse{
@@ -65,12 +70,22 @@ This server could not verify that you are authorized to access the ` +
 		"application/json; charset=UTF-8",
 		"bad request URL",
 		nil,
+		nil,
 	}
 	errBadRequest3 = &errorResponse{
 		http.StatusBadRequest,
 		`{"badRequest": {"message": "Malformed request body", "code": 400}}`,
 		"application/json; charset=UTF-8",
 		"bad request body",
+		nil,
+		nil,
+	}
+	errBadRequestDuplicateValue = &errorResponse{
+		http.StatusBadRequest,
+		`{"badRequest": {"message": "entity already exists", "code": 400}}`,
+		"application/json; charset=UTF-8",
+		"duplicate value",
+		nil,
 		nil,
 	}
 	errBadRequestSrvName = &errorResponse{
@@ -79,12 +94,14 @@ This server could not verify that you are authorized to access the ` +
 		"application/json; charset=UTF-8",
 		"bad request - missing server name",
 		nil,
+		nil,
 	}
 	errBadRequestSrvFlavor = &errorResponse{
 		http.StatusBadRequest,
 		`{"badRequest": {"message": "Missing imageRef attribute", "code": 400}}`,
 		"application/json; charset=UTF-8",
 		"bad request - missing flavorRef",
+		nil,
 		nil,
 	}
 	errBadRequestSrvImage = &errorResponse{
@@ -93,12 +110,14 @@ This server could not verify that you are authorized to access the ` +
 		"application/json; charset=UTF-8",
 		"bad request - missing imageRef",
 		nil,
+		nil,
 	}
 	errBadRequestSG = &errorResponse{
 		http.StatusBadRequest,
 		`{"badRequest": {"message": "Security group id should be integer", "code": 400}}`,
 		"application/json; charset=UTF-8",
 		"bad security group id type",
+		nil,
 		nil,
 	}
 	errNotFound = &errorResponse{
@@ -112,12 +131,14 @@ The resource could not be found.
 		"text/plain; charset=UTF-8",
 		"resource not found",
 		nil,
+		nil,
 	}
 	errNotFoundJSON = &errorResponse{
 		http.StatusNotFound,
 		`{"itemNotFound": {"message": "The resource could not be found.", "code": 404}}`,
 		"application/json; charset=UTF-8",
 		"resource not found",
+		nil,
 		nil,
 	}
 	errNotFoundJSONSG = &errorResponse{
@@ -126,12 +147,14 @@ The resource could not be found.
 		"application/json; charset=UTF-8",
 		"",
 		nil,
+		nil,
 	}
 	errNotFoundJSONSGR = &errorResponse{
 		http.StatusNotFound,
 		`{"itemNotFound": {"message": "Rule ($ID$) not found.", "code": 404}}`,
 		"application/json; charset=UTF-8",
 		"security rule not found",
+		nil,
 		nil,
 	}
 	errMultipleChoices = &errorResponse{
@@ -144,6 +167,7 @@ The resource could not be found.
 		"application/json",
 		"multiple URL redirection choices",
 		nil,
+		nil,
 	}
 	errNoVersion = &errorResponse{
 		http.StatusOK,
@@ -151,6 +175,7 @@ The resource could not be found.
 			`T11:33:21Z", "id": "v2.0", "links": [{"href": "$ENDPOINT$", "rel": "self"}]}]}`,
 		"application/json",
 		"no version specified in URL",
+		nil,
 		nil,
 	}
 	errVersionsLinks = &errorResponse{
@@ -168,6 +193,7 @@ The resource could not be found.
 		"application/json",
 		"version missing from URL",
 		nil,
+		nil,
 	}
 	errNotImplemented = &errorResponse{
 		http.StatusNotImplemented,
@@ -175,9 +201,18 @@ The resource could not be found.
 		"text/plain; charset=UTF-8",
 		"not implemented",
 		nil,
+		nil,
 	}
 	errNoGroupId = &errorResponse{
 		errorText: "no security group id given",
+	}
+	errRateLimitExceeded = &errorResponse{
+		http.StatusRequestEntityTooLarge,
+		"",
+		"text/plain; charset=UTF-8",
+		"too many requests",
+		map[string]string{"Retry-After": "1"},
+		nil,
 	}
 )
 
@@ -209,6 +244,11 @@ func (e *errorResponse) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", e.contentType)
 	}
 	body := e.requestBody(r)
+	if e.headers != nil {
+		for h, v := range e.headers {
+			w.Header().Set(h, v)
+		}
+	}
 	// workaround for https://code.google.com/p/go/issues/detail?id=4454
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	if e.code != 0 {
@@ -247,6 +287,7 @@ func (h *novaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			`{"internalServerError":{"message":"$ERROR$",code:500}}`,
 			"application/json",
 			err.Error(),
+			nil,
 			h.n,
 		}
 	}
@@ -396,7 +437,7 @@ func (n *Nova) handleServerActions(server *nova.ServerDetail, w http.ResponseWri
 		if err := n.addServerSecurityGroup(server.Id, group.Id); err != nil {
 			return err
 		}
-		writeResponse(w, http.StatusNoContent, nil)
+		writeResponse(w, http.StatusAccepted, nil)
 		return nil
 	case action.RemoveSecurityGroup != nil:
 		name := action.RemoveSecurityGroup.Name
@@ -407,7 +448,7 @@ func (n *Nova) handleServerActions(server *nova.ServerDetail, w http.ResponseWri
 		if err := n.removeServerSecurityGroup(server.Id, group.Id); err != nil {
 			return err
 		}
-		writeResponse(w, http.StatusNoContent, nil)
+		writeResponse(w, http.StatusAccepted, nil)
 		return nil
 	case action.AddFloatingIP != nil:
 		addr := action.AddFloatingIP.Address
@@ -421,7 +462,7 @@ func (n *Nova) handleServerActions(server *nova.ServerDetail, w http.ResponseWri
 		if err := n.addServerFloatingIP(server.Id, fip.Id); err != nil {
 			return err
 		}
-		writeResponse(w, http.StatusNoContent, nil)
+		writeResponse(w, http.StatusAccepted, nil)
 		return nil
 	case action.RemoveFloatingIP != nil:
 		addr := action.RemoveFloatingIP.Address
@@ -435,7 +476,7 @@ func (n *Nova) handleServerActions(server *nova.ServerDetail, w http.ResponseWri
 		if err := n.removeServerFloatingIP(server.Id, fip.Id); err != nil {
 			return err
 		}
-		writeResponse(w, http.StatusNoContent, nil)
+		writeResponse(w, http.StatusAccepted, nil)
 		return nil
 	}
 	return fmt.Errorf("unknown server action: %q", string(body))
@@ -459,6 +500,7 @@ func noGroupError(groupName, tenantId string) error {
 		`{"badRequest": {"message": "Security group ` + groupName + ` not found for project ` + tenantId + `.", "code": 400}}`,
 		"application/json; charset=UTF-8",
 		"bad request URL",
+		nil,
 		nil,
 	}
 }
@@ -510,13 +552,18 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	n.buildFlavorLinks(&flavor)
 	flavorEnt := nova.Entity{Id: flavor.Id, Links: flavor.Links}
 	image := nova.Entity{Id: req.Server.ImageRef}
+	timestr := time.Now().Format(time.RFC3339)
 	server := nova.ServerDetail{
 		Id:       id,
 		Name:     req.Server.Name,
 		TenantId: n.tenantId,
+		UserId:   n.userId,
+		HostId:   "1",
 		Image:    image,
 		Flavor:   flavorEnt,
 		Status:   nova.StatusActive,
+		Created:  timestr,
+		Updated:  timestr,
 	}
 	n.buildServerLinks(&server)
 	if err := n.addServer(server); err != nil {
@@ -724,12 +771,23 @@ func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) erro
 		if err := json.Unmarshal(body, &req); err != nil {
 			return err
 		} else {
+			_, err := n.securityGroupByName(req.Group.Name)
+			if err == nil {
+				return errBadRequestDuplicateValue
+			}
+			if req.Group.Description == "test rate limit" && n.sendFakeRateLimitResponse {
+				n.sendFakeRateLimitResponse = false
+				return errRateLimitExceeded
+			} else {
+				n.sendFakeRateLimitResponse = true
+			}
 			n.nextGroupId++
 			nextId := n.nextGroupId
 			err = n.addSecurityGroup(nova.SecurityGroup{
 				Id:          nextId,
 				Name:        req.Group.Name,
 				Description: req.Group.Description,
+				TenantId:    n.tenantId,
 			})
 			if err != nil {
 				return err
@@ -757,7 +815,7 @@ func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) erro
 			if n.nextGroupId > 0 {
 				n.nextGroupId--
 			}
-			writeResponse(w, http.StatusNoContent, nil)
+			writeResponse(w, http.StatusAccepted, nil)
 			return nil
 		} else if err == errNoGroupId {
 			return errNotFound
@@ -824,7 +882,7 @@ func (n *Nova) handleSecurityGroupRules(w http.ResponseWriter, r *http.Request) 
 			if n.nextRuleId > 0 {
 				n.nextRuleId--
 			}
-			writeResponse(w, http.StatusNoContent, nil)
+			writeResponse(w, http.StatusAccepted, nil)
 			return nil
 		}
 		return errNotFound

@@ -11,26 +11,28 @@ import (
 // Nova implements a OpenStack Nova testing service and
 // contains the service double's internal state.
 type Nova struct {
-	flavors      map[string]nova.FlavorDetail
-	servers      map[string]nova.ServerDetail
-	groups       map[int]nova.SecurityGroup
-	rules        map[int]nova.SecurityGroupRule
-	floatingIPs  map[int]nova.FloatingIP
-	serverGroups map[string][]int
-	serverIPs    map[string][]int
-	hostname     string
-	versionPath  string
-	token        string
-	tenantId     string
-	nextGroupId  int
-	nextRuleId   int
-	nextIPId     int
+	flavors                   map[string]nova.FlavorDetail
+	servers                   map[string]nova.ServerDetail
+	groups                    map[int]nova.SecurityGroup
+	rules                     map[int]nova.SecurityGroupRule
+	floatingIPs               map[int]nova.FloatingIP
+	serverGroups              map[string][]int
+	serverIPs                 map[string][]int
+	hostname                  string
+	versionPath               string
+	token                     string
+	tenantId                  string
+	userId                    string
+	nextGroupId               int
+	nextRuleId                int
+	nextIPId                  int
+	sendFakeRateLimitResponse bool
 }
 
 // endpoint returns either a versioned or non-versioned service
 // endpoint URL from the given path.
 func (n *Nova) endpoint(version bool, path string) string {
-	ep := n.hostname
+	ep := "http://" + n.hostname
 	if version {
 		ep += n.versionPath + "/"
 	}
@@ -42,6 +44,15 @@ func (n *Nova) endpoint(version bool, path string) string {
 func New(hostname, versionPath, token, tenantId string) *Nova {
 	if !strings.HasSuffix(hostname, "/") {
 		hostname += "/"
+	}
+	// Real openstack instances have flavours "out of the box". So we add some here.
+	defaultFlavors := []nova.FlavorDetail{
+		{Id: "1", Name: "m1.tiny"},
+		{Id: "2", Name: "m1.small"},
+	}
+	// Real openstack instances have a default security group "out of the box". So we add it here.
+	defaultSecurityGroups := []nova.SecurityGroup{
+		{Id: 999, Name: "default", Description: "default group"},
 	}
 	nova := &Nova{
 		flavors:      make(map[string]nova.FlavorDetail),
@@ -55,6 +66,27 @@ func New(hostname, versionPath, token, tenantId string) *Nova {
 		versionPath:  versionPath,
 		token:        token,
 		tenantId:     tenantId,
+		// TODO(wallyworld): Identity service double currently hard codes all user ids to "14". This should be fixed
+		// in the identity service but the fix will result in an API change which will break juju-core. So for now
+		// we will also hard code it here too.
+		userId: "14",
+		// The following attribute controls whether rate limit responses are sent back to the caller.
+		// This is switched off when we want to ensure the client eventually gets a proper response.
+		sendFakeRateLimitResponse: true,
+	}
+	for i, flavor := range defaultFlavors {
+		nova.buildFlavorLinks(&flavor)
+		defaultFlavors[i] = flavor
+		err := nova.addFlavor(flavor)
+		if err != nil {
+			panic(err)
+		}
+	}
+	for _, group := range defaultSecurityGroups {
+		err := nova.addSecurityGroup(group)
+		if err != nil {
+			panic(err)
+		}
 	}
 	return nova
 }
@@ -248,6 +280,10 @@ func (n *Nova) addSecurityGroup(group nova.SecurityGroup) error {
 	if _, err := n.securityGroup(group.Id); err == nil {
 		return fmt.Errorf("a security group with id %d already exists", group.Id)
 	}
+	group.TenantId = n.tenantId
+	if group.Rules == nil {
+		group.Rules = []nova.SecurityGroupRule{}
+	}
 	n.groups[group.Id] = group
 	return nil
 }
@@ -305,16 +341,18 @@ func (n *Nova) addSecurityGroupRule(ruleId int, rule nova.RuleInfo) error {
 			return fmt.Errorf("cannot add twice rule %d to security group %d", ru.Id, group.Id)
 		}
 	}
+	var zeroSecurityGroupRef nova.SecurityGroupRef
 	newrule := nova.SecurityGroupRule{
 		ParentGroupId: rule.ParentGroupId,
 		Id:            ruleId,
+		Group:         zeroSecurityGroupRef,
 	}
 	if rule.GroupId != nil {
 		sourceGroup, err := n.securityGroup(*rule.GroupId)
 		if err != nil {
 			return fmt.Errorf("unknown source security group %d", *rule.GroupId)
 		}
-		newrule.Group = &nova.SecurityGroupRef{
+		newrule.Group = nova.SecurityGroupRef{
 			TenantId: sourceGroup.TenantId,
 			Name:     sourceGroup.Name,
 		}
@@ -527,8 +565,12 @@ func (n *Nova) addServerFloatingIP(serverId string, ipId int) error {
 	if _, err := n.server(serverId); err != nil {
 		return err
 	}
-	if _, err := n.floatingIP(ipId); err != nil {
+	if fip, err := n.floatingIP(ipId); err != nil {
 		return err
+	} else {
+		fip.FixedIP = fip.IP
+		fip.InstanceId = serverId
+		n.floatingIPs[ipId] = *fip
 	}
 	fips, ok := n.serverIPs[serverId]
 	if ok {
@@ -566,8 +608,12 @@ func (n *Nova) removeServerFloatingIP(serverId string, ipId int) error {
 	if _, err := n.server(serverId); err != nil {
 		return err
 	}
-	if _, err := n.floatingIP(ipId); err != nil {
+	if fip, err := n.floatingIP(ipId); err != nil {
 		return err
+	} else {
+		fip.FixedIP = nil
+		fip.InstanceId = nil
+		n.floatingIPs[ipId] = *fip
 	}
 	fips, ok := n.serverIPs[serverId]
 	if !ok {

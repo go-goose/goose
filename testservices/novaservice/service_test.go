@@ -15,7 +15,7 @@ type NovaSuite struct {
 const (
 	versionPath = "v2"
 	token       = "token"
-	hostname    = "http://example.com/"
+	hostname    = "example.com"
 	tenantId    = "tenant_id"
 )
 
@@ -154,45 +154,21 @@ func (s *NovaSuite) TestRemoveFlavorTwiceFails(c *C) {
 }
 
 func (s *NovaSuite) TestAllFlavors(c *C) {
+	// The test service has 2 default flavours.
 	flavors := s.service.allFlavors()
-	c.Assert(flavors, HasLen, 0)
-	flavors = []nova.FlavorDetail{
-		{Id: "fl1"},
-		{Id: "fl2"},
+	c.Assert(flavors, HasLen, 2)
+	for _, fl := range flavors {
+		c.Assert(fl.Name == "m1.tiny" || fl.Name == "m1.small", Equals, true)
 	}
-	s.createFlavor(c, flavors[0])
-	defer s.deleteFlavor(c, flavors[0])
-	s.createFlavor(c, flavors[1])
-	defer s.deleteFlavor(c, flavors[1])
-	fl := s.service.allFlavors()
-	c.Assert(fl, HasLen, len(flavors))
-	if fl[0].Id != flavors[0].Id {
-		fl[0], fl[1] = fl[1], fl[0]
-	}
-	c.Assert(fl, DeepEquals, flavors)
 }
 
 func (s *NovaSuite) TestAllFlavorsAsEntities(c *C) {
+	// The test service has 2 default flavours.
 	entities := s.service.allFlavorsAsEntities()
-	c.Assert(entities, HasLen, 0)
-	entities = []nova.Entity{
-		{Id: "fl1"},
-		{Id: "fl2"},
+	c.Assert(entities, HasLen, 2)
+	for _, fl := range entities {
+		c.Assert(fl.Name == "m1.tiny" || fl.Name == "m1.small", Equals, true)
 	}
-	flavors := []nova.FlavorDetail{
-		{Id: entities[0].Id},
-		{Id: entities[1].Id},
-	}
-	s.createFlavor(c, flavors[0])
-	defer s.deleteFlavor(c, flavors[0])
-	s.createFlavor(c, flavors[1])
-	defer s.deleteFlavor(c, flavors[1])
-	ent := s.service.allFlavorsAsEntities()
-	c.Assert(ent, HasLen, len(entities))
-	if ent[0].Id != entities[0].Id {
-		ent[0], ent[1] = ent[1], ent[0]
-	}
-	c.Assert(ent, DeepEquals, entities)
 }
 
 func (s *NovaSuite) TestGetFlavor(c *C) {
@@ -478,8 +454,9 @@ func (s *NovaSuite) TestAddRemoveSecurityGroup(c *C) {
 
 func (s *NovaSuite) TestAddSecurityGroupWithRules(c *C) {
 	group := nova.SecurityGroup{
-		Id:   1,
-		Name: "test",
+		Id:       1,
+		Name:     "test",
+		TenantId: s.service.tenantId,
 		Rules: []nova.SecurityGroupRule{
 			{Id: 10, ParentGroupId: 1},
 			{Id: 20, ParentGroupId: 1},
@@ -509,27 +486,35 @@ func (s *NovaSuite) TestRemoveSecurityGroupTwiceFails(c *C) {
 
 func (s *NovaSuite) TestAllSecurityGroups(c *C) {
 	groups := s.service.allSecurityGroups()
-	c.Assert(groups, HasLen, 0)
+	// There is always a default security group.
+	c.Assert(groups, HasLen, 1)
 	groups = []nova.SecurityGroup{
-		{Id: 1, Name: "one"},
-		{Id: 2, Name: "two"},
+		{
+			Id:       1,
+			Name:     "one",
+			TenantId: s.service.tenantId,
+			Rules:    []nova.SecurityGroupRule{},
+		},
+		{
+			Id:       2,
+			Name:     "two",
+			TenantId: s.service.tenantId,
+			Rules:    []nova.SecurityGroupRule{},
+		},
 	}
 	s.createGroup(c, groups[0])
 	defer s.deleteGroup(c, groups[0])
 	s.createGroup(c, groups[1])
 	defer s.deleteGroup(c, groups[1])
 	gr := s.service.allSecurityGroups()
-	c.Assert(gr, HasLen, len(groups))
-	if gr[0].Id != groups[0].Id {
-		gr[0], gr[1] = gr[1], gr[0]
-	}
-	c.Assert(gr, DeepEquals, groups)
+	c.Assert(gr, HasLen, len(groups)+1)
+	checkGroupsInList(c, groups, gr)
 }
 
 func (s *NovaSuite) TestGetSecurityGroup(c *C) {
 	group := nova.SecurityGroup{
 		Id:          42,
-		TenantId:    "tenant",
+		TenantId:    s.service.tenantId,
 		Name:        "group",
 		Description: "desc",
 		Rules:       []nova.SecurityGroupRule{},
@@ -541,7 +526,12 @@ func (s *NovaSuite) TestGetSecurityGroup(c *C) {
 }
 
 func (s *NovaSuite) TestGetSecurityGroupByName(c *C) {
-	group := nova.SecurityGroup{Id: 1, Name: "test"}
+	group := nova.SecurityGroup{
+		Id:       1,
+		Name:     "test",
+		TenantId: s.service.tenantId,
+		Rules:    []nova.SecurityGroupRule{},
+	}
 	s.ensureNoGroup(c, group)
 	gr, err := s.service.securityGroupByName(group.Name)
 	c.Assert(err, ErrorMatches, `no such security group named "test"`)
@@ -610,7 +600,7 @@ func (s *NovaSuite) TestAddGetIngressSecurityGroupRule(c *C) {
 }
 
 func (s *NovaSuite) TestAddGetGroupSecurityGroupRule(c *C) {
-	srcGroup := nova.SecurityGroup{Id: 1, Name: "source", TenantId: "tenant"}
+	srcGroup := nova.SecurityGroup{Id: 1, Name: "source", TenantId: s.service.tenantId}
 	tgtGroup := nova.SecurityGroup{Id: 2, Name: "target"}
 	s.createGroup(c, srcGroup)
 	defer s.deleteGroup(c, srcGroup)
@@ -629,7 +619,7 @@ func (s *NovaSuite) TestAddGetGroupSecurityGroupRule(c *C) {
 		FromPort:      &ri.FromPort,
 		ToPort:        &ri.ToPort,
 		IPProtocol:    &ri.IPProtocol,
-		Group: &nova.SecurityGroupRef{
+		Group: nova.SecurityGroupRef{
 			TenantId: srcGroup.TenantId,
 			Name:     srcGroup.Name,
 		},
@@ -645,7 +635,7 @@ func (s *NovaSuite) TestAddGetGroupSecurityGroupRule(c *C) {
 	c.Assert(*ru.FromPort, Equals, *rule.FromPort)
 	c.Assert(*ru.ToPort, Equals, *rule.ToPort)
 	c.Assert(*ru.IPProtocol, Equals, *rule.IPProtocol)
-	c.Assert(*ru.Group, DeepEquals, *rule.Group)
+	c.Assert(ru.Group, DeepEquals, rule.Group)
 }
 
 func (s *NovaSuite) TestAddSecurityGroupRuleTwiceFails(c *C) {
@@ -703,11 +693,19 @@ func (s *NovaSuite) TestAddGroupSecurityGroupRuleWithInvalidSourceFails(c *C) {
 }
 
 func (s *NovaSuite) TestAddSecurityGroupRuleUpdatesParent(c *C) {
-	group := nova.SecurityGroup{Id: 1}
+	group := nova.SecurityGroup{
+		Id:       1,
+		Name:     "test",
+		TenantId: s.service.tenantId,
+	}
 	s.createGroup(c, group)
 	defer s.deleteGroup(c, group)
 	ri := nova.RuleInfo{ParentGroupId: group.Id}
-	rule := nova.SecurityGroupRule{Id: 10, ParentGroupId: group.Id}
+	rule := nova.SecurityGroupRule{
+		Id:            10,
+		ParentGroupId: group.Id,
+		Group:         nova.SecurityGroupRef{},
+	}
 	s.ensureNoRule(c, rule)
 	err := s.service.addSecurityGroupRule(rule.Id, ri)
 	c.Assert(err, IsNil)
@@ -799,8 +797,18 @@ func (s *NovaSuite) TestAllServerSecurityGroups(c *C) {
 	s.createServer(c, server)
 	defer s.deleteServer(c, server)
 	groups := []nova.SecurityGroup{
-		{Id: 1, Name: "gr1"},
-		{Id: 2, Name: "gr2"},
+		{
+			Id:       1,
+			Name:     "gr1",
+			TenantId: s.service.tenantId,
+			Rules:    []nova.SecurityGroupRule{},
+		},
+		{
+			Id:       2,
+			Name:     "gr2",
+			TenantId: s.service.tenantId,
+			Rules:    []nova.SecurityGroupRule{},
+		},
 	}
 	for _, group := range groups {
 		s.createGroup(c, group)

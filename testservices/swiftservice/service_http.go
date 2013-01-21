@@ -152,7 +152,7 @@ func (s *Swift) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		path = path[len(s.baseURL):]
 	}
 	path = strings.TrimRight(path, "/")
-	parts := strings.Split(path, "/")
+	parts := strings.SplitN(path, "/", 2)
 	if len(parts) == 1 {
 		container := parts[0]
 		s.handleContainers(container, w, r)
