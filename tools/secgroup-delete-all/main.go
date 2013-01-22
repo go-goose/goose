@@ -28,7 +28,6 @@ func DeleteAll(w io.Writer, authMode identity.AuthMethod) (err error) {
 		if group.Name != "default" {
 			err := osn.DeleteSecurityGroup(group.Id)
 			if err != nil {
-				return err
 				failed += 1
 			} else {
 				deleted += 1
