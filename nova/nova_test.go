@@ -17,7 +17,6 @@ func Test(t *testing.T) {
 		}
 		registerOpenStackTests(cred)
 	}
-	// TODO - turn on local tests when infrastructure is ready
-	//registerLocalTests()
+	registerLocalTests()
 	TestingT(t)
 }
