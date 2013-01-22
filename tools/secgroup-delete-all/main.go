@@ -11,13 +11,7 @@ import (
 )
 
 // DeleteAll destroys all security groups except the default
-func DeleteAll(w io.Writer, authMode identity.AuthMethod) (err error) {
-	creds, err := identity.CompleteCredentialsFromEnv()
-	if err != nil {
-		return err
-	}
-	osc := client.NewClient(creds, authMode, nil)
-	osn := nova.New(osc)
+func DeleteAll(w io.Writer, osn *nova.Client) (err error) {
 	groups, err := osn.ListSecurityGroups()
 	if err != nil {
 		return err
@@ -45,6 +39,15 @@ func DeleteAll(w io.Writer, authMode identity.AuthMethod) (err error) {
 	return nil
 }
 
+func createNovaClient(authMode identity.AuthMethod) (osn *nova.Client, err error) {
+	creds, err := identity.CompleteCredentialsFromEnv()
+	if err != nil {
+		return nil, err
+	}
+	osc := client.NewClient(creds, authMode, nil)
+	return nova.New(osc), nil
+}
+
 var authModeFlag = gnuflag.String("auth-mode", "userpass", "type of authentication to use")
 
 var authModes = map[string]identity.AuthMethod{
@@ -59,7 +62,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error: no such auth-mode %q\n", *authModeFlag)
 		os.Exit(1)
 	}
-	err := DeleteAll(os.Stdout, mode)
+	novaclient, err := createNovaClient(mode)
+	if err == nil {
+		err = DeleteAll(os.Stdout, novaclient)
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
