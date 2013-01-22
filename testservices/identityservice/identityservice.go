@@ -8,3 +8,7 @@ type IdentityService interface {
 	AddUser(user, secret string) (token string)
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
 }
+
+type ServiceProvider interface {
+	Endpoints() []Endpoint
+}

@@ -37,7 +37,7 @@ func (s *UserPassSuite) setupUserPassWithServices(user, secret string, services 
 	var identity *UserPass
 	identity, token = makeUserPass(user, secret)
 	for _, service := range services {
-		identity.AddService(service)
+		identity.addService(service)
 	}
 	s.Mux.Handle("/", identity)
 	return

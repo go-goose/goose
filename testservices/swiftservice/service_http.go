@@ -147,11 +147,11 @@ func (s *Swift) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	path := r.URL.Path
-	if path[:len(s.baseURL)] == s.baseURL {
-		path = path[len(s.baseURL):]
+	path := strings.TrimRight(r.URL.Path, "/")
+	if path[:len(baseURL)] == baseURL {
+		path = path[len(baseURL):]
 	}
-	path = strings.TrimRight(path, "/")
+	path = strings.Trim(path, "/")
 	parts := strings.SplitN(path, "/", 2)
 	if len(parts) == 1 {
 		container := parts[0]
@@ -163,4 +163,9 @@ func (s *Swift) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		panic("not implemented request: " + r.URL.Path)
 	}
+}
+
+// setupHTTP attaches all the needed handlers to provide the HTTP API.
+func (s *Swift) SetupHTTP(mux *http.ServeMux) {
+	mux.Handle(baseURL+"/", s)
 }

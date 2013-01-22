@@ -7,17 +7,17 @@ import (
 )
 
 type SwiftServiceSuite struct {
-	service SwiftService
+	service *Swift
 }
 
-var baseURL = "/v1/AUTH_tenant/"
 var token = "token"
-var hostname = "localhost" // not really used here
+var region = "region"             // not really used here
+var hostname = "http://localhost" // not really used here
 
 var _ = Suite(&SwiftServiceSuite{})
 
 func (s *SwiftServiceSuite) SetUpSuite(c *C) {
-	s.service = New(hostname, baseURL, token)
+	s.service = New(hostname, token, region)
 }
 
 func (s *SwiftServiceSuite) TestAddHasRemoveContainer(c *C) {
@@ -76,7 +76,7 @@ func (s *SwiftServiceSuite) TestGetURL(c *C) {
 	err = s.service.AddObject("test", "obj", data)
 	c.Assert(err, IsNil)
 	url, err := s.service.GetURL("test", "obj")
-	path := baseURL + "test/obj"
+	path := baseURL + "/test/obj"
 	c.Assert(err, IsNil)
 	c.Assert(url, Equals, hostname+path)
 	err = s.service.RemoveContainer("test")

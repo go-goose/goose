@@ -228,7 +228,7 @@ func (e *errorResponse) requestBody(r *http.Request) []byte {
 	body := e.body
 	if body != "" {
 		if e.nova != nil {
-			body = strings.Replace(body, "$ENDPOINT$", e.nova.endpoint(true, "/"), -1)
+			body = strings.Replace(body, "$ENDPOINT$", e.nova.endpointURL(true, "/"), -1)
 		}
 		body = strings.Replace(body, "$URL$", url, -1)
 		body = strings.Replace(body, "$ERROR$", e.Error(), -1)

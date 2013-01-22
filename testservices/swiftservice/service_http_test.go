@@ -14,19 +14,19 @@ import (
 
 type SwiftHTTPSuite struct {
 	httpsuite.HTTPSuite
-	service SwiftService
+	service *Swift
 }
 
 var _ = Suite(&SwiftHTTPSuite{})
 
 func (s *SwiftHTTPSuite) SetUpSuite(c *C) {
 	s.HTTPSuite.SetUpSuite(c)
-	s.service = New(s.Server.URL, baseURL, token)
+	s.service = New(s.Server.URL, token, region)
 }
 
 func (s *SwiftHTTPSuite) SetUpTest(c *C) {
 	s.HTTPSuite.SetUpTest(c)
-	s.Mux.Handle(baseURL, s.service)
+	s.service.SetupHTTP(s.Mux)
 }
 
 func (s *SwiftHTTPSuite) TearDownTest(c *C) {
@@ -41,7 +41,7 @@ func (s *SwiftHTTPSuite) sendRequest(c *C, method, path string, body []byte,
 	expectedStatusCode int) (resp *http.Response) {
 	var req *http.Request
 	var err error
-	url := s.Server.URL + baseURL + path
+	url := s.Server.URL + baseURL + "/" + path
 	if body != nil {
 		req, err = http.NewRequest(method, url, bytes.NewBuffer(body))
 	} else {

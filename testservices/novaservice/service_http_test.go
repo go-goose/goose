@@ -11,7 +11,6 @@ import (
 	"launchpad.net/goose/nova"
 	"launchpad.net/goose/testing/httpsuite"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 )
@@ -25,8 +24,7 @@ var _ = Suite(&NovaHTTPSuite{})
 
 func (s *NovaHTTPSuite) SetUpSuite(c *C) {
 	s.HTTPSuite.SetUpSuite(c)
-	url, _ := url.Parse(s.Server.URL)
-	s.service = New(url.Host, versionPath, token, tenantId)
+	s.service = New(s.Server.URL, versionPath, token, tenantId, region)
 }
 
 func (s *NovaHTTPSuite) TearDownSuite(c *C) {
@@ -68,7 +66,7 @@ func assertBody(c *C, resp *http.Response, expected *errorResponse) {
 // sendRequest constructs an HTTP request from the parameters and
 // sends it, returning the response or an error.
 func (s *NovaHTTPSuite) sendRequest(method, url string, body []byte, headers http.Header) (*http.Response, error) {
-	if !strings.HasPrefix(url, "http") { //s.service.hostname) {
+	if !strings.HasPrefix(url, "http") {
 		url = "http://" + s.service.hostname + strings.TrimLeft(url, "/")
 	}
 	req, err := http.NewRequest(method, url, bytes.NewReader(body))
@@ -92,7 +90,7 @@ func (s *NovaHTTPSuite) authRequest(method, path string, body []byte, headers ht
 		headers = make(http.Header)
 	}
 	headers.Set(authToken, s.service.token)
-	url := s.service.endpoint(true, path)
+	url := s.service.endpointURL(true, path)
 	return s.sendRequest(method, url, body, headers)
 }
 

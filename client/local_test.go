@@ -5,6 +5,8 @@ import (
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/testing/httpsuite"
 	"launchpad.net/goose/testservices/identityservice"
+	"launchpad.net/goose/testservices/novaservice"
+	"launchpad.net/goose/testservices/swiftservice"
 	"net/http"
 )
 
@@ -41,16 +43,10 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 	case identity.AuthUserPass:
 		s.identityDouble = identityservice.NewUserPass()
 		s.identityDouble.(*identityservice.UserPass).AddUser(s.cred.User, s.cred.Secrets)
-		ep := identityservice.Endpoint{
-			AdminURL:    s.Server.URL,
-			InternalURL: s.Server.URL,
-			PublicURL:   s.Server.URL,
-			Region:      s.LiveTests.cred.Region,
-		}
-		service := identityservice.Service{"nova", "compute", []identityservice.Endpoint{ep}}
-		s.identityDouble.(*identityservice.UserPass).AddService(service)
-		service = identityservice.Service{"swift", "object-store", []identityservice.Endpoint{ep}}
-		s.identityDouble.(*identityservice.UserPass).AddService(service)
+		swiftService := swiftservice.New(s.Server.URL, "token", s.LiveTests.cred.Region)
+		s.identityDouble.(*identityservice.UserPass).RegisterService("swift", "object-store", swiftService)
+		novaService := novaservice.New(s.Server.URL, "V1", "token", "1", s.LiveTests.cred.Region)
+		s.identityDouble.(*identityservice.UserPass).RegisterService("nova", "compute", novaService)
 	case identity.AuthLegacy:
 		s.identityDouble = identityservice.NewLegacy()
 		var legacy = s.identityDouble.(*identityservice.Legacy)

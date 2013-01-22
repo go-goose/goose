@@ -5,6 +5,7 @@ package swiftservice
 import (
 	"fmt"
 	"launchpad.net/goose/swift"
+	"launchpad.net/goose/testservices/identityservice"
 	"time"
 )
 
@@ -12,20 +13,34 @@ type object map[string][]byte
 
 type Swift struct {
 	containers map[string]object
-	hostname   string
-	baseURL    string
+	hostURL    string
 	token      string
+	region     string
 }
 
+const (
+	baseURL = "/object-store"
+)
+
 // New creates an instance of the Swift object, given the parameters.
-func New(hostname, baseURL, token string) *Swift {
+func New(hostURL, token, region string) *Swift {
 	swift := &Swift{
 		containers: make(map[string]object),
-		hostname:   hostname,
-		baseURL:    baseURL,
+		hostURL:    hostURL,
 		token:      token,
+		region:     region,
 	}
 	return swift
+}
+
+func (s *Swift) Endpoints() []identityservice.Endpoint {
+	ep := identityservice.Endpoint{
+		AdminURL:    s.hostURL + baseURL,
+		InternalURL: s.hostURL + baseURL,
+		PublicURL:   s.hostURL + baseURL,
+		Region:      s.region,
+	}
+	return []identityservice.Endpoint{ep}
 }
 
 // HasContainer verifies the given container exists or not.
@@ -119,5 +134,5 @@ func (s *Swift) GetURL(container, object string) (string, error) {
 	if _, err := s.GetObject(container, object); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s%s%s/%s", s.hostname, s.baseURL, container, object), nil
+	return fmt.Sprintf("%s%s/%s/%s", s.hostURL, baseURL, container, object), nil
 }

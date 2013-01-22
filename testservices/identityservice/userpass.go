@@ -153,7 +153,12 @@ func (u *UserPass) AddUser(user, secret string) string {
 	return token
 }
 
-func (u *UserPass) AddService(service Service) {
+func (u *UserPass) RegisterService(name, serviceType string, serviceProvider ServiceProvider) {
+	service := Service{name, serviceType, serviceProvider.Endpoints()}
+	u.addService(service)
+}
+
+func (u *UserPass) addService(service Service) {
 	u.services = append(u.services, service)
 }
 
@@ -238,4 +243,9 @@ func (u *UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	panic("All paths should have already returned")
+}
+
+// setupHTTP attaches all the needed handlers to provide the HTTP API.
+func (u *UserPass) SetupHTTP(mux *http.ServeMux) {
+	mux.Handle("/tokens", u)
 }

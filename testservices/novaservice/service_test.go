@@ -15,14 +15,15 @@ type NovaSuite struct {
 const (
 	versionPath = "v2"
 	token       = "token"
-	hostname    = "example.com"
+	hostname    = "http://example.com"
 	tenantId    = "tenant_id"
+	region      = "region"
 )
 
 var _ = Suite(&NovaSuite{})
 
 func (s *NovaSuite) SetUpSuite(c *C) {
-	s.service = New(hostname, versionPath, token, tenantId)
+	s.service = New(hostname, versionPath, token, tenantId, region)
 }
 
 func (s *NovaSuite) ensureNoFlavor(c *C, flavor nova.FlavorDetail) {
@@ -118,8 +119,8 @@ func (s *NovaSuite) TestBuildLinksAndAddFlavor(c *C) {
 	fl, _ := s.service.flavor(flavor.Id)
 	url := "/flavors/" + flavor.Id
 	links := []nova.Link{
-		nova.Link{Href: s.service.endpoint(true, url), Rel: "self"},
-		nova.Link{Href: s.service.endpoint(false, url), Rel: "bookmark"},
+		nova.Link{Href: s.service.endpointURL(true, url), Rel: "self"},
+		nova.Link{Href: s.service.endpointURL(false, url), Rel: "bookmark"},
 	}
 	c.Assert(fl.Links, DeepEquals, links)
 }
@@ -214,8 +215,8 @@ func (s *NovaSuite) TestBuildLinksAndAddServer(c *C) {
 	sr, _ := s.service.server(server.Id)
 	url := "/servers/" + server.Id
 	links := []nova.Link{
-		{Href: s.service.endpoint(true, url), Rel: "self"},
-		{Href: s.service.endpoint(false, url), Rel: "bookmark"},
+		{Href: s.service.endpointURL(true, url), Rel: "self"},
+		{Href: s.service.endpointURL(false, url), Rel: "bookmark"},
 	}
 	c.Assert(sr.Links, DeepEquals, links)
 }

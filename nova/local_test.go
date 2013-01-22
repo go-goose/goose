@@ -19,10 +19,6 @@ func registerLocalTests() {
 	Suite(&localLiveSuite{})
 }
 
-const (
-	baseNovaURL = "/V1/1"
-)
-
 // localLiveSuite runs tests from LiveTests using a fake
 // nova server that runs within the test process itself.
 type localLiveSuite struct {
@@ -52,20 +48,12 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 	// Create an identity service and register a Nova endpoint.
 	s.identityDouble = identityservice.NewUserPass()
 	token := s.identityDouble.AddUser(s.cred.User, s.cred.Secrets)
-	ep := identityservice.Endpoint{
-		AdminURL:    s.Server.URL + baseNovaURL,
-		InternalURL: s.Server.URL + baseNovaURL,
-		PublicURL:   s.Server.URL + baseNovaURL,
-		Region:      s.cred.Region,
-	}
-	s.Mux.Handle("/tokens", s.identityDouble)
+	s.identityDouble.SetupHTTP(s.Mux)
 
-	service := identityservice.Service{"nova", "compute", []identityservice.Endpoint{ep}}
-	s.identityDouble.AddService(service)
-	// Create a nova service at the registered endpoint.
 	// TODO: identityservice.UserPass always uses tenantId="1", patch this
 	//	 when that changes.
-	s.novaDouble = novaservice.New("localhost", "V1", token, "1")
+	s.novaDouble = novaservice.New(s.Server.URL, "V1", token, "1", s.cred.Region)
+	s.identityDouble.RegisterService("nova", "compute", s.novaDouble)
 	s.novaDouble.SetupHTTP(s.Mux)
 
 	s.LiveTests.SetUpSuite(c)
