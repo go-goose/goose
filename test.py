@@ -5,6 +5,14 @@ import subprocess
 import sys
 
 
+KNOWN_LIVE_SUITES = [
+    'client',
+    'glance',
+    'nova',
+    'swift',
+]
+
+
 def ensure_tarmac_log_dir():
     """Hack-around tarmac not creating its own log directory."""
     try:
@@ -114,6 +122,23 @@ def run_go_test(opts):
     return retcode
 
 
+def run_live_tests(opts):
+    """Run all of the live tests."""
+    orig_wd = os.getcwd()
+    final_retcode = 0
+    for d in KNOWN_LIVE_SUITES:
+        try:
+            cmd = ['go', 'test', '-live', '-gocheck.v']
+            sys.stderr.write('Running: %s in %s\n' % (' '.join(cmd), d))
+            os.chdir(d)
+            retcode = subprocess.call(cmd)
+            if retcode != 0:
+                sys.stderr.write('FAIL: Running live tests in %s\n' % (d,))
+                final_retcode = retcode
+        finally:
+            os.chdir(orig_wd)
+
+
 def main(args):
     import argparse
     p = argparse.ArgumentParser(description='Run the goose test suite')
@@ -123,6 +148,8 @@ def main(args):
         help="Pass this if the script is running as the tarmac bot."
              " This is used for stuff like ensuring repositories and"
              " logging directories are initialized.")
+    p.add_argument('--live', action='store_true',
+        help="Run tests against a live service.")
 
     opts = p.parse_args(args)
     setup_gopath()
@@ -132,6 +159,12 @@ def main(args):
     if retcode != 0:
         return retcode
     retcode = run_go_test(opts)
+    if retcode != 0:
+        return retcode
+    if opts.live:
+        retcode = run_live_tests(opts)
+        if retcode != 0:
+            return retcode
 
 
 if __name__ == '__main__':
