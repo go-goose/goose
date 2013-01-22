@@ -26,7 +26,6 @@ const (
 
 type ToolSuite struct {
 	httpsuite.HTTPSuite
-	Nova *novaservice.Nova
 }
 
 var _ = Suite(&ToolSuite{})
@@ -63,7 +62,6 @@ func (s *ToolSuite) makeServices(c *C) *nova.Client {
 	s.Mux.Handle("/tokens", ident)
 	comp := novaservice.New("unused.invalid", "v2.0", token, tenant)
 	comp.SetupHTTP(s.Mux)
-	s.Nova = comp
 	return createNovaClient(s.Server.URL)
 }
 
@@ -77,8 +75,8 @@ func (s *ToolSuite) TestNoGroups(c *C) {
 
 func (s *ToolSuite) TestTwoGroups(c *C) {
 	nova := s.makeServices(c)
-	s.Nova.MakeSecurityGroup("group-a", "A group")
-	s.Nova.MakeSecurityGroup("group-b", "Another group")
+	nova.CreateSecurityGroup("group-a", "A group")
+	nova.CreateSecurityGroup("group-b", "Another group")
 	var buf bytes.Buffer
 	err := tool.DeleteAll(&buf, nova)
 	c.Assert(err, IsNil)
