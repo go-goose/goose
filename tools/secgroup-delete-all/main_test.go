@@ -32,19 +32,19 @@ type ToolSuite struct {
 var _ = Suite(&ToolSuite{})
 
 // GZ 2013-01-21: Should require EnvSuite for this, but clashes with HTTPSuite
-func createNovaClient(auth_url string) (*nova.Client) {
+func createNovaClient(auth_url string) *nova.Client {
 	creds := identity.Credentials{
-		URL: auth_url,
-		User: username,
-		Secrets: password,
-		Region: region,
+		URL:        auth_url,
+		User:       username,
+		Secrets:    password,
+		Region:     region,
 		TenantName: tenant,
-		}
+	}
 	osc := client.NewClient(&creds, identity.AuthUserPass, nil)
 	return nova.New(osc)
 }
 
-func (s *ToolSuite) makeServices(c *C) (*nova.Client) {
+func (s *ToolSuite) makeServices(c *C) *nova.Client {
 	ident := identityservice.NewUserPass()
 	token := ident.AddUser(username, password)
 	// GZ 2013-01-21: Current novaservice double requires magic url like so

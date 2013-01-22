@@ -22,9 +22,9 @@ func DeleteAll(w io.Writer, osn *nova.Client) (err error) {
 		if group.Name != "default" {
 			err := osn.DeleteSecurityGroup(group.Id)
 			if err != nil {
-				failed += 1
+				failed++
 			} else {
-				deleted += 1
+				deleted++
 			}
 		}
 	}
