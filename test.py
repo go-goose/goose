@@ -45,7 +45,7 @@ def create_tarmac_repository():
         sys.stderr.write('Could not find %r to create a shared repo\n')
         return
     path = pwd[:offset+len(expected_dir)]
-    from bzrlib import controldir, transport, reconfigure
+    from bzrlib import controldir, errors, transport, reconfigure
     repo_fmt = controldir.format_registry.make_bzrdir('default')
     trans = transport.get_transport(path)
     info = repo_fmt.initialize_on_transport_ex(trans, create_prefix=False,
@@ -55,7 +55,11 @@ def create_tarmac_repository():
     repo = info[0]
     sys.stderr.write('Reconfiguring to use a shared repository\n')
     reconfiguration = reconfigure.Reconfigure.to_use_shared(b.bzrdir)
-    reconfiguration.apply(False)
+    try:
+        reconfiguration.apply(False)
+    except errors.NoRepositoryPreset:
+        sys.stderr.write('tarmac did a lightweight checkout,'
+                         ' not fetching into the repo.\n')
 
 
 def ensure_juju_core_dependencies():
