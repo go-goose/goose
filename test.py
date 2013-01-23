@@ -25,11 +25,19 @@ def ensure_tarmac_log_dir():
 def create_tarmac_repository():
     """Try to ensure a shared repository for the code."""
     try:
-        import bzrlib.branch
-    except ImportError, e:
+        from bzrlib import (
+            branch,
+            controldir,
+            errors,
+            transport,
+            repository,
+            reconfigure,
+            )
+    except ImportError:
         sys.stderr.write('Could not import bzrlib to ensure a repository\n')
+        return
     try:
-        b, _ = bzrlib.branch.Branch.open_containing('.')
+        b, _ = branch.Branch.open_containing('.')
     except:
         sys.stderr.write('Could not open local branch\n')
         return
@@ -45,7 +53,13 @@ def create_tarmac_repository():
         sys.stderr.write('Could not find %r to create a shared repo\n')
         return
     path = pwd[:offset+len(expected_dir)]
-    from bzrlib import controldir, errors, transport, reconfigure
+    try:
+        repository.Repository.open(path)
+    except (errors.NoRepositoryPresent, errors.NotBranchError):
+        pass # Good, the repo didn't exist
+    else:
+        # We must have already created the repo.
+        return
     repo_fmt = controldir.format_registry.make_bzrdir('default')
     trans = transport.get_transport(path)
     info = repo_fmt.initialize_on_transport_ex(trans, create_prefix=False,
