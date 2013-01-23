@@ -10,6 +10,7 @@ import (
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/nova"
 	"launchpad.net/goose/testing/httpsuite"
+	"launchpad.net/goose/testservices/identityservice"
 	"net/http"
 	"strconv"
 	"strings"
@@ -18,13 +19,17 @@ import (
 type NovaHTTPSuite struct {
 	httpsuite.HTTPSuite
 	service *Nova
+	token   string
 }
 
 var _ = Suite(&NovaHTTPSuite{})
 
 func (s *NovaHTTPSuite) SetUpSuite(c *C) {
 	s.HTTPSuite.SetUpSuite(c)
-	s.service = New(s.Server.URL, versionPath, token, tenantId, region)
+	identityDouble := identityservice.NewUserPass()
+	userInfo := identityDouble.AddUser("fred", "secret")
+	s.token = userInfo.Token
+	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble)
 }
 
 func (s *NovaHTTPSuite) TearDownSuite(c *C) {
@@ -67,7 +72,7 @@ func assertBody(c *C, resp *http.Response, expected *errorResponse) {
 // sends it, returning the response or an error.
 func (s *NovaHTTPSuite) sendRequest(method, url string, body []byte, headers http.Header) (*http.Response, error) {
 	if !strings.HasPrefix(url, "http") {
-		url = "http://" + s.service.hostname + strings.TrimLeft(url, "/")
+		url = "http://" + s.service.Hostname + strings.TrimLeft(url, "/")
 	}
 	req, err := http.NewRequest(method, url, bytes.NewReader(body))
 	if err != nil {
@@ -89,7 +94,7 @@ func (s *NovaHTTPSuite) authRequest(method, path string, body []byte, headers ht
 	if headers == nil {
 		headers = make(http.Header)
 	}
-	headers.Set(authToken, s.service.token)
+	headers.Set(authToken, s.token)
 	url := s.service.endpointURL(true, path)
 	return s.sendRequest(method, url, body, headers)
 }
@@ -112,339 +117,345 @@ func setHeader(header, value string) http.Header {
 	return h
 }
 
-// simpleTests defines a simple request without a body and expected response.
-var simpleTests = []struct {
+// SimpleTest defines a simple request without a body and expected response.
+type SimpleTest struct {
 	unauth  bool
 	method  string
 	url     string
 	headers http.Header
 	expect  *errorResponse
-}{
-	{
-		unauth:  true,
-		method:  "GET",
-		url:     "/any",
-		headers: make(http.Header),
-		expect:  errUnauthorized,
-	},
-	{
-		unauth:  true,
-		method:  "POST",
-		url:     "/any",
-		headers: setHeader(authToken, "phony"),
-		expect:  errUnauthorized,
-	},
-	{
-		unauth:  true,
-		method:  "GET",
-		url:     "/",
-		headers: setHeader(authToken, token),
-		expect:  errNoVersion,
-	},
-	{
-		unauth:  true,
-		method:  "GET",
-		url:     "/any",
-		headers: setHeader(authToken, token),
-		expect:  errMultipleChoices,
-	},
-	{
-		unauth:  true,
-		method:  "POST",
-		url:     "/any/unknown/one",
-		headers: setHeader(authToken, token),
-		expect:  errMultipleChoices,
-	},
-	{
-		method: "POST",
-		url:    "/any/unknown/one",
-		expect: errNotFound,
-	},
-	{
-		unauth:  true,
-		method:  "GET",
-		url:     versionPath + "/phony_token",
-		headers: setHeader(authToken, token),
-		expect:  errBadRequest,
-	},
-	{
-		method: "GET",
-		url:    "/flavors/",
-		expect: errNotFound,
-	},
-	{
-		method: "GET",
-		url:    "/flavors/invalid",
-		expect: errNotFound,
-	},
-	{
-		method: "POST",
-		url:    "/flavors",
-		expect: errBadRequest2,
-	},
-	{
-		method: "POST",
-		url:    "/flavors/invalid",
-		expect: errNotFound,
-	},
-	{
-		method: "PUT",
-		url:    "/flavors",
-		expect: errNotFound,
-	},
-	{
-		method: "PUT",
-		url:    "/flavors/invalid",
-		expect: errNotFoundJSON,
-	},
-	{
-		method: "DELETE",
-		url:    "/flavors",
-		expect: errNotFound,
-	},
-	{
-		method: "DELETE",
-		url:    "/flavors/invalid",
-		expect: errForbidden,
-	},
-	{
-		method: "GET",
-		url:    "/flavors/detail/invalid",
-		expect: errNotFound,
-	},
-	{
-		method: "POST",
-		url:    "/flavors/detail",
-		expect: errNotFound,
-	},
-	{
-		method: "POST",
-		url:    "/flavors/detail/invalid",
-		expect: errNotFound,
-	},
-	{
-		method: "PUT",
-		url:    "/flavors/detail",
-		expect: errNotFoundJSON,
-	},
-	{
-		method: "PUT",
-		url:    "/flavors/detail/invalid",
-		expect: errNotFound,
-	},
-	{
-		method: "DELETE",
-		url:    "/flavors/detail",
-		expect: errForbidden,
-	},
-	{
-		method: "DELETE",
-		url:    "/flavors/detail/invalid",
-		expect: errNotFound,
-	},
-	{
-		method: "GET",
-		url:    "/servers/invalid",
-		expect: errNotFoundJSON,
-	},
-	{
-		method: "POST",
-		url:    "/servers",
-		expect: errBadRequest2,
-	},
-	{
-		method: "POST",
-		url:    "/servers/invalid",
-		expect: errNotFound,
-	},
-	{
-		method: "PUT",
-		url:    "/servers",
-		expect: errNotFound,
-	},
-	{
-		method: "PUT",
-		url:    "/servers/invalid",
-		expect: errBadRequest2,
-	},
-	{
-		method: "DELETE",
-		url:    "/servers",
-		expect: errNotFound,
-	},
-	{
-		method: "DELETE",
-		url:    "/servers/invalid",
-		expect: errNotFoundJSON,
-	},
-	{
-		method: "GET",
-		url:    "/servers/detail/invalid",
-		expect: errNotFound,
-	},
-	{
-		method: "POST",
-		url:    "/servers/detail",
-		expect: errNotFound,
-	},
-	{
-		method: "POST",
-		url:    "/servers/detail/invalid",
-		expect: errNotFound,
-	},
-	{
-		method: "PUT",
-		url:    "/servers/detail",
-		expect: errBadRequest2,
-	},
-	{
-		method: "PUT",
-		url:    "/servers/detail/invalid",
-		expect: errNotFound,
-	},
-	{
-		method: "DELETE",
-		url:    "/servers/detail",
-		expect: errNotFoundJSON,
-	},
-	{
-		method: "DELETE",
-		url:    "/servers/detail/invalid",
-		expect: errNotFound,
-	},
-	{
-		method: "GET",
-		url:    "/os-security-groups/invalid",
-		expect: errBadRequestSG,
-	},
-	{
-		method: "GET",
-		url:    "/os-security-groups/42",
-		expect: errNotFoundJSONSG,
-	},
-	{
-		method: "POST",
-		url:    "/os-security-groups",
-		expect: errBadRequest2,
-	},
-	{
-		method: "POST",
-		url:    "/os-security-groups/invalid",
-		expect: errNotFound,
-	},
-	{
-		method: "PUT",
-		url:    "/os-security-groups",
-		expect: errNotFound,
-	},
-	{
-		method: "PUT",
-		url:    "/os-security-groups/invalid",
-		expect: errNotFoundJSON,
-	},
-	{
-		method: "DELETE",
-		url:    "/os-security-groups",
-		expect: errNotFound,
-	},
-	{
-		method: "DELETE",
-		url:    "/os-security-groups/invalid",
-		expect: errBadRequestSG,
-	},
-	{
-		method: "DELETE",
-		url:    "/os-security-groups/42",
-		expect: errNotFoundJSONSG,
-	},
-	{
-		method: "GET",
-		url:    "/os-security-group-rules",
-		expect: errNotFoundJSON,
-	},
-	{
-		method: "GET",
-		url:    "/os-security-group-rules/invalid",
-		expect: errNotFoundJSON,
-	},
-	{
-		method: "GET",
-		url:    "/os-security-group-rules/42",
-		expect: errNotFoundJSON,
-	},
-	{
-		method: "POST",
-		url:    "/os-security-group-rules",
-		expect: errBadRequest2,
-	},
-	{
-		method: "POST",
-		url:    "/os-security-group-rules/invalid",
-		expect: errNotFound,
-	},
-	{
-		method: "PUT",
-		url:    "/os-security-group-rules",
-		expect: errNotFound,
-	},
-	{
-		method: "PUT",
-		url:    "/os-security-group-rules/invalid",
-		expect: errNotFoundJSON,
-	},
-	{
-		method: "DELETE",
-		url:    "/os-security-group-rules",
-		expect: errNotFound,
-	},
-	{
-		method: "DELETE",
-		url:    "/os-security-group-rules/invalid",
-		expect: errBadRequestSG, // sic; should've been rule-specific
-	},
-	{
-		method: "DELETE",
-		url:    "/os-security-group-rules/42",
-		expect: errNotFoundJSONSGR,
-	},
-	{
-		method: "GET",
-		url:    "/os-floating-ips/42",
-		expect: errNotFoundJSON,
-	},
-	{
-		method: "POST",
-		url:    "/os-floating-ips/invalid",
-		expect: errNotFound,
-	},
-	{
-		method: "PUT",
-		url:    "/os-floating-ips",
-		expect: errNotFound,
-	},
-	{
-		method: "PUT",
-		url:    "/os-floating-ips/invalid",
-		expect: errNotFoundJSON,
-	},
-	{
-		method: "DELETE",
-		url:    "/os-floating-ips",
-		expect: errNotFound,
-	},
-	{
-		method: "DELETE",
-		url:    "/os-floating-ips/invalid",
-		expect: errNotFoundJSON,
-	},
+}
+
+func (s *NovaHTTPSuite) simpleTests() []SimpleTest {
+	var simpleTests = []SimpleTest{
+		{
+			unauth:  true,
+			method:  "GET",
+			url:     "/any",
+			headers: make(http.Header),
+			expect:  errUnauthorized,
+		},
+		{
+			unauth:  true,
+			method:  "POST",
+			url:     "/any",
+			headers: setHeader(authToken, "phony"),
+			expect:  errUnauthorized,
+		},
+		{
+			unauth:  true,
+			method:  "GET",
+			url:     "/",
+			headers: setHeader(authToken, s.token),
+			expect:  errNoVersion,
+		},
+		{
+			unauth:  true,
+			method:  "GET",
+			url:     "/any",
+			headers: setHeader(authToken, s.token),
+			expect:  errMultipleChoices,
+		},
+		{
+			unauth:  true,
+			method:  "POST",
+			url:     "/any/unknown/one",
+			headers: setHeader(authToken, s.token),
+			expect:  errMultipleChoices,
+		},
+		{
+			method: "POST",
+			url:    "/any/unknown/one",
+			expect: errNotFound,
+		},
+		{
+			unauth:  true,
+			method:  "GET",
+			url:     versionPath + "/phony_token",
+			headers: setHeader(authToken, s.token),
+			expect:  errBadRequest,
+		},
+		{
+			method: "GET",
+			url:    "/flavors/",
+			expect: errNotFound,
+		},
+		{
+			method: "GET",
+			url:    "/flavors/invalid",
+			expect: errNotFound,
+		},
+		{
+			method: "POST",
+			url:    "/flavors",
+			expect: errBadRequest2,
+		},
+		{
+			method: "POST",
+			url:    "/flavors/invalid",
+			expect: errNotFound,
+		},
+		{
+			method: "PUT",
+			url:    "/flavors",
+			expect: errNotFound,
+		},
+		{
+			method: "PUT",
+			url:    "/flavors/invalid",
+			expect: errNotFoundJSON,
+		},
+		{
+			method: "DELETE",
+			url:    "/flavors",
+			expect: errNotFound,
+		},
+		{
+			method: "DELETE",
+			url:    "/flavors/invalid",
+			expect: errForbidden,
+		},
+		{
+			method: "GET",
+			url:    "/flavors/detail/invalid",
+			expect: errNotFound,
+		},
+		{
+			method: "POST",
+			url:    "/flavors/detail",
+			expect: errNotFound,
+		},
+		{
+			method: "POST",
+			url:    "/flavors/detail/invalid",
+			expect: errNotFound,
+		},
+		{
+			method: "PUT",
+			url:    "/flavors/detail",
+			expect: errNotFoundJSON,
+		},
+		{
+			method: "PUT",
+			url:    "/flavors/detail/invalid",
+			expect: errNotFound,
+		},
+		{
+			method: "DELETE",
+			url:    "/flavors/detail",
+			expect: errForbidden,
+		},
+		{
+			method: "DELETE",
+			url:    "/flavors/detail/invalid",
+			expect: errNotFound,
+		},
+		{
+			method: "GET",
+			url:    "/servers/invalid",
+			expect: errNotFoundJSON,
+		},
+		{
+			method: "POST",
+			url:    "/servers",
+			expect: errBadRequest2,
+		},
+		{
+			method: "POST",
+			url:    "/servers/invalid",
+			expect: errNotFound,
+		},
+		{
+			method: "PUT",
+			url:    "/servers",
+			expect: errNotFound,
+		},
+		{
+			method: "PUT",
+			url:    "/servers/invalid",
+			expect: errBadRequest2,
+		},
+		{
+			method: "DELETE",
+			url:    "/servers",
+			expect: errNotFound,
+		},
+		{
+			method: "DELETE",
+			url:    "/servers/invalid",
+			expect: errNotFoundJSON,
+		},
+		{
+			method: "GET",
+			url:    "/servers/detail/invalid",
+			expect: errNotFound,
+		},
+		{
+			method: "POST",
+			url:    "/servers/detail",
+			expect: errNotFound,
+		},
+		{
+			method: "POST",
+			url:    "/servers/detail/invalid",
+			expect: errNotFound,
+		},
+		{
+			method: "PUT",
+			url:    "/servers/detail",
+			expect: errBadRequest2,
+		},
+		{
+			method: "PUT",
+			url:    "/servers/detail/invalid",
+			expect: errNotFound,
+		},
+		{
+			method: "DELETE",
+			url:    "/servers/detail",
+			expect: errNotFoundJSON,
+		},
+		{
+			method: "DELETE",
+			url:    "/servers/detail/invalid",
+			expect: errNotFound,
+		},
+		{
+			method: "GET",
+			url:    "/os-security-groups/invalid",
+			expect: errBadRequestSG,
+		},
+		{
+			method: "GET",
+			url:    "/os-security-groups/42",
+			expect: errNotFoundJSONSG,
+		},
+		{
+			method: "POST",
+			url:    "/os-security-groups",
+			expect: errBadRequest2,
+		},
+		{
+			method: "POST",
+			url:    "/os-security-groups/invalid",
+			expect: errNotFound,
+		},
+		{
+			method: "PUT",
+			url:    "/os-security-groups",
+			expect: errNotFound,
+		},
+		{
+			method: "PUT",
+			url:    "/os-security-groups/invalid",
+			expect: errNotFoundJSON,
+		},
+		{
+			method: "DELETE",
+			url:    "/os-security-groups",
+			expect: errNotFound,
+		},
+		{
+			method: "DELETE",
+			url:    "/os-security-groups/invalid",
+			expect: errBadRequestSG,
+		},
+		{
+			method: "DELETE",
+			url:    "/os-security-groups/42",
+			expect: errNotFoundJSONSG,
+		},
+		{
+			method: "GET",
+			url:    "/os-security-group-rules",
+			expect: errNotFoundJSON,
+		},
+		{
+			method: "GET",
+			url:    "/os-security-group-rules/invalid",
+			expect: errNotFoundJSON,
+		},
+		{
+			method: "GET",
+			url:    "/os-security-group-rules/42",
+			expect: errNotFoundJSON,
+		},
+		{
+			method: "POST",
+			url:    "/os-security-group-rules",
+			expect: errBadRequest2,
+		},
+		{
+			method: "POST",
+			url:    "/os-security-group-rules/invalid",
+			expect: errNotFound,
+		},
+		{
+			method: "PUT",
+			url:    "/os-security-group-rules",
+			expect: errNotFound,
+		},
+		{
+			method: "PUT",
+			url:    "/os-security-group-rules/invalid",
+			expect: errNotFoundJSON,
+		},
+		{
+			method: "DELETE",
+			url:    "/os-security-group-rules",
+			expect: errNotFound,
+		},
+		{
+			method: "DELETE",
+			url:    "/os-security-group-rules/invalid",
+			expect: errBadRequestSG, // sic; should've been rule-specific
+		},
+		{
+			method: "DELETE",
+			url:    "/os-security-group-rules/42",
+			expect: errNotFoundJSONSGR,
+		},
+		{
+			method: "GET",
+			url:    "/os-floating-ips/42",
+			expect: errNotFoundJSON,
+		},
+		{
+			method: "POST",
+			url:    "/os-floating-ips/invalid",
+			expect: errNotFound,
+		},
+		{
+			method: "PUT",
+			url:    "/os-floating-ips",
+			expect: errNotFound,
+		},
+		{
+			method: "PUT",
+			url:    "/os-floating-ips/invalid",
+			expect: errNotFoundJSON,
+		},
+		{
+			method: "DELETE",
+			url:    "/os-floating-ips",
+			expect: errNotFound,
+		},
+		{
+			method: "DELETE",
+			url:    "/os-floating-ips/invalid",
+			expect: errNotFoundJSON,
+		},
+	}
+	return simpleTests
 }
 
 func (s *NovaHTTPSuite) TestSimpleRequestTests(c *C) {
+	simpleTests := s.simpleTests()
 	for i, t := range simpleTests {
 		c.Logf("#%d. %s %s -> %d", i, t.method, t.url, t.expect.code)
 		if t.headers == nil {
 			t.headers = make(http.Header)
-			t.headers.Set(authToken, s.service.token)
+			t.headers.Set(authToken, s.token)
 		}
 		var (
 			resp *http.Response
@@ -778,13 +789,13 @@ func (s *NovaHTTPSuite) TestGetSecurityGroups(c *C) {
 		{
 			Id:       1,
 			Name:     "group 1",
-			TenantId: s.service.tenantId,
+			TenantId: s.service.TenantId,
 			Rules:    []nova.SecurityGroupRule{},
 		},
 		{
 			Id:       2,
 			Name:     "group 2",
-			TenantId: s.service.tenantId,
+			TenantId: s.service.TenantId,
 			Rules:    []nova.SecurityGroupRule{},
 		},
 	}
@@ -814,7 +825,7 @@ func (s *NovaHTTPSuite) TestAddSecurityGroup(c *C) {
 		Id:          1,
 		Name:        "group 1",
 		Description: "desc",
-		TenantId:    s.service.tenantId,
+		TenantId:    s.service.TenantId,
 		Rules:       []nova.SecurityGroupRule{},
 	}
 	_, err := s.service.securityGroup(group.Id)
@@ -888,7 +899,7 @@ func (s *NovaHTTPSuite) TestAddSecurityGroupRule(c *C) {
 		ParentGroupId: group2.Id,
 		Group: nova.SecurityGroupRef{
 			Name:     group1.Name,
-			TenantId: s.service.tenantId,
+			TenantId: s.service.TenantId,
 		},
 	}
 	ok := s.service.hasSecurityGroupRule(group1.Id, rule1.Id)
@@ -988,13 +999,13 @@ func (s *NovaHTTPSuite) TestGetServerSecurityGroups(c *C) {
 		{
 			Id:       1,
 			Name:     "group1",
-			TenantId: s.service.tenantId,
+			TenantId: s.service.TenantId,
 			Rules:    []nova.SecurityGroupRule{},
 		},
 		{
 			Id:       2,
 			Name:     "group2",
-			TenantId: s.service.tenantId,
+			TenantId: s.service.TenantId,
 			Rules:    []nova.SecurityGroupRule{},
 		},
 	}

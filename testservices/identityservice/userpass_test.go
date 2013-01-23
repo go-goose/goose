@@ -16,30 +16,30 @@ type UserPassSuite struct {
 
 var _ = Suite(&UserPassSuite{})
 
-func makeUserPass(user, secret string) (identity *UserPass, token string) {
+func makeUserPass(user, secret string) (identity *UserPass) {
 	identity = NewUserPass()
 	// Ensure that it conforms to the interface
 	var _ IdentityService = identity
 	if user != "" {
-		token = identity.AddUser(user, secret)
+		identity.AddUser(user, secret)
 	}
 	return
 }
 
-func (s *UserPassSuite) setupUserPass(user, secret string) (token string) {
+func (s *UserPassSuite) setupUserPass(user, secret string) {
 	var identity *UserPass
-	identity, token = makeUserPass(user, secret)
-	s.Mux.Handle("/", identity)
+	identity = makeUserPass(user, secret)
+	identity.SetupHTTP(s.Mux)
 	return
 }
 
-func (s *UserPassSuite) setupUserPassWithServices(user, secret string, services []Service) (token string) {
+func (s *UserPassSuite) setupUserPassWithServices(user, secret string, services []Service) {
 	var identity *UserPass
-	identity, token = makeUserPass(user, secret)
+	identity = makeUserPass(user, secret)
 	for _, service := range services {
 		identity.addService(service)
 	}
-	s.Mux.Handle("/", identity)
+	identity.SetupHTTP(s.Mux)
 	return
 }
 
@@ -56,7 +56,7 @@ var authTemplate = `{
 func userPassAuthRequest(URL, user, key string) (*http.Response, error) {
 	client := &http.Client{}
 	body := strings.NewReader(fmt.Sprintf(authTemplate, user, key))
-	request, err := http.NewRequest("POST", URL, body)
+	request, err := http.NewRequest("POST", URL+"/tokens", body)
 	request.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		return nil, err
@@ -81,11 +81,10 @@ func CheckErrorResponse(c *C, r *http.Response, status int, msg string) {
 
 func (s *UserPassSuite) TestNotJSON(c *C) {
 	// We do everything in userPassAuthRequest, except set the Content-Type
-	token := s.setupUserPass("user", "secret")
-	c.Assert(token, NotNil)
+	s.setupUserPass("user", "secret")
 	client := &http.Client{}
 	body := strings.NewReader(fmt.Sprintf(authTemplate, "user", "secret"))
-	request, err := http.NewRequest("POST", s.Server.URL, body)
+	request, err := http.NewRequest("POST", s.Server.URL+"/tokens", body)
 	c.Assert(err, IsNil)
 	res, err := client.Do(request)
 	defer res.Body.Close()
@@ -95,8 +94,7 @@ func (s *UserPassSuite) TestNotJSON(c *C) {
 
 func (s *UserPassSuite) TestBadJSON(c *C) {
 	// We do everything in userPassAuthRequest, except set the Content-Type
-	token := s.setupUserPass("user", "secret")
-	c.Assert(token, NotNil)
+	s.setupUserPass("user", "secret")
 	res, err := userPassAuthRequest(s.Server.URL, "garbage\"in", "secret")
 	defer res.Body.Close()
 	c.Assert(err, IsNil)
@@ -104,8 +102,7 @@ func (s *UserPassSuite) TestBadJSON(c *C) {
 }
 
 func (s *UserPassSuite) TestNoSuchUser(c *C) {
-	token := s.setupUserPass("user", "secret")
-	c.Assert(token, NotNil)
+	s.setupUserPass("user", "secret")
 	res, err := userPassAuthRequest(s.Server.URL, "not-user", "secret")
 	defer res.Body.Close()
 	c.Assert(err, IsNil)
@@ -113,8 +110,7 @@ func (s *UserPassSuite) TestNoSuchUser(c *C) {
 }
 
 func (s *UserPassSuite) TestBadPassword(c *C) {
-	token := s.setupUserPass("user", "secret")
-	c.Assert(token, NotNil)
+	s.setupUserPass("user", "secret")
 	res, err := userPassAuthRequest(s.Server.URL, "user", "not-secret")
 	defer res.Body.Close()
 	c.Assert(err, IsNil)
@@ -123,11 +119,10 @@ func (s *UserPassSuite) TestBadPassword(c *C) {
 
 func (s *UserPassSuite) TestValidAuthorization(c *C) {
 	compute_url := "http://testing.invalid/compute"
-	token := s.setupUserPassWithServices("user", "secret", []Service{
+	s.setupUserPassWithServices("user", "secret", []Service{
 		{"nova", "compute", []Endpoint{
 			{PublicURL: compute_url},
 		}}})
-	c.Assert(token, NotNil)
 	res, err := userPassAuthRequest(s.Server.URL, "user", "secret")
 	defer res.Body.Close()
 	c.Assert(err, IsNil)
@@ -138,7 +133,7 @@ func (s *UserPassSuite) TestValidAuthorization(c *C) {
 	var response AccessResponse
 	err = json.Unmarshal(content, &response)
 	c.Assert(err, IsNil)
-	c.Check(response.Access.Token.Id, Equals, token)
+	c.Check(response.Access.Token.Id, NotNil)
 	novaURL := ""
 	for _, service := range response.Access.ServiceCatalog {
 		if service.Type == "compute" {

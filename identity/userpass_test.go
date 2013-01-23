@@ -14,12 +14,12 @@ var _ = Suite(&UserPassTestSuite{})
 
 func (s *UserPassTestSuite) TestAuthAgainstServer(c *C) {
 	service := identityservice.NewUserPass()
-	s.Mux.Handle("/", service)
-	token := service.AddUser("joe-user", "secrets")
+	service.SetupHTTP(s.Mux)
+	userInfo := service.AddUser("joe-user", "secrets")
 	var l Authenticator = &UserPass{}
-	creds := Credentials{User: "joe-user", URL: s.Server.URL, Secrets: "secrets"}
+	creds := Credentials{User: "joe-user", URL: s.Server.URL + "/tokens", Secrets: "secrets"}
 	auth, err := l.Auth(&creds)
 	c.Assert(err, IsNil)
-	c.Assert(auth.Token, Equals, token)
-	// c.Assert(auth.ServiceURLs, DeepEquals, map[string]string{"compute": "http://management.test.invalid/url"})
+	c.Assert(auth.Token, Equals, userInfo.Token)
+	c.Assert(auth.TenantId, Equals, userInfo.TenantId)
 }

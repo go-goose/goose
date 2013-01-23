@@ -5,9 +5,7 @@ import (
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/testing/httpsuite"
 	"launchpad.net/goose/testservices/identityservice"
-	"launchpad.net/goose/testservices/novaservice"
-	"launchpad.net/goose/testservices/swiftservice"
-	"net/http"
+	"launchpad.net/goose/testservices/openstack"
 )
 
 func registerLocalTests(authMethods []identity.AuthMethod) {
@@ -26,7 +24,7 @@ type localLiveSuite struct {
 	LiveTests
 	// The following attributes are for using testing doubles.
 	httpsuite.HTTPSuite
-	identityDouble http.Handler
+	service identityservice.HttpService
 }
 
 func (s *localLiveSuite) SetUpSuite(c *C) {
@@ -41,17 +39,13 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 	default:
 		panic("Invalid authentication method")
 	case identity.AuthUserPass:
-		s.identityDouble = identityservice.NewUserPass()
-		s.identityDouble.(*identityservice.UserPass).AddUser(s.cred.User, s.cred.Secrets)
-		swiftService := swiftservice.New(s.Server.URL, "token", s.LiveTests.cred.Region)
-		s.identityDouble.(*identityservice.UserPass).RegisterService("swift", "object-store", swiftService)
-		novaService := novaservice.New(s.Server.URL, "V1", "token", "1", s.LiveTests.cred.Region)
-		s.identityDouble.(*identityservice.UserPass).RegisterService("nova", "compute", novaService)
+		// The openstack test service sets up userpass authentication.
+		s.service = openstack.New(s.Server.URL, s.cred.User, s.cred.Secrets, s.LiveTests.cred.Region)
 	case identity.AuthLegacy:
-		s.identityDouble = identityservice.NewLegacy()
-		var legacy = s.identityDouble.(*identityservice.Legacy)
+		legacy := identityservice.NewLegacy()
 		legacy.AddUser(s.cred.User, s.cred.Secrets)
 		legacy.SetManagementURL("http://management.test.invalid/url")
+		s.service = legacy
 	}
 	s.LiveTests.SetUpSuite(c)
 }
@@ -63,7 +57,7 @@ func (s *localLiveSuite) TearDownSuite(c *C) {
 
 func (s *localLiveSuite) SetUpTest(c *C) {
 	s.HTTPSuite.SetUpTest(c)
-	s.Mux.Handle("/", s.identityDouble)
+	s.service.SetupHTTP(s.Mux)
 	s.LiveTests.SetUpTest(c)
 }
 

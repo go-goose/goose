@@ -17,7 +17,7 @@ var _ = Suite(&IdentityServiceSuite{service: NewUserPass()})
 var _ = Suite(&IdentityServiceSuite{service: NewLegacy()})
 
 func (s *IdentityServiceSuite) TestAddUserGivesNewToken(c *C) {
-	token1 := s.service.AddUser("user-1", "password-1")
-	token2 := s.service.AddUser("user-2", "password-2")
-	c.Assert(token1, Not(Equals), token2)
+	userInfo1 := s.service.AddUser("user-1", "password-1")
+	userInfo2 := s.service.AddUser("user-2", "password-2")
+	c.Assert(userInfo1.Token, Not(Equals), userInfo2.Token)
 }

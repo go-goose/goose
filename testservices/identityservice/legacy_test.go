@@ -19,9 +19,10 @@ func (s *LegacySuite) setupLegacy(user, secret string) (token, managementURL str
 	// Ensure that it conforms to the interface
 	var _ IdentityService = identity
 	identity.SetManagementURL(managementURL)
-	s.Mux.Handle("/", identity)
+	identity.SetupHTTP(s.Mux)
 	if user != "" {
-		token = identity.AddUser(user, secret)
+		userInfo := identity.AddUser(user, secret)
+		token = userInfo.Token
 	}
 	return
 }

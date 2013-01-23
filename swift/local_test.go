@@ -4,8 +4,7 @@ import (
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/testing/httpsuite"
-	"launchpad.net/goose/testservices/identityservice"
-	"launchpad.net/goose/testservices/swiftservice"
+	"launchpad.net/goose/testservices/openstack"
 )
 
 func registerLocalTests() {
@@ -19,24 +18,20 @@ type localLiveSuite struct {
 	LiveTestsPublicContainer
 	// The following attributes are for using testing doubles.
 	httpsuite.HTTPSuite
-	identityDouble *identityservice.UserPass
-	swiftDouble    *swiftservice.Swift
+	openstack *openstack.Openstack
 }
 
 func (s *localLiveSuite) SetUpSuite(c *C) {
 	c.Logf("Using identity and swift service test doubles")
 	s.HTTPSuite.SetUpSuite(c)
+	// Set up an Openstack service.
 	s.LiveTests.cred = &identity.Credentials{
 		URL:     s.Server.URL,
 		User:    "fred",
 		Secrets: "secret",
 		Region:  "some region"}
 	s.LiveTestsPublicContainer.cred = s.LiveTests.cred
-	// Create an identity service and register a Swift endpoint.
-	s.identityDouble = identityservice.NewUserPass()
-	token := s.identityDouble.AddUser(s.LiveTests.cred.User, s.LiveTests.cred.Secrets)
-	s.swiftDouble = swiftservice.New(s.Server.URL, token, s.LiveTests.cred.Region)
-	s.identityDouble.RegisterService("swift", "object-store", s.swiftDouble)
+	s.openstack = openstack.New(s.Server.URL, s.LiveTests.cred.User, s.LiveTests.cred.Secrets, s.LiveTests.cred.Region)
 
 	s.LiveTests.SetUpSuite(c)
 	s.LiveTestsPublicContainer.SetUpSuite(c)
@@ -50,8 +45,7 @@ func (s *localLiveSuite) TearDownSuite(c *C) {
 
 func (s *localLiveSuite) SetUpTest(c *C) {
 	s.HTTPSuite.SetUpTest(c)
-	s.swiftDouble.SetupHTTP(s.Mux)
-	s.identityDouble.SetupHTTP(s.Mux)
+	s.openstack.SetupHTTP(s.Mux)
 	s.LiveTests.SetUpTest(c)
 	s.LiveTestsPublicContainer.SetUpTest(c)
 }

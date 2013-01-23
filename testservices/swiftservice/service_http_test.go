@@ -9,19 +9,24 @@ import (
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/swift"
 	"launchpad.net/goose/testing/httpsuite"
+	"launchpad.net/goose/testservices/identityservice"
 	"net/http"
 )
 
 type SwiftHTTPSuite struct {
 	httpsuite.HTTPSuite
 	service *Swift
+	token   string
 }
 
 var _ = Suite(&SwiftHTTPSuite{})
 
 func (s *SwiftHTTPSuite) SetUpSuite(c *C) {
 	s.HTTPSuite.SetUpSuite(c)
-	s.service = New(s.Server.URL, token, region)
+	identityDouble := identityservice.NewUserPass()
+	s.service = New(s.Server.URL, versionPath, tenantId, region, identityDouble)
+	userInfo := identityDouble.AddUser("fred", "secret")
+	s.token = userInfo.Token
 }
 
 func (s *SwiftHTTPSuite) SetUpTest(c *C) {
@@ -41,15 +46,15 @@ func (s *SwiftHTTPSuite) sendRequest(c *C, method, path string, body []byte,
 	expectedStatusCode int) (resp *http.Response) {
 	var req *http.Request
 	var err error
-	url := s.Server.URL + baseURL + "/" + path
+	url := s.service.endpointURL(path)
 	if body != nil {
 		req, err = http.NewRequest(method, url, bytes.NewBuffer(body))
 	} else {
 		req, err = http.NewRequest(method, url, nil)
 	}
 	c.Assert(err, IsNil)
-	if token != "" {
-		req.Header.Add("X-Auth-Token", token)
+	if s.token != "" {
+		req.Header.Add("X-Auth-Token", s.token)
 	}
 	client := &http.Client{}
 	resp, err = client.Do(req)
@@ -250,16 +255,16 @@ func (s *SwiftHTTPSuite) TestDELETEObjectExistsNoContent(c *C) {
 }
 
 func (s *SwiftHTTPSuite) TestUnauthorizedFails(c *C) {
-	oldtoken := token
+	oldtoken := s.token
 	defer func() {
-		token = oldtoken
+		s.token = oldtoken
 	}()
 	// TODO(wallyworld) - until ACLs are supported, empty tokens are assumed to be used when
 	// we need to access a public container.
 	// token = ""
 	// s.sendRequest(c, "GET", "test", nil, http.StatusUnauthorized)
 
-	token = "invalid"
+	s.token = "invalid"
 	s.sendRequest(c, "PUT", "test", nil, http.StatusUnauthorized)
 
 	s.sendRequest(c, "DELETE", "test", nil, http.StatusUnauthorized)

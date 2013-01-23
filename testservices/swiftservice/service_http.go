@@ -4,6 +4,7 @@ package swiftservice
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -143,16 +144,15 @@ func (s *Swift) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// For public containers, the token is not required to access the files. For now, if the request
 	// does not provide a token, we will let it through and assume a public container is being accessed.
 	token := r.Header.Get("X-Auth-Token")
-	if token != "" && token != s.token {
+	_, err := s.IdentityService.FindUser(token)
+	if token != "" && err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	path := strings.TrimRight(r.URL.Path, "/")
-	if path[:len(baseURL)] == baseURL {
-		path = path[len(baseURL):]
-	}
 	path = strings.Trim(path, "/")
-	parts := strings.SplitN(path, "/", 2)
+	parts := strings.SplitN(path, "/", 4)
+	parts = parts[2:]
 	if len(parts) == 1 {
 		container := parts[0]
 		s.handleContainers(container, w, r)
@@ -167,5 +167,6 @@ func (s *Swift) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // setupHTTP attaches all the needed handlers to provide the HTTP API.
 func (s *Swift) SetupHTTP(mux *http.ServeMux) {
-	mux.Handle(baseURL+"/", s)
+	path := fmt.Sprintf("/%s/%s/", s.VersionPath, s.TenantId)
+	mux.Handle(path, s)
 }

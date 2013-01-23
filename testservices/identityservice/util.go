@@ -7,8 +7,10 @@ import (
 )
 
 type UserInfo struct {
-	secret string
-	token  string
+	Id       string
+	TenantId string
+	Token    string
+	secret   string
 }
 
 // Generate a bit of random hex data for

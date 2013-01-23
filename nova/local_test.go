@@ -7,8 +7,7 @@ import (
 	"launchpad.net/goose/errors"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/nova"
-	"launchpad.net/goose/testservices/identityservice"
-	"launchpad.net/goose/testservices/novaservice"
+	"launchpad.net/goose/testservices/openstack"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -24,11 +23,9 @@ func registerLocalTests() {
 type localLiveSuite struct {
 	LiveTests
 	// The following attributes are for using testing doubles.
-	Server         *httptest.Server
-	Mux            *http.ServeMux
-	oldHandler     http.Handler
-	identityDouble *identityservice.UserPass
-	novaDouble     *novaservice.Nova
+	Server     *httptest.Server
+	Mux        *http.ServeMux
+	oldHandler http.Handler
 }
 
 func (s *localLiveSuite) SetUpSuite(c *C) {
@@ -40,21 +37,14 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 	s.Mux = http.NewServeMux()
 	s.Server.Config.Handler = s.Mux
 
+	// Set up an Openstack service.
 	s.cred = &identity.Credentials{
 		URL:     s.Server.URL,
 		User:    "fred",
 		Secrets: "secret",
 		Region:  "some region"}
-	// Create an identity service and register a Nova endpoint.
-	s.identityDouble = identityservice.NewUserPass()
-	token := s.identityDouble.AddUser(s.cred.User, s.cred.Secrets)
-	s.identityDouble.SetupHTTP(s.Mux)
-
-	// TODO: identityservice.UserPass always uses tenantId="1", patch this
-	//	 when that changes.
-	s.novaDouble = novaservice.New(s.Server.URL, "V1", token, "1", s.cred.Region)
-	s.identityDouble.RegisterService("nova", "compute", s.novaDouble)
-	s.novaDouble.SetupHTTP(s.Mux)
+	openstack := openstack.New(s.Server.URL, s.cred.User, s.cred.Secrets, s.LiveTests.cred.Region)
+	openstack.SetupHTTP(s.Mux)
 
 	s.LiveTests.SetUpSuite(c)
 }
