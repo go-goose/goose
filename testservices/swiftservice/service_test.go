@@ -3,21 +3,23 @@
 package swiftservice
 
 import (
+	"fmt"
 	. "launchpad.net/gocheck"
 )
 
 type SwiftServiceSuite struct {
-	service SwiftService
+	service *Swift
 }
 
-var baseURL = "/v1/AUTH_tenant/"
-var token = "token"
-var hostname = "localhost" // not really used here
+var region = "region"             // not really used here
+var hostname = "http://localhost" // not really used here
+var versionPath = "v2"            // not really used here
+var tenantId = "tenant"           // not really used here
 
 var _ = Suite(&SwiftServiceSuite{})
 
 func (s *SwiftServiceSuite) SetUpSuite(c *C) {
-	s.service = New(hostname, baseURL, token)
+	s.service = New(hostname, versionPath, tenantId, region, nil)
 }
 
 func (s *SwiftServiceSuite) TestAddHasRemoveContainer(c *C) {
@@ -76,9 +78,8 @@ func (s *SwiftServiceSuite) TestGetURL(c *C) {
 	err = s.service.AddObject("test", "obj", data)
 	c.Assert(err, IsNil)
 	url, err := s.service.GetURL("test", "obj")
-	path := baseURL + "test/obj"
 	c.Assert(err, IsNil)
-	c.Assert(url, Equals, hostname+path)
+	c.Assert(url, Equals, fmt.Sprintf("%s/%s/%s/test/obj", hostname, versionPath, tenantId))
 	err = s.service.RemoveContainer("test")
 	c.Assert(err, IsNil)
 	ok = s.service.HasContainer("test")

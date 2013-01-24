@@ -5,12 +5,19 @@ package novaservice
 import (
 	"fmt"
 	"launchpad.net/goose/nova"
+	"launchpad.net/goose/testservices"
+	"launchpad.net/goose/testservices/identityservice"
+	"net/url"
 	"strings"
 )
+
+var _ testservices.HttpService = (*Nova)(nil)
+var _ identityservice.ServiceProvider = (*Nova)(nil)
 
 // Nova implements a OpenStack Nova testing service and
 // contains the service double's internal state.
 type Nova struct {
+	testservices.ServiceInstance
 	flavors                   map[string]nova.FlavorDetail
 	servers                   map[string]nova.ServerDetail
 	groups                    map[int]nova.SecurityGroup
@@ -18,11 +25,6 @@ type Nova struct {
 	floatingIPs               map[int]nova.FloatingIP
 	serverGroups              map[string][]int
 	serverIPs                 map[string][]int
-	hostname                  string
-	versionPath               string
-	token                     string
-	tenantId                  string
-	userId                    string
 	nextGroupId               int
 	nextRuleId                int
 	nextIPId                  int
@@ -31,17 +33,35 @@ type Nova struct {
 
 // endpoint returns either a versioned or non-versioned service
 // endpoint URL from the given path.
-func (n *Nova) endpoint(version bool, path string) string {
-	ep := "http://" + n.hostname
+func (n *Nova) endpointURL(version bool, path string) string {
+	ep := "http://" + n.Hostname
 	if version {
-		ep += n.versionPath + "/"
+		ep += n.VersionPath + "/"
 	}
-	ep += n.tenantId + "/" + strings.TrimLeft(path, "/")
+	ep += n.TenantId
+	if path != "" {
+		ep += "/" + strings.TrimLeft(path, "/")
+	}
 	return ep
 }
 
+func (n *Nova) Endpoints() []identityservice.Endpoint {
+	ep := identityservice.Endpoint{
+		AdminURL:    n.endpointURL(true, ""),
+		InternalURL: n.endpointURL(true, ""),
+		PublicURL:   n.endpointURL(true, ""),
+		Region:      n.Region,
+	}
+	return []identityservice.Endpoint{ep}
+}
+
 // New creates an instance of the Nova object, given the parameters.
-func New(hostname, versionPath, token, tenantId string) *Nova {
+func New(hostURL, versionPath, tenantId, region string, identityService identityservice.IdentityService) *Nova {
+	url, err := url.Parse(hostURL)
+	if err != nil {
+		panic(err)
+	}
+	hostname := url.Host
 	if !strings.HasSuffix(hostname, "/") {
 		hostname += "/"
 	}
@@ -62,17 +82,19 @@ func New(hostname, versionPath, token, tenantId string) *Nova {
 		floatingIPs:  make(map[int]nova.FloatingIP),
 		serverGroups: make(map[string][]int),
 		serverIPs:    make(map[string][]int),
-		hostname:     hostname,
-		versionPath:  versionPath,
-		token:        token,
-		tenantId:     tenantId,
-		// TODO(wallyworld): Identity service double currently hard codes all user ids to "14". This should be fixed
-		// in the identity service but the fix will result in an API change which will break juju-core. So for now
-		// we will also hard code it here too.
-		userId: "14",
 		// The following attribute controls whether rate limit responses are sent back to the caller.
 		// This is switched off when we want to ensure the client eventually gets a proper response.
 		sendFakeRateLimitResponse: true,
+		ServiceInstance: testservices.ServiceInstance{
+			IdentityService: identityService,
+			Hostname:        hostname,
+			VersionPath:     versionPath,
+			TenantId:        tenantId,
+			Region:          region,
+		},
+	}
+	if identityService != nil {
+		identityService.RegisterServiceProvider("nova", "compute", nova)
 	}
 	for i, flavor := range defaultFlavors {
 		nova.buildFlavorLinks(&flavor)
@@ -97,8 +119,8 @@ func New(hostname, versionPath, token, tenantId string) *Nova {
 func (n *Nova) buildFlavorLinks(flavor *nova.FlavorDetail) {
 	url := "/flavors/" + flavor.Id
 	flavor.Links = []nova.Link{
-		nova.Link{Href: n.endpoint(true, url), Rel: "self"},
-		nova.Link{Href: n.endpoint(false, url), Rel: "bookmark"},
+		nova.Link{Href: n.endpointURL(true, url), Rel: "self"},
+		nova.Link{Href: n.endpointURL(false, url), Rel: "bookmark"},
 	}
 }
 
@@ -170,8 +192,8 @@ func (n *Nova) removeFlavor(flavorId string) error {
 func (n *Nova) buildServerLinks(server *nova.ServerDetail) {
 	url := "/servers/" + server.Id
 	server.Links = []nova.Link{
-		nova.Link{Href: n.endpoint(true, url), Rel: "self"},
-		nova.Link{Href: n.endpoint(false, url), Rel: "bookmark"},
+		nova.Link{Href: n.endpointURL(true, url), Rel: "self"},
+		nova.Link{Href: n.endpointURL(false, url), Rel: "bookmark"},
 	}
 }
 
@@ -280,7 +302,7 @@ func (n *Nova) addSecurityGroup(group nova.SecurityGroup) error {
 	if _, err := n.securityGroup(group.Id); err == nil {
 		return fmt.Errorf("a security group with id %d already exists", group.Id)
 	}
-	group.TenantId = n.tenantId
+	group.TenantId = n.TenantId
 	if group.Rules == nil {
 		group.Rules = []nova.SecurityGroupRule{}
 	}

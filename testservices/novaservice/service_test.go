@@ -14,15 +14,14 @@ type NovaSuite struct {
 
 const (
 	versionPath = "v2"
-	token       = "token"
-	hostname    = "example.com"
-	tenantId    = "tenant_id"
+	hostname    = "http://example.com"
+	region      = "region"
 )
 
 var _ = Suite(&NovaSuite{})
 
 func (s *NovaSuite) SetUpSuite(c *C) {
-	s.service = New(hostname, versionPath, token, tenantId)
+	s.service = New(hostname, versionPath, "tenant", region, nil)
 }
 
 func (s *NovaSuite) ensureNoFlavor(c *C, flavor nova.FlavorDetail) {
@@ -118,8 +117,8 @@ func (s *NovaSuite) TestBuildLinksAndAddFlavor(c *C) {
 	fl, _ := s.service.flavor(flavor.Id)
 	url := "/flavors/" + flavor.Id
 	links := []nova.Link{
-		nova.Link{Href: s.service.endpoint(true, url), Rel: "self"},
-		nova.Link{Href: s.service.endpoint(false, url), Rel: "bookmark"},
+		nova.Link{Href: s.service.endpointURL(true, url), Rel: "self"},
+		nova.Link{Href: s.service.endpointURL(false, url), Rel: "bookmark"},
 	}
 	c.Assert(fl.Links, DeepEquals, links)
 }
@@ -214,8 +213,8 @@ func (s *NovaSuite) TestBuildLinksAndAddServer(c *C) {
 	sr, _ := s.service.server(server.Id)
 	url := "/servers/" + server.Id
 	links := []nova.Link{
-		{Href: s.service.endpoint(true, url), Rel: "self"},
-		{Href: s.service.endpoint(false, url), Rel: "bookmark"},
+		{Href: s.service.endpointURL(true, url), Rel: "self"},
+		{Href: s.service.endpointURL(false, url), Rel: "bookmark"},
 	}
 	c.Assert(sr.Links, DeepEquals, links)
 }
@@ -456,7 +455,7 @@ func (s *NovaSuite) TestAddSecurityGroupWithRules(c *C) {
 	group := nova.SecurityGroup{
 		Id:       1,
 		Name:     "test",
-		TenantId: s.service.tenantId,
+		TenantId: s.service.TenantId,
 		Rules: []nova.SecurityGroupRule{
 			{Id: 10, ParentGroupId: 1},
 			{Id: 20, ParentGroupId: 1},
@@ -492,13 +491,13 @@ func (s *NovaSuite) TestAllSecurityGroups(c *C) {
 		{
 			Id:       1,
 			Name:     "one",
-			TenantId: s.service.tenantId,
+			TenantId: s.service.TenantId,
 			Rules:    []nova.SecurityGroupRule{},
 		},
 		{
 			Id:       2,
 			Name:     "two",
-			TenantId: s.service.tenantId,
+			TenantId: s.service.TenantId,
 			Rules:    []nova.SecurityGroupRule{},
 		},
 	}
@@ -514,7 +513,7 @@ func (s *NovaSuite) TestAllSecurityGroups(c *C) {
 func (s *NovaSuite) TestGetSecurityGroup(c *C) {
 	group := nova.SecurityGroup{
 		Id:          42,
-		TenantId:    s.service.tenantId,
+		TenantId:    s.service.TenantId,
 		Name:        "group",
 		Description: "desc",
 		Rules:       []nova.SecurityGroupRule{},
@@ -529,7 +528,7 @@ func (s *NovaSuite) TestGetSecurityGroupByName(c *C) {
 	group := nova.SecurityGroup{
 		Id:       1,
 		Name:     "test",
-		TenantId: s.service.tenantId,
+		TenantId: s.service.TenantId,
 		Rules:    []nova.SecurityGroupRule{},
 	}
 	s.ensureNoGroup(c, group)
@@ -600,7 +599,7 @@ func (s *NovaSuite) TestAddGetIngressSecurityGroupRule(c *C) {
 }
 
 func (s *NovaSuite) TestAddGetGroupSecurityGroupRule(c *C) {
-	srcGroup := nova.SecurityGroup{Id: 1, Name: "source", TenantId: s.service.tenantId}
+	srcGroup := nova.SecurityGroup{Id: 1, Name: "source", TenantId: s.service.TenantId}
 	tgtGroup := nova.SecurityGroup{Id: 2, Name: "target"}
 	s.createGroup(c, srcGroup)
 	defer s.deleteGroup(c, srcGroup)
@@ -696,7 +695,7 @@ func (s *NovaSuite) TestAddSecurityGroupRuleUpdatesParent(c *C) {
 	group := nova.SecurityGroup{
 		Id:       1,
 		Name:     "test",
-		TenantId: s.service.tenantId,
+		TenantId: s.service.TenantId,
 	}
 	s.createGroup(c, group)
 	defer s.deleteGroup(c, group)
@@ -800,13 +799,13 @@ func (s *NovaSuite) TestAllServerSecurityGroups(c *C) {
 		{
 			Id:       1,
 			Name:     "gr1",
-			TenantId: s.service.tenantId,
+			TenantId: s.service.TenantId,
 			Rules:    []nova.SecurityGroupRule{},
 		},
 		{
 			Id:       2,
 			Name:     "gr2",
-			TenantId: s.service.tenantId,
+			TenantId: s.service.TenantId,
 			Rules:    []nova.SecurityGroupRule{},
 		},
 	}

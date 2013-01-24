@@ -4,18 +4,12 @@ import (
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/testing/httpsuite"
-	"launchpad.net/goose/testservices/identityservice"
-	"launchpad.net/goose/testservices/swiftservice"
-	"net/http"
+	"launchpad.net/goose/testservices/openstack"
 )
 
 func registerLocalTests() {
 	Suite(&localLiveSuite{})
 }
-
-const (
-	baseURL = "/object-store"
-)
 
 // localLiveSuite runs tests from LiveTests using a fake
 // swift server that runs within the test process itself.
@@ -24,32 +18,23 @@ type localLiveSuite struct {
 	LiveTestsPublicContainer
 	// The following attributes are for using testing doubles.
 	httpsuite.HTTPSuite
-	identityDouble http.Handler
-	swiftDouble    http.Handler
+	openstack *openstack.Openstack
 }
 
 func (s *localLiveSuite) SetUpSuite(c *C) {
 	c.Logf("Using identity and swift service test doubles")
 	s.HTTPSuite.SetUpSuite(c)
+	// Set up an Openstack service.
 	s.LiveTests.cred = &identity.Credentials{
-		URL:     s.Server.URL,
-		User:    "fred",
-		Secrets: "secret",
-		Region:  "some region"}
-	s.LiveTestsPublicContainer.cred = s.LiveTests.cred
-	// Create an identity service and register a Swift endpoint.
-	s.identityDouble = identityservice.NewUserPass()
-	token := s.identityDouble.(*identityservice.UserPass).AddUser(s.LiveTests.cred.User, s.LiveTests.cred.Secrets)
-	ep := identityservice.Endpoint{
-		s.Server.URL + baseURL, //admin
-		s.Server.URL + baseURL, //internal
-		s.Server.URL + baseURL, //public
-		s.LiveTests.cred.Region,
+		URL:        s.Server.URL,
+		User:       "fred",
+		Secrets:    "secret",
+		Region:     "some region",
+		TenantName: "tenant",
 	}
-	service := identityservice.Service{"swift", "object-store", []identityservice.Endpoint{ep}}
-	s.identityDouble.(*identityservice.UserPass).AddService(service)
-	// Create a swift service at the registered endpoint.
-	s.swiftDouble = swiftservice.New("localhost", baseURL+"/", token)
+	s.LiveTestsPublicContainer.cred = s.LiveTests.cred
+	s.openstack = openstack.New(s.LiveTests.cred)
+
 	s.LiveTests.SetUpSuite(c)
 	s.LiveTestsPublicContainer.SetUpSuite(c)
 }
@@ -62,8 +47,7 @@ func (s *localLiveSuite) TearDownSuite(c *C) {
 
 func (s *localLiveSuite) SetUpTest(c *C) {
 	s.HTTPSuite.SetUpTest(c)
-	s.Mux.Handle(baseURL+"/", s.swiftDouble)
-	s.Mux.Handle("/", s.identityDouble)
+	s.openstack.SetupHTTP(s.Mux)
 	s.LiveTests.SetUpTest(c)
 	s.LiveTestsPublicContainer.SetUpTest(c)
 }

@@ -15,13 +15,13 @@ var _ = Suite(&LegacyTestSuite{})
 func (s *LegacyTestSuite) TestAuthAgainstServer(c *C) {
 	service := identityservice.NewLegacy()
 	s.Mux.Handle("/", service)
-	token := service.AddUser("joe-user", "secrets")
+	userInfo := service.AddUser("joe-user", "secrets", "tenant")
 	service.SetManagementURL("http://management.test.invalid/url")
 	var l Authenticator = &Legacy{}
 	creds := Credentials{User: "joe-user", URL: s.Server.URL, Secrets: "secrets"}
 	auth, err := l.Auth(&creds)
 	c.Assert(err, IsNil)
-	c.Assert(auth.Token, Equals, token)
+	c.Assert(auth.Token, Equals, userInfo.Token)
 	c.Assert(
 		auth.ServiceURLs, DeepEquals,
 		map[string]string{"compute": "http://management.test.invalid/url/compute", "object-store": "http://management.test.invalid/url/object-store"})
@@ -30,7 +30,7 @@ func (s *LegacyTestSuite) TestAuthAgainstServer(c *C) {
 func (s *LegacyTestSuite) TestBadAuth(c *C) {
 	service := identityservice.NewLegacy()
 	s.Mux.Handle("/", service)
-	_ = service.AddUser("joe-user", "secrets")
+	_ = service.AddUser("joe-user", "secrets", "tenant")
 	var l Authenticator = &Legacy{}
 	creds := Credentials{User: "joe-user", URL: s.Server.URL, Secrets: "bad-secrets"}
 	auth, err := l.Auth(&creds)

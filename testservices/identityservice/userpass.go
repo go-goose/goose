@@ -135,25 +135,25 @@ var exampleResponse = `{
 }`
 
 type UserPass struct {
-	users    map[string]UserInfo
+	Users
 	services []Service
 }
 
 func NewUserPass() *UserPass {
 	userpass := &UserPass{
-		users:    make(map[string]UserInfo),
 		services: make([]Service, 0),
 	}
+	userpass.users = make(map[string]UserInfo)
+	userpass.tenants = make(map[string]string)
 	return userpass
 }
 
-func (u *UserPass) AddUser(user, secret string) string {
-	token := randomHexToken()
-	u.users[user] = UserInfo{secret: secret, token: token}
-	return token
+func (u *UserPass) RegisterServiceProvider(name, serviceType string, serviceProvider ServiceProvider) {
+	service := Service{name, serviceType, serviceProvider.Endpoints()}
+	u.addService(service)
 }
 
-func (u *UserPass) AddService(service Service) {
+func (u *UserPass) addService(service Service) {
 	u.services = append(u.services, service)
 }
 
@@ -189,8 +189,6 @@ const (
 	notJSON = ("Expecting to find application/json in Content-Type header." +
 		" The server could not comply with the request since it is either malformed" +
 		" or otherwise incorrect. The client is assumed to be in error.")
-	notAuthorized = "The request you have made requires authentication."
-	invalidUser   = "Invalid user / password"
 )
 
 func (u *UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -210,13 +208,9 @@ func (u *UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	userInfo, ok := u.users[req.Auth.PasswordCredentials.Username]
-	if !ok {
-		u.ReturnFailure(w, http.StatusUnauthorized, notAuthorized)
-		return
-	}
-	if userInfo.secret != req.Auth.PasswordCredentials.Password {
-		u.ReturnFailure(w, http.StatusUnauthorized, invalidUser)
+	userInfo, errmsg := u.authenticate(req.Auth.PasswordCredentials.Username, req.Auth.PasswordCredentials.Password)
+	if errmsg != "" {
+		u.ReturnFailure(w, http.StatusUnauthorized, errmsg)
 		return
 	}
 	res := AccessResponse{}
@@ -228,7 +222,9 @@ func (u *UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res.Access.ServiceCatalog = u.services
-	res.Access.Token.Id = userInfo.token
+	res.Access.Token.Id = userInfo.Token
+	res.Access.Token.Tenant.Id = userInfo.TenantId
+	res.Access.User.Id = userInfo.Id
 	if content, err := json.Marshal(res); err != nil {
 		u.ReturnFailure(w, http.StatusInternalServerError, err.Error())
 		return
@@ -238,4 +234,9 @@ func (u *UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	panic("All paths should have already returned")
+}
+
+// setupHTTP attaches all the needed handlers to provide the HTTP API.
+func (u *UserPass) SetupHTTP(mux *http.ServeMux) {
+	mux.Handle("/tokens", u)
 }

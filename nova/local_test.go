@@ -7,8 +7,7 @@ import (
 	"launchpad.net/goose/errors"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/nova"
-	"launchpad.net/goose/testservices/identityservice"
-	"launchpad.net/goose/testservices/novaservice"
+	"launchpad.net/goose/testservices/openstack"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -19,20 +18,14 @@ func registerLocalTests() {
 	Suite(&localLiveSuite{})
 }
 
-const (
-	baseNovaURL = "/V1/1"
-)
-
 // localLiveSuite runs tests from LiveTests using a fake
 // nova server that runs within the test process itself.
 type localLiveSuite struct {
 	LiveTests
 	// The following attributes are for using testing doubles.
-	Server         *httptest.Server
-	Mux            *http.ServeMux
-	oldHandler     http.Handler
-	identityDouble *identityservice.UserPass
-	novaDouble     *novaservice.Nova
+	Server     *httptest.Server
+	Mux        *http.ServeMux
+	oldHandler http.Handler
 }
 
 func (s *localLiveSuite) SetUpSuite(c *C) {
@@ -44,29 +37,16 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 	s.Mux = http.NewServeMux()
 	s.Server.Config.Handler = s.Mux
 
+	// Set up an Openstack service.
 	s.cred = &identity.Credentials{
-		URL:     s.Server.URL,
-		User:    "fred",
-		Secrets: "secret",
-		Region:  "some region"}
-	// Create an identity service and register a Nova endpoint.
-	s.identityDouble = identityservice.NewUserPass()
-	token := s.identityDouble.AddUser(s.cred.User, s.cred.Secrets)
-	ep := identityservice.Endpoint{
-		AdminURL:    s.Server.URL + baseNovaURL,
-		InternalURL: s.Server.URL + baseNovaURL,
-		PublicURL:   s.Server.URL + baseNovaURL,
-		Region:      s.cred.Region,
+		URL:        s.Server.URL,
+		User:       "fred",
+		Secrets:    "secret",
+		Region:     "some region",
+		TenantName: "tenant",
 	}
-	s.Mux.Handle("/tokens", s.identityDouble)
-
-	service := identityservice.Service{"nova", "compute", []identityservice.Endpoint{ep}}
-	s.identityDouble.AddService(service)
-	// Create a nova service at the registered endpoint.
-	// TODO: identityservice.UserPass always uses tenantId="1", patch this
-	//	 when that changes.
-	s.novaDouble = novaservice.New("localhost", "V1", token, "1")
-	s.novaDouble.SetupHTTP(s.Mux)
+	openstack := openstack.New(s.cred)
+	openstack.SetupHTTP(s.Mux)
 
 	s.LiveTests.SetUpSuite(c)
 }

@@ -5,27 +5,65 @@ package swiftservice
 import (
 	"fmt"
 	"launchpad.net/goose/swift"
+	"launchpad.net/goose/testservices"
+	"launchpad.net/goose/testservices/identityservice"
+	"net/url"
+	"strings"
 	"time"
 )
 
 type object map[string][]byte
 
+var _ testservices.HttpService = (*Swift)(nil)
+var _ identityservice.ServiceProvider = (*Swift)(nil)
+
 type Swift struct {
+	testservices.ServiceInstance
 	containers map[string]object
-	hostname   string
-	baseURL    string
-	token      string
 }
 
 // New creates an instance of the Swift object, given the parameters.
-func New(hostname, baseURL, token string) *Swift {
+func New(hostURL, versionPath, tenantId, region string, identityService identityservice.IdentityService) *Swift {
+	url, err := url.Parse(hostURL)
+	if err != nil {
+		panic(err)
+	}
+	hostname := url.Host
+	if !strings.HasSuffix(hostname, "/") {
+		hostname += "/"
+	}
 	swift := &Swift{
 		containers: make(map[string]object),
-		hostname:   hostname,
-		baseURL:    baseURL,
-		token:      token,
+		ServiceInstance: testservices.ServiceInstance{
+			IdentityService: identityService,
+			Hostname:        hostname,
+			VersionPath:     versionPath,
+			TenantId:        tenantId,
+			Region:          region,
+		},
+	}
+	if identityService != nil {
+		identityService.RegisterServiceProvider("swift", "object-store", swift)
 	}
 	return swift
+}
+
+func (s *Swift) endpointURL(path string) string {
+	ep := "http://" + s.Hostname + s.VersionPath + "/" + s.TenantId
+	if path != "" {
+		ep += "/" + strings.TrimLeft(path, "/")
+	}
+	return ep
+}
+
+func (s *Swift) Endpoints() []identityservice.Endpoint {
+	ep := identityservice.Endpoint{
+		AdminURL:    s.endpointURL(""),
+		InternalURL: s.endpointURL(""),
+		PublicURL:   s.endpointURL(""),
+		Region:      s.Region,
+	}
+	return []identityservice.Endpoint{ep}
 }
 
 // HasContainer verifies the given container exists or not.
@@ -119,5 +157,5 @@ func (s *Swift) GetURL(container, object string) (string, error) {
 	if _, err := s.GetObject(container, object); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s%s%s/%s", s.hostname, s.baseURL, container, object), nil
+	return s.endpointURL(fmt.Sprintf("%s/%s", container, object)), nil
 }

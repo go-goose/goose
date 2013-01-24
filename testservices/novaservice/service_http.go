@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"launchpad.net/goose/nova"
+	"launchpad.net/goose/testservices/identityservice"
 	"net/http"
 	"path"
 	"strconv"
@@ -228,7 +229,7 @@ func (e *errorResponse) requestBody(r *http.Request) []byte {
 	body := e.body
 	if body != "" {
 		if e.nova != nil {
-			body = strings.Replace(body, "$ENDPOINT$", e.nova.endpoint(true, "/"), -1)
+			body = strings.Replace(body, "$ENDPOINT$", e.nova.endpointURL(true, "/"), -1)
 		}
 		body = strings.Replace(body, "$URL$", url, -1)
 		body = strings.Replace(body, "$ERROR$", e.Error(), -1)
@@ -264,10 +265,15 @@ type novaHandler struct {
 	method func(n *Nova, w http.ResponseWriter, r *http.Request) error
 }
 
+func userInfo(i identityservice.IdentityService, r *http.Request) (*identityservice.UserInfo, error) {
+	return i.FindUser(r.Header.Get(authToken))
+}
+
 func (h *novaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	// handle invalid X-Auth-Token header
-	if r.Header.Get(authToken) != h.n.token {
+	_, err := userInfo(h.n.IdentityService, r)
+	if err != nil {
 		errUnauthorized.ServeHTTP(w, r)
 		return
 	}
@@ -276,7 +282,7 @@ func (h *novaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		errNotFound.ServeHTTP(w, r)
 		return
 	}
-	err := h.method(h.n, w, r)
+	err = h.method(h.n, w, r)
 	if err == nil {
 		return
 	}
@@ -541,7 +547,7 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 				continue
 			}
 			if sg, err := n.securityGroupByName(groupName); err != nil {
-				return noGroupError(groupName, n.tenantId)
+				return noGroupError(groupName, n.TenantId)
 			} else {
 				groups = append(groups, sg.Id)
 			}
@@ -553,11 +559,12 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	flavorEnt := nova.Entity{Id: flavor.Id, Links: flavor.Links}
 	image := nova.Entity{Id: req.Server.ImageRef}
 	timestr := time.Now().Format(time.RFC3339)
+	userInfo, _ := userInfo(n.IdentityService, r)
 	server := nova.ServerDetail{
 		Id:       id,
 		Name:     req.Server.Name,
-		TenantId: n.tenantId,
-		UserId:   n.userId,
+		TenantId: n.TenantId,
+		UserId:   userInfo.Id,
 		HostId:   "1",
 		Image:    image,
 		Flavor:   flavorEnt,
@@ -787,7 +794,7 @@ func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) erro
 				Id:          nextId,
 				Name:        req.Group.Name,
 				Description: req.Group.Description,
-				TenantId:    n.tenantId,
+				TenantId:    n.TenantId,
 			})
 			if err != nil {
 				return err
@@ -970,8 +977,8 @@ func (n *Nova) SetupHTTP(mux *http.ServeMux) {
 		"/$v/$t/os-floating-ips":         n.handler((*Nova).handleFloatingIPs),
 	}
 	for path, h := range handlers {
-		path = strings.Replace(path, "$v", n.versionPath, 1)
-		path = strings.Replace(path, "$t", n.tenantId, 1)
+		path = strings.Replace(path, "$v", n.VersionPath, 1)
+		path = strings.Replace(path, "$t", n.TenantId, 1)
 		if !strings.HasSuffix(path, "/") {
 			mux.Handle(path+"/", h)
 		}

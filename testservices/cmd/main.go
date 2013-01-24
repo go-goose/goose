@@ -61,9 +61,10 @@ func main() {
 	if !ok {
 		log.Fatalf("No such provider: %s, pick one of: %v", provider, providers())
 	}
-	http.Handle("/", p)
+	mux := http.NewServeMux()
+	p.SetupHTTP(mux)
 	for _, u := range users.users {
-		p.AddUser(u.user, u.secret)
+		p.AddUser(u.user, u.secret, "tenant")
 	}
-	log.Fatal(http.ListenAndServe(*serveAddr, nil))
+	log.Fatal(http.ListenAndServe(*serveAddr, mux))
 }
