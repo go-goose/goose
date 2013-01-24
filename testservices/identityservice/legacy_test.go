@@ -21,7 +21,7 @@ func (s *LegacySuite) setupLegacy(user, secret string) (token, managementURL str
 	identity.SetManagementURL(managementURL)
 	identity.SetupHTTP(s.Mux)
 	if user != "" {
-		userInfo := identity.AddUser(user, secret)
+		userInfo := identity.AddUser(user, secret, "tenant")
 		token = userInfo.Token
 	}
 	return

@@ -21,7 +21,7 @@ func makeUserPass(user, secret string) (identity *UserPass) {
 	// Ensure that it conforms to the interface
 	var _ IdentityService = identity
 	if user != "" {
-		identity.AddUser(user, secret)
+		identity.AddUser(user, secret, "tenant")
 	}
 	return
 }

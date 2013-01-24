@@ -31,19 +31,21 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 	c.Logf("Using identity service test double")
 	s.HTTPSuite.SetUpSuite(c)
 	s.cred = &identity.Credentials{
-		URL:     s.Server.URL,
-		User:    "fred",
-		Secrets: "secret",
-		Region:  "some region"}
+		URL:        s.Server.URL,
+		User:       "fred",
+		Secrets:    "secret",
+		Region:     "some region",
+		TenantName: "tenant",
+	}
 	switch s.authMethod {
 	default:
 		panic("Invalid authentication method")
 	case identity.AuthUserPass:
 		// The openstack test service sets up userpass authentication.
-		s.service = openstack.New(s.Server.URL, s.cred.User, s.cred.Secrets, s.LiveTests.cred.Region)
+		s.service = openstack.New(s.cred)
 	case identity.AuthLegacy:
 		legacy := identityservice.NewLegacy()
-		legacy.AddUser(s.cred.User, s.cred.Secrets)
+		legacy.AddUser(s.cred.User, s.cred.Secrets, s.cred.TenantName)
 		legacy.SetManagementURL("http://management.test.invalid/url")
 		s.service = legacy
 	}

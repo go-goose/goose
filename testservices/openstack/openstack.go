@@ -1,6 +1,7 @@
 package openstack
 
 import (
+	"launchpad.net/goose/identity"
 	"launchpad.net/goose/testservices/identityservice"
 	"launchpad.net/goose/testservices/novaservice"
 	"launchpad.net/goose/testservices/swiftservice"
@@ -16,13 +17,16 @@ type Openstack struct {
 
 // New creates an instance of a full Openstack service double.
 // An initial user with the specified credentials is registered with the identity service.
-func New(baseURL string, username, password, region string) *Openstack {
+func New(cred *identity.Credentials) *Openstack {
 	openstack := Openstack{
 		identity: identityservice.NewUserPass(),
 	}
-	userInfo := openstack.identity.AddUser(username, password)
-	openstack.nova = novaservice.New(baseURL, "v2", userInfo.TenantId, region, openstack.identity)
-	openstack.swift = swiftservice.New(baseURL, "v1", userInfo.TenantId, region, openstack.identity)
+	userInfo := openstack.identity.AddUser(cred.User, cred.Secrets, cred.TenantName)
+	if cred.TenantName == "" {
+		panic("Openstack service double requires a tenant to be specified.")
+	}
+	openstack.nova = novaservice.New(cred.URL, "v2", userInfo.TenantId, cred.Region, openstack.identity)
+	openstack.swift = swiftservice.New(cred.URL, "v1", userInfo.TenantId, cred.Region, openstack.identity)
 	return &openstack
 }
 

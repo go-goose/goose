@@ -6,14 +6,28 @@ import (
 )
 
 type Users struct {
-	nextId int
-	users  map[string]UserInfo
+	nextUserId   int
+	nextTenantId int
+	users        map[string]UserInfo
+	tenants      map[string]string
 }
 
-func (u *Users) AddUser(user, secret string) *UserInfo {
-	u.nextId++
-	// We may in future need to allow the tenant id to be specified, but for now it can be a fixed value.
-	userInfo := &UserInfo{secret: secret, Id: strconv.Itoa(u.nextId), TenantId: "tenant"}
+func (u *Users) addTenant(tenant string) string {
+	for id, tenantName := range u.tenants {
+		if tenant == tenantName {
+			return id
+		}
+	}
+	u.nextTenantId++
+	id := strconv.Itoa(u.nextTenantId)
+	u.tenants[id] = tenant
+	return id
+}
+
+func (u *Users) AddUser(user, secret, tenant string) *UserInfo {
+	tenantId := u.addTenant(tenant)
+	u.nextUserId++
+	userInfo := &UserInfo{secret: secret, Id: strconv.Itoa(u.nextUserId), TenantId: tenantId}
 	u.users[user] = *userInfo
 	userInfo, _ = u.authenticate(user, secret)
 	return userInfo

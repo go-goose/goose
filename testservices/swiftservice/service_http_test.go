@@ -25,7 +25,7 @@ func (s *SwiftHTTPSuite) SetUpSuite(c *C) {
 	s.HTTPSuite.SetUpSuite(c)
 	identityDouble := identityservice.NewUserPass()
 	s.service = New(s.Server.URL, versionPath, tenantId, region, identityDouble)
-	userInfo := identityDouble.AddUser("fred", "secret")
+	userInfo := identityDouble.AddUser("fred", "secret", "tenant")
 	s.token = userInfo.Token
 }
 

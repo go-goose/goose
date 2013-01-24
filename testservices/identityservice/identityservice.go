@@ -7,7 +7,7 @@ import (
 // An IdentityService provides user authentication for an Openstack instance.
 type IdentityService interface {
 	HttpService
-	AddUser(user, secret string) *UserInfo
+	AddUser(user, secret, tenant string) *UserInfo
 	FindUser(token string) (*UserInfo, error)
 	RegisterServiceProvider(name, serviceType string, serviceProvider ServiceProvider)
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
@@ -26,6 +26,7 @@ type ServiceProvider interface {
 // A ServiceInstance is an Openstack module, one of nova, swift, glance.
 type ServiceInstance struct {
 	ServiceProvider
+	HttpService
 	IdentityService IdentityService
 	Hostname        string
 	VersionPath     string

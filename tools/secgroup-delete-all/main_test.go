@@ -7,8 +7,7 @@ import (
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/nova"
 	"launchpad.net/goose/testing/httpsuite"
-	"launchpad.net/goose/testservices/identityservice"
-	"launchpad.net/goose/testservices/novaservice"
+	"launchpad.net/goose/testservices/openstack"
 	tool "launchpad.net/goose/tools/secgroup-delete-all"
 	"testing"
 )
@@ -26,43 +25,28 @@ const (
 
 type ToolSuite struct {
 	httpsuite.HTTPSuite
+	creds *identity.Credentials
 }
 
 var _ = Suite(&ToolSuite{})
 
 // GZ 2013-01-21: Should require EnvSuite for this, but clashes with HTTPSuite
-func createNovaClient(auth_url string) *nova.Client {
-	creds := identity.Credentials{
-		URL:        auth_url,
+func createNovaClient(creds *identity.Credentials) *nova.Client {
+	osc := client.NewClient(creds, identity.AuthUserPass, nil)
+	return nova.New(osc)
+}
+
+func (s *ToolSuite) makeServices(c *C) *nova.Client {
+	creds := &identity.Credentials{
+		URL:        s.Server.URL,
 		User:       username,
 		Secrets:    password,
 		Region:     region,
 		TenantName: tenant,
 	}
-	osc := client.NewClient(&creds, identity.AuthUserPass, nil)
-	return nova.New(osc)
-}
-
-func (s *ToolSuite) makeServices(c *C) *nova.Client {
-	ident := identityservice.NewUserPass()
-	token := ident.AddUser(username, password)
-	// GZ 2013-01-21: Current novaservice double requires magic url like so
-	computeurl := s.Server.URL + "/v2.0/" + tenant
-	ident.AddService(identityservice.Service{
-		"nova",
-		"compute",
-		[]identityservice.Endpoint{
-			{
-				AdminURL:    computeurl,
-				InternalURL: computeurl,
-				PublicURL:   computeurl,
-				Region:      region,
-			},
-		}})
-	s.Mux.Handle("/tokens", ident)
-	comp := novaservice.New("unused.invalid", "v2.0", token, tenant)
-	comp.SetupHTTP(s.Mux)
-	return createNovaClient(s.Server.URL)
+	openstack := openstack.New(creds)
+	openstack.SetupHTTP(s.Mux)
+	return createNovaClient(creds)
 }
 
 func (s *ToolSuite) TestNoGroups(c *C) {

@@ -27,7 +27,7 @@ var _ = Suite(&NovaHTTPSuite{})
 func (s *NovaHTTPSuite) SetUpSuite(c *C) {
 	s.HTTPSuite.SetUpSuite(c)
 	identityDouble := identityservice.NewUserPass()
-	userInfo := identityDouble.AddUser("fred", "secret")
+	userInfo := identityDouble.AddUser("fred", "secret", "tenant")
 	s.token = userInfo.Token
 	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble)
 }

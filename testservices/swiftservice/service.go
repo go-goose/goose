@@ -13,6 +13,9 @@ import (
 
 type object map[string][]byte
 
+var _ identityservice.HttpService = (*Swift)(nil)
+var _ identityservice.ServiceProvider = (*Swift)(nil)
+
 type Swift struct {
 	identityservice.ServiceInstance
 	containers map[string]object

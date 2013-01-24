@@ -12,6 +12,7 @@ type Legacy struct {
 func NewLegacy() *Legacy {
 	service := &Legacy{}
 	service.users = make(map[string]UserInfo)
+	service.tenants = make(map[string]string)
 	return service
 }
 

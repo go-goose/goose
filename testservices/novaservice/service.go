@@ -10,6 +10,9 @@ import (
 	"strings"
 )
 
+var _ identityservice.HttpService = (*Nova)(nil)
+var _ identityservice.ServiceProvider = (*Nova)(nil)
+
 // Nova implements a OpenStack Nova testing service and
 // contains the service double's internal state.
 type Nova struct {

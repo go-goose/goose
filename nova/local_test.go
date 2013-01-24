@@ -39,11 +39,13 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 
 	// Set up an Openstack service.
 	s.cred = &identity.Credentials{
-		URL:     s.Server.URL,
-		User:    "fred",
-		Secrets: "secret",
-		Region:  "some region"}
-	openstack := openstack.New(s.Server.URL, s.cred.User, s.cred.Secrets, s.LiveTests.cred.Region)
+		URL:        s.Server.URL,
+		User:       "fred",
+		Secrets:    "secret",
+		Region:     "some region",
+		TenantName: "tenant",
+	}
+	openstack := openstack.New(s.cred)
 	openstack.SetupHTTP(s.Mux)
 
 	s.LiveTests.SetUpSuite(c)

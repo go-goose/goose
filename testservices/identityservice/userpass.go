@@ -144,6 +144,7 @@ func NewUserPass() *UserPass {
 		services: make([]Service, 0),
 	}
 	userpass.users = make(map[string]UserInfo)
+	userpass.tenants = make(map[string]string)
 	return userpass
 }
 
