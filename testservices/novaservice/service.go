@@ -5,18 +5,19 @@ package novaservice
 import (
 	"fmt"
 	"launchpad.net/goose/nova"
+	"launchpad.net/goose/testservices"
 	"launchpad.net/goose/testservices/identityservice"
 	"net/url"
 	"strings"
 )
 
-var _ identityservice.HttpService = (*Nova)(nil)
+var _ testservices.HttpService = (*Nova)(nil)
 var _ identityservice.ServiceProvider = (*Nova)(nil)
 
 // Nova implements a OpenStack Nova testing service and
 // contains the service double's internal state.
 type Nova struct {
-	identityservice.ServiceInstance
+	testservices.ServiceInstance
 	flavors                   map[string]nova.FlavorDetail
 	servers                   map[string]nova.ServerDetail
 	groups                    map[int]nova.SecurityGroup
@@ -84,7 +85,7 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 		// The following attribute controls whether rate limit responses are sent back to the caller.
 		// This is switched off when we want to ensure the client eventually gets a proper response.
 		sendFakeRateLimitResponse: true,
-		ServiceInstance: identityservice.ServiceInstance{
+		ServiceInstance: testservices.ServiceInstance{
 			IdentityService: identityService,
 			Hostname:        hostname,
 			VersionPath:     versionPath,

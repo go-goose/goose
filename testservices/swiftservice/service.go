@@ -5,6 +5,7 @@ package swiftservice
 import (
 	"fmt"
 	"launchpad.net/goose/swift"
+	"launchpad.net/goose/testservices"
 	"launchpad.net/goose/testservices/identityservice"
 	"net/url"
 	"strings"
@@ -13,11 +14,11 @@ import (
 
 type object map[string][]byte
 
-var _ identityservice.HttpService = (*Swift)(nil)
+var _ testservices.HttpService = (*Swift)(nil)
 var _ identityservice.ServiceProvider = (*Swift)(nil)
 
 type Swift struct {
-	identityservice.ServiceInstance
+	testservices.ServiceInstance
 	containers map[string]object
 }
 
@@ -33,7 +34,7 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 	}
 	swift := &Swift{
 		containers: make(map[string]object),
-		ServiceInstance: identityservice.ServiceInstance{
+		ServiceInstance: testservices.ServiceInstance{
 			IdentityService: identityService,
 			Hostname:        hostname,
 			VersionPath:     versionPath,

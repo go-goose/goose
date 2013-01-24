@@ -4,6 +4,7 @@ import (
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/testing/httpsuite"
+	"launchpad.net/goose/testservices"
 	"launchpad.net/goose/testservices/identityservice"
 	"launchpad.net/goose/testservices/openstack"
 )
@@ -24,7 +25,7 @@ type localLiveSuite struct {
 	LiveTests
 	// The following attributes are for using testing doubles.
 	httpsuite.HTTPSuite
-	service identityservice.HttpService
+	service testservices.HttpService
 }
 
 func (s *localLiveSuite) SetUpSuite(c *C) {
