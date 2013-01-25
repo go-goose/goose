@@ -104,7 +104,9 @@ func (u *UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 				service.Endpoints = append(service.Endpoints[:i], service.Endpoints[i+1:]...)
 			}
 		}
-		details.ServiceURLs[service.Type] = service.Endpoints[0].PublicURL
+		if len(service.Endpoints) > 0 {
+			details.ServiceURLs[service.Type] = service.Endpoints[0].PublicURL
+		}
 	}
 
 	return details, nil
