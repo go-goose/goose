@@ -54,6 +54,15 @@ func unqualifiedMethodName(pc uintptr) string {
 }
 
 // ProcessControlHook retrieves the ControlProcessor for the specified hook name and runs it, returning any error.
+// Use it like this with a "" hookName to invoke a hook registered for the current function:
+// if err := n.ProcessControlHook("", <serviceinstance>, <somearg1>, <somearg2>); err != nil {
+//     return err
+// }
+//
+// Use it like this to invoke a hook registered for some arbitrary control point:
+// if err := n.ProcessControlHook("foobar", <serviceinstance>, <somearg1>, <somearg2>); err != nil {
+//     return err
+// }
 func (s *ServiceInstance) ProcessControlHook(hookName string, sc ServiceControl, args ...interface{}) error {
 	if hookName == "" {
 		hookName = s.currentServiceMethodName()
@@ -66,10 +75,11 @@ func (s *ServiceInstance) ProcessControlHook(hookName string, sc ServiceControl,
 
 // RegisterControlPoint assigns the specified controller to the named hook. If nil, any existing controller for the
 // hook is removed.
-func (s *ServiceInstance) RegisterControlPoint(funcName string, controller ControlProcessor) {
+// hookName is the name of a function on the service or some arbitrarily named control point.
+func (s *ServiceInstance) RegisterControlPoint(hookName string, controller ControlProcessor) {
 	if controller == nil {
-		delete(s.ControlHooks, funcName)
+		delete(s.ControlHooks, hookName)
 	} else {
-		s.ControlHooks[funcName] = controller
+		s.ControlHooks[hookName] = controller
 	}
 }
