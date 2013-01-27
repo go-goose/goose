@@ -8,6 +8,7 @@ import sys
 KNOWN_LIVE_SUITES = [
     'client',
     'glance',
+    'identity',
     'nova',
     'swift',
 ]
