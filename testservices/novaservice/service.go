@@ -91,6 +91,7 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 			VersionPath:     versionPath,
 			TenantId:        tenantId,
 			Region:          region,
+			ControlHooks:    make(map[string]testservices.ControlProcessor),
 		},
 	}
 	if identityService != nil {
@@ -340,6 +341,9 @@ func (n *Nova) allSecurityGroups() []nova.SecurityGroup {
 
 // removeSecurityGroup deletes an existing group.
 func (n *Nova) removeSecurityGroup(groupId int) error {
+	if err := n.ProcessControlHook("", n, groupId); err != nil {
+		return err
+	}
 	if _, err := n.securityGroup(groupId); err != nil {
 		return err
 	}
