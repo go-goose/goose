@@ -153,22 +153,29 @@ type IPAddress struct {
 }
 
 // ServerDetail describes a server in more detail.
+// See: http://docs.openstack.org/api/openstack-compute/2/content/Extensions-d1e1444.html#ServersCBSJ
 type ServerDetail struct {
+	// First public IP address (if floating IP is assigned, otherwise "")
 	AddressIPv4 string
 	AddressIPv6 string
-	Addresses   map[string][]IPAddress
-	Created     string
-	Flavor      Entity
-	HostId      string
-	Id          string
-	Image       Entity
-	Links       []Link
-	Name        string
-	Progress    int
-	Status      string // One of the Status* constants
-	TenantId    string `json:"tenant_id"`
-	Updated     string
-	UserId      string `json:"user_id"`
+
+	// Optional list of all IP addresses assigned to this
+	// server, grouped by "network" name (e.g. "private",
+	// "public" or a custom name)
+	Addresses map[string][]IPAddress
+
+	Created  string // creation timestamp
+	Flavor   Entity
+	HostId   string
+	Id       string
+	Image    Entity
+	Links    []Link
+	Name     string
+	Progress int    // completion % of current operation
+	Status   string // One of the Status* constants
+	TenantId string `json:"tenant_id"`
+	Updated  string // timestamp of last update
+	UserId   string `json:"user_id"`
 }
 
 // ListServersDetail lists all details for available servers.
