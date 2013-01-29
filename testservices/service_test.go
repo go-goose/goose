@@ -21,7 +21,7 @@ func (s *ServiceSuite) SetUpTest(c *C) {
 	// This hook is called based on the function name.
 	s.ts.RegisterControlPoint("foo", functionControlHook)
 	// This hook is called based on a user specified hook name.
-	s.ts.RegisterControlPoint("foobar", nonFunctionControlHook)
+	s.ts.RegisterControlPoint("foobar", namedControlHook)
 }
 
 type testService struct {
@@ -47,7 +47,7 @@ func functionControlHook(s ServiceControl, args ...interface{}) error {
 	return nil
 }
 
-func nonFunctionControlHook(s ServiceControl, args ...interface{}) error {
+func namedControlHook(s ServiceControl, args ...interface{}) error {
 	s.(*testService).label = "foobar"
 	return nil
 }
@@ -78,8 +78,28 @@ func (s *ServiceSuite) TestHookWithError(c *C) {
 	c.Assert(s.ts.label, Equals, "")
 }
 
-func (s *ServiceSuite) TestNonFunctionHook(c *C) {
+func (s *ServiceSuite) TestNamedHook(c *C) {
 	err := s.ts.bar()
 	c.Assert(err, IsNil)
 	c.Assert(s.ts.label, Equals, "foobar")
+}
+
+func (s *ServiceSuite) TestHookCleanup(c *C) {
+	// Manually delete the existing control point.
+	s.ts.RegisterControlPoint("foo", nil)
+	// Register a new hook and ensure it works.
+	cleanup := s.ts.RegisterControlPoint("foo", functionControlHook)
+	err := s.ts.foo("cleanuptest", false)
+	c.Assert(err, IsNil)
+	c.Assert(s.ts.label, Equals, "cleanuptest")
+	// Use the cleanup func to remove the hook and check the result.
+	cleanup()
+	err = s.ts.foo("again", false)
+	c.Assert(err, IsNil)
+	c.Assert(s.ts.label, Equals, "cleanuptest")
+	// Ensure that only the specified hook was removed and the other remaining one still works.
+	err = s.ts.bar()
+	c.Assert(err, IsNil)
+	c.Assert(s.ts.label, Equals, "foobar")
+
 }

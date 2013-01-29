@@ -30,11 +30,15 @@ type ServiceInstance struct {
 // arguments passed to the currently executing service function.
 type ControlProcessor func(sc ServiceControl, args ...interface{}) error
 
+// ControlHookCleanup defines a function used to remove a control hook.
+type ControlHookCleanup func()
+
 // ServiceControl instances allow hooks to be registered for execution at the specified point of execution.
 // The control point name can be a function name or a logical execution point meaningful to the service.
 // If name is "", the hook for the currently executing function is executed.
+// Returns a function which can be used to remove the hook.
 type ServiceControl interface {
-	RegisterControlPoint(name string, controller ControlProcessor)
+	RegisterControlPoint(name string, controller ControlProcessor) ControlHookCleanup
 }
 
 // currentServiceMethodName returns the method executing on the service when ProcessControlHook was invoked.
@@ -76,10 +80,13 @@ func (s *ServiceInstance) ProcessControlHook(hookName string, sc ServiceControl,
 // RegisterControlPoint assigns the specified controller to the named hook. If nil, any existing controller for the
 // hook is removed.
 // hookName is the name of a function on the service or some arbitrarily named control point.
-func (s *ServiceInstance) RegisterControlPoint(hookName string, controller ControlProcessor) {
+func (s *ServiceInstance) RegisterControlPoint(hookName string, controller ControlProcessor) ControlHookCleanup {
 	if controller == nil {
 		delete(s.ControlHooks, hookName)
 	} else {
 		s.ControlHooks[hookName] = controller
+	}
+	return func() {
+		s.RegisterControlPoint(hookName, nil)
 	}
 }

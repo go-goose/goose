@@ -1,4 +1,4 @@
-package openstack
+package openstackservice
 
 import (
 	"launchpad.net/goose/identity"
