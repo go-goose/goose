@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"launchpad.net/goose/nova"
+	"launchpad.net/goose/testservices"
 	"launchpad.net/goose/testservices/identityservice"
 	"net/http"
 	"path"
@@ -212,7 +213,8 @@ The resource could not be found.
 		"",
 		"text/plain; charset=UTF-8",
 		"too many requests",
-		map[string]string{"Retry-After": "1"},
+		// RFC says that Retry-After should be an int, but we don't want to wait an entire second during the test suite.
+		map[string]string{"Retry-After": "0.001"},
 		nil,
 	}
 )
@@ -286,15 +288,20 @@ func (h *novaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		return
 	}
-	resp, _ := err.(http.Handler)
-	if resp == nil {
-		resp = &errorResponse{
-			http.StatusInternalServerError,
-			`{"internalServerError":{"message":"$ERROR$",code:500}}`,
-			"application/json",
-			err.Error(),
-			nil,
-			h.n,
+	var resp http.Handler
+	if _, ok := err.(*testservices.RateLimitExceededError); ok {
+		resp = errRateLimitExceeded
+	} else {
+		resp, _ = err.(http.Handler)
+		if resp == nil {
+			resp = &errorResponse{
+				http.StatusInternalServerError,
+				`{"internalServerError":{"message":"$ERROR$",code:500}}`,
+				"application/json",
+				err.Error(),
+				nil,
+				h.n,
+			}
 		}
 	}
 	resp.ServeHTTP(w, r)
@@ -781,12 +788,6 @@ func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) erro
 			_, err := n.securityGroupByName(req.Group.Name)
 			if err == nil {
 				return errBadRequestDuplicateValue
-			}
-			if req.Group.Description == "test rate limit" && n.sendFakeRateLimitResponse {
-				n.sendFakeRateLimitResponse = false
-				return errRateLimitExceeded
-			} else {
-				n.sendFakeRateLimitResponse = true
 			}
 			n.nextGroupId++
 			nextId := n.nextGroupId

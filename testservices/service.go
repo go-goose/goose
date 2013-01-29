@@ -25,6 +25,11 @@ type ServiceInstance struct {
 	ControlHooks map[string]ControlProcessor
 }
 
+// Internal Openstack errors.
+type RateLimitExceededError struct {
+	error
+}
+
 // ControlProcessor defines a function that is run when a specified control point is reached in the service
 // business logic. The function receives the service instance so internal state can be inspected, plus for any
 // arguments passed to the currently executing service function.

@@ -3,7 +3,7 @@ package identity_test
 import (
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/identity"
-	"launchpad.net/goose/testservices/openstack"
+	"launchpad.net/goose/testservices/openstackservice"
 	"net/http"
 	"net/http/httptest"
 )
@@ -39,7 +39,7 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 		Region:     "some region",
 		TenantName: "tenant",
 	}
-	openstack := openstack.New(s.cred)
+	openstack := openstackservice.New(s.cred)
 	openstack.SetupHTTP(s.Mux)
 
 	s.LiveTests.SetUpSuite(c)

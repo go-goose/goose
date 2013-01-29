@@ -25,9 +25,9 @@ const (
 
 type Client struct {
 	http.Client
-	logger     *log.Logger
-	authToken  string
-	maxRetries int
+	logger          *log.Logger
+	authToken       string
+	maxSendAttempts int
 }
 
 type ErrorResponse struct {
@@ -55,11 +55,17 @@ type RequestData struct {
 	RespReader     io.ReadCloser
 }
 
+const (
+	// The maximum number of times to try sending a request before we give up
+	// (assuming any unsuccessful attempts can be sensibly tried again).
+	MaxSendAttempts = 3
+)
+
 func New(httpClient http.Client, logger *log.Logger, token string) *Client {
 	if logger == nil {
 		logger = log.New(os.Stderr, "", log.LstdFlags)
 	}
-	return &Client{httpClient, logger, token, 3}
+	return &Client{httpClient, logger, token, MaxSendAttempts}
 }
 
 // JsonRequest JSON encodes and sends the supplied object (if any) to the specified URL.
@@ -187,7 +193,7 @@ func (c *Client) sendRequest(method, URL string, reqReader io.Reader, length int
 }
 
 func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header, reqData []byte) (resp *http.Response, err error) {
-	for i := 0; i < c.maxRetries; i++ {
+	for i := 0; i < c.maxSendAttempts; i++ {
 		var reqReader io.Reader
 		if reqData != nil {
 			reqReader = bytes.NewReader(reqData)
@@ -209,17 +215,17 @@ func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header,
 		if resp.StatusCode != http.StatusRequestEntityTooLarge {
 			return resp, nil
 		}
-		retryAfter, err := strconv.Atoi(resp.Header.Get("Retry-After"))
+		retryAfter, err := strconv.ParseFloat(resp.Header.Get("Retry-After"), 32)
 		if err != nil {
 			return nil, errors.Newf(err, URL, "Invalid Retry-After header")
 		}
 		if retryAfter == 0 {
 			return nil, errors.Newf(err, URL, "Resource limit exeeded at URL %s.", URL)
 		}
-		c.logger.Printf("Too many requests, retrying in %d seconds.", retryAfter)
+		c.logger.Printf("Too many requests, retrying in %dms.", int(retryAfter*1000))
 		time.Sleep(time.Duration(retryAfter) * time.Second)
 	}
-	return nil, errors.Newf(err, URL, "Maximum number of retries (%d) reached sending request to %s.", c.maxRetries, URL)
+	return nil, errors.Newf(err, URL, "Maximum number of attempts (%d) reached sending request to %s.", c.maxSendAttempts, URL)
 }
 
 type HttpError struct {
