@@ -561,18 +561,25 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	timestr := time.Now().Format(time.RFC3339)
 	userInfo, _ := userInfo(n.IdentityService, r)
 	server := nova.ServerDetail{
-		Id:       id,
-		Name:     req.Server.Name,
-		TenantId: n.TenantId,
-		UserId:   userInfo.Id,
-		HostId:   "1",
-		Image:    image,
-		Flavor:   flavorEnt,
-		Status:   nova.StatusActive,
-		Created:  timestr,
-		Updated:  timestr,
+		Id:        id,
+		Name:      req.Server.Name,
+		TenantId:  n.TenantId,
+		UserId:    userInfo.Id,
+		HostId:    "1",
+		Image:     image,
+		Flavor:    flavorEnt,
+		Status:    nova.StatusActive,
+		Created:   timestr,
+		Updated:   timestr,
+		Addresses: make(map[string][]nova.IPAddress),
 	}
+	nextServer := len(n.allServers(nil)) + 1
 	n.buildServerLinks(&server)
+	// set some IP addresses
+	addr := fmt.Sprintf("127.10.0.%d", nextServer)
+	server.Addresses["public"] = []nova.IPAddress{{4, addr}, {6, "::dead:beef:f00d"}}
+	addr = fmt.Sprintf("127.0.0.%d", nextServer)
+	server.Addresses["private"] = []nova.IPAddress{{4, addr}, {6, "::face::000f"}}
 	if err := n.addServer(server); err != nil {
 		return err
 	}

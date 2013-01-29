@@ -614,6 +614,24 @@ func (s *NovaHTTPSuite) TestNewUUID(c *C) {
 	c.Assert(uuid2, Not(Equals), uuid)
 }
 
+func (s *NovaHTTPSuite) assertAddresses(c *C, serverId string) {
+	server, err := s.service.server(serverId)
+	c.Assert(err, IsNil)
+	c.Assert(server.Addresses, HasLen, 2)
+	c.Assert(server.Addresses["public"], HasLen, 2)
+	c.Assert(server.Addresses["private"], HasLen, 2)
+	for network, addresses := range server.Addresses {
+		for _, addr := range addresses {
+			if addr.Version == 4 && network == "public" {
+				c.Assert(addr.Address, Matches, `127\.10\.0\.\d{1,3}`)
+			} else if addr.Version == 4 && network == "private" {
+				c.Assert(addr.Address, Matches, `127\.0\.0\.\d{1,3}`)
+			}
+		}
+
+	}
+}
+
 func (s *NovaHTTPSuite) TestRunServer(c *C) {
 	entities := s.service.allServersAsEntities(nil)
 	c.Assert(entities, HasLen, 0)
@@ -657,6 +675,7 @@ func (s *NovaHTTPSuite) TestRunServer(c *C) {
 	c.Assert(expected.Server.Id, Not(Equals), "")
 	c.Assert(expected.Server.Links, HasLen, 2)
 	c.Assert(expected.Server.AdminPass, Not(Equals), "")
+	s.assertAddresses(c, expected.Server.Id)
 	srv, err := s.service.server(expected.Server.Id)
 	c.Assert(err, IsNil)
 	c.Assert(srv.Links, DeepEquals, expected.Server.Links)

@@ -146,10 +146,17 @@ func (c *Client) ListServers(filter *Filter) ([]Entity, error) {
 	return resp.Servers, nil
 }
 
+// IPAddress describes a single IPv4/6 address of a server.
+type IPAddress struct {
+	Version int    `json:"version"`
+	Address string `json:"addr"`
+}
+
 // ServerDetail describes a server in more detail.
 type ServerDetail struct {
 	AddressIPv4 string
 	AddressIPv6 string
+	Addresses   map[string][]IPAddress
 	Created     string
 	Flavor      Entity
 	HostId      string
