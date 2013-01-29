@@ -4,6 +4,7 @@ import (
 	"fmt"
 	goosehttp "launchpad.net/goose/http"
 	"net/http"
+	"os"
 )
 
 type passwordCredentials struct {
@@ -103,6 +104,9 @@ func (u *UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 			if e.Region != creds.Region {
 				service.Endpoints = append(service.Endpoints[:i], service.Endpoints[i+1:]...)
 			}
+		}
+		if len(service.Endpoints) == 0 {
+			fmt.Fprintf(os.Stderr, "Found no endpoints for %v\n", service.Type)
 		}
 		details.ServiceURLs[service.Type] = service.Endpoints[0].PublicURL
 	}
