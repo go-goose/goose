@@ -4,7 +4,6 @@ import (
 	"fmt"
 	goosehttp "launchpad.net/goose/http"
 	"net/http"
-	"os"
 )
 
 type passwordCredentials struct {
