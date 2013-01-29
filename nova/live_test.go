@@ -166,6 +166,7 @@ func (s *LiveTests) TestListServersDetail(c *C) {
 	}
 	foundTest := false
 	for _, sr := range servers {
+		// not checking for Addresses, because it could be missing
 		c.Check(sr.Created, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
 		c.Check(sr.Updated, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
 		c.Check(sr.Id, Not(Equals), "")
