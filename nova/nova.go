@@ -156,7 +156,7 @@ type IPAddress struct {
 // See: http://docs.openstack.org/api/openstack-compute/2/content/Extensions-d1e1444.html#ServersCBSJ
 type ServerDetail struct {
 	// AddressIPv4 and AddressIPv6 hold the first public IPv4 or IPv6
-	// address of the server, or "" if not floating IP is assigned.
+	// address of the server, or "" if no floating IP is assigned.
 	AddressIPv4 string
 	AddressIPv6 string
 
