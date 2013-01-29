@@ -4,7 +4,7 @@ import (
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/testing/httpsuite"
-	"launchpad.net/goose/testservices/openstack"
+	"launchpad.net/goose/testservices/openstackservice"
 )
 
 func registerLocalTests() {
@@ -18,7 +18,7 @@ type localLiveSuite struct {
 	LiveTestsPublicContainer
 	// The following attributes are for using testing doubles.
 	httpsuite.HTTPSuite
-	openstack *openstack.Openstack
+	openstack *openstackservice.Openstack
 }
 
 func (s *localLiveSuite) SetUpSuite(c *C) {
@@ -33,7 +33,7 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 		TenantName: "tenant",
 	}
 	s.LiveTestsPublicContainer.cred = s.LiveTests.cred
-	s.openstack = openstack.New(s.LiveTests.cred)
+	s.openstack = openstackservice.New(s.LiveTests.cred)
 
 	s.LiveTests.SetUpSuite(c)
 	s.LiveTestsPublicContainer.SetUpSuite(c)

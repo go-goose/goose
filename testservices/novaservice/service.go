@@ -18,17 +18,16 @@ var _ identityservice.ServiceProvider = (*Nova)(nil)
 // contains the service double's internal state.
 type Nova struct {
 	testservices.ServiceInstance
-	flavors                   map[string]nova.FlavorDetail
-	servers                   map[string]nova.ServerDetail
-	groups                    map[int]nova.SecurityGroup
-	rules                     map[int]nova.SecurityGroupRule
-	floatingIPs               map[int]nova.FloatingIP
-	serverGroups              map[string][]int
-	serverIPs                 map[string][]int
-	nextGroupId               int
-	nextRuleId                int
-	nextIPId                  int
-	sendFakeRateLimitResponse bool
+	flavors      map[string]nova.FlavorDetail
+	servers      map[string]nova.ServerDetail
+	groups       map[int]nova.SecurityGroup
+	rules        map[int]nova.SecurityGroupRule
+	floatingIPs  map[int]nova.FloatingIP
+	serverGroups map[string][]int
+	serverIPs    map[string][]int
+	nextGroupId  int
+	nextRuleId   int
+	nextIPId     int
 }
 
 // endpoint returns either a versioned or non-versioned service
@@ -82,15 +81,13 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 		floatingIPs:  make(map[int]nova.FloatingIP),
 		serverGroups: make(map[string][]int),
 		serverIPs:    make(map[string][]int),
-		// The following attribute controls whether rate limit responses are sent back to the caller.
-		// This is switched off when we want to ensure the client eventually gets a proper response.
-		sendFakeRateLimitResponse: true,
 		ServiceInstance: testservices.ServiceInstance{
 			IdentityService: identityService,
 			Hostname:        hostname,
 			VersionPath:     versionPath,
 			TenantId:        tenantId,
 			Region:          region,
+			ControlHooks:    make(map[string]testservices.ControlProcessor),
 		},
 	}
 	if identityService != nil {
@@ -340,6 +337,9 @@ func (n *Nova) allSecurityGroups() []nova.SecurityGroup {
 
 // removeSecurityGroup deletes an existing group.
 func (n *Nova) removeSecurityGroup(groupId int) error {
+	if err := n.ProcessControlHook("", n, groupId); err != nil {
+		return err
+	}
 	if _, err := n.securityGroup(groupId); err != nil {
 		return err
 	}

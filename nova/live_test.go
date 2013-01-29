@@ -1,11 +1,14 @@
 package nova_test
 
 import (
+	"bytes"
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/errors"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/nova"
+	"log"
+	"strings"
 	"time"
 )
 
@@ -419,4 +422,37 @@ func (s *LiveTests) TestServerFloatingIPs(c *C) {
 	c.Assert(err, IsNil)
 	c.Check(fip.FixedIP, IsNil)
 	c.Check(fip.InstanceId, IsNil)
+}
+
+// TestRateLimitRetry checks that when we make too many requests and receive a Retry-After response, the retry
+// occurs and the request ultimately succeeds.
+func (s *LiveTests) TestRateLimitRetry(c *C) {
+	// Capture the logged output so we can check for retry messages.
+	var logout bytes.Buffer
+	logger := log.New(&logout, "", log.LstdFlags)
+	client := client.NewClient(s.cred, identity.AuthUserPass, logger)
+	nova := nova.New(client)
+	// Delete the artifact if it already exists.
+	testGroup, err := nova.SecurityGroupByName("test_group")
+	if err != nil {
+		c.Assert(errors.IsNotFound(err), Equals, true)
+	} else {
+		nova.DeleteSecurityGroup(testGroup.Id)
+		c.Assert(err, IsNil)
+	}
+	// Create some artifacts a number of times in succession and ensure each time is successful,
+	// even with retries being required. As soon as we see a retry message, the test has passed
+	// and we exit.
+	for i := 0; i < 50; i++ {
+		testGroup, err = nova.CreateSecurityGroup("test_group", "test")
+		c.Assert(err, IsNil)
+		nova.DeleteSecurityGroup(testGroup.Id)
+		c.Assert(err, IsNil)
+		output := logout.String()
+		if strings.Contains(output, "Too many requests, retrying in") == true {
+			return
+		}
+	}
+	// No retry message logged so test has failed.
+	c.Fail()
 }
