@@ -213,7 +213,7 @@ The resource could not be found.
 		"",
 		"text/plain; charset=UTF-8",
 		"too many requests",
-		// Retry-After is usually an int but we don't want the tests taking too long to run.
+		// RFC says that Retry-After should be an int, but we don't want to wait an entire second during the test suite.
 		map[string]string{"Retry-After": "0.001"},
 		nil,
 	}

@@ -31,7 +31,7 @@ type localLiveSuite struct {
 	oldHandler            http.Handler
 	openstack             *openstackservice.Openstack
 	retryErrorCount       int // The current retry error count.
-	retryErrorCountToSend int // The number of retry errors to send..
+	retryErrorCountToSend int // The number of retry errors to send.
 }
 
 func (s *localLiveSuite) SetUpSuite(c *C) {
@@ -109,7 +109,7 @@ func (s *localLiveSuite) TestRateLimitRetry(c *C) {
 	var logout bytes.Buffer
 	logger := log.New(&logout, "", log.LstdFlags)
 	nova, testGroup := s.setupRetryErrorTest(c, logger)
-	s.retryErrorCountToSend = goosehttp.MaxRetries
+	s.retryErrorCountToSend = goosehttp.MaxSendAttempts - 1
 	s.openstack.Nova.RegisterControlPoint("removeSecurityGroup", s.retryLimitHook(s.openstack.Nova))
 	defer s.openstack.Nova.RegisterControlPoint("removeSecurityGroup", nil)
 	err := nova.DeleteSecurityGroup(testGroup.Id)
@@ -122,10 +122,10 @@ func (s *localLiveSuite) TestRateLimitRetry(c *C) {
 // TestRateLimitRetryExceeded checks that an error is raised if too many retry responses are received from the server.
 func (s *localLiveSuite) TestRateLimitRetryExceeded(c *C) {
 	nova, testGroup := s.setupRetryErrorTest(c, nil)
-	s.retryErrorCountToSend = goosehttp.MaxRetries + 1
+	s.retryErrorCountToSend = goosehttp.MaxSendAttempts
 	s.openstack.Nova.RegisterControlPoint("removeSecurityGroup", s.retryLimitHook(s.openstack.Nova))
 	defer s.openstack.Nova.RegisterControlPoint("removeSecurityGroup", nil)
 	err := nova.DeleteSecurityGroup(testGroup.Id)
 	c.Assert(err, Not(IsNil))
-	c.Assert(err.Error(), Matches, ".*Maximum number of retries.*")
+	c.Assert(err.Error(), Matches, ".*Maximum number of attempts.*")
 }
