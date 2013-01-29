@@ -6,7 +6,7 @@ import (
 	"launchpad.net/goose/testing/httpsuite"
 	"launchpad.net/goose/testservices"
 	"launchpad.net/goose/testservices/identityservice"
-	"launchpad.net/goose/testservices/openstack"
+	"launchpad.net/goose/testservices/openstackservice"
 )
 
 func registerLocalTests(authMethods []identity.AuthMethod) {
@@ -43,7 +43,7 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 		panic("Invalid authentication method")
 	case identity.AuthUserPass:
 		// The openstack test service sets up userpass authentication.
-		s.service = openstack.New(s.cred)
+		s.service = openstackservice.New(s.cred)
 	case identity.AuthLegacy:
 		legacy := identityservice.NewLegacy()
 		legacy.AddUser(s.cred.User, s.cred.Secrets, s.cred.TenantName)

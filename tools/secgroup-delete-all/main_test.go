@@ -9,7 +9,7 @@ import (
 	"launchpad.net/goose/nova"
 	"launchpad.net/goose/testing/httpsuite"
 	"launchpad.net/goose/testservices"
-	"launchpad.net/goose/testservices/openstack"
+	"launchpad.net/goose/testservices/openstackservice"
 	tool "launchpad.net/goose/tools/secgroup-delete-all"
 	"testing"
 )
@@ -38,7 +38,7 @@ func createNovaClient(creds *identity.Credentials) *nova.Client {
 	return nova.New(osc)
 }
 
-func (s *ToolSuite) makeServices(c *C) (*openstack.Openstack, *nova.Client) {
+func (s *ToolSuite) makeServices(c *C) (*openstackservice.Openstack, *nova.Client) {
 	creds := &identity.Credentials{
 		URL:        s.Server.URL,
 		User:       username,
@@ -46,7 +46,7 @@ func (s *ToolSuite) makeServices(c *C) (*openstack.Openstack, *nova.Client) {
 		Region:     region,
 		TenantName: tenant,
 	}
-	openstack := openstack.New(creds)
+	openstack := openstackservice.New(creds)
 	openstack.SetupHTTP(s.Mux)
 	return openstack, createNovaClient(creds)
 }
@@ -69,10 +69,13 @@ func (s *ToolSuite) TestTwoGroups(c *C) {
 	c.Assert(string(buf.Bytes()), Equals, "2 security groups deleted.\n")
 }
 
+// This group is one for which we will simulate a deletion error in the following test.
+var doNotDelete *nova.SecurityGroup
+
 // deleteGroupError hook raises an error if a group with id 2 is deleted.
 func deleteGroupError(s testservices.ServiceControl, args ...interface{}) error {
-	groupId := args[0]
-	if groupId == 2 {
+	groupId := args[0].(int)
+	if groupId == doNotDelete.Id {
 		return fmt.Errorf("cannot delete group %d", groupId)
 	}
 	return nil
@@ -81,10 +84,10 @@ func deleteGroupError(s testservices.ServiceControl, args ...interface{}) error 
 func (s *ToolSuite) TestUndeleteableGroup(c *C) {
 	os, nova := s.makeServices(c)
 	nova.CreateSecurityGroup("group-a", "A group")
-	nova.CreateSecurityGroup("group-b", "Another group")
+	doNotDelete, _ = nova.CreateSecurityGroup("group-b", "Another group")
 	nova.CreateSecurityGroup("group-c", "Yet another group")
-	os.Nova.RegisterControlPoint("removeSecurityGroup", deleteGroupError)
-	defer os.Nova.RegisterControlPoint("removeSecurityGroup", nil)
+	cleanup := os.Nova.RegisterControlPoint("removeSecurityGroup", deleteGroupError)
+	defer cleanup()
 	var buf bytes.Buffer
 	err := tool.DeleteAll(&buf, nova)
 	c.Assert(err, IsNil)
