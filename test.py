@@ -72,7 +72,7 @@ def create_tarmac_repository():
     reconfiguration = reconfigure.Reconfigure.to_use_shared(b.bzrdir)
     try:
         reconfiguration.apply(False)
-    except errors.NoRepositoryPreset:
+    except errors.NoRepositoryPresent:
         sys.stderr.write('tarmac did a lightweight checkout,'
                          ' not fetching into the repo.\n')
 
