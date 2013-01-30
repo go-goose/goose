@@ -4,7 +4,6 @@
 package nova
 
 import (
-	"encoding/base64"
 	"fmt"
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/errors"
@@ -252,10 +251,7 @@ func (c *Client) RunServer(opts RunServerOpts) (*Entity, error) {
 		Server RunServerOpts `json:"server"`
 	}
 	req.Server = opts
-	if opts.UserData != nil {
-		encoded := base64.StdEncoding.EncodeToString(opts.UserData)
-		req.Server.UserData = []byte(encoded)
-	}
+	// opts.UserData gets serialized to base64-encoded string automatically
 	var resp struct {
 		Server Entity `json:"server"`
 	}
