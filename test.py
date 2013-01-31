@@ -88,7 +88,7 @@ def ensure_juju_core_dependencies():
     # latest juju-core and everything else. The other is where the
     # goose-under-test resides. So we don't add the goose-under-test to GOPATH,
     # call "go get", then add it to the GOPATH for the rest of the testing.
-    cmd = ['go', 'get', '-u', 'launchpad.net/juju-core/...']
+    cmd = ['go', 'get', '-u', '-x', 'launchpad.net/juju-core/...']
     sys.stderr.write('Running: %s\n' % (' '.join(cmd),))
     retcode = subprocess.call(cmd)
     if retcode != 0:
@@ -139,8 +139,21 @@ def run_go_fmt(opts):
 def run_go_build(opts):
     return run_cmd(['go', 'build', './...'])
 
+
 def run_go_test(opts):
+    # Note: I wish we could run this with '-gocheck.v'
     return run_cmd(['go', 'test', './...'])
+
+
+def run_juju_core_tests(opts):
+    """Run the """
+    orig_wd = os.getcwd()
+    try:
+        sys.stderr.write('Switching to juju-core')
+        os.chdir('../juju-core')
+        return run_cmd(['go', 'test', './...'])
+    finally:
+        os.chdir(orig_wd)
 
 
 def run_live_tests(opts):
@@ -169,6 +182,8 @@ def main(args):
         help="Pass this if the script is running as the tarmac bot."
              " This is used for stuff like ensuring repositories and"
              " logging directories are initialized.")
+    p.add_argument('--juju-core', action='store_true',
+        help="Run the juju-core trunk tests as well as the goose tests.")
     p.add_argument('--live', action='store_true',
         help="Run tests against a live service.")
 
@@ -177,6 +192,8 @@ def main(args):
     if opts.tarmac:
         tarmac_setup(opts)
     to_run = [run_go_fmt, run_go_build, run_go_test]
+    if opts.juju_core:
+        to_run.append(run_juju_core_tests)
     if opts.live:
         to_run.append(run_live_tests)
     for func in to_run:
