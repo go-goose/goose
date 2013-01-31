@@ -72,7 +72,7 @@ def create_tarmac_repository():
     reconfiguration = reconfigure.Reconfigure.to_use_shared(b.bzrdir)
     try:
         reconfiguration.apply(False)
-    except errors.NoRepositoryPreset:
+    except errors.NoRepositoryPresent:
         sys.stderr.write('tarmac did a lightweight checkout,'
                          ' not fetching into the repo.\n')
 
@@ -123,22 +123,24 @@ def setup_gopath():
     os.environ['GOPATH'] = gopath
 
 
-def run_go_build(opts):
-    go_build_cmd = ['go', 'build']
-    sys.stderr.write('Running: %s\n' % (' '.join(go_build_cmd,)))
-    retcode = subprocess.call(go_build_cmd)
+def run_cmd(cmd):
+    cmd_str = ' '.join(cmd)
+    sys.stderr.write('Running: %s\n' % (cmd_str,))
+    retcode = subprocess.call(cmd)
     if retcode != 0:
-        sys.stderr.write('FAIL: failed running go build\n')
+        sys.stderr.write('FAIL: failed running: %s\n' % (cmd_str,))
     return retcode
 
+
+def run_go_fmt(opts):
+    return run_cmd(['go', 'fmt', './...'])
+
+
+def run_go_build(opts):
+    return run_cmd(['go', 'build', './...'])
 
 def run_go_test(opts):
-    go_test_cmd = ['go', 'test', './...']
-    sys.stderr.write('Running: %s\n' % (' '.join(go_test_cmd,)))
-    retcode = subprocess.call(go_test_cmd)
-    if retcode != 0:
-        sys.stderr.write('FAIL: failed running go build\n')
-    return retcode
+    return run_cmd(['go', 'test', './...'])
 
 
 def run_live_tests(opts):
@@ -174,14 +176,11 @@ def main(args):
     setup_gopath()
     if opts.tarmac:
         tarmac_setup(opts)
-    retcode = run_go_build(opts)
-    if retcode != 0:
-        return retcode
-    retcode = run_go_test(opts)
-    if retcode != 0:
-        return retcode
+    to_run = [run_go_fmt, run_go_build, run_go_test]
     if opts.live:
-        retcode = run_live_tests(opts)
+        to_run.append(run_live_tests)
+    for func in to_run:
+        retcode = func(opts)
         if retcode != 0:
             return retcode
 
