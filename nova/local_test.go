@@ -156,12 +156,12 @@ func (s *localLiveSuite) TestAddFloatingIPErrors(c *C) {
 	defer s.openstack.Nova.RegisterControlPoint("addFloatingIP", nil)
 	s.noMoreIPs = true
 	fip, err := nova.AllocateFloatingIP()
-	c.Assert(err, ErrorMatches, ".*zero floating ips available.*")
+	c.Assert(err, ErrorMatches, ".*Zero floating ips available.*")
 	c.Assert(fip, IsNil)
 	s.noMoreIPs = false
 	s.ipLimitExceeded = true
 	fip, err = nova.AllocateFloatingIP()
-	c.Assert(err, ErrorMatches, ".*maximum number of floating ips exceeded.*")
+	c.Assert(err, ErrorMatches, ".*Maximum number of floating ips exceeded.*")
 	c.Assert(fip, IsNil)
 	s.ipLimitExceeded = false
 	fip, err = nova.AllocateFloatingIP()
