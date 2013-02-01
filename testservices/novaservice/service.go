@@ -525,6 +525,9 @@ func (n *Nova) removeServerSecurityGroup(serverId string, groupId int) error {
 
 // addFloatingIP creates a new floating IP address in the pool.
 func (n *Nova) addFloatingIP(ip nova.FloatingIP) error {
+	if err := n.ProcessControlHook("", n, ip); err != nil {
+		return err
+	}
 	if _, err := n.floatingIP(ip.Id); err == nil {
 		return fmt.Errorf("a floating IP with id %d already exists", ip.Id)
 	}

@@ -26,7 +26,18 @@ type ServiceInstance struct {
 }
 
 // Internal Openstack errors.
+
 type RateLimitExceededError struct {
+	error
+}
+
+// NoMoreFloatingIPs corresponds to "HTTP 404 Zero floating ips available."
+type NoMoreFloatingIPs struct {
+	error
+}
+
+// IPLimitExceeded corresponds to "HTTP 413 Maximum number of floating ips exceeded"
+type IPLimitExceeded struct {
 	error
 }
 

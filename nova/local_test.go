@@ -30,8 +30,10 @@ type localLiveSuite struct {
 	Mux                   *http.ServeMux
 	oldHandler            http.Handler
 	openstack             *openstackservice.Openstack
-	retryErrorCount       int // The current retry error count.
-	retryErrorCountToSend int // The number of retry errors to send.
+	retryErrorCount       int  // The current retry error count.
+	retryErrorCountToSend int  // The number of retry errors to send.
+	noMoreIPs             bool // If true, addFloatingIP will return ErrNoMoreFloatingIPs
+	ipLimitExceeded       bool // If true, addFloatingIP will return ErrIPLimitExceeded
 }
 
 func (s *localLiveSuite) SetUpSuite(c *C) {
@@ -86,9 +88,13 @@ func (s *localLiveSuite) retryLimitHook(sc testservices.ServiceControl) testserv
 	}
 }
 
-func (s *localLiveSuite) setupRetryErrorTest(c *C, logger *log.Logger) (*nova.Client, *nova.SecurityGroup) {
+func (s *localLiveSuite) setupClient(c *C, logger *log.Logger) *nova.Client {
 	client := client.NewClient(s.cred, identity.AuthUserPass, logger)
-	nova := nova.New(client)
+	return nova.New(client)
+}
+
+func (s *localLiveSuite) setupRetryErrorTest(c *C, logger *log.Logger) (*nova.Client, *nova.SecurityGroup) {
+	nova := s.setupClient(c, logger)
 	// Delete the artifact if it already exists.
 	testGroup, err := nova.SecurityGroupByName("test_group")
 	if err != nil {
@@ -128,4 +134,37 @@ func (s *localLiveSuite) TestRateLimitRetryExceeded(c *C) {
 	err := nova.DeleteSecurityGroup(testGroup.Id)
 	c.Assert(err, Not(IsNil))
 	c.Assert(err.Error(), Matches, ".*Maximum number of attempts.*")
+}
+
+func (s *localLiveSuite) addFloatingIPHook(sc testservices.ServiceControl) testservices.ControlProcessor {
+	return func(sc testservices.ServiceControl, args ...interface{}) error {
+		if s.noMoreIPs {
+			return &testservices.NoMoreFloatingIPs{fmt.Errorf("zero floating ips available")}
+		} else if s.ipLimitExceeded {
+			return &testservices.IPLimitExceeded{fmt.Errorf("maximum number of floating ips exceeded")}
+		}
+		return nil
+	}
+}
+
+func (s *localLiveSuite) TestAddFloatingIPErrors(c *C) {
+	nova := s.setupClient(c, nil)
+	fips, err := nova.ListFloatingIPs()
+	c.Assert(err, IsNil)
+	c.Assert(fips, HasLen, 0)
+	s.openstack.Nova.RegisterControlPoint("addFloatingIP", s.addFloatingIPHook(s.openstack.Nova))
+	defer s.openstack.Nova.RegisterControlPoint("addFloatingIP", nil)
+	s.noMoreIPs = true
+	fip, err := nova.AllocateFloatingIP()
+	c.Assert(err, ErrorMatches, ".*zero floating ips available.*")
+	c.Assert(fip, IsNil)
+	s.noMoreIPs = false
+	s.ipLimitExceeded = true
+	fip, err = nova.AllocateFloatingIP()
+	c.Assert(err, ErrorMatches, ".*maximum number of floating ips exceeded.*")
+	c.Assert(fip, IsNil)
+	s.ipLimitExceeded = false
+	fip, err = nova.AllocateFloatingIP()
+	c.Assert(err, IsNil)
+	c.Assert(fip.IP, Not(Equals), "")
 }
