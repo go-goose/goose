@@ -217,6 +217,22 @@ The resource could not be found.
 		map[string]string{"Retry-After": "0.001"},
 		nil,
 	}
+	errNoMoreFloatingIPs = &errorResponse{
+		http.StatusNotFound,
+		"Zero floating ips available.",
+		"text/plain; charset=UTF-8",
+		"zero floating ips available",
+		nil,
+		nil,
+	}
+	errIPLimitExceeded = &errorResponse{
+		http.StatusRequestEntityTooLarge,
+		"Maximum number of floating ips exceeded.",
+		"text/plain; charset=UTF-8",
+		"maximum number of floating ips exceeded",
+		nil,
+		nil,
+	}
 )
 
 func (e *errorResponse) Error() string {
@@ -291,6 +307,10 @@ func (h *novaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var resp http.Handler
 	if _, ok := err.(*testservices.RateLimitExceededError); ok {
 		resp = errRateLimitExceeded
+	} else if err == testservices.NoMoreFloatingIPs {
+		resp = errNoMoreFloatingIPs
+	} else if err == testservices.IPLimitExceeded {
+		resp = errIPLimitExceeded
 	} else {
 		resp, _ = err.(http.Handler)
 		if resp == nil {

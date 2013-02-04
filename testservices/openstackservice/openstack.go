@@ -30,7 +30,7 @@ func New(cred *identity.Credentials) *Openstack {
 	return &openstack
 }
 
-// setupHTTP attaches all the needed handlers to provide the HTTP API for the Openstack service..
+// SetupHTTP attaches all the needed handlers to provide the HTTP API for the Openstack service..
 func (openstack *Openstack) SetupHTTP(mux *http.ServeMux) {
 	openstack.Identity.SetupHTTP(mux)
 	openstack.Nova.SetupHTTP(mux)

@@ -212,7 +212,7 @@ func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header,
 		if err != nil {
 			return nil, errors.Newf(err, URL, "failed executing the request")
 		}
-		if resp.StatusCode != http.StatusRequestEntityTooLarge {
+		if resp.StatusCode != http.StatusRequestEntityTooLarge || resp.Header.Get("Retry-After") == "" {
 			return resp, nil
 		}
 		retryAfter, err := strconv.ParseFloat(resp.Header.Get("Retry-After"), 32)
