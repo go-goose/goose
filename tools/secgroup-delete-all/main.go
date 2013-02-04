@@ -39,7 +39,7 @@ func DeleteAll(w io.Writer, osn *nova.Client) (err error) {
 	return nil
 }
 
-func createNovaClient(authMode identity.AuthMethod) (osn *nova.Client, err error) {
+func createNovaClient(authMode identity.AuthMode) (osn *nova.Client, err error) {
 	creds, err := identity.CompleteCredentialsFromEnv()
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func createNovaClient(authMode identity.AuthMethod) (osn *nova.Client, err error
 
 var authModeFlag = gnuflag.String("auth-mode", "userpass", "type of authentication to use")
 
-var authModes = map[string]identity.AuthMethod{
+var authModes = map[string]identity.AuthMode{
 	"userpass": identity.AuthUserPass,
 	"legacy":   identity.AuthLegacy,
 }

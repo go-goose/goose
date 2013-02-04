@@ -9,7 +9,7 @@ import (
 	"launchpad.net/goose/testservices/openstackservice"
 )
 
-func registerLocalTests(authMethods []identity.AuthMethod) {
+func registerLocalTests(authMethods []identity.AuthMode) {
 	for _, authMethod := range authMethods {
 		Suite(&localLiveSuite{
 			LiveTests: LiveTests{

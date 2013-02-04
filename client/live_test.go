@@ -6,7 +6,7 @@ import (
 	"launchpad.net/goose/identity"
 )
 
-func registerOpenStackTests(cred *identity.Credentials, authMethods []identity.AuthMethod) {
+func registerOpenStackTests(cred *identity.Credentials, authMethods []identity.AuthMode) {
 	for _, authMethod := range authMethods {
 		Suite(&LiveTests{
 			cred:       cred,
@@ -17,7 +17,7 @@ func registerOpenStackTests(cred *identity.Credentials, authMethods []identity.A
 
 type LiveTests struct {
 	cred       *identity.Credentials
-	authMethod identity.AuthMethod
+	authMethod identity.AuthMode
 }
 
 func (s *LiveTests) SetUpSuite(c *C) {

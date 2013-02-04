@@ -74,7 +74,7 @@ func NewPublicClient(baseURL string, logger *log.Logger) Client {
 	return &client
 }
 
-func NewClient(creds *identity.Credentials, auth_method identity.AuthMethod, logger *log.Logger) AuthenticatingClient {
+func NewClient(creds *identity.Credentials, auth_method identity.AuthMode, logger *log.Logger) AuthenticatingClient {
 	client_creds := *creds
 	client_creds.URL = client_creds.URL + apiTokens
 	client := authenticatingClient{

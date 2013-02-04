@@ -8,16 +8,16 @@ import (
 	"reflect"
 )
 
-// AuthMethod defines the authentication method to use (see Auth*
+// AuthMode defines the authentication method to use (see Auth*
 // constants below).
-type AuthMethod int
+type AuthMode int
 
 const (
-	AuthLegacy   = AuthMethod(iota) // Legacy authentication
-	AuthUserPass                    // Username + password authentication
+	AuthLegacy   = AuthMode(iota) // Legacy authentication
+	AuthUserPass                  // Username + password authentication
 )
 
-func (a AuthMethod) String() string {
+func (a AuthMode) String() string {
 	switch a {
 	case AuthLegacy:
 		return "Legacy Authentication"
