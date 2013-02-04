@@ -307,9 +307,9 @@ func (h *novaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var resp http.Handler
 	if _, ok := err.(*testservices.RateLimitExceededError); ok {
 		resp = errRateLimitExceeded
-	} else if _, ok := err.(*testservices.NoMoreFloatingIPs); ok {
+	} else if err == testservices.NoMoreFloatingIPs {
 		resp = errNoMoreFloatingIPs
-	} else if _, ok := err.(*testservices.IPLimitExceeded); ok {
+	} else if err == testservices.IPLimitExceeded {
 		resp = errIPLimitExceeded
 	} else {
 		resp, _ = err.(http.Handler)

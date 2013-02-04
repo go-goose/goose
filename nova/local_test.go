@@ -139,9 +139,9 @@ func (s *localLiveSuite) TestRateLimitRetryExceeded(c *C) {
 func (s *localLiveSuite) addFloatingIPHook(sc testservices.ServiceControl) testservices.ControlProcessor {
 	return func(sc testservices.ServiceControl, args ...interface{}) error {
 		if s.noMoreIPs {
-			return &testservices.NoMoreFloatingIPs{fmt.Errorf("zero floating ips available")}
+			return testservices.NoMoreFloatingIPs
 		} else if s.ipLimitExceeded {
-			return &testservices.IPLimitExceeded{fmt.Errorf("maximum number of floating ips exceeded")}
+			return testservices.IPLimitExceeded
 		}
 		return nil
 	}

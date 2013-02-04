@@ -1,6 +1,7 @@
 package testservices
 
 import (
+	"errors"
 	"launchpad.net/goose/testservices/identityservice"
 	"net/http"
 	"runtime"
@@ -32,14 +33,10 @@ type RateLimitExceededError struct {
 }
 
 // NoMoreFloatingIPs corresponds to "HTTP 404 Zero floating ips available."
-type NoMoreFloatingIPs struct {
-	error
-}
+var NoMoreFloatingIPs = errors.New("zero floating ips available")
 
 // IPLimitExceeded corresponds to "HTTP 413 Maximum number of floating ips exceeded"
-type IPLimitExceeded struct {
-	error
-}
+var IPLimitExceeded = errors.New("maximum number of floating ips exceeded")
 
 // ControlProcessor defines a function that is run when a specified control point is reached in the service
 // business logic. The function receives the service instance so internal state can be inspected, plus for any
