@@ -9,11 +9,11 @@ import (
 	"launchpad.net/goose/testservices/openstackservice"
 )
 
-func registerLocalTests(authMethods []identity.AuthMode) {
-	for _, authMethod := range authMethods {
+func registerLocalTests(authModes []identity.AuthMode) {
+	for _, authMode := range authModes {
 		Suite(&localLiveSuite{
 			LiveTests: LiveTests{
-				authMethod: authMethod,
+				authMode: authMode,
 			},
 		})
 	}
@@ -38,7 +38,7 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 		Region:     "some region",
 		TenantName: "tenant",
 	}
-	switch s.authMethod {
+	switch s.authMode {
 	default:
 		panic("Invalid authentication method")
 	case identity.AuthUserPass:

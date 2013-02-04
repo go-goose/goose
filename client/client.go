@@ -56,8 +56,8 @@ var _ Client = (*client)(nil)
 type authenticatingClient struct {
 	client
 
-	creds      *identity.Credentials
-	authMethod identity.Authenticator
+	creds    *identity.Credentials
+	authMode identity.Authenticator
 
 	auth AuthenticatingClient
 	//TODO - store service urls by region.
@@ -86,9 +86,9 @@ func NewClient(creds *identity.Credentials, auth_method identity.AuthMode, logge
 	default:
 		panic(fmt.Errorf("Invalid identity authorisation method: %d", auth_method))
 	case identity.AuthLegacy:
-		client.authMethod = &identity.Legacy{}
+		client.authMode = &identity.Legacy{}
 	case identity.AuthUserPass:
-		client.authMethod = &identity.UserPass{}
+		client.authMode = &identity.UserPass{}
 	}
 	return &client
 }
@@ -163,10 +163,10 @@ func (c *authenticatingClient) Authenticate() (err error) {
 		return nil
 	}
 	err = nil
-	if c.authMethod == nil {
+	if c.authMode == nil {
 		return fmt.Errorf("Authentication method has not been specified")
 	}
-	authDetails, err := c.authMethod.Auth(c.creds)
+	authDetails, err := c.authMode.Auth(c.creds)
 	if err != nil {
 		err = gooseerrors.Newf(err, "authentication failed")
 		return
