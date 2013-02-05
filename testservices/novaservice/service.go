@@ -8,6 +8,7 @@ import (
 	"launchpad.net/goose/testservices"
 	"launchpad.net/goose/testservices/identityservice"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -248,7 +249,8 @@ func (n *Nova) matchServer(filter *nova.Filter, server nova.ServerDetail) bool {
 		}
 	}
 	for _, val := range values[nova.FilterServer] {
-		if server.Name == val {
+		rex := regexp.MustCompile(val)
+		if rex.MatchString(server.Name) {
 			return true
 		}
 	}

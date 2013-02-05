@@ -312,6 +312,34 @@ func (s *NovaSuite) TestAllServersWithFilters(c *C) {
 	c.Assert(sr[0], DeepEquals, servers[2])
 }
 
+func (s *NovaSuite) TestAllServersWithRegexFilters(c *C) {
+	servers := s.service.allServers(nil)
+	c.Assert(servers, HasLen, 0)
+	servers = []nova.ServerDetail{
+		{Id: "sr1", Name: "foobarbaz"},
+		{Id: "sr2", Name: "foo123baz"},
+		{Id: "sr3", Name: "123barbaz"},
+		{Id: "sr4", Name: "foobar123"},
+	}
+	for _, server := range servers {
+		s.createServer(c, server)
+		defer s.deleteServer(c, server)
+	}
+	filter := nova.NewFilter()
+	filter.Add(nova.FilterServer, `foo.*baz`)
+	sr := s.service.allServers(filter)
+	c.Assert(sr, HasLen, 2)
+	if sr[0].Id != servers[0].Id {
+		sr[0], sr[1] = sr[1], sr[0]
+	}
+	c.Assert(sr, DeepEquals, servers[:2])
+	filter.Del(nova.FilterServer)
+	filter.Add(nova.FilterServer, `\w{6}\d+`)
+	sr = s.service.allServers(filter)
+	c.Assert(sr, HasLen, 1)
+	c.Assert(sr[0], DeepEquals, servers[3])
+}
+
 func (s *NovaSuite) TestAllServersAsEntities(c *C) {
 	entities := s.service.allServersAsEntities(nil)
 	c.Assert(entities, HasLen, 0)
