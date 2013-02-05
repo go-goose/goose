@@ -413,8 +413,8 @@ func (s *LiveTests) TestServerFloatingIPs(c *C) {
 
 	fip, err := s.nova.GetFloatingIP(ip.Id)
 	c.Assert(err, IsNil)
-	c.Check(fip.FixedIP, Matches, `\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`)
-	c.Check(fip.InstanceId, Equals, s.testServer.Id)
+	c.Check(*fip.FixedIP, Matches, `\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`)
+	c.Check(*fip.InstanceId, Equals, s.testServer.Id)
 
 	err = s.nova.RemoveServerFloatingIP(s.testServer.Id, ip.IP)
 	c.Check(err, IsNil)

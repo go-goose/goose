@@ -924,12 +924,14 @@ func (s *NovaSuite) TestAllFloatingIPs(c *C) {
 }
 
 func (s *NovaSuite) TestGetFloatingIP(c *C) {
+	inst := "sr1"
+	fixedIP := "4.3.2.1"
 	fip := nova.FloatingIP{
 		Id:         1,
 		IP:         "1.2.3.4",
 		Pool:       "pool",
-		InstanceId: "sr1",
-		FixedIP:    "4.3.2.1",
+		InstanceId: &inst,
+		FixedIP:    &fixedIP,
 	}
 	s.createIP(c, fip)
 	defer s.deleteIP(c, fip)

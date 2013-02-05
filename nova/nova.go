@@ -483,11 +483,16 @@ func (c *Client) RemoveServerSecurityGroup(serverId, groupName string) error {
 // FloatingIP describes a floating (public) IP address, which can be
 // assigned to a server, thus allowing connections from outside.
 type FloatingIP struct {
-	FixedIP    interface{} `json:"fixed_ip"` // Can be a string or null
-	Id         int         `json:"id"`
-	InstanceId interface{} `json:"instance_id"` // Can be a string or null
-	IP         string      `json:"ip"`
-	Pool       string      `json:"pool"`
+	// FixedIP holds the private IP address of the machine (when assigned)
+	FixedIP *string `json:"fixed_ip"`
+
+	Id int `json:"id"`
+
+	// InstanceId holds the instance id of the machine, if this FIP is assigned to one
+	InstanceId *string `json:"instance_id"`
+
+	IP   string `json:"ip"`
+	Pool string `json:"pool"`
 }
 
 // ListFloatingIPs lists floating IP addresses associated with the tenant or account.
