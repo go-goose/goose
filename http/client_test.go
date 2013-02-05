@@ -1,8 +1,9 @@
-package http_test
+package http
 
 import (
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/testing/httpsuite"
+	"net/http"
 	"testing"
 )
 
@@ -16,6 +17,8 @@ type HTTPClientTestSuite struct {
 
 var _ = Suite(&HTTPClientTestSuite{})
 
-func (s *HTTPClientTestSuite) TestSendsUserAgent(c *C) {
-	c.Assert(2+2, Equals, 4)
+func (s *HTTPClientTestSuite) TestCreateHeaders(c *C) {
+	headers := createHeaders(make(http.Header), "content-type")
+	content_types := []string{"content-type"}
+	c.Assert(headers, DeepEquals, http.Header{"Content-Type": content_types, "Accept": content_types})
 }
