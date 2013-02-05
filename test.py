@@ -104,10 +104,12 @@ def tarmac_setup(opts):
 
 def setup_gopath():
     pwd = os.getcwd()
+    if sys.platform == 'win32':
+        pwd = pwd.replace('\\', '/')
     offset = pwd.rfind('src/launchpad.net/goose')
     if offset == -1:
         sys.stderr.write('Could not find "src/launchpad.net/goose" in cwd: %s\n'
-                         % (cwd,))
+                         % (pwd,))
         sys.stderr.write('Unable to automatically set GOPATH\n')
         return
     add_gopath = pwd[:offset].rstrip('/')
