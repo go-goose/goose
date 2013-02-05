@@ -148,11 +148,14 @@ def run_go_test(opts):
 
 
 def run_juju_core_tests(opts):
-    """Run the """
+    """Run the juju-core test suite"""
     orig_wd = os.getcwd()
     try:
         sys.stderr.write('Switching to juju-core')
         os.chdir('../juju-core')
+        retval = run_cmd(['go', 'build', './...'])
+        if retval != 0:
+            return retval
         return run_cmd(['go', 'test', './...'])
     finally:
         os.chdir(orig_wd)
