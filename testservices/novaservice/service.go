@@ -593,8 +593,8 @@ func (n *Nova) addServerFloatingIP(serverId string, ipId int) error {
 	if fip, err := n.floatingIP(ipId); err != nil {
 		return err
 	} else {
-		fip.FixedIP = fip.IP
-		fip.InstanceId = serverId
+		fip.FixedIP = &fip.IP
+		fip.InstanceId = &serverId
 		n.floatingIPs[ipId] = *fip
 	}
 	fips, ok := n.serverIPs[serverId]
