@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"launchpad.net/goose"
 	"launchpad.net/goose/errors"
 	"log"
 	"net/http"
@@ -68,6 +69,10 @@ func New(httpClient http.Client, logger *log.Logger, token string) *Client {
 	return &Client{httpClient, logger, token, MaxSendAttempts}
 }
 
+func gooseAgent() string {
+	return fmt.Sprintf("goose (%s)", goose.Version)
+}
+
 func createHeaders(extraHeaders http.Header, contentType string) http.Header {
 	headers := make(http.Header)
 	if extraHeaders != nil {
@@ -79,6 +84,7 @@ func createHeaders(extraHeaders http.Header, contentType string) http.Header {
 	}
 	headers.Add("Content-Type", contentType)
 	headers.Add("Accept", contentType)
+	headers.Add("User-Agent", gooseAgent())
 	return headers
 }
 
