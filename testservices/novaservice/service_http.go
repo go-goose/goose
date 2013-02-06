@@ -589,6 +589,7 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	userInfo, _ := userInfo(n.IdentityService, r)
 	server := nova.ServerDetail{
 		Id:        id,
+		UUID:      id,
 		Name:      req.Server.Name,
 		TenantId:  n.TenantId,
 		UserId:    userInfo.Id,

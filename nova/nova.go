@@ -4,12 +4,14 @@
 package nova
 
 import (
+	"encoding/json"
 	"fmt"
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/errors"
 	goosehttp "launchpad.net/goose/http"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 // API URL parts.
@@ -89,60 +91,113 @@ type Link struct {
 	Type string
 }
 
+type genericId struct {
+	Id interface{}
+}
+
 // Entity describe a basic information about a flavor or server.
 type Entity struct {
-	Id    string
-	Links []Link
-	Name  string
+	Id    string `json:"-"`
+	UUID  string `json:"uuid"`
+	Links []Link `json:"links"`
+	Name  string `json:"name"`
+}
+
+type jsonEntity struct {
+	Entity
+}
+
+func (entity *jsonEntity) UnmarshalJSON(b []byte) error {
+	var e Entity
+	if err := json.Unmarshal(b, &e); err != nil {
+		return err
+	}
+	entity.Entity = e
+	var id genericId
+	if err := json.Unmarshal(b, &id); err != nil {
+		return err
+	}
+	entity.Id = fmt.Sprint(id.Id)
+	return nil
+}
+
+func convertEntities(je []jsonEntity) []Entity {
+	entities := make([]Entity, len(je))
+	for i, e := range je {
+		entities[i] = e.Entity
+	}
+	return entities
 }
 
 // ListFlavours lists IDs, names, and links for available flavors.
 func (c *Client) ListFlavors() ([]Entity, error) {
 	var resp struct {
-		Flavors []Entity
+		Flavors []jsonEntity
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiFlavors, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get list of flavours")
 	}
-	return resp.Flavors, err
+	return convertEntities(resp.Flavors), nil
 }
 
 // FlavorDetail describes detailed information about a flavor.
 type FlavorDetail struct {
 	Name  string
-	RAM   int // Available RAM, in MB
-	VCPUs int // Number of virtual CPU (cores)
-	Disk  int // Available root partition space, in GB
-	Id    string
+	RAM   int    // Available RAM, in MB
+	VCPUs int    // Number of virtual CPU (cores)
+	Disk  int    // Available root partition space, in GB
+	Id    string `json:"-"`
 	Links []Link
+}
+
+type jsonFlavorDetail struct {
+	FlavorDetail
+}
+
+func (flavorDetail *jsonFlavorDetail) UnmarshalJSON(b []byte) error {
+	var fd FlavorDetail
+	if err := json.Unmarshal(b, &fd); err != nil {
+		return err
+	}
+	flavorDetail.FlavorDetail = fd
+	var id genericId
+	if err := json.Unmarshal(b, &id); err != nil {
+		return err
+	}
+	flavorDetail.Id = fmt.Sprint(id.Id)
+	return nil
 }
 
 // ListFlavorsDetail lists all details for available flavors.
 func (c *Client) ListFlavorsDetail() ([]FlavorDetail, error) {
 	var resp struct {
-		Flavors []FlavorDetail
+		Flavors []jsonFlavorDetail
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiFlavorsDetail, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get list of flavour details")
 	}
-	return resp.Flavors, nil
+	result := make([]FlavorDetail, len(resp.Flavors))
+	for i, fd := range resp.Flavors {
+		result[i] = fd.FlavorDetail
+	}
+	return result, nil
 }
 
 // ListServers lists IDs, names, and links for all servers.
 func (c *Client) ListServers(filter *Filter) ([]Entity, error) {
 	var resp struct {
-		Servers []Entity
+		Servers []jsonEntity
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.Values, ExpectedStatus: []int{http.StatusOK}}
 	err := c.client.SendRequest(client.GET, "compute", apiServers, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get list of servers")
 	}
-	return resp.Servers, nil
+	return convertEntities(resp.Servers), nil
 }
 
 // IPAddress describes a single IPv4/6 address of a server.
@@ -170,10 +225,18 @@ type ServerDetail struct {
 
 	Flavor Entity
 	HostId string
-	Id     string
+	Id     string `json:"-"`
+	UUID   string
 	Image  Entity
 	Links  []Link
 	Name   string
+
+	// HP Cloud returns security groups in server details.
+	// TODO(wallyworld) - []Entity is returned but we really want []SecurityGroup
+	// Only way to get []SecurityGroup is via a number of lookups which we would
+	// rather avoid unless it becomes necessary.
+	Groups []Entity //`json:"security_groups"`
+
 	// Progress holds the completion percentage of
 	// the current operation
 	Progress int
@@ -191,23 +254,58 @@ type ServerDetail struct {
 	UserId string `json:"user_id"`
 }
 
+type jsonServerDetail struct {
+	ServerDetail
+}
+
+type jsonServerDetailEntities struct {
+	Image  jsonEntity   `json:"image"`
+	Flavor jsonEntity   `json:"flavor"`
+	Groups []jsonEntity `json:"security_groups"`
+}
+
+func (serverDetail *jsonServerDetail) UnmarshalJSON(b []byte) error {
+	var sd ServerDetail
+	if err := json.Unmarshal(b, &sd); err != nil {
+		return err
+	}
+	serverDetail.ServerDetail = sd
+	var id genericId
+	if err := json.Unmarshal(b, &id); err != nil {
+		return err
+	}
+	serverDetail.Id = fmt.Sprint(id.Id)
+	var entities jsonServerDetailEntities
+	if err := json.Unmarshal(b, &entities); err != nil {
+		return err
+	}
+	serverDetail.Image = entities.Image.Entity
+	serverDetail.Flavor = entities.Flavor.Entity
+	serverDetail.Groups = convertEntities(entities.Groups)
+	return nil
+}
+
 // ListServersDetail lists all details for available servers.
 func (c *Client) ListServersDetail(filter *Filter) ([]ServerDetail, error) {
 	var resp struct {
-		Servers []ServerDetail
+		Servers []jsonServerDetail
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.Values}
 	err := c.client.SendRequest(client.GET, "compute", apiServersDetail, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get list of server details")
 	}
-	return resp.Servers, nil
+	result := make([]ServerDetail, len(resp.Servers))
+	for i, sd := range resp.Servers {
+		result[i] = sd.ServerDetail
+	}
+	return result, nil
 }
 
 // GetServer lists details for the specified server.
 func (c *Client) GetServer(serverId string) (*ServerDetail, error) {
 	var resp struct {
-		Server ServerDetail
+		Server jsonServerDetail
 	}
 	url := fmt.Sprintf("%s/%s", apiServers, serverId)
 	requestData := goosehttp.RequestData{RespValue: &resp}
@@ -215,13 +313,13 @@ func (c *Client) GetServer(serverId string) (*ServerDetail, error) {
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get details for serverId: %s", serverId)
 	}
-	return &resp.Server, nil
+	return &resp.Server.ServerDetail, nil
 }
 
 // DeleteServer terminates the specified server.
 func (c *Client) DeleteServer(serverId string) error {
 	var resp struct {
-		Server ServerDetail
+		Server jsonServerDetail
 	}
 	url := fmt.Sprintf("%s/%s", apiServers, serverId)
 	requestData := goosehttp.RequestData{RespValue: &resp, ExpectedStatus: []int{http.StatusNoContent}}
@@ -253,14 +351,14 @@ func (c *Client) RunServer(opts RunServerOpts) (*Entity, error) {
 	req.Server = opts
 	// opts.UserData gets serialized to base64-encoded string automatically
 	var resp struct {
-		Server Entity `json:"server"`
+		Server jsonEntity `json:"server"`
 	}
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp, ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.POST, "compute", apiServers, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to run a server with %#v", opts)
 	}
-	return &resp.Server, nil
+	return &resp.Server.Entity, nil
 }
 
 // SecurityGroupRef refers to an existing named security group
@@ -330,6 +428,25 @@ func (c *Client) GetServerSecurityGroups(serverId string) ([]SecurityGroup, erro
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", url, &requestData)
 	if err != nil {
+		// Sadly HP Cloud lacks the necessary API and also doesn't provide full SecurityGroup lookup.
+		// The best we can do for now is to use just the Id and Name from the group entities.
+		if errors.IsNotFound(err) {
+			serverDetails, err := c.GetServer(serverId)
+			if err == nil {
+				result := make([]SecurityGroup, len(serverDetails.Groups))
+				for i, e := range serverDetails.Groups {
+					id, err := strconv.Atoi(e.Id)
+					if err != nil {
+						return nil, errors.Newf(err, "failed to parse security group id %s", e.Id)
+					}
+					result[i] = SecurityGroup{
+						Id:   id,
+						Name: e.Name,
+					}
+				}
+				return result, nil
+			}
+		}
 		return nil, errors.Newf(err, "failed to list server (%s) security groups", serverId)
 	}
 	return resp.Groups, nil
@@ -489,16 +606,41 @@ type FloatingIP struct {
 	Id int `json:"id"`
 
 	// InstanceId holds the instance id of the machine, if this FIP is assigned to one
-	InstanceId *string `json:"instance_id"`
+	InstanceId *string `json:"-"`
 
 	IP   string `json:"ip"`
 	Pool string `json:"pool"`
 }
 
+type jsonFloatingIP struct {
+	FloatingIP
+}
+
+type genericInstanceId struct {
+	InstanceId interface{} `json:"instance_id"`
+}
+
+func (floatingIP *jsonFloatingIP) UnmarshalJSON(b []byte) error {
+	var fip FloatingIP
+	if err := json.Unmarshal(b, &fip); err != nil {
+		return err
+	}
+	floatingIP.FloatingIP = fip
+	var id genericInstanceId
+	if err := json.Unmarshal(b, &id); err != nil {
+		return err
+	}
+	if id.InstanceId != nil && id.InstanceId != "" {
+		strId := fmt.Sprint(id.InstanceId)
+		floatingIP.InstanceId = &strId
+	}
+	return nil
+}
+
 // ListFloatingIPs lists floating IP addresses associated with the tenant or account.
 func (c *Client) ListFloatingIPs() ([]FloatingIP, error) {
 	var resp struct {
-		FloatingIPs []FloatingIP `json:"floating_ips"`
+		FloatingIPs []jsonFloatingIP `json:"floating_ips"`
 	}
 
 	requestData := goosehttp.RequestData{RespValue: &resp}
@@ -506,13 +648,17 @@ func (c *Client) ListFloatingIPs() ([]FloatingIP, error) {
 	if err != nil {
 		return nil, errors.Newf(err, "failed to list floating ips")
 	}
-	return resp.FloatingIPs, nil
+	result := make([]FloatingIP, len(resp.FloatingIPs))
+	for i, fip := range resp.FloatingIPs {
+		result[i] = fip.FloatingIP
+	}
+	return result, nil
 }
 
 // GetFloatingIP lists details of the floating IP address associated with specified id.
 func (c *Client) GetFloatingIP(ipId int) (*FloatingIP, error) {
 	var resp struct {
-		FloatingIP FloatingIP `json:"floating_ip"`
+		FloatingIP jsonFloatingIP `json:"floating_ip"`
 	}
 
 	url := fmt.Sprintf("%s/%d", apiFloatingIPs, ipId)
@@ -521,7 +667,7 @@ func (c *Client) GetFloatingIP(ipId int) (*FloatingIP, error) {
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get floating ip %d details", ipId)
 	}
-	return &resp.FloatingIP, nil
+	return &resp.FloatingIP.FloatingIP, nil
 }
 
 // AllocateFloatingIP allocates a new floating IP address to a tenant or account.

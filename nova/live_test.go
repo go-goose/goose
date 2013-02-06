@@ -2,6 +2,7 @@ package nova_test
 
 import (
 	"bytes"
+	"fmt"
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/errors"
@@ -13,38 +14,63 @@ import (
 )
 
 const (
-	// Known, pre-existing image details to use when creating a test server instance.
-	testImageId   = "0f602ea9-c09e-440c-9e29-cfae5635afa3" // smoser-cloud-images/ubuntu-quantal-12.10-i386-server-20121017
-	testFlavourId = "1"                                    // m1.tiny
 	// A made up name we use for the test server instance.
 	testImageName = "nova_test_server"
 )
 
-func registerOpenStackTests(cred *identity.Credentials) {
+func registerOpenStackTests(cred *identity.Credentials, testImageDetails imageDetails) {
 	Suite(&LiveTests{
-		cred: cred,
+		cred:        cred,
+		testImageId: testImageDetails.imageId,
+		testFlavor:  testImageDetails.flavor,
+		vendor:      testImageDetails.vendor,
 	})
 }
 
 type LiveTests struct {
-	cred       *identity.Credentials
-	client     client.AuthenticatingClient
-	nova       *nova.Client
-	testServer *nova.Entity
-	userId     string
-	tenantId   string
+	cred         *identity.Credentials
+	client       client.AuthenticatingClient
+	nova         *nova.Client
+	testServer   *nova.Entity
+	userId       string
+	tenantId     string
+	testImageId  string
+	testFlavor   string
+	testFlavorId string
+	vendor       string
 }
 
 func (s *LiveTests) SetUpSuite(c *C) {
 	s.client = client.NewClient(s.cred, identity.AuthUserPass, nil)
 	s.nova = nova.New(s.client)
 	var err error
+	s.testFlavorId, err = s.findFlavorId(s.testFlavor)
+	c.Assert(err, IsNil)
 	s.testServer, err = s.createInstance(c, testImageName)
 	c.Assert(err, IsNil)
 	s.waitTestServerToStart(c)
 	// These will not be filled in until a client has authorised which will happen creating the instance above.
 	s.userId = s.client.UserId()
 	s.tenantId = s.client.TenantId()
+}
+
+func (s *LiveTests) findFlavorId(flavorName string) (string, error) {
+	flavors, err := s.nova.ListFlavors()
+	fmt.Println(flavors)
+	if err != nil {
+		return "", err
+	}
+	var flavorId string
+	for _, flavor := range flavors {
+		if flavor.Name == flavorName {
+			flavorId = flavor.Id
+			break
+		}
+	}
+	if flavorId == "" {
+		return "", fmt.Errorf("No such flavor %s", flavorName)
+	}
+	return flavorId, nil
 }
 
 func (s *LiveTests) TearDownSuite(c *C) {
@@ -65,8 +91,8 @@ func (s *LiveTests) TearDownTest(c *C) {
 func (s *LiveTests) createInstance(c *C, name string) (instance *nova.Entity, err error) {
 	opts := nova.RunServerOpts{
 		Name:     name,
-		FlavorId: testFlavourId,
-		ImageId:  testImageId,
+		FlavorId: s.testFlavorId,
+		ImageId:  s.testImageId,
 		UserData: nil,
 	}
 	instance, err = s.nova.RunServer(opts)
@@ -80,8 +106,8 @@ func (s *LiveTests) createInstance(c *C, name string) (instance *nova.Entity, er
 func (s *LiveTests) assertServerDetails(c *C, sr *nova.ServerDetail) {
 	c.Check(sr.Id, Equals, s.testServer.Id)
 	c.Check(sr.Name, Equals, testImageName)
-	c.Check(sr.Flavor.Id, Equals, testFlavourId)
-	c.Check(sr.Image.Id, Equals, testImageId)
+	c.Check(sr.Flavor.Id, Equals, s.testFlavorId)
+	c.Check(sr.Image.Id, Equals, s.testImageId)
 }
 
 func (s *LiveTests) TestListFlavors(c *C) {
@@ -367,7 +393,6 @@ func (s *LiveTests) TestFloatingIPs(c *C) {
 	c.Assert(err, IsNil)
 	defer s.nova.DeleteFloatingIP(ip.Id)
 	c.Check(ip.IP, Not(Equals), "")
-	c.Check(ip.Pool, Not(Equals), "")
 	c.Check(ip.FixedIP, IsNil)
 	c.Check(ip.InstanceId, IsNil)
 
@@ -379,7 +404,6 @@ func (s *LiveTests) TestFloatingIPs(c *C) {
 		found := false
 		for _, i := range ips {
 			c.Check(i.IP, Not(Equals), "")
-			c.Check(i.Pool, Not(Equals), "")
 			if i.Id == ip.Id {
 				c.Check(i.IP, Equals, ip.IP)
 				c.Check(i.Pool, Equals, ip.Pool)
@@ -427,26 +451,29 @@ func (s *LiveTests) TestServerFloatingIPs(c *C) {
 // TestRateLimitRetry checks that when we make too many requests and receive a Retry-After response, the retry
 // occurs and the request ultimately succeeds.
 func (s *LiveTests) TestRateLimitRetry(c *C) {
+	if s.vendor != "canonistack" {
+		c.Skip("TestRateLimitRetry is only run for Canonistack")
+	}
 	// Capture the logged output so we can check for retry messages.
 	var logout bytes.Buffer
 	logger := log.New(&logout, "", log.LstdFlags)
 	client := client.NewClient(s.cred, identity.AuthUserPass, logger)
-	nova := nova.New(client)
+	novaClient := nova.New(client)
 	// Delete the artifact if it already exists.
-	testGroup, err := nova.SecurityGroupByName("test_group")
+	testGroup, err := novaClient.SecurityGroupByName("test_group")
 	if err != nil {
 		c.Assert(errors.IsNotFound(err), Equals, true)
 	} else {
-		nova.DeleteSecurityGroup(testGroup.Id)
+		novaClient.DeleteSecurityGroup(testGroup.Id)
 		c.Assert(err, IsNil)
 	}
 	// Create some artifacts a number of times in succession and ensure each time is successful,
 	// even with retries being required. As soon as we see a retry message, the test has passed
 	// and we exit.
 	for i := 0; i < 50; i++ {
-		testGroup, err = nova.CreateSecurityGroup("test_group", "test")
+		testGroup, err = novaClient.CreateSecurityGroup("test_group", "test")
 		c.Assert(err, IsNil)
-		nova.DeleteSecurityGroup(testGroup.Id)
+		novaClient.DeleteSecurityGroup(testGroup.Id)
 		c.Assert(err, IsNil)
 		output := logout.String()
 		if strings.Contains(output, "Too many requests, retrying in") == true {

@@ -56,6 +56,7 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 	s.openstack = openstackservice.New(s.cred)
 	s.openstack.SetupHTTP(s.Mux)
 
+	s.testFlavor = "m1.small"
 	s.LiveTests.SetUpSuite(c)
 }
 
