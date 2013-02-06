@@ -38,3 +38,36 @@ func (s *HTTPClientTestSuite) TestCreateHeadersCopiesSupplied(c *C) {
 	c.Assert(headers, DeepEquals,
 		http.Header{"Foo": []string{"Bar"}, "Content-Type": contentTypes, "Accept": contentTypes, "User-Agent": []string{gooseAgent()}})
 }
+
+func (s *HTTPClientTestSuite) setupLoopbackRequest() (*http.Header, *Client) {
+	headers := http.Header{}
+	handler := func(resp http.ResponseWriter, req *http.Request) {
+		headers = req.Header
+		resp.Header().Add("Content-Length", "0")
+		resp.WriteHeader(http.StatusNoContent)
+		resp.Write([]byte{})
+	}
+	s.Mux.HandleFunc("/", handler)
+	client := New(*http.DefaultClient, nil, "")
+	return &headers, client
+}
+
+func (s *HTTPClientTestSuite) TestBinaryRequestSetsUserAgent(c *C) {
+	headers, client := s.setupLoopbackRequest()
+	req := &RequestData{ExpectedStatus: []int{http.StatusNoContent}}
+	err := client.BinaryRequest("POST", s.Server.URL, req)
+	c.Assert(err, IsNil)
+	agent := headers.Get("User-Agent")
+	c.Check(agent, Not(Equals), "")
+	c.Check(agent, Equals, gooseAgent())
+}
+
+func (s *HTTPClientTestSuite) TestJSONRequestSetsUserAgent(c *C) {
+	headers, client := s.setupLoopbackRequest()
+	req := &RequestData{ExpectedStatus: []int{http.StatusNoContent}}
+	err := client.JsonRequest("POST", s.Server.URL, req)
+	c.Assert(err, IsNil)
+	agent := headers.Get("User-Agent")
+	c.Check(agent, Not(Equals), "")
+	c.Check(agent, Equals, gooseAgent())
+}
