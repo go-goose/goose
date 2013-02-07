@@ -879,23 +879,44 @@ func (n *Nova) handleSecurityGroupRules(w http.ResponseWriter, r *http.Request) 
 		}
 		if err = json.Unmarshal(body, &req); err != nil {
 			return err
-		} else {
-			n.nextRuleId++
-			nextId := n.nextRuleId
-			err = n.addSecurityGroupRule(nextId, req.Rule)
-			if err != nil {
-				return err
-			}
-			rule, err := n.securityGroupRule(nextId)
-			if err != nil {
-				return err
-			}
-			var resp struct {
-				Rule nova.SecurityGroupRule `json:"security_group_rule"`
-			}
-			resp.Rule = *rule
-			return sendJSON(http.StatusOK, resp, w, r)
 		}
+		inrule := req.Rule
+		group, err := n.securityGroup(inrule.ParentGroupId)
+		if err != nil {
+			return err // TODO: should be a 4XX error with details
+		}
+		for _, r := range group.Rules {
+			// TODO: this logic is actually wrong, not what nova does at all
+			// why are we reimplementing half of nova/api/openstack in go again?
+			if r.IPProtocol != nil && *r.IPProtocol == inrule.IPProtocol &&
+				r.FromPort != nil && *r.FromPort == inrule.FromPort &&
+				r.ToPort != nil && *r.ToPort == inrule.ToPort {
+				// TODO: Use a proper helper and sane error type
+				return &errorResponse{
+					http.StatusBadRequest,
+					fmt.Sprintf(`{"badRequest": {"message": "This rule already exists in group %d", "code": 400}}`, group.Id),
+					"application/json; charset=UTF-8",
+					"rule already exists",
+					nil,
+					nil,
+				}
+			}
+		}
+		n.nextRuleId++
+		nextId := n.nextRuleId
+		err = n.addSecurityGroupRule(nextId, req.Rule)
+		if err != nil {
+			return err
+		}
+		rule, err := n.securityGroupRule(nextId)
+		if err != nil {
+			return err
+		}
+		var resp struct {
+			Rule nova.SecurityGroupRule `json:"security_group_rule"`
+		}
+		resp.Rule = *rule
+		return sendJSON(http.StatusOK, resp, w, r)
 	case "PUT":
 		if ruleId := path.Base(r.URL.Path); ruleId != "os-security-group-rules" {
 			return errNotFoundJSON
