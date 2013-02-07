@@ -97,6 +97,8 @@ type genericId struct {
 
 var useNumericIds bool = false
 
+// convertId returns the id as either a string or an int depending on what
+// implementation of Openstack we are emulating.
 func convertId(id string) interface{} {
 	if !useNumericIds {
 		return id

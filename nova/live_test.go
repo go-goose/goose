@@ -28,16 +28,17 @@ func registerOpenStackTests(cred *identity.Credentials, testImageDetails imageDe
 }
 
 type LiveTests struct {
-	cred         *identity.Credentials
-	client       client.AuthenticatingClient
-	nova         *nova.Client
-	testServer   *nova.Entity
-	userId       string
-	tenantId     string
-	testImageId  string
-	testFlavor   string
-	testFlavorId string
-	vendor       string
+	cred          *identity.Credentials
+	client        client.AuthenticatingClient
+	nova          *nova.Client
+	testServer    *nova.Entity
+	userId        string
+	tenantId      string
+	testImageId   string
+	testFlavor    string
+	testFlavorId  string
+	vendor        string
+	useNumericIds bool
 }
 
 func (s *LiveTests) SetUpSuite(c *C) {
