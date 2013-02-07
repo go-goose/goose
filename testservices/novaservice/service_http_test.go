@@ -568,7 +568,7 @@ func (s *NovaHTTPSuite) TestGetServersWithFilters(c *C) {
 	var expected struct {
 		Servers []nova.Entity
 	}
-	url := "/servers?status=RESCUE&status=BUILD&name=srv1&name=srv2"
+	url := "/servers?status=RESCUE&status=BUILD&name=srv2&name=srv1"
 	resp, err := s.authRequest("GET", url, nil, nil)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
@@ -586,20 +586,13 @@ func (s *NovaHTTPSuite) TestGetServersWithFilters(c *C) {
 		c.Assert(err, IsNil)
 		defer s.service.removeServer(server.Id)
 	}
-	filter := nova.NewFilter()
-	filter.Add(nova.FilterStatus, nova.StatusRescue)
-	filter.Add(nova.FilterStatus, nova.StatusBuild)
-	filter.Add(nova.FilterServer, "srv1")
-	filter.Add(nova.FilterServer, "srv2")
-	entities = s.service.allServersAsEntities(filter)
 	resp, err = s.authRequest("GET", url, nil, nil)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
 	assertJSON(c, resp, &expected)
-	if expected.Servers[0].Id != entities[0].Id {
-		expected.Servers[0], expected.Servers[1] = expected.Servers[1], expected.Servers[0]
-	}
-	c.Assert(expected.Servers, DeepEquals, entities[:2])
+	c.Assert(expected.Servers, HasLen, 1)
+	c.Assert(expected.Servers[0].Id, DeepEquals, servers[0].Id)
+	c.Assert(expected.Servers[0].Name, DeepEquals, servers[0].Name)
 }
 
 func (s *NovaHTTPSuite) TestNewUUID(c *C) {
@@ -763,7 +756,7 @@ func (s *NovaHTTPSuite) TestGetServersDetailWithFilters(c *C) {
 	var expected struct {
 		Servers []nova.ServerDetail `json:"servers"`
 	}
-	url := "/servers/detail?status=RESCUE&status=BUILD&name=srv1&name=srv2"
+	url := "/servers/detail?status=RESCUE&status=BUILD&name=srv2&name=srv1"
 	resp, err := s.authRequest("GET", url, nil, nil)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
@@ -785,11 +778,8 @@ func (s *NovaHTTPSuite) TestGetServersDetailWithFilters(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
 	assertJSON(c, resp, &expected)
-	c.Assert(expected.Servers, HasLen, 2)
-	if expected.Servers[0].Id != servers[0].Id {
-		expected.Servers[0], expected.Servers[1] = expected.Servers[1], expected.Servers[0]
-	}
-	c.Assert(expected.Servers, DeepEquals, servers[:2])
+	c.Assert(expected.Servers, HasLen, 1)
+	c.Assert(expected.Servers[0], DeepEquals, servers[1])
 }
 
 func (s *NovaHTTPSuite) TestGetSecurityGroups(c *C) {

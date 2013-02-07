@@ -141,9 +141,7 @@ func (s *LiveTests) TestListServersWithFilter(c *C) {
 	c.Assert(err, IsNil)
 	defer s.nova.DeleteServer(inst.Id)
 	filter := nova.NewFilter()
-	filter.Add(nova.FilterServer, "filtered_server")
-	// The server will still be building when we make the API call.
-	filter.Add(nova.FilterStatus, nova.StatusBuild)
+	filter.Set(nova.FilterServer, "filtered_server")
 	servers, err := s.nova.ListServers(filter)
 	c.Assert(err, IsNil)
 	found := false
@@ -204,9 +202,7 @@ func (s *LiveTests) TestListServersDetailWithFilter(c *C) {
 	c.Assert(err, IsNil)
 	defer s.nova.DeleteServer(inst.Id)
 	filter := nova.NewFilter()
-	filter.Add(nova.FilterServer, "filtered_server")
-	// The server will still be building when we make the API call.
-	filter.Add(nova.FilterStatus, nova.StatusBuild)
+	filter.Set(nova.FilterServer, "filtered_server")
 	servers, err := s.nova.ListServersDetail(filter)
 	c.Assert(err, IsNil)
 	found := false
@@ -455,4 +451,32 @@ func (s *LiveTests) TestRateLimitRetry(c *C) {
 	}
 	// No retry message logged so test has failed.
 	c.Fail()
+}
+
+func (s *LiveTests) TestRegexpInstanceFilters(c *C) {
+	serverNames := []string{
+		"foobar123",
+		"foo123baz",
+		"123barbaz",
+	}
+	for _, name := range serverNames {
+		inst, err := s.createInstance(c, name)
+		c.Assert(err, IsNil)
+		defer s.nova.DeleteServer(inst.Id)
+	}
+	filter := nova.NewFilter()
+	filter.Set(nova.FilterServer, `foo.*baz`)
+	servers, err := s.nova.ListServersDetail(filter)
+	c.Assert(err, IsNil)
+	c.Assert(servers, HasLen, 1)
+	c.Assert(servers[0].Name, Equals, serverNames[1])
+	filter.Set(nova.FilterServer, `[0-9]+[a-z]+`)
+	servers, err = s.nova.ListServersDetail(filter)
+	c.Assert(err, IsNil)
+	c.Assert(servers, HasLen, 2)
+	if servers[0].Name != serverNames[1] {
+		servers[0], servers[1] = servers[1], servers[0]
+	}
+	c.Assert(servers[0].Name, Equals, serverNames[1])
+	c.Assert(servers[1].Name, Equals, serverNames[2])
 }

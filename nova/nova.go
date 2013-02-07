@@ -69,10 +69,12 @@ func New(client client.Client) *Client {
 // filtering.  For example:
 //
 //     filter := NewFilter()
-//     filter.Add(nova.FilterServer, "server_name")
-//     filter.Add(nova.FilterStatus, nova.StatusBuild)
+//     filter.Set(nova.FilterServer, "server_name")
+//     filter.Set(nova.FilterStatus, nova.StatusBuild)
 //     resp, err := nova.ListServers(filter)
 //
+// Note: Since only one value per filter is supported, Add() and Set() methods
+// behave in the same way.
 type Filter struct {
 	url.Values
 }
@@ -80,6 +82,10 @@ type Filter struct {
 // NewFilter creates a new Filter.
 func NewFilter() *Filter {
 	return &Filter{make(url.Values)}
+}
+
+func (f *Filter) Add(filter, value string) {
+	f.Values.Set(filter, value)
 }
 
 // Link describes a link to a flavor or server.
