@@ -56,7 +56,6 @@ func (s *LiveTests) SetUpSuite(c *C) {
 
 func (s *LiveTests) findFlavorId(flavorName string) (string, error) {
 	flavors, err := s.nova.ListFlavors()
-	fmt.Println(flavors)
 	if err != nil {
 		return "", err
 	}

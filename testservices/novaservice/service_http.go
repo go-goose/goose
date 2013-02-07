@@ -100,7 +100,7 @@ This server could not verify that you are authorized to access the ` +
 	}
 	errBadRequestSrvFlavor = &errorResponse{
 		http.StatusBadRequest,
-		`{"badRequest": {"message": "Missing imageRef attribute", "code": 400}}`,
+		`{"badRequest": {"message": "Missing flavorRef attribute", "code": 400}}`,
 		"application/json; charset=UTF-8",
 		"bad request - missing flavorRef",
 		nil,
@@ -108,7 +108,7 @@ This server could not verify that you are authorized to access the ` +
 	}
 	errBadRequestSrvImage = &errorResponse{
 		http.StatusBadRequest,
-		`{"badRequest": {"message": "Missing flavorRef attribute", "code": 400}}`,
+		`{"badRequest": {"message": "Missing imageRef attribute", "code": 400}}`,
 		"application/json; charset=UTF-8",
 		"bad request - missing imageRef",
 		nil,
@@ -355,6 +355,14 @@ func (n *Nova) handleRoot(w http.ResponseWriter, r *http.Request) error {
 	return errMultipleChoices
 }
 
+func convertEntities(entities []nova.Entity) []nova.JsonEntity {
+	je := make([]nova.JsonEntity, len(entities))
+	for i, e := range entities {
+		je[i] = nova.JsonEntity{Entity: e}
+	}
+	return je
+}
+
 // handleFlavors handles the flavors HTTP API.
 func (n *Nova) handleFlavors(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
@@ -365,8 +373,8 @@ func (n *Nova) handleFlavors(w http.ResponseWriter, r *http.Request) error {
 				return errNotFound
 			}
 			resp := struct {
-				Flavor nova.FlavorDetail `json:"flavor"`
-			}{*flavor}
+				Flavor *nova.JsonFlavorDetail `json:"flavor"`
+			}{&nova.JsonFlavorDetail{FlavorDetail: *flavor}}
 			return sendJSON(http.StatusOK, resp, w, r)
 		}
 		entities := n.allFlavorsAsEntities()
@@ -374,8 +382,8 @@ func (n *Nova) handleFlavors(w http.ResponseWriter, r *http.Request) error {
 			entities = []nova.Entity{}
 		}
 		resp := struct {
-			Flavors []nova.Entity `json:"flavors"`
-		}{entities}
+			Flavors []nova.JsonEntity `json:"flavors"`
+		}{convertEntities(entities)}
 		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
 		if flavorId := path.Base(r.URL.Path); flavorId != "flavors" {
@@ -414,9 +422,13 @@ func (n *Nova) handleFlavorsDetail(w http.ResponseWriter, r *http.Request) error
 		if len(flavors) == 0 {
 			flavors = []nova.FlavorDetail{}
 		}
+		jsonFlavors := make([]nova.JsonFlavorDetail, len(flavors))
+		for i, flavor := range flavors {
+			jsonFlavors[i] = nova.JsonFlavorDetail{FlavorDetail: flavor}
+		}
 		resp := struct {
-			Flavors []nova.FlavorDetail `json:"flavors"`
-		}{flavors}
+			Flavors []nova.JsonFlavorDetail `json:"flavors"`
+		}{jsonFlavors}
 		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
 		return errNotFound
@@ -526,6 +538,16 @@ func newUUID() (string, error) {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
 }
 
+// NewId generates a random numeric id, encoded as a string.
+func newId() (string, error) {
+	buf := make([]byte, 1)
+	_, err := io.ReadFull(rand.Reader, buf)
+	if err != nil {
+		panic(fmt.Sprintf("error from crypto rand: %v", err))
+	}
+	return fmt.Sprintf("%d", buf[0]), nil
+}
+
 // noGroupError constructs a bad request response for an invalid group.
 func noGroupError(groupName, tenantId string) error {
 	return &errorResponse{
@@ -561,7 +583,11 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	if req.Server.FlavorRef == "" {
 		return errBadRequestSrvFlavor
 	}
-	id, err := newUUID()
+	id, err := newId()
+	if err != nil {
+		return err
+	}
+	uuid, err := newUUID()
 	if err != nil {
 		return err
 	}
@@ -589,7 +615,7 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	userInfo, _ := userInfo(n.IdentityService, r)
 	server := nova.ServerDetail{
 		Id:        id,
-		UUID:      id,
+		UUID:      uuid,
 		Name:      req.Server.Name,
 		TenantId:  n.TenantId,
 		UserId:    userInfo.Id,
@@ -664,8 +690,8 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 				return sendJSON(http.StatusOK, resp, w, r)
 			}
 			resp := struct {
-				Server nova.ServerDetail `json:"server"`
-			}{*server}
+				Server *nova.JsonServerDetail `json:"server"`
+			}{&nova.JsonServerDetail{ServerDetail: *server}}
 			return sendJSON(http.StatusOK, resp, w, r)
 		}
 		var filter *nova.Filter
@@ -677,8 +703,8 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 			entities = []nova.Entity{}
 		}
 		resp := struct {
-			Servers []nova.Entity `json:"servers"`
-		}{entities}
+			Servers []nova.JsonEntity `json:"servers"`
+		}{convertEntities(entities)}
 		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
 		if suffix := path.Base(r.URL.Path); suffix != "servers" {
@@ -737,9 +763,13 @@ func (n *Nova) handleServersDetail(w http.ResponseWriter, r *http.Request) error
 		if len(servers) == 0 {
 			servers = []nova.ServerDetail{}
 		}
+		jsonServers := make([]nova.JsonServerDetail, len(servers))
+		for i, sd := range servers {
+			jsonServers[i] = nova.JsonServerDetail{ServerDetail: sd}
+		}
 		resp := struct {
-			Servers []nova.ServerDetail `json:"servers"`
-		}{servers}
+			Servers []nova.JsonServerDetail `json:"servers"`
+		}{jsonServers}
 		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
 		return errNotFound
@@ -940,17 +970,21 @@ func (n *Nova) handleFloatingIPs(w http.ResponseWriter, r *http.Request) error {
 				return errNotFoundJSON
 			}
 			resp := struct {
-				IP nova.FloatingIP `json:"floating_ip"`
-			}{*fip}
+				IP nova.JsonFloatingIP `json:"floating_ip"`
+			}{nova.JsonFloatingIP{FloatingIP: *fip}}
 			return sendJSON(http.StatusOK, resp, w, r)
 		}
 		fips := n.allFloatingIPs()
 		if len(fips) == 0 {
 			fips = []nova.FloatingIP{}
 		}
+		jsonFips := make([]nova.JsonFloatingIP, len(fips))
+		for i, fip := range fips {
+			jsonFips[i] = nova.JsonFloatingIP{FloatingIP: fip}
+		}
 		resp := struct {
-			IPs []nova.FloatingIP `json:"floating_ips"`
-		}{fips}
+			IPs []nova.JsonFloatingIP `json:"floating_ips"`
+		}{jsonFips}
 		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
 		if ipId := path.Base(r.URL.Path); ipId != "os-floating-ips" {
@@ -965,8 +999,8 @@ func (n *Nova) handleFloatingIPs(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		resp := struct {
-			IP nova.FloatingIP `json:"floating_ip"`
-		}{fip}
+			IP nova.JsonFloatingIP `json:"floating_ip"`
+		}{nova.JsonFloatingIP{FloatingIP: fip}}
 		return sendJSON(http.StatusOK, resp, w, r)
 	case "PUT":
 		if ipId := path.Base(r.URL.Path); ipId != "os-floating-ips" {

@@ -95,6 +95,19 @@ type genericId struct {
 	Id interface{}
 }
 
+var useNumericIds bool = false
+
+func convertId(id string) interface{} {
+	if !useNumericIds {
+		return id
+	}
+	result, err := strconv.Atoi(id)
+	if err != nil {
+		panic(err)
+	}
+	return result
+}
+
 // Entity describe a basic information about a flavor or server.
 type Entity struct {
 	Id    string `json:"-"`
@@ -103,11 +116,11 @@ type Entity struct {
 	Name  string `json:"name"`
 }
 
-type jsonEntity struct {
-	Entity
+type JsonEntity struct {
+	Entity `json:"-"`
 }
 
-func (entity *jsonEntity) UnmarshalJSON(b []byte) error {
+func (entity *JsonEntity) UnmarshalJSON(b []byte) error {
 	var e Entity
 	if err := json.Unmarshal(b, &e); err != nil {
 		return err
@@ -117,11 +130,36 @@ func (entity *jsonEntity) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &id); err != nil {
 		return err
 	}
-	entity.Id = fmt.Sprint(id.Id)
+	entity.Entity.Id = fmt.Sprint(id.Id)
 	return nil
 }
 
-func convertEntities(je []jsonEntity) []Entity {
+// appendJson marshals the given attribute value and appends it as an encoded value to the given json data.
+// The newly encode (attr, value) is inserted just before the closing "}" in the json data.
+func appendJson(data []byte, attr string, value interface{}) ([]byte, error) {
+	newData, err := json.Marshal(&value)
+	if err != nil {
+		return nil, err
+	}
+	strData := string(data)
+	result := fmt.Sprintf(`%s, "%s":%s}`, strData[:len(strData)-1], attr, string(newData))
+	return []byte(result), nil
+}
+
+func (entity JsonEntity) MarshalJSON() ([]byte, error) {
+	data, err := json.Marshal(&entity.Entity)
+	if err != nil {
+		return nil, err
+	}
+	id := convertId(entity.Entity.Id)
+	data, err = appendJson(data, "Id", id)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func convertEntities(je []JsonEntity) []Entity {
 	entities := make([]Entity, len(je))
 	for i, e := range je {
 		entities[i] = e.Entity
@@ -132,7 +170,7 @@ func convertEntities(je []jsonEntity) []Entity {
 // ListFlavours lists IDs, names, and links for available flavors.
 func (c *Client) ListFlavors() ([]Entity, error) {
 	var resp struct {
-		Flavors []jsonEntity
+		Flavors []JsonEntity
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiFlavors, &requestData)
@@ -152,11 +190,11 @@ type FlavorDetail struct {
 	Links []Link
 }
 
-type jsonFlavorDetail struct {
-	FlavorDetail
+type JsonFlavorDetail struct {
+	FlavorDetail `json:"-"`
 }
 
-func (flavorDetail *jsonFlavorDetail) UnmarshalJSON(b []byte) error {
+func (flavorDetail *JsonFlavorDetail) UnmarshalJSON(b []byte) error {
 	var fd FlavorDetail
 	if err := json.Unmarshal(b, &fd); err != nil {
 		return err
@@ -170,10 +208,23 @@ func (flavorDetail *jsonFlavorDetail) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+func (flavorDetail JsonFlavorDetail) MarshalJSON() ([]byte, error) {
+	data, err := json.Marshal(&flavorDetail.FlavorDetail)
+	if err != nil {
+		return nil, err
+	}
+	id := convertId(flavorDetail.FlavorDetail.Id)
+	data, err = appendJson(data, "Id", id)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
 // ListFlavorsDetail lists all details for available flavors.
 func (c *Client) ListFlavorsDetail() ([]FlavorDetail, error) {
 	var resp struct {
-		Flavors []jsonFlavorDetail
+		Flavors []JsonFlavorDetail
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", apiFlavorsDetail, &requestData)
@@ -190,7 +241,7 @@ func (c *Client) ListFlavorsDetail() ([]FlavorDetail, error) {
 // ListServers lists IDs, names, and links for all servers.
 func (c *Client) ListServers(filter *Filter) ([]Entity, error) {
 	var resp struct {
-		Servers []jsonEntity
+		Servers []JsonEntity
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.Values, ExpectedStatus: []int{http.StatusOK}}
 	err := c.client.SendRequest(client.GET, "compute", apiServers, &requestData)
@@ -223,11 +274,11 @@ type ServerDetail struct {
 	// in RFC3339 format.
 	Created string
 
-	Flavor Entity
+	Flavor Entity `json:"-"`
 	HostId string
 	Id     string `json:"-"`
 	UUID   string
-	Image  Entity
+	Image  Entity `json:"-"`
 	Links  []Link
 	Name   string
 
@@ -235,7 +286,7 @@ type ServerDetail struct {
 	// TODO(wallyworld) - []Entity is returned but we really want []SecurityGroup
 	// Only way to get []SecurityGroup is via a number of lookups which we would
 	// rather avoid unless it becomes necessary.
-	Groups []Entity //`json:"security_groups"`
+	Groups []Entity `json:"-"`
 
 	// Progress holds the completion percentage of
 	// the current operation
@@ -254,17 +305,17 @@ type ServerDetail struct {
 	UserId string `json:"user_id"`
 }
 
-type jsonServerDetail struct {
-	ServerDetail
+type JsonServerDetail struct {
+	ServerDetail `json:"-"`
 }
 
-type jsonServerDetailEntities struct {
-	Image  jsonEntity   `json:"image"`
-	Flavor jsonEntity   `json:"flavor"`
-	Groups []jsonEntity `json:"security_groups"`
+type JsonServerDetailEntities struct {
+	Image  JsonEntity   `json:"image"`
+	Flavor JsonEntity   `json:"flavor"`
+	Groups []JsonEntity `json:"security_groups"`
 }
 
-func (serverDetail *jsonServerDetail) UnmarshalJSON(b []byte) error {
+func (serverDetail *JsonServerDetail) UnmarshalJSON(b []byte) error {
 	var sd ServerDetail
 	if err := json.Unmarshal(b, &sd); err != nil {
 		return err
@@ -275,7 +326,7 @@ func (serverDetail *jsonServerDetail) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	serverDetail.Id = fmt.Sprint(id.Id)
-	var entities jsonServerDetailEntities
+	var entities JsonServerDetailEntities
 	if err := json.Unmarshal(b, &entities); err != nil {
 		return err
 	}
@@ -285,10 +336,44 @@ func (serverDetail *jsonServerDetail) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+func (serverDetail JsonServerDetail) MarshalJSON() ([]byte, error) {
+	data, err := json.Marshal(&serverDetail.ServerDetail)
+	if err != nil {
+		return nil, err
+	}
+	id := convertId(serverDetail.ServerDetail.Id)
+	data, err = appendJson(data, "Id", id)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err = appendJson(data, "image", JsonEntity{Entity: serverDetail.Image})
+	if err != nil {
+		return nil, err
+	}
+
+	data, err = appendJson(data, "flavor", JsonEntity{Entity: serverDetail.Flavor})
+	if err != nil {
+		return nil, err
+	}
+
+	if serverDetail.Groups != nil {
+		groups := make([]JsonEntity, len(serverDetail.Groups))
+		for i, e := range serverDetail.Groups {
+			groups[i] = JsonEntity{Entity: e}
+		}
+		data, err = appendJson(data, "security_groups", groups)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return data, nil
+}
+
 // ListServersDetail lists all details for available servers.
 func (c *Client) ListServersDetail(filter *Filter) ([]ServerDetail, error) {
 	var resp struct {
-		Servers []jsonServerDetail
+		Servers []JsonServerDetail
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.Values}
 	err := c.client.SendRequest(client.GET, "compute", apiServersDetail, &requestData)
@@ -305,7 +390,7 @@ func (c *Client) ListServersDetail(filter *Filter) ([]ServerDetail, error) {
 // GetServer lists details for the specified server.
 func (c *Client) GetServer(serverId string) (*ServerDetail, error) {
 	var resp struct {
-		Server jsonServerDetail
+		Server JsonServerDetail
 	}
 	url := fmt.Sprintf("%s/%s", apiServers, serverId)
 	requestData := goosehttp.RequestData{RespValue: &resp}
@@ -319,7 +404,7 @@ func (c *Client) GetServer(serverId string) (*ServerDetail, error) {
 // DeleteServer terminates the specified server.
 func (c *Client) DeleteServer(serverId string) error {
 	var resp struct {
-		Server jsonServerDetail
+		Server JsonServerDetail
 	}
 	url := fmt.Sprintf("%s/%s", apiServers, serverId)
 	requestData := goosehttp.RequestData{RespValue: &resp, ExpectedStatus: []int{http.StatusNoContent}}
@@ -351,7 +436,7 @@ func (c *Client) RunServer(opts RunServerOpts) (*Entity, error) {
 	req.Server = opts
 	// opts.UserData gets serialized to base64-encoded string automatically
 	var resp struct {
-		Server jsonEntity `json:"server"`
+		Server JsonEntity `json:"server"`
 	}
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp, ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.POST, "compute", apiServers, &requestData)
@@ -612,15 +697,15 @@ type FloatingIP struct {
 	Pool string `json:"pool"`
 }
 
-type jsonFloatingIP struct {
-	FloatingIP
+type JsonFloatingIP struct {
+	FloatingIP `json:"-"`
 }
 
 type genericInstanceId struct {
 	InstanceId interface{} `json:"instance_id"`
 }
 
-func (floatingIP *jsonFloatingIP) UnmarshalJSON(b []byte) error {
+func (floatingIP *JsonFloatingIP) UnmarshalJSON(b []byte) error {
 	var fip FloatingIP
 	if err := json.Unmarshal(b, &fip); err != nil {
 		return err
@@ -637,10 +722,27 @@ func (floatingIP *jsonFloatingIP) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+func (floatingIP JsonFloatingIP) MarshalJSON() ([]byte, error) {
+	data, err := json.Marshal(&floatingIP.FloatingIP)
+	if err != nil {
+		return nil, err
+	}
+	var id interface{}
+	if floatingIP.FloatingIP.InstanceId == nil {
+		return data, nil
+	}
+	id = convertId(*floatingIP.FloatingIP.InstanceId)
+	data, err = appendJson(data, "instance_id", id)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
 // ListFloatingIPs lists floating IP addresses associated with the tenant or account.
 func (c *Client) ListFloatingIPs() ([]FloatingIP, error) {
 	var resp struct {
-		FloatingIPs []jsonFloatingIP `json:"floating_ips"`
+		FloatingIPs []JsonFloatingIP `json:"floating_ips"`
 	}
 
 	requestData := goosehttp.RequestData{RespValue: &resp}
@@ -658,7 +760,7 @@ func (c *Client) ListFloatingIPs() ([]FloatingIP, error) {
 // GetFloatingIP lists details of the floating IP address associated with specified id.
 func (c *Client) GetFloatingIP(ipId int) (*FloatingIP, error) {
 	var resp struct {
-		FloatingIP jsonFloatingIP `json:"floating_ip"`
+		FloatingIP JsonFloatingIP `json:"floating_ip"`
 	}
 
 	url := fmt.Sprintf("%s/%d", apiFloatingIPs, ipId)
