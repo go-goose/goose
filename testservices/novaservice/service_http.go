@@ -847,9 +847,6 @@ func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) erro
 			if err := n.removeSecurityGroup(group.Id); err != nil {
 				return err
 			}
-			if n.nextGroupId > 0 {
-				n.nextGroupId--
-			}
 			writeResponse(w, http.StatusAccepted, nil)
 			return nil
 		} else if err == errNoGroupId {
@@ -914,9 +911,6 @@ func (n *Nova) handleSecurityGroupRules(w http.ResponseWriter, r *http.Request) 
 			if err = n.removeSecurityGroupRule(id); err != nil {
 				return err
 			}
-			if n.nextRuleId > 0 {
-				n.nextRuleId--
-			}
 			writeResponse(w, http.StatusAccepted, nil)
 			return nil
 		}
@@ -976,9 +970,6 @@ func (n *Nova) handleFloatingIPs(w http.ResponseWriter, r *http.Request) error {
 		if ipId := path.Base(r.URL.Path); ipId != "os-floating-ips" {
 			if nId, err := strconv.Atoi(ipId); err == nil {
 				if err := n.removeFloatingIP(nId); err == nil {
-					if n.nextIPId > 0 {
-						n.nextIPId--
-					}
 					writeResponse(w, http.StatusAccepted, nil)
 					return nil
 				}
