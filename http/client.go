@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"launchpad.net/goose"
 	"launchpad.net/goose/errors"
 	"log"
 	"net/http"
@@ -19,7 +20,7 @@ import (
 )
 
 const (
-	contentTypeJson        = "application/json"
+	contentTypeJSON        = "application/json"
 	contentTypeOctetStream = "application/octet-stream"
 )
 
@@ -68,6 +69,25 @@ func New(httpClient http.Client, logger *log.Logger, token string) *Client {
 	return &Client{httpClient, logger, token, MaxSendAttempts}
 }
 
+func gooseAgent() string {
+	return fmt.Sprintf("goose (%s)", goose.Version)
+}
+
+func createHeaders(extraHeaders http.Header, contentType string) http.Header {
+	headers := make(http.Header)
+	if extraHeaders != nil {
+		for header, values := range extraHeaders {
+			for _, value := range values {
+				headers.Add(header, value)
+			}
+		}
+	}
+	headers.Add("Content-Type", contentType)
+	headers.Add("Accept", contentType)
+	headers.Add("User-Agent", gooseAgent())
+	return headers
+}
+
 // JsonRequest JSON encodes and sends the supplied object (if any) to the specified URL.
 // Optional method arguments are pass using the RequestData object.
 // Relevant RequestData fields:
@@ -88,16 +108,7 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 			return
 		}
 	}
-	headers := make(http.Header)
-	if reqData.ReqHeaders != nil {
-		for header, values := range reqData.ReqHeaders {
-			for _, value := range values {
-				headers.Add(header, value)
-			}
-		}
-	}
-	headers.Add("Content-Type", contentTypeJson)
-	headers.Add("Accept", contentTypeJson)
+	headers := createHeaders(reqData.ReqHeaders, contentTypeJSON)
 	respBody, err := c.sendRequest(method, url, bytes.NewReader(body), len(body), headers, reqData.ExpectedStatus)
 	if err != nil {
 		return
@@ -133,16 +144,7 @@ func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err er
 	if reqData.Params != nil {
 		url += "?" + reqData.Params.Encode()
 	}
-	headers := make(http.Header)
-	if reqData.ReqHeaders != nil {
-		for header, values := range reqData.ReqHeaders {
-			for _, value := range values {
-				headers.Add(header, value)
-			}
-		}
-	}
-	headers.Add("Content-Type", contentTypeOctetStream)
-	headers.Add("Accept", contentTypeOctetStream)
+	headers := createHeaders(reqData.ReqHeaders, contentTypeOctetStream)
 	respBody, err := c.sendRequest(method, url, reqData.ReqReader, reqData.ReqLength, headers, reqData.ExpectedStatus)
 	if err != nil {
 		return
@@ -250,7 +252,7 @@ func handleError(URL string, resp *http.Response) error {
 	errBytes, _ := ioutil.ReadAll(resp.Body)
 	errInfo := string(errBytes)
 	// Check if we have a JSON representation of the failure, if so decode it.
-	if resp.Header.Get("Content-Type") == contentTypeJson {
+	if resp.Header.Get("Content-Type") == contentTypeJSON {
 		var wrappedErr ErrorWrapper
 		if err := json.Unmarshal(errBytes, &wrappedErr); err == nil {
 			errInfo = wrappedErr.Error.Error()
