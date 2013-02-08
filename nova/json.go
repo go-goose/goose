@@ -45,181 +45,116 @@ func appendJSON(data []byte, attr string, value interface{}) ([]byte, error) {
 	return []byte(result), nil
 }
 
-type JSONEntity struct {
-	Entity `json:"-"`
-}
+type jsonEntity Entity
 
-func (entity *JSONEntity) UnmarshalJSON(b []byte) error {
-	var e Entity
-	if err := json.Unmarshal(b, &e); err != nil {
+func (entity *Entity) UnmarshalJSON(b []byte) error {
+	var je jsonEntity = jsonEntity(*entity)
+	if err := json.Unmarshal(b, &je); err != nil {
 		return err
 	}
-	entity.Entity = e
 	var id genericId
 	if err := json.Unmarshal(b, &id); err != nil {
 		return err
 	}
-	entity.Id = fmt.Sprint(id.Id)
+	je.Id = fmt.Sprint(id.Id)
+	*entity = Entity(je)
 	return nil
 }
 
-func (entity JSONEntity) MarshalJSON() ([]byte, error) {
-	data, err := json.Marshal(&entity.Entity)
+func (entity Entity) MarshalJSON() ([]byte, error) {
+	var je jsonEntity = jsonEntity(entity)
+	data, err := json.Marshal(&je)
 	if err != nil {
 		return nil, err
 	}
-	id := convertId(entity.Entity.Id)
-	data, err = appendJSON(data, "Id", id)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
+	id := convertId(entity.Id)
+	return appendJSON(data, "Id", id)
 }
 
-func convertEntities(je []JSONEntity) []Entity {
-	entities := make([]Entity, len(je))
-	for i, e := range je {
-		entities[i] = e.Entity
-	}
-	return entities
-}
+type jsonFlavorDetail FlavorDetail
 
-type JSONFlavorDetail struct {
-	FlavorDetail `json:"-"`
-	genericId genericId `json:id`
-}
-
-func (flavorDetail *JSONFlavorDetail) UnmarshalJSON(b []byte) error {
-	var fd FlavorDetail
-	if err := json.Unmarshal(b, &fd); err != nil {
+func (flavorDetail *FlavorDetail) UnmarshalJSON(b []byte) error {
+	var jfd jsonFlavorDetail = jsonFlavorDetail(*flavorDetail)
+	if err := json.Unmarshal(b, &jfd); err != nil {
 		return err
 	}
-	flavorDetail.FlavorDetail = fd
 	var id genericId
 	if err := json.Unmarshal(b, &id); err != nil {
 		return err
 	}
-	flavorDetail.Id = fmt.Sprint(id.Id)
+	jfd.Id = fmt.Sprint(id.Id)
+	*flavorDetail = FlavorDetail(jfd)
 	return nil
 }
 
-func (flavorDetail JSONFlavorDetail) MarshalJSON() ([]byte, error) {
-	data, err := json.Marshal(&flavorDetail.FlavorDetail)
+func (flavorDetail FlavorDetail) MarshalJSON() ([]byte, error) {
+	var jfd jsonFlavorDetail = jsonFlavorDetail(flavorDetail)
+	data, err := json.Marshal(&jfd)
 	if err != nil {
 		return nil, err
 	}
-	id := convertId(flavorDetail.FlavorDetail.Id)
-	data, err = appendJSON(data, "Id", id)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
+	id := convertId(flavorDetail.Id)
+	return appendJSON(data, "Id", id)
 }
 
-type JSONServerDetail struct {
-	ServerDetail `json:"-"`
-	genericId genericId `json:id`
-}
+type jsonServerDetail ServerDetail
 
-type JSONServerDetailEntities struct {
-	Image  JSONEntity   `json:"image"`
-	Flavor JSONEntity   `json:"flavor"`
-	Groups []JSONEntity `json:"security_groups"`
-}
-
-func (serverDetail *JSONServerDetail) UnmarshalJSON(b []byte) error {
-	var sd ServerDetail
-	if err := json.Unmarshal(b, &sd); err != nil {
+func (serverDetail *ServerDetail) UnmarshalJSON(b []byte) error {
+	var jsd jsonServerDetail = jsonServerDetail(*serverDetail)
+	if err := json.Unmarshal(b, &jsd); err != nil {
 		return err
 	}
-	serverDetail.ServerDetail = sd
 	var id genericId
 	if err := json.Unmarshal(b, &id); err != nil {
 		return err
 	}
-	serverDetail.Id = fmt.Sprint(id.Id)
-	var entities JSONServerDetailEntities
-	if err := json.Unmarshal(b, &entities); err != nil {
-		return err
-	}
-	serverDetail.Image = entities.Image.Entity
-	serverDetail.Flavor = entities.Flavor.Entity
-	serverDetail.Groups = convertEntities(entities.Groups)
+	jsd.Id = fmt.Sprint(id.Id)
+	*serverDetail = ServerDetail(jsd)
 	return nil
 }
 
-func (serverDetail JSONServerDetail) MarshalJSON() ([]byte, error) {
-	data, err := json.Marshal(&serverDetail.ServerDetail)
+func (serverDetail ServerDetail) MarshalJSON() ([]byte, error) {
+	var jsd jsonServerDetail = jsonServerDetail(serverDetail)
+	data, err := json.Marshal(&jsd)
 	if err != nil {
 		return nil, err
 	}
-	id := convertId(serverDetail.ServerDetail.Id)
-	data, err = appendJSON(data, "Id", id)
-	if err != nil {
-		return nil, err
-	}
-
-	data, err = appendJSON(data, "image", JSONEntity{Entity: serverDetail.Image})
-	if err != nil {
-		return nil, err
-	}
-
-	data, err = appendJSON(data, "flavor", JSONEntity{Entity: serverDetail.Flavor})
-	if err != nil {
-		return nil, err
-	}
-
-	if serverDetail.Groups != nil {
-		groups := make([]JSONEntity, len(serverDetail.Groups))
-		for i, e := range serverDetail.Groups {
-			groups[i] = JSONEntity{Entity: e}
-		}
-		data, err = appendJSON(data, "security_groups", groups)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return data, nil
-}
-
-type JSONFloatingIP struct {
-	FloatingIP `json:"-"`
+	id := convertId(serverDetail.Id)
+	return appendJSON(data, "Id", id)
 }
 
 type genericInstanceId struct {
 	InstanceId interface{} `json:"instance_id"`
 }
 
-func (floatingIP *JSONFloatingIP) UnmarshalJSON(b []byte) error {
-	var fip FloatingIP
-	if err := json.Unmarshal(b, &fip); err != nil {
+type jsonFloatingIP FloatingIP
+
+func (floatingIP *FloatingIP) UnmarshalJSON(b []byte) error {
+	var jfip jsonFloatingIP = jsonFloatingIP(*floatingIP)
+	if err := json.Unmarshal(b, &jfip); err != nil {
 		return err
 	}
-	floatingIP.FloatingIP = fip
 	var id genericInstanceId
 	if err := json.Unmarshal(b, &id); err != nil {
 		return err
 	}
 	if id.InstanceId != nil && id.InstanceId != "" {
 		strId := fmt.Sprint(id.InstanceId)
-		floatingIP.InstanceId = &strId
+		jfip.InstanceId = &strId
 	}
+	*floatingIP = FloatingIP(jfip)
 	return nil
 }
 
-func (floatingIP JSONFloatingIP) MarshalJSON() ([]byte, error) {
-	data, err := json.Marshal(&floatingIP.FloatingIP)
+func (floatingIP FloatingIP) MarshalJSON() ([]byte, error) {
+	var jfip jsonFloatingIP = jsonFloatingIP(floatingIP)
+	data, err := json.Marshal(&jfip)
 	if err != nil {
 		return nil, err
 	}
-	var id interface{}
-	if floatingIP.FloatingIP.InstanceId == nil {
+	if floatingIP.InstanceId == nil {
 		return data, nil
 	}
-	id = convertId(*floatingIP.FloatingIP.InstanceId)
-	data, err = appendJSON(data, "instance_id", id)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
+	id := convertId(*floatingIP.InstanceId)
+	return appendJSON(data, "instance_id", id)
 }
