@@ -237,10 +237,25 @@ func (n *Nova) serverAsEntity(serverId string) (*nova.Entity, error) {
 	}, nil
 }
 
+// filter is used internally by matchServers.
+type filter map[string]string
+
+func newFilter() *filter {
+	f := make(filter)
+	return &f
+}
+
+func (f *filter) get(key string) string {
+	return (*f)[key]
+}
+
+func (f *filter) set(key, value string) {
+	(*f)[key] = value
+}
+
 // matchServers returns a list of matching servers, after applying the
 // given filter. Each separate filter is combined with a logical AND.
-// Each filter can have only one value - the last one set with either
-// Add() or Set(). A nil filter matches all servers.
+// Each filter can have only one value. A nil filter matches all servers.
 //
 // This is tested to match OpenStack behavior. Regular expression
 // matching is supported for FilterServer only, and the supported
@@ -249,21 +264,21 @@ func (n *Nova) serverAsEntity(serverId string) (*nova.Entity, error) {
 //
 // Example:
 //
-// filter := nova.NewFilter()
-// filter.Set(nova.FilterStatus, nova.StatusActive)
-// filter.Set(nova.FilterServer, `foo.*`)
+// f := newFilter()
+// f.set(nova.FilterStatus,  nova.StatusActive)
+// f.set(nova.FilterServer, `foo.*`)
 //
 // This will match all servers with status "ACTIVE", and names starting
 // with "foo".
-func (n *Nova) matchServers(filter *nova.Filter) []nova.ServerDetail {
+func (n *Nova) matchServers(f *filter) []nova.ServerDetail {
 	var servers []nova.ServerDetail
 	for _, server := range n.servers {
 		servers = append(servers, server)
 	}
-	if filter == nil {
+	if f == nil {
 		return servers // empty filter matches everything
 	}
-	if status := filter.Get(nova.FilterStatus); status != "" {
+	if status := f.get(nova.FilterStatus); status != "" {
 		matched := []nova.ServerDetail{}
 		for _, server := range servers {
 			if server.Status == status {
@@ -276,11 +291,11 @@ func (n *Nova) matchServers(filter *nova.Filter) []nova.ServerDetail {
 		}
 		servers = matched
 	}
-	if nameRex := filter.Get(nova.FilterServer); nameRex != "" {
+	if nameRex := f.get(nova.FilterServer); nameRex != "" {
 		matched := []nova.ServerDetail{}
 		rex, err := regexp.Compile(nameRex)
 		if err != nil {
-			fmt.Printf("cannot compile regexp filter %q: %v\n", filter, err)
+			fmt.Printf("cannot compile regexp filter %q: %v\n", nameRex, err)
 			// effectively nothing matches
 			return nil
 		}
@@ -301,16 +316,16 @@ func (n *Nova) matchServers(filter *nova.Filter) []nova.ServerDetail {
 }
 
 // allServers returns a list of all existing servers.
-// Filtering is supported, see nova.Filter* for more info.
-func (n *Nova) allServers(filter *nova.Filter) []nova.ServerDetail {
-	return n.matchServers(filter)
+// Filtering is supported, see filter type for more info.
+func (n *Nova) allServers(f *filter) []nova.ServerDetail {
+	return n.matchServers(f)
 }
 
 // allServersAsEntities returns all servers as Entity structs.
-// Filtering is supported, see nova.Filter* for more info.
-func (n *Nova) allServersAsEntities(filter *nova.Filter) []nova.Entity {
+// Filtering is supported, see filter type for more info.
+func (n *Nova) allServersAsEntities(f *filter) []nova.Entity {
 	var entities []nova.Entity
-	servers := n.matchServers(filter)
+	servers := n.matchServers(f)
 	for _, server := range servers {
 		entities = append(entities, nova.Entity{
 			Id:    server.Id,

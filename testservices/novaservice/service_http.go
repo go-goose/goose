@@ -682,15 +682,15 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 			}{*server}
 			return sendJSON(http.StatusOK, resp, w, r)
 		}
-		filter := nova.NewFilter()
+		f := newFilter()
 		if err := r.ParseForm(); err == nil && len(r.Form) > 0 {
 			for filterKey, filterValues := range r.Form {
 				for _, value := range filterValues {
-					filter.Set(filterKey, value)
+					f.set(filterKey, value)
 				}
 			}
 		}
-		entities := n.allServersAsEntities(filter)
+		entities := n.allServersAsEntities(f)
 		if len(entities) == 0 {
 			entities = []nova.Entity{}
 		}
@@ -747,15 +747,15 @@ func (n *Nova) handleServersDetail(w http.ResponseWriter, r *http.Request) error
 		if serverId := path.Base(r.URL.Path); serverId != "detail" {
 			return errNotFound
 		}
-		filter := nova.NewFilter()
+		f := newFilter()
 		if err := r.ParseForm(); err == nil && len(r.Form) > 0 {
 			for filterKey, filterValues := range r.Form {
 				for _, value := range filterValues {
-					filter.Set(filterKey, value)
+					f.set(filterKey, value)
 				}
 			}
 		}
-		servers := n.allServers(filter)
+		servers := n.allServers(f)
 		if len(servers) == 0 {
 			servers = []nova.ServerDetail{}
 		}
