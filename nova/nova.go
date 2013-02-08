@@ -95,10 +95,6 @@ func (f *Filter) Del(filter string) {
 	f.v.Del(filter)
 }
 
-func (f *Filter) AsValues() *url.Values {
-	return &f.v
-}
-
 // Link describes a link to a flavor or server.
 type Link struct {
 	Href string
@@ -155,7 +151,7 @@ func (c *Client) ListServers(filter *Filter) ([]Entity, error) {
 	var resp struct {
 		Servers []Entity
 	}
-	requestData := goosehttp.RequestData{RespValue: &resp, Params: filter.AsValues(), ExpectedStatus: []int{http.StatusOK}}
+	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.v, ExpectedStatus: []int{http.StatusOK}}
 	err := c.client.SendRequest(client.GET, "compute", apiServers, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get list of servers")
@@ -222,7 +218,7 @@ func (c *Client) ListServersDetail(filter *Filter) ([]ServerDetail, error) {
 	var resp struct {
 		Servers []ServerDetail
 	}
-	requestData := goosehttp.RequestData{RespValue: &resp, Params: filter.AsValues()}
+	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.v}
 	err := c.client.SendRequest(client.GET, "compute", apiServersDetail, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get list of server details")
