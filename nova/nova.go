@@ -87,14 +87,6 @@ func (f *Filter) Set(filter, value string) {
 	f.v.Set(filter, value)
 }
 
-func (f *Filter) Get(filter string) string {
-	return f.v.Get(filter)
-}
-
-func (f *Filter) Del(filter string) {
-	f.v.Del(filter)
-}
-
 // Link describes a link to a flavor or server.
 type Link struct {
 	Href string
