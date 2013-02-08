@@ -682,9 +682,13 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 			}{*server}
 			return sendJSON(http.StatusOK, resp, w, r)
 		}
-		var filter *nova.Filter
+		filter := nova.NewFilter()
 		if err := r.ParseForm(); err == nil && len(r.Form) > 0 {
-			filter = &nova.Filter{r.Form}
+			for filterKey, filterValues := range r.Form {
+				for _, value := range filterValues {
+					filter.Set(filterKey, value)
+				}
+			}
 		}
 		entities := n.allServersAsEntities(filter)
 		if len(entities) == 0 {
