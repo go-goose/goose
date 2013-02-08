@@ -100,7 +100,7 @@ This server could not verify that you are authorized to access the ` +
 	}
 	errBadRequestSrvFlavor = &errorResponse{
 		http.StatusBadRequest,
-		`{"badRequest": {"message": "Missing imageRef attribute", "code": 400}}`,
+		`{"badRequest": {"message": "Missing flavorRef attribute", "code": 400}}`,
 		"application/json; charset=UTF-8",
 		"bad request - missing flavorRef",
 		nil,
@@ -108,7 +108,7 @@ This server could not verify that you are authorized to access the ` +
 	}
 	errBadRequestSrvImage = &errorResponse{
 		http.StatusBadRequest,
-		`{"badRequest": {"message": "Missing flavorRef attribute", "code": 400}}`,
+		`{"badRequest": {"message": "Missing imageRef attribute", "code": 400}}`,
 		"application/json; charset=UTF-8",
 		"bad request - missing imageRef",
 		nil,
@@ -526,6 +526,16 @@ func newUUID() (string, error) {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
 }
 
+// NewId generates a random numeric id, encoded as a string.
+func newId() (string, error) {
+	buf := make([]byte, 1)
+	_, err := io.ReadFull(rand.Reader, buf)
+	if err != nil {
+		panic(fmt.Sprintf("error from crypto rand: %v", err))
+	}
+	return fmt.Sprintf("%d", buf[0]), nil
+}
+
 // noGroupError constructs a bad request response for an invalid group.
 func noGroupError(groupName, tenantId string) error {
 	return &errorResponse{
@@ -561,7 +571,11 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	if req.Server.FlavorRef == "" {
 		return errBadRequestSrvFlavor
 	}
-	id, err := newUUID()
+	id, err := newId()
+	if err != nil {
+		return err
+	}
+	uuid, err := newUUID()
 	if err != nil {
 		return err
 	}
@@ -589,6 +603,7 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	userInfo, _ := userInfo(n.IdentityService, r)
 	server := nova.ServerDetail{
 		Id:        id,
+		UUID:      uuid,
 		Name:      req.Server.Name,
 		TenantId:  n.TenantId,
 		UserId:    userInfo.Id,

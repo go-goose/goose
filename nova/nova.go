@@ -10,6 +10,7 @@ import (
 	goosehttp "launchpad.net/goose/http"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 // API URL parts.
@@ -91,9 +92,10 @@ type Link struct {
 
 // Entity describe a basic information about a flavor or server.
 type Entity struct {
-	Id    string
-	Links []Link
-	Name  string
+	Id    string `json:"-"`
+	UUID  string `json:"uuid"`
+	Links []Link `json:"links"`
+	Name  string `json:"name"`
 }
 
 // ListFlavours lists IDs, names, and links for available flavors.
@@ -106,16 +108,16 @@ func (c *Client) ListFlavors() ([]Entity, error) {
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get list of flavours")
 	}
-	return resp.Flavors, err
+	return resp.Flavors, nil
 }
 
 // FlavorDetail describes detailed information about a flavor.
 type FlavorDetail struct {
 	Name  string
-	RAM   int // Available RAM, in MB
-	VCPUs int // Number of virtual CPU (cores)
-	Disk  int // Available root partition space, in GB
-	Id    string
+	RAM   int    // Available RAM, in MB
+	VCPUs int    // Number of virtual CPU (cores)
+	Disk  int    // Available root partition space, in GB
+	Id    string `json:"-"`
 	Links []Link
 }
 
@@ -170,10 +172,18 @@ type ServerDetail struct {
 
 	Flavor Entity
 	HostId string
-	Id     string
+	Id     string `json:"-"`
+	UUID   string
 	Image  Entity
 	Links  []Link
 	Name   string
+
+	// HP Cloud returns security groups in server details.
+	// TODO(wallyworld) - []Entity is returned but we really want []SecurityGroup
+	// Only way to get []SecurityGroup is via a number of lookups which we would
+	// rather avoid unless it becomes necessary.
+	Groups []Entity `json:"security_groups"`
+
 	// Progress holds the completion percentage of
 	// the current operation
 	Progress int
@@ -330,6 +340,25 @@ func (c *Client) GetServerSecurityGroups(serverId string) ([]SecurityGroup, erro
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", url, &requestData)
 	if err != nil {
+		// Sadly HP Cloud lacks the necessary API and also doesn't provide full SecurityGroup lookup.
+		// The best we can do for now is to use just the Id and Name from the group entities.
+		if errors.IsNotFound(err) {
+			serverDetails, err := c.GetServer(serverId)
+			if err == nil {
+				result := make([]SecurityGroup, len(serverDetails.Groups))
+				for i, e := range serverDetails.Groups {
+					id, err := strconv.Atoi(e.Id)
+					if err != nil {
+						return nil, errors.Newf(err, "failed to parse security group id %s", e.Id)
+					}
+					result[i] = SecurityGroup{
+						Id:   id,
+						Name: e.Name,
+					}
+				}
+				return result, nil
+			}
+		}
 		return nil, errors.Newf(err, "failed to list server (%s) security groups", serverId)
 	}
 	return resp.Groups, nil
@@ -485,14 +514,11 @@ func (c *Client) RemoveServerSecurityGroup(serverId, groupName string) error {
 type FloatingIP struct {
 	// FixedIP holds the private IP address of the machine (when assigned)
 	FixedIP *string `json:"fixed_ip"`
-
-	Id int `json:"id"`
-
+	Id      int     `json:"id"`
 	// InstanceId holds the instance id of the machine, if this FIP is assigned to one
-	InstanceId *string `json:"instance_id"`
-
-	IP   string `json:"ip"`
-	Pool string `json:"pool"`
+	InstanceId *string `json:"-"`
+	IP         string  `json:"ip"`
+	Pool       string  `json:"pool"`
 }
 
 // ListFloatingIPs lists floating IP addresses associated with the tenant or account.

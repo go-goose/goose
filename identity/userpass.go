@@ -4,6 +4,7 @@ import (
 	"fmt"
 	goosehttp "launchpad.net/goose/http"
 	"net/http"
+	"strings"
 )
 
 type passwordCredentials struct {
@@ -99,15 +100,24 @@ func (u *UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 	details.UserId = access.User.Id
 	details.ServiceURLs = make(map[string]string, len(access.ServiceCatalog))
 	for _, service := range access.ServiceCatalog {
+		var endpointURL string
 		for i, e := range service.Endpoints {
-			if e.Region != creds.Region {
-				service.Endpoints = append(service.Endpoints[:i], service.Endpoints[i+1:]...)
+			if regionMatches(creds.Region, e.Region) {
+				endpointURL = service.Endpoints[i].PublicURL
+				break
 			}
 		}
-		if len(service.Endpoints) > 0 {
-			details.ServiceURLs[service.Type] = service.Endpoints[0].PublicURL
+		if endpointURL != "" {
+			details.ServiceURLs[service.Type] = endpointURL
 		}
 	}
 
 	return details, nil
+}
+
+func regionMatches(userRegion, endpointRegion string) bool {
+	// The user specified region (from the credentials config) matches
+	// the endpoint region if the user region equals or ends with the endpoint region.
+	// eg  user region "az-1.region-a.geo-1" matches endpoint region "region-a.geo-1"
+	return strings.HasSuffix(userRegion, endpointRegion)
 }

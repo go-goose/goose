@@ -18,13 +18,21 @@ import (
 )
 
 func registerLocalTests() {
-	Suite(&localLiveSuite{})
+	// Test using numeric ids.
+	Suite(&localLiveSuite{
+		useNumericIds: true,
+	})
+	// Test using string ids.
+	Suite(&localLiveSuite{
+		useNumericIds: false,
+	})
 }
 
 // localLiveSuite runs tests from LiveTests using a fake
 // nova server that runs within the test process itself.
 type localLiveSuite struct {
 	LiveTests
+	useNumericIds bool
 	// The following attributes are for using testing doubles.
 	Server                *httptest.Server
 	Mux                   *http.ServeMux
@@ -37,7 +45,14 @@ type localLiveSuite struct {
 }
 
 func (s *localLiveSuite) SetUpSuite(c *C) {
-	c.Logf("Using identity and nova service test doubles")
+	var idInfo string
+	if s.useNumericIds {
+		idInfo = "with numeric ids"
+	} else {
+		idInfo = "with string ids"
+	}
+	c.Logf("Using identity and nova service test doubles %s", idInfo)
+	nova.UseNumericIds(s.useNumericIds)
 
 	// Set up the HTTP server.
 	s.Server = httptest.NewServer(nil)
@@ -56,6 +71,8 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 	s.openstack = openstackservice.New(s.cred)
 	s.openstack.SetupHTTP(s.Mux)
 
+	s.testFlavor = "m1.small"
+	s.testImageId = "1"
 	s.LiveTests.SetUpSuite(c)
 }
 

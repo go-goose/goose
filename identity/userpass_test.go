@@ -23,3 +23,36 @@ func (s *UserPassTestSuite) TestAuthAgainstServer(c *C) {
 	c.Assert(auth.Token, Equals, userInfo.Token)
 	c.Assert(auth.TenantId, Equals, userInfo.TenantId)
 }
+
+// Test that inexact region matches are handled properly.
+func (s *UserPassTestSuite) TestRegionMatch(c *C) {
+	service := identityservice.NewUserPass()
+	service.SetupHTTP(s.Mux)
+	userInfo := service.AddUser("joe-user", "secrets", "tenant")
+	serviceDef := identityservice.Service{"swift", "object-store", []identityservice.Endpoint{
+		identityservice.Endpoint{PublicURL: "http://swift", Region: "RegionOne"},
+	}}
+	service.AddService(serviceDef)
+	serviceDef = identityservice.Service{"nova", "compute", []identityservice.Endpoint{
+		identityservice.Endpoint{PublicURL: "http://nova", Region: "zone1.RegionOne"},
+	}}
+	service.AddService(serviceDef)
+	serviceDef = identityservice.Service{"nova", "compute", []identityservice.Endpoint{
+		identityservice.Endpoint{PublicURL: "http://nova2", Region: "zone2.RegionOne"},
+	}}
+	service.AddService(serviceDef)
+
+	creds := Credentials{
+		User:    "joe-user",
+		URL:     s.Server.URL + "/tokens",
+		Secrets: "secrets",
+		Region:  "zone1.RegionOne",
+	}
+	var l Authenticator = &UserPass{}
+	auth, err := l.Auth(&creds)
+	c.Assert(err, IsNil)
+	c.Assert(auth.ServiceURLs["object-store"], Equals, "http://swift")
+	c.Assert(auth.ServiceURLs["compute"], Equals, "http://nova")
+	c.Assert(auth.Token, Equals, userInfo.Token)
+	c.Assert(auth.TenantId, Equals, userInfo.TenantId)
+}
