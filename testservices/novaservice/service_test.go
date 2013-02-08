@@ -279,41 +279,31 @@ func (s *NovaSuite) TestAllServersWithFilters(c *C) {
 		s.createServer(c, server)
 		defer s.deleteServer(c, server)
 	}
-	filter := nova.NewFilter()
-	filter.Set(nova.FilterStatus, nova.StatusRescue)
-	sr := s.service.allServers(filter)
+	f := filter{
+		nova.FilterStatus: nova.StatusRescue,
+	}
+	sr := s.service.allServers(f)
 	c.Assert(sr, HasLen, 1)
 	c.Assert(sr[0], DeepEquals, servers[2])
-	filter.Set(nova.FilterStatus, nova.StatusBuild)
-	sr = s.service.allServers(filter)
+	f[nova.FilterStatus] = nova.StatusBuild
+	sr = s.service.allServers(f)
 	c.Assert(sr, HasLen, 1)
 	c.Assert(sr[0], DeepEquals, servers[1])
-	filter.Del(nova.FilterStatus)
-	filter.Set(nova.FilterServer, "test")
-	sr = s.service.allServers(filter)
+	f = filter{
+		nova.FilterServer: "test",
+	}
+	sr = s.service.allServers(f)
 	c.Assert(sr, HasLen, 1)
 	c.Assert(sr[0], DeepEquals, servers[0])
-	filter.Set(nova.FilterServer, "other")
-	sr = s.service.allServers(filter)
+	f[nova.FilterServer] = "other"
+	sr = s.service.allServers(f)
 	c.Assert(sr, HasLen, 1)
 	c.Assert(sr[0], DeepEquals, servers[1])
-	filter.Set(nova.FilterServer, "foo")
-	filter.Set(nova.FilterStatus, nova.StatusRescue)
-	sr = s.service.allServers(filter)
+	f[nova.FilterServer] = "foo"
+	f[nova.FilterStatus] = nova.StatusRescue
+	sr = s.service.allServers(f)
 	c.Assert(sr, HasLen, 1)
 	c.Assert(sr[0], DeepEquals, servers[2])
-}
-
-func (s *NovaSuite) TestFilterAddEqualsSet(c *C) {
-	f1 := nova.NewFilter()
-	f2 := nova.NewFilter()
-	f1.Add("test", "foo")
-	f1.Add("test", "bar")
-	f1.Add("bar", "123")
-	f2.Set("test", "bar")
-	f2.Set("bar", "123")
-	c.Assert(f1.Get("test"), Equals, f2.Get("test"))
-	c.Assert(f1.Get("bar"), Equals, f2.Get("bar"))
 }
 
 func (s *NovaSuite) TestAllServersWithEmptyFilter(c *C) {
@@ -348,16 +338,17 @@ func (s *NovaSuite) TestAllServersWithRegexFilters(c *C) {
 		s.createServer(c, server)
 		defer s.deleteServer(c, server)
 	}
-	filter := nova.NewFilter()
-	filter.Set(nova.FilterServer, `foo.*baz`)
-	sr := s.service.allServers(filter)
+	f := filter{
+		nova.FilterServer: `foo.*baz`,
+	}
+	sr := s.service.allServers(f)
 	c.Assert(sr, HasLen, 2)
 	if sr[0].Id != servers[0].Id {
 		sr[0], sr[1] = sr[1], sr[0]
 	}
 	c.Assert(sr, DeepEquals, servers[:2])
-	filter.Set(nova.FilterServer, `^[a-z]+[0-9]+`)
-	sr = s.service.allServers(filter)
+	f[nova.FilterServer] = `^[a-z]+[0-9]+`
+	sr = s.service.allServers(f)
 	c.Assert(sr, HasLen, 2)
 	if sr[0].Id != servers[1].Id {
 		sr[0], sr[1] = sr[1], sr[0]
@@ -378,21 +369,22 @@ func (s *NovaSuite) TestAllServersWithMultipleFilters(c *C) {
 		s.createServer(c, server)
 		defer s.deleteServer(c, server)
 	}
-	filter := nova.NewFilter()
-	filter.Set(nova.FilterStatus, nova.StatusActive)
-	filter.Set(nova.FilterServer, `.*2.*`)
-	sr := s.service.allServers(filter)
+	f := filter{
+		nova.FilterStatus: nova.StatusActive,
+		nova.FilterServer: `.*2.*`,
+	}
+	sr := s.service.allServers(f)
 	c.Assert(sr, HasLen, 1)
 	c.Assert(sr[0], DeepEquals, servers[1])
-	filter.Set(nova.FilterStatus, nova.StatusBuild)
-	sr = s.service.allServers(filter)
+	f[nova.FilterStatus] = nova.StatusBuild
+	sr = s.service.allServers(f)
 	c.Assert(sr, HasLen, 0)
-	filter.Set(nova.FilterStatus, nova.StatusPassword)
-	filter.Set(nova.FilterServer, `.*[23].*`)
-	sr = s.service.allServers(filter)
+	f[nova.FilterStatus] = nova.StatusPassword
+	f[nova.FilterServer] = `.*[23].*`
+	sr = s.service.allServers(f)
 	c.Assert(sr, HasLen, 0)
-	filter.Set(nova.FilterStatus, nova.StatusActive)
-	sr = s.service.allServers(filter)
+	f[nova.FilterStatus] = nova.StatusActive
+	sr = s.service.allServers(f)
 	c.Assert(sr, HasLen, 2)
 	if sr[0].Id != servers[1].Id {
 		sr[0], sr[1] = sr[1], sr[0]
@@ -441,27 +433,29 @@ func (s *NovaSuite) TestAllServersAsEntitiesWithFilters(c *C) {
 			Links: server.Links,
 		})
 	}
-	filter := nova.NewFilter()
-	filter.Set(nova.FilterStatus, nova.StatusRescue)
-	ent := s.service.allServersAsEntities(filter)
+	f := filter{
+		nova.FilterStatus: nova.StatusRescue,
+	}
+	ent := s.service.allServersAsEntities(f)
 	c.Assert(ent, HasLen, 1)
 	c.Assert(ent[0], DeepEquals, entities[2])
-	filter.Set(nova.FilterStatus, nova.StatusBuild)
-	ent = s.service.allServersAsEntities(filter)
+	f[nova.FilterStatus] = nova.StatusBuild
+	ent = s.service.allServersAsEntities(f)
 	c.Assert(ent, HasLen, 1)
 	c.Assert(ent[0], DeepEquals, entities[1])
-	filter.Del(nova.FilterStatus)
-	filter.Set(nova.FilterServer, "test")
-	ent = s.service.allServersAsEntities(filter)
+	f = filter{
+		nova.FilterServer: "test",
+	}
+	ent = s.service.allServersAsEntities(f)
 	c.Assert(ent, HasLen, 1)
 	c.Assert(ent[0], DeepEquals, entities[0])
-	filter.Set(nova.FilterServer, "other")
-	ent = s.service.allServersAsEntities(filter)
+	f[nova.FilterServer] = "other"
+	ent = s.service.allServersAsEntities(f)
 	c.Assert(ent, HasLen, 1)
 	c.Assert(ent[0], DeepEquals, entities[1])
-	filter.Set(nova.FilterServer, "foo")
-	filter.Set(nova.FilterStatus, nova.StatusRescue)
-	ent = s.service.allServersAsEntities(filter)
+	f[nova.FilterServer] = "foo"
+	f[nova.FilterStatus] = nova.StatusRescue
+	ent = s.service.allServersAsEntities(f)
 	c.Assert(ent, HasLen, 1)
 	c.Assert(ent[0], DeepEquals, entities[2])
 }

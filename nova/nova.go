@@ -74,10 +74,8 @@ func New(client client.Client) *Client {
 //     filter.Set(nova.FilterStatus, nova.StatusBuild)
 //     resp, err := nova.ListServers(filter)
 //
-// Note: Since only one value per filter is supported, Add() and Set() methods
-// behave in the same way.
 type Filter struct {
-	url.Values
+	v url.Values
 }
 
 // NewFilter creates a new Filter.
@@ -85,8 +83,8 @@ func NewFilter() *Filter {
 	return &Filter{make(url.Values)}
 }
 
-func (f *Filter) Add(filter, value string) {
-	f.Values.Set(filter, value)
+func (f *Filter) Set(filter, value string) {
+	f.v.Set(filter, value)
 }
 
 // Link describes a link to a flavor or server.
@@ -145,7 +143,7 @@ func (c *Client) ListServers(filter *Filter) ([]Entity, error) {
 	var resp struct {
 		Servers []Entity
 	}
-	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.Values, ExpectedStatus: []int{http.StatusOK}}
+	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.v, ExpectedStatus: []int{http.StatusOK}}
 	err := c.client.SendRequest(client.GET, "compute", apiServers, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get list of servers")
@@ -212,7 +210,7 @@ func (c *Client) ListServersDetail(filter *Filter) ([]ServerDetail, error) {
 	var resp struct {
 		Servers []ServerDetail
 	}
-	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.Values}
+	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.v}
 	err := c.client.SendRequest(client.GET, "compute", apiServersDetail, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get list of server details")
