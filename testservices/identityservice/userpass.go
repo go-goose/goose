@@ -150,10 +150,10 @@ func NewUserPass() *UserPass {
 
 func (u *UserPass) RegisterServiceProvider(name, serviceType string, serviceProvider ServiceProvider) {
 	service := Service{name, serviceType, serviceProvider.Endpoints()}
-	u.addService(service)
+	u.AddService(service)
 }
 
-func (u *UserPass) addService(service Service) {
+func (u *UserPass) AddService(service Service) {
 	u.services = append(u.services, service)
 }
 

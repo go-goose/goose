@@ -37,7 +37,7 @@ func (s *UserPassSuite) setupUserPassWithServices(user, secret string, services 
 	var identity *UserPass
 	identity = makeUserPass(user, secret)
 	for _, service := range services {
-		identity.addService(service)
+		identity.AddService(service)
 	}
 	identity.SetupHTTP(s.Mux)
 	return

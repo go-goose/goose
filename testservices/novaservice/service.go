@@ -231,6 +231,7 @@ func (n *Nova) serverAsEntity(serverId string) (*nova.Entity, error) {
 	}
 	return &nova.Entity{
 		Id:    server.Id,
+		UUID:  server.UUID,
 		Name:  server.Name,
 		Links: server.Links,
 	}, nil
@@ -313,6 +314,7 @@ func (n *Nova) allServersAsEntities(filter *nova.Filter) []nova.Entity {
 	for _, server := range servers {
 		entities = append(entities, nova.Entity{
 			Id:    server.Id,
+			UUID:  server.UUID,
 			Name:  server.Name,
 			Links: server.Links,
 		})

@@ -6,6 +6,7 @@ import (
 	"launchpad.net/goose/testservices/novaservice"
 	"launchpad.net/goose/testservices/swiftservice"
 	"net/http"
+	"strings"
 )
 
 // Openstack provides an Openstack service double implementation.
@@ -26,7 +27,10 @@ func New(cred *identity.Credentials) *Openstack {
 		panic("Openstack service double requires a tenant to be specified.")
 	}
 	openstack.Nova = novaservice.New(cred.URL, "v2", userInfo.TenantId, cred.Region, openstack.Identity)
-	openstack.Swift = swiftservice.New(cred.URL, "v1", userInfo.TenantId, cred.Region, openstack.Identity)
+	// Create the swift service using only the region base so we emulate real world deployments.
+	regionParts := strings.Split(cred.Region, ".")
+	baseRegion := regionParts[len(regionParts)-1]
+	openstack.Swift = swiftservice.New(cred.URL, "v1", userInfo.TenantId, baseRegion, openstack.Identity)
 	return &openstack
 }
 

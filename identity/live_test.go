@@ -4,6 +4,7 @@ import (
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/identity"
+	"net/url"
 )
 
 func registerOpenStackTests(cred *identity.Credentials) {
@@ -34,7 +35,8 @@ func (s *LiveTests) TearDownTest(c *C) {
 
 func (s *LiveTests) TestAuth(c *C) {
 	s.client.Authenticate()
-	url, err := s.client.MakeServiceURL("compute", []string{})
+	serviceURL, err := s.client.MakeServiceURL("compute", []string{})
 	c.Assert(err, IsNil)
-	c.Assert(url[:len(s.cred.URL)], Equals, s.cred.URL)
+	_, err = url.Parse(serviceURL)
+	c.Assert(err, IsNil)
 }

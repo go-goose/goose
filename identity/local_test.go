@@ -6,6 +6,7 @@ import (
 	"launchpad.net/goose/testservices/openstackservice"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 )
 
 func registerLocalTests() {
@@ -36,7 +37,7 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 		URL:        s.Server.URL,
 		User:       "fred",
 		Secrets:    "secret",
-		Region:     "some region",
+		Region:     "zone1.some region",
 		TenantName: "tenant",
 	}
 	openstack := openstackservice.New(s.cred)
@@ -61,3 +62,16 @@ func (s *localLiveSuite) TearDownTest(c *C) {
 }
 
 // Additional tests to be run against the service double only go here.
+
+// Test service lookup with inexact region matching.
+func (s *localLiveSuite) TestServiceLookup(c *C) {
+	s.client.Authenticate()
+	serviceURL, err := s.client.MakeServiceURL("compute", []string{})
+	c.Assert(err, IsNil)
+	_, err = url.Parse(serviceURL)
+	c.Assert(err, IsNil)
+	serviceURL, err = s.client.MakeServiceURL("object-store", []string{})
+	c.Assert(err, IsNil)
+	_, err = url.Parse(serviceURL)
+	c.Assert(err, IsNil)
+}
