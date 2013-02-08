@@ -262,8 +262,8 @@ func (n *Nova) matchServers(filter *nova.Filter) []nova.ServerDetail {
 	if filter == nil {
 		return servers // empty filter matches everything
 	}
-	var matched []nova.ServerDetail
 	if status := filter.Get(nova.FilterStatus); status != "" {
+		matched := []nova.ServerDetail{}
 		for _, server := range servers {
 			if server.Status == status {
 				matched = append(matched, server)
@@ -274,9 +274,9 @@ func (n *Nova) matchServers(filter *nova.Filter) []nova.ServerDetail {
 			return nil
 		}
 		servers = matched
-		matched = []nova.ServerDetail{}
 	}
 	if nameRex := filter.Get(nova.FilterServer); nameRex != "" {
+		matched := []nova.ServerDetail{}
 		rex, err := regexp.Compile(nameRex)
 		if err != nil {
 			fmt.Printf("cannot compile regexp filter %q: %v\n", filter, err)

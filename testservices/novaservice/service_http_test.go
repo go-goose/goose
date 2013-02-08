@@ -591,8 +591,8 @@ func (s *NovaHTTPSuite) TestGetServersWithFilters(c *C) {
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
 	assertJSON(c, resp, &expected)
 	c.Assert(expected.Servers, HasLen, 1)
-	c.Assert(expected.Servers[0].Id, DeepEquals, servers[0].Id)
-	c.Assert(expected.Servers[0].Name, DeepEquals, servers[0].Name)
+	c.Assert(expected.Servers[0].Id, Equals, servers[0].Id)
+	c.Assert(expected.Servers[0].Name, Equals, servers[0].Name)
 }
 
 func (s *NovaHTTPSuite) TestNewUUID(c *C) {
