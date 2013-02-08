@@ -304,18 +304,6 @@ func (s *NovaSuite) TestAllServersWithFilters(c *C) {
 	c.Assert(sr[0], DeepEquals, servers[2])
 }
 
-func (s *NovaSuite) TestFilterAddEqualsSet(c *C) {
-	f1 := nova.NewFilter()
-	f2 := nova.NewFilter()
-	f1.Add("test", "foo")
-	f1.Add("test", "bar")
-	f1.Add("bar", "123")
-	f2.Set("test", "bar")
-	f2.Set("bar", "123")
-	c.Assert(f1.Get("test"), Equals, f2.Get("test"))
-	c.Assert(f1.Get("bar"), Equals, f2.Get("bar"))
-}
-
 func (s *NovaSuite) TestAllServersWithEmptyFilter(c *C) {
 	servers := s.service.allServers(nil)
 	c.Assert(servers, HasLen, 0)

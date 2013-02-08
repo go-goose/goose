@@ -747,9 +747,13 @@ func (n *Nova) handleServersDetail(w http.ResponseWriter, r *http.Request) error
 		if serverId := path.Base(r.URL.Path); serverId != "detail" {
 			return errNotFound
 		}
-		var filter *nova.Filter
+		filter := nova.NewFilter()
 		if err := r.ParseForm(); err == nil && len(r.Form) > 0 {
-			filter = &nova.Filter{r.Form}
+			for filterKey, filterValues := range r.Form {
+				for _, value := range filterValues {
+					filter.Set(filterKey, value)
+				}
+			}
 		}
 		servers := n.allServers(filter)
 		if len(servers) == 0 {

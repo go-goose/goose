@@ -779,7 +779,7 @@ func (s *NovaHTTPSuite) TestGetServersDetailWithFilters(c *C) {
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
 	assertJSON(c, resp, &expected)
 	c.Assert(expected.Servers, HasLen, 1)
-	c.Assert(expected.Servers[0], DeepEquals, servers[1])
+	c.Assert(expected.Servers[0], DeepEquals, servers[0])
 }
 
 func (s *NovaHTTPSuite) TestGetSecurityGroups(c *C) {
