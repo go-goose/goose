@@ -240,19 +240,6 @@ func (n *Nova) serverAsEntity(serverId string) (*nova.Entity, error) {
 // filter is used internally by matchServers.
 type filter map[string]string
 
-func newFilter() *filter {
-	f := make(filter)
-	return &f
-}
-
-func (f *filter) get(key string) string {
-	return (*f)[key]
-}
-
-func (f *filter) set(key, value string) {
-	(*f)[key] = value
-}
-
 // matchServers returns a list of matching servers, after applying the
 // given filter. Each separate filter is combined with a logical AND.
 // Each filter can have only one value. A nil filter matches all servers.
@@ -264,21 +251,22 @@ func (f *filter) set(key, value string) {
 //
 // Example:
 //
-// f := newFilter()
-// f.set(nova.FilterStatus,  nova.StatusActive)
-// f.set(nova.FilterServer, `foo.*`)
+// f := filter{
+//     nova.FilterStatus: nova.StatusActive,
+//     nova.FilterServer: `foo.*`,
+// }
 //
 // This will match all servers with status "ACTIVE", and names starting
 // with "foo".
-func (n *Nova) matchServers(f *filter) []nova.ServerDetail {
+func (n *Nova) matchServers(f filter) []nova.ServerDetail {
 	var servers []nova.ServerDetail
 	for _, server := range n.servers {
 		servers = append(servers, server)
 	}
-	if f == nil {
+	if len(f) == 0 {
 		return servers // empty filter matches everything
 	}
-	if status := f.get(nova.FilterStatus); status != "" {
+	if status := f[nova.FilterStatus]; status != "" {
 		matched := []nova.ServerDetail{}
 		for _, server := range servers {
 			if server.Status == status {
@@ -291,7 +279,7 @@ func (n *Nova) matchServers(f *filter) []nova.ServerDetail {
 		}
 		servers = matched
 	}
-	if nameRex := f.get(nova.FilterServer); nameRex != "" {
+	if nameRex := f[nova.FilterServer]; nameRex != "" {
 		matched := []nova.ServerDetail{}
 		rex, err := regexp.Compile(nameRex)
 		if err != nil {
@@ -317,13 +305,13 @@ func (n *Nova) matchServers(f *filter) []nova.ServerDetail {
 
 // allServers returns a list of all existing servers.
 // Filtering is supported, see filter type for more info.
-func (n *Nova) allServers(f *filter) []nova.ServerDetail {
+func (n *Nova) allServers(f filter) []nova.ServerDetail {
 	return n.matchServers(f)
 }
 
 // allServersAsEntities returns all servers as Entity structs.
 // Filtering is supported, see filter type for more info.
-func (n *Nova) allServersAsEntities(f *filter) []nova.Entity {
+func (n *Nova) allServersAsEntities(f filter) []nova.Entity {
 	var entities []nova.Entity
 	servers := n.matchServers(f)
 	for _, server := range servers {

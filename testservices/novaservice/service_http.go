@@ -682,11 +682,11 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 			}{*server}
 			return sendJSON(http.StatusOK, resp, w, r)
 		}
-		f := newFilter()
+		f := make(filter)
 		if err := r.ParseForm(); err == nil && len(r.Form) > 0 {
 			for filterKey, filterValues := range r.Form {
 				for _, value := range filterValues {
-					f.set(filterKey, value)
+					f[filterKey] = value
 				}
 			}
 		}
@@ -747,11 +747,11 @@ func (n *Nova) handleServersDetail(w http.ResponseWriter, r *http.Request) error
 		if serverId := path.Base(r.URL.Path); serverId != "detail" {
 			return errNotFound
 		}
-		f := newFilter()
+		f := make(filter)
 		if err := r.ParseForm(); err == nil && len(r.Form) > 0 {
 			for filterKey, filterValues := range r.Form {
 				for _, value := range filterValues {
-					f.set(filterKey, value)
+					f[filterKey] = value
 				}
 			}
 		}
