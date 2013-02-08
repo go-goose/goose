@@ -355,10 +355,10 @@ func (n *Nova) handleRoot(w http.ResponseWriter, r *http.Request) error {
 	return errMultipleChoices
 }
 
-func convertEntities(entities []nova.Entity) []nova.JsonEntity {
-	je := make([]nova.JsonEntity, len(entities))
+func convertEntities(entities []nova.Entity) []nova.JSONEntity {
+	je := make([]nova.JSONEntity, len(entities))
 	for i, e := range entities {
-		je[i] = nova.JsonEntity{Entity: e}
+		je[i] = nova.JSONEntity{Entity: e}
 	}
 	return je
 }
@@ -373,8 +373,8 @@ func (n *Nova) handleFlavors(w http.ResponseWriter, r *http.Request) error {
 				return errNotFound
 			}
 			resp := struct {
-				Flavor *nova.JsonFlavorDetail `json:"flavor"`
-			}{&nova.JsonFlavorDetail{FlavorDetail: *flavor}}
+				Flavor *nova.JSONFlavorDetail `json:"flavor"`
+			}{&nova.JSONFlavorDetail{FlavorDetail: *flavor}}
 			return sendJSON(http.StatusOK, resp, w, r)
 		}
 		entities := n.allFlavorsAsEntities()
@@ -382,7 +382,7 @@ func (n *Nova) handleFlavors(w http.ResponseWriter, r *http.Request) error {
 			entities = []nova.Entity{}
 		}
 		resp := struct {
-			Flavors []nova.JsonEntity `json:"flavors"`
+			Flavors []nova.JSONEntity `json:"flavors"`
 		}{convertEntities(entities)}
 		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
@@ -422,12 +422,12 @@ func (n *Nova) handleFlavorsDetail(w http.ResponseWriter, r *http.Request) error
 		if len(flavors) == 0 {
 			flavors = []nova.FlavorDetail{}
 		}
-		jsonFlavors := make([]nova.JsonFlavorDetail, len(flavors))
+		jsonFlavors := make([]nova.JSONFlavorDetail, len(flavors))
 		for i, flavor := range flavors {
-			jsonFlavors[i] = nova.JsonFlavorDetail{FlavorDetail: flavor}
+			jsonFlavors[i] = nova.JSONFlavorDetail{FlavorDetail: flavor}
 		}
 		resp := struct {
-			Flavors []nova.JsonFlavorDetail `json:"flavors"`
+			Flavors []nova.JSONFlavorDetail `json:"flavors"`
 		}{jsonFlavors}
 		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
@@ -690,8 +690,8 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 				return sendJSON(http.StatusOK, resp, w, r)
 			}
 			resp := struct {
-				Server *nova.JsonServerDetail `json:"server"`
-			}{&nova.JsonServerDetail{ServerDetail: *server}}
+				Server *nova.JSONServerDetail `json:"server"`
+			}{&nova.JSONServerDetail{ServerDetail: *server}}
 			return sendJSON(http.StatusOK, resp, w, r)
 		}
 		var filter *nova.Filter
@@ -703,7 +703,7 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 			entities = []nova.Entity{}
 		}
 		resp := struct {
-			Servers []nova.JsonEntity `json:"servers"`
+			Servers []nova.JSONEntity `json:"servers"`
 		}{convertEntities(entities)}
 		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
@@ -763,12 +763,12 @@ func (n *Nova) handleServersDetail(w http.ResponseWriter, r *http.Request) error
 		if len(servers) == 0 {
 			servers = []nova.ServerDetail{}
 		}
-		jsonServers := make([]nova.JsonServerDetail, len(servers))
+		jsonServers := make([]nova.JSONServerDetail, len(servers))
 		for i, sd := range servers {
-			jsonServers[i] = nova.JsonServerDetail{ServerDetail: sd}
+			jsonServers[i] = nova.JSONServerDetail{ServerDetail: sd}
 		}
 		resp := struct {
-			Servers []nova.JsonServerDetail `json:"servers"`
+			Servers []nova.JSONServerDetail `json:"servers"`
 		}{jsonServers}
 		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
@@ -970,20 +970,20 @@ func (n *Nova) handleFloatingIPs(w http.ResponseWriter, r *http.Request) error {
 				return errNotFoundJSON
 			}
 			resp := struct {
-				IP nova.JsonFloatingIP `json:"floating_ip"`
-			}{nova.JsonFloatingIP{FloatingIP: *fip}}
+				IP nova.JSONFloatingIP `json:"floating_ip"`
+			}{nova.JSONFloatingIP{FloatingIP: *fip}}
 			return sendJSON(http.StatusOK, resp, w, r)
 		}
 		fips := n.allFloatingIPs()
 		if len(fips) == 0 {
 			fips = []nova.FloatingIP{}
 		}
-		jsonFips := make([]nova.JsonFloatingIP, len(fips))
+		jsonFips := make([]nova.JSONFloatingIP, len(fips))
 		for i, fip := range fips {
-			jsonFips[i] = nova.JsonFloatingIP{FloatingIP: fip}
+			jsonFips[i] = nova.JSONFloatingIP{FloatingIP: fip}
 		}
 		resp := struct {
-			IPs []nova.JsonFloatingIP `json:"floating_ips"`
+			IPs []nova.JSONFloatingIP `json:"floating_ips"`
 		}{jsonFips}
 		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
@@ -999,8 +999,8 @@ func (n *Nova) handleFloatingIPs(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		resp := struct {
-			IP nova.JsonFloatingIP `json:"floating_ip"`
-		}{nova.JsonFloatingIP{FloatingIP: fip}}
+			IP nova.JSONFloatingIP `json:"floating_ip"`
+		}{nova.JSONFloatingIP{FloatingIP: fip}}
 		return sendJSON(http.StatusOK, resp, w, r)
 	case "PUT":
 		if ipId := path.Base(r.URL.Path); ipId != "os-floating-ips" {
