@@ -183,9 +183,6 @@ type ServerDetail struct {
 	Name   string
 
 	// HP Cloud returns security groups in server details.
-	// TODO(wallyworld) - []Entity is returned but we really want []SecurityGroup
-	// Only way to get []SecurityGroup is via a number of lookups which we would
-	// rather avoid unless it becomes necessary.
 	Groups []Entity `json:"security_groups"`
 
 	// Progress holds the completion percentage of

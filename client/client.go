@@ -59,8 +59,7 @@ type authenticatingClient struct {
 	creds    *identity.Credentials
 	authMode identity.Authenticator
 
-	auth AuthenticatingClient
-	//TODO - store service urls by region.
+	auth        AuthenticatingClient
 	ServiceURLs map[string]string
 	tokenId     string
 	tenantId    string
