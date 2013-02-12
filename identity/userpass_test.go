@@ -24,7 +24,7 @@ func (s *UserPassTestSuite) TestAuthAgainstServer(c *C) {
 	c.Assert(auth.TenantId, Equals, userInfo.TenantId)
 }
 
-// Test that inexact region matches are handled properly.
+// Test that the region -> service endpoint map is correctly populated.
 func (s *UserPassTestSuite) TestRegionMatch(c *C) {
 	service := identityservice.NewUserPass()
 	service.SetupHTTP(s.Mux)
@@ -51,8 +51,9 @@ func (s *UserPassTestSuite) TestRegionMatch(c *C) {
 	var l Authenticator = &UserPass{}
 	auth, err := l.Auth(&creds)
 	c.Assert(err, IsNil)
-	c.Assert(auth.ServiceURLs["object-store"], Equals, "http://swift")
-	c.Assert(auth.ServiceURLs["compute"], Equals, "http://nova")
+	c.Assert(auth.RegionServiceURLs["RegionOne"]["object-store"], Equals, "http://swift")
+	c.Assert(auth.RegionServiceURLs["zone1.RegionOne"]["compute"], Equals, "http://nova")
+	c.Assert(auth.RegionServiceURLs["zone2.RegionOne"]["compute"], Equals, "http://nova2")
 	c.Assert(auth.Token, Equals, userInfo.Token)
 	c.Assert(auth.TenantId, Equals, userInfo.TenantId)
 }
