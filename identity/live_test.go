@@ -34,7 +34,8 @@ func (s *LiveTests) TearDownTest(c *C) {
 }
 
 func (s *LiveTests) TestAuth(c *C) {
-	s.client.Authenticate()
+	err := s.client.Authenticate()
+	c.Assert(err, IsNil)
 	serviceURL, err := s.client.MakeServiceURL("compute", []string{})
 	c.Assert(err, IsNil)
 	_, err = url.Parse(serviceURL)

@@ -27,13 +27,15 @@ func (a AuthMode) String() string {
 	panic(fmt.Errorf("Unknown athentication type: %d", a))
 }
 
+type ServiceURLs map[string]string
+
 // AuthDetails defines all the necessary information, needed for an
 // authenticated session with OpenStack.
 type AuthDetails struct {
-	Token       string
-	TenantId    string
-	UserId      string
-	ServiceURLs map[string]string // Service type to endpoint URLs
+	Token             string
+	TenantId          string
+	UserId            string
+	RegionServiceURLs map[string]ServiceURLs // Service type to endpoint URLs for each region
 }
 
 // Credentials defines necessary parameters for authentication.
