@@ -54,7 +54,6 @@ func assertJSON(c *C, resp *http.Response, expected interface{}) {
 	c.Assert(err, IsNil)
 	err = json.Unmarshal(body, &expected)
 	c.Assert(err, IsNil)
-	// TODO(dimitern) Validate expected's contents (possibly "laxer" DeepEquals)
 }
 
 // assertBody asserts the passed http.Response's body matches the

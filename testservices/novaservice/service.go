@@ -299,8 +299,8 @@ func (n *Nova) matchServers(f filter) []nova.ServerDetail {
 		servers = matched
 	}
 	return servers
-	// TODO(dimitern) maybe implement FilterFlavor, FilterImage,
-	// FilterMarker, FilterLimit and FilterChangesSince
+	// TODO(dimitern) - 2013-02-11 bug=1121690
+	// implement FilterFlavor, FilterImage, FilterMarker, FilterLimit and FilterChangesSince
 }
 
 // allServers returns a list of all existing servers.

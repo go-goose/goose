@@ -140,7 +140,8 @@ func (s *Swift) handleObjects(container, object string, w http.ResponseWriter, r
 
 // ServeHTTP is the main entry point in the HTTP request processing.
 func (s *Swift) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// TODO(wallyworld) - we need to support container ACLs so we can have pubic containers.
+	// TODO(wallyworld) - 2013-02-11 bug=1121682
+	// we need to support container ACLs so we can have pubic containers.
 	// For public containers, the token is not required to access the files. For now, if the request
 	// does not provide a token, we will let it through and assume a public container is being accessed.
 	token := r.Header.Get("X-Auth-Token")

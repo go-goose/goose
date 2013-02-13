@@ -427,8 +427,9 @@ func (s *LiveTests) TestServerFloatingIPs(c *C) {
 	s.waitTestServerToStart(c)
 	err = s.nova.AddServerFloatingIP(s.testServer.Id, ip.IP)
 	c.Assert(err, IsNil)
-	// TODO (wallyworld) - where we are creating a real server, test that the IP address created above can be used
-	// to connected to the server
+	// TODO (wallyworld) - 2013-02-11 bug=1121666
+	// where we are creating a real server, test that the IP address created above
+	// can be used to connect to the server
 	defer s.nova.RemoveServerFloatingIP(s.testServer.Id, ip.IP)
 
 	fip, err := s.nova.GetFloatingIP(ip.Id)
