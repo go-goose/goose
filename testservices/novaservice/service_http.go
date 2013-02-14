@@ -594,7 +594,8 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 			}
 		}
 	}
-	// TODO(dimitern): make sure flavor/image exist (if needed)
+	// TODO(dimitern) - 2013-02-11 bug=1121684
+	// make sure flavor/image exist (if needed)
 	flavor := nova.FlavorDetail{Id: req.Server.FlavorRef}
 	n.buildFlavorLinks(&flavor)
 	flavorEnt := nova.Entity{Id: flavor.Id, Links: flavor.Links}

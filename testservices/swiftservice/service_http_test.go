@@ -259,8 +259,8 @@ func (s *SwiftHTTPSuite) TestUnauthorizedFails(c *C) {
 	defer func() {
 		s.token = oldtoken
 	}()
-	// TODO(wallyworld) - until ACLs are supported, empty tokens are assumed to be used when
-	// we need to access a public container.
+	// TODO(wallyworld) - 2013-02-11 bug=1121682
+	// until ACLs are supported, empty tokens are assumed to be used when we need to access a public container.
 	// token = ""
 	// s.sendRequest(c, "GET", "test", nil, http.StatusUnauthorized)
 

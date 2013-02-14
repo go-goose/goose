@@ -25,13 +25,8 @@ func (s *CredentialsTestSuite) TestCredentialsFromEnv(c *C) {
 	}{
 		{summary: "Old 'NOVA' style creds",
 			env: map[string]string{
-				"NOVA_USERNAME": "test-user",
-				"NOVA_PASSWORD": "test-pass",
-				// TODO: JAM 20121118 There exists a 'tenant
-				// name' and a 'tenant id'. Does
-				// NOVA_PROJECT_ID map to the 'tenant id' or to
-				// the tenant name? ~/.canonistack/novarc says
-				// tenant_name.
+				"NOVA_USERNAME":   "test-user",
+				"NOVA_PASSWORD":   "test-pass",
 				"NOVA_PROJECT_ID": "tenant-name",
 				"NOVA_REGION":     "region",
 			},

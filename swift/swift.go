@@ -156,7 +156,8 @@ func (c *Client) URL(containerName, file string) (string, error) {
 // to retrieve the object at path. The signature is valid until expires.
 func (c *Client) SignedURL(containerName, file string, expires time.Time) (string, error) {
 	// expiresUnix := expires.Unix()
-	// TODO(wallyworld) - retrieve the signed URL, for now just return the public one
+	// TODO(wallyworld) - 2013-02-11 bug=1121677
+	// retrieve the signed URL, for now just return the public URL
 	rawURL, err := c.URL(containerName, file)
 	if err != nil {
 		return "", err
