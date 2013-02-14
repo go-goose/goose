@@ -24,11 +24,11 @@ type Swift struct {
 
 // New creates an instance of the Swift object, given the parameters.
 func New(hostURL, versionPath, tenantId, region string, identityService identityservice.IdentityService) *Swift {
-	url, err := url.Parse(hostURL)
+	URL, err := url.Parse(hostURL)
 	if err != nil {
 		panic(err)
 	}
-	hostname := url.Host
+	hostname := URL.Host
 	if !strings.HasSuffix(hostname, "/") {
 		hostname += "/"
 	}
@@ -75,6 +75,9 @@ func (s *Swift) HasContainer(name string) bool {
 // GetObject retrieves a given object from its container, returning
 // the object data or an error.
 func (s *Swift) GetObject(container, name string) ([]byte, error) {
+	if err := s.ProcessFunctionHook(s, container, name); err != nil {
+		return nil, err
+	}
 	data, ok := s.containers[container][name]
 	if !ok {
 		return nil, fmt.Errorf("no such object %q in container %q", name, container)
@@ -85,6 +88,9 @@ func (s *Swift) GetObject(container, name string) ([]byte, error) {
 // AddContainer creates a new container with the given name, if it
 // does not exist. Otherwise an error is returned.
 func (s *Swift) AddContainer(name string) error {
+	if err := s.ProcessFunctionHook(s, name); err != nil {
+		return err
+	}
 	if s.HasContainer(name) {
 		return fmt.Errorf("container already exists %q", name)
 	}
@@ -94,6 +100,9 @@ func (s *Swift) AddContainer(name string) error {
 
 // ListContainer lists the objects in the given container.
 func (s *Swift) ListContainer(name string) ([]swift.ContainerContents, error) {
+	if err := s.ProcessFunctionHook(s, name); err != nil {
+		return nil, err
+	}
 	if ok := s.HasContainer(name); !ok {
 		return nil, fmt.Errorf("no such container %q", name)
 	}
@@ -118,6 +127,9 @@ func (s *Swift) ListContainer(name string) ([]swift.ContainerContents, error) {
 // already exists. If the container does not exist, it will be
 // created.
 func (s *Swift) AddObject(container, name string, data []byte) error {
+	if err := s.ProcessFunctionHook(s, container, name); err != nil {
+		return err
+	}
 	if _, err := s.GetObject(container, name); err == nil {
 		return fmt.Errorf(
 			"object %q in container %q already exists",
@@ -135,6 +147,9 @@ func (s *Swift) AddObject(container, name string, data []byte) error {
 
 // RemoveContainer deletes an existing container with the given name.
 func (s *Swift) RemoveContainer(name string) error {
+	if err := s.ProcessFunctionHook(s, name); err != nil {
+		return err
+	}
 	if ok := s.HasContainer(name); !ok {
 		return fmt.Errorf("no such container %q", name)
 	}
@@ -144,6 +159,9 @@ func (s *Swift) RemoveContainer(name string) error {
 
 // RemoveObject deletes an existing object in a given container.
 func (s *Swift) RemoveObject(container, name string) error {
+	if err := s.ProcessFunctionHook(s, container, name); err != nil {
+		return err
+	}
 	if _, err := s.GetObject(container, name); err != nil {
 		return err
 	}
@@ -154,6 +172,9 @@ func (s *Swift) RemoveObject(container, name string) error {
 // GetURL returns the full URL, which can be used to GET the
 // object. An error occurs if the object does not exist.
 func (s *Swift) GetURL(container, object string) (string, error) {
+	if err := s.ProcessFunctionHook(s, container, object); err != nil {
+		return "", err
+	}
 	if _, err := s.GetObject(container, object); err != nil {
 		return "", err
 	}

@@ -53,7 +53,7 @@ func namedControlHook(s ServiceControl, args ...interface{}) error {
 }
 
 func (s *testService) foo(label string, returnError bool) error {
-	if err := s.ProcessControlHook("", s, label, returnError); err != nil {
+	if err := s.ProcessFunctionHook(s, label, returnError); err != nil {
 		return err
 	}
 	return nil
