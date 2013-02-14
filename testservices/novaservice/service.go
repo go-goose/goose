@@ -148,6 +148,9 @@ func (n *Nova) flavor(flavorId string) (*nova.FlavorDetail, error) {
 
 // flavorAsEntity returns the stored FlavorDetail as Entity.
 func (n *Nova) flavorAsEntity(flavorId string) (*nova.Entity, error) {
+	if err := n.ProcessFunctionHook(n, flavorId); err != nil {
+		return nil, err
+	}
 	flavor, err := n.flavor(flavorId)
 	if err != nil {
 		return nil, err
@@ -243,6 +246,9 @@ func (n *Nova) serverByName(name string) (*nova.ServerDetail, error) {
 
 // serverAsEntity returns the stored ServerDetail as Entity.
 func (n *Nova) serverAsEntity(serverId string) (*nova.Entity, error) {
+	if err := n.ProcessFunctionHook(n, serverId); err != nil {
+		return nil, err
+	}
 	server, err := n.server(serverId)
 	if err != nil {
 		return nil, err
