@@ -6,10 +6,12 @@ import (
 	gooseerrors "launchpad.net/goose/errors"
 	goosehttp "launchpad.net/goose/http"
 	"launchpad.net/goose/identity"
+	"launchpad.net/goose/sync"
 	"log"
 	"net/http"
 	"path"
 	"strings"
+	"time"
 )
 
 const (
@@ -43,11 +45,14 @@ type AuthenticatingClient interface {
 	TenantId() string
 }
 
+// A single http client is shared between all Goose clients.
+var sharedHttpClient *goosehttp.Client
+
 // This client sends requests without authenticating.
 type client struct {
-	httpClient *goosehttp.Client
-	logger     *log.Logger
-	baseURL    string
+	sync.Mutex
+	logger  *log.Logger
+	baseURL string
 }
 
 var _ Client = (*client)(nil)
@@ -60,7 +65,8 @@ type authenticatingClient struct {
 	authMode identity.Authenticator
 
 	auth              AuthenticatingClient
-	regionServiceURLs map[string]identity.ServiceURLs // Service type to endpoint URLs for each region
+	regionServiceURLs map[string]identity.ServiceURLs // Service type to endpoint URLs for each available region
+	serviceURLs       identity.ServiceURLs            // Service type to endpoint URLs for the authenticated region
 	tokenId           string
 	tenantId          string
 	userId            string
@@ -77,9 +83,8 @@ func NewClient(creds *identity.Credentials, auth_method identity.AuthMode, logge
 	client_creds := *creds
 	client_creds.URL = client_creds.URL + apiTokens
 	client := authenticatingClient{
-		creds:             &client_creds,
-		client:            client{logger: logger},
-		regionServiceURLs: make(map[string]identity.ServiceURLs),
+		creds:  &client_creds,
+		client: client{logger: logger},
 	}
 	client.auth = &client
 	switch auth_method {
@@ -93,14 +98,21 @@ func NewClient(creds *identity.Credentials, auth_method identity.AuthMode, logge
 	return &client
 }
 
-func (c *client) sendRequest(method, url, token string, requestData *goosehttp.RequestData) (err error) {
-	if c.httpClient == nil {
-		c.httpClient = goosehttp.New(http.Client{CheckRedirect: nil}, c.logger, token)
+func (c *client) sharedHttpClient() *goosehttp.Client {
+	c.Lock()
+	defer c.Unlock()
+	if sharedHttpClient == nil {
+		sharedHttpClient = goosehttp.New(http.Client{CheckRedirect: nil})
 	}
+	return sharedHttpClient
+}
+
+func (c *client) sendRequest(method, url, token string, requestData *goosehttp.RequestData) (err error) {
+	sharedClient := c.sharedHttpClient()
 	if requestData.ReqValue != nil || requestData.RespValue != nil {
-		err = c.httpClient.JsonRequest(method, url, requestData)
+		err = sharedClient.JsonRequest(method, url, token, requestData, c.logger)
 	} else {
-		err = c.httpClient.BinaryRequest(method, url, requestData)
+		err = sharedClient.BinaryRequest(method, url, token, requestData, c.logger)
 	}
 	return
 }
@@ -134,11 +146,7 @@ func (c *authenticatingClient) MakeServiceURL(serviceType string, parts []string
 	if !c.IsAuthenticated() {
 		return "", errors.New("cannot get endpoint URL without being authenticated")
 	}
-	serviceURLs, err := c.serviceURLs()
-	if err != nil {
-		return "", err
-	}
-	url, ok := serviceURLs[serviceType]
+	url, ok := c.serviceURLs[serviceType]
 	if !ok {
 		return "", errors.New("no endpoints known for service type: " + serviceType)
 	}
@@ -148,7 +156,7 @@ func (c *authenticatingClient) MakeServiceURL(serviceType string, parts []string
 
 // Return the relevant service endpoint URLs for this client's region.
 // The region comes from the client credentials.
-func (c *authenticatingClient) serviceURLs() (identity.ServiceURLs, error) {
+func (c *authenticatingClient) createServiceURLs() error {
 	var serviceURLs identity.ServiceURLs = nil
 	for region, urls := range c.regionServiceURLs {
 		if regionMatches(c.creds.Region, region) {
@@ -165,10 +173,11 @@ func (c *authenticatingClient) serviceURLs() (identity.ServiceURLs, error) {
 		for r := range c.regionServiceURLs {
 			knownRegions = append(knownRegions, r)
 		}
-		return nil, fmt.Errorf("invalid region '%s', valid regions are %s",
+		return fmt.Errorf("invalid region '%s', valid regions are %s",
 			c.creds.Region, strings.Join(knownRegions, ", "))
 	}
-	return serviceURLs, nil
+	c.serviceURLs = serviceURLs
+	return nil
 }
 
 func regionMatches(userRegion, endpointRegion string) bool {
@@ -194,7 +203,16 @@ func (c *authenticatingClient) IsAuthenticated() bool {
 	return c.tokenId != ""
 }
 
+var authenticationTimeout = time.Duration(60) * time.Second
+
 func (c *authenticatingClient) Authenticate() (err error) {
+	// Ideally, it's not good to hold a mutex when making a network call. We'll compromise and only try
+	// to acquire the lock for a minute before timing out with an error instead of blocking indefinitely.
+	if !c.Attempt(authenticationTimeout) {
+		return errors.New("Timeout acquiring authentication lock")
+	}
+	defer c.Unlock()
+
 	if c.creds == nil || c.IsAuthenticated() {
 		return nil
 	}
@@ -208,9 +226,16 @@ func (c *authenticatingClient) Authenticate() (err error) {
 		return
 	}
 
-	c.tokenId = authDetails.Token
+	c.regionServiceURLs = authDetails.RegionServiceURLs
+	err = c.createServiceURLs()
+	if err != nil {
+		err = gooseerrors.Newf(err, "cannot create service URLs")
+		return
+	}
 	c.tenantId = authDetails.TenantId
 	c.userId = authDetails.UserId
-	c.regionServiceURLs = authDetails.RegionServiceURLs
-	return nil
+	// A valid token indicates authorisation has been successful, so it needs to be set last. It must be set
+	// after the service URLs have been extracted.
+	c.tokenId = authDetails.Token
+	return
 }

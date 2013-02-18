@@ -9,6 +9,7 @@ import (
 	"launchpad.net/goose/testservices/identityservice"
 	"launchpad.net/goose/testservices/openstackservice"
 	"net/url"
+	"time"
 )
 
 func registerLocalTests(authModes []identity.AuthMode) {
@@ -91,9 +92,6 @@ func (s *localLiveSuite) TestInvalidRegion(c *C) {
 	}
 	cl := client.NewClient(creds, s.authMode, nil)
 	err := cl.Authenticate()
-	c.Assert(err, IsNil)
-	_, err = cl.MakeServiceURL("object-store", []string{})
-	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Matches, ".*invalid region.*")
 }
 
@@ -111,5 +109,68 @@ func (s *localLiveSuite) TestInexactRegionMatch(c *C) {
 	serviceURL, err = cl.MakeServiceURL("object-store", []string{})
 	c.Assert(err, IsNil)
 	_, err = url.Parse(serviceURL)
+	c.Assert(err, IsNil)
+}
+
+type fakeAuthenticator struct{}
+
+// An authentication step which takes a "long" time.
+func (auth *fakeAuthenticator) Auth(creds *identity.Credentials) (*identity.AuthDetails, error) {
+	time.Sleep(time.Duration(3) * time.Millisecond)
+	URLs := make(map[string]identity.ServiceURLs)
+	endpoints := make(map[string]string)
+	endpoints["compute"] = "http://localhost"
+	URLs[creds.Region] = endpoints
+	return &identity.AuthDetails{
+		Token:             "token",
+		TenantId:          "tenant",
+		UserId:            "1",
+		RegionServiceURLs: URLs,
+	}, nil
+}
+
+func (s *localLiveSuite) TestAuthenticationTimeout(c *C) {
+	cl := client.NewClient(s.cred, s.authMode, nil)
+	// Authentication will take longer than the allowed time.
+	client.SetAuthenticationTimeout(time.Duration(1) * time.Millisecond)
+	client.SetAuthenticator(cl, &fakeAuthenticator{})
+
+	errCh := make(chan error, 1)
+	var err1, err2 error
+	go func() {
+		err1 = cl.Authenticate()
+		errCh <- err1
+	}()
+	go func() {
+		err2 = cl.Authenticate()
+		errCh <- err2
+	}()
+	err := <-errCh
+	c.Assert(err.Error(), Matches, ".*Timeout.*")
+	// The tardy authentication eventually succeeds.
+	err = <-errCh
+	c.Assert(err, IsNil)
+}
+
+func (s *localLiveSuite) TestLongAuthenticationTimeout(c *C) {
+	cl := client.NewClient(s.cred, s.authMode, nil)
+	// Authentication will take time, but less than than the allowed time.
+	client.SetAuthenticationTimeout(time.Duration(4) * time.Millisecond)
+	client.SetAuthenticator(cl, &fakeAuthenticator{})
+
+	errCh := make(chan error, 1)
+	var err1, err2 error
+	go func() {
+		err1 = cl.Authenticate()
+		errCh <- err1
+	}()
+	go func() {
+		err2 = cl.Authenticate()
+		errCh <- err2
+	}()
+	// Both authentication calls succeed.
+	err := <-errCh
+	c.Assert(err, IsNil)
+	err = <-errCh
 	c.Assert(err, IsNil)
 }

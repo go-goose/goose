@@ -17,13 +17,26 @@ type HTTPClientTestSuite struct {
 
 var _ = Suite(&HTTPClientTestSuite{})
 
-func (s *HTTPClientTestSuite) TestCreateHeaders(c *C) {
+func (s *HTTPClientTestSuite) assertHeaderValues(c *C, token string) {
 	emptyHeaders := http.Header{}
-	headers := createHeaders(emptyHeaders, "content-type")
+	headers := createHeaders(emptyHeaders, "content-type", token)
 	contentTypes := []string{"content-type"}
-	c.Assert(headers, DeepEquals,
-		http.Header{"Content-Type": contentTypes, "Accept": contentTypes, "User-Agent": []string{gooseAgent()}})
+	headerData := map[string][]string{
+		"Content-Type": contentTypes, "Accept": contentTypes, "User-Agent": []string{gooseAgent()}}
+	if token != "" {
+		headerData["X-Auth-Token"] = []string{token}
+	}
+	expectedHeaders := http.Header(headerData)
+	c.Assert(headers, DeepEquals, expectedHeaders)
 	c.Assert(emptyHeaders, DeepEquals, http.Header{})
+}
+
+func (s *HTTPClientTestSuite) TestCreateHeadersNoToken(c *C) {
+	s.assertHeaderValues(c, "")
+}
+
+func (s *HTTPClientTestSuite) TestCreateHeadersWithToken(c *C) {
+	s.assertHeaderValues(c, "token")
 }
 
 func (s *HTTPClientTestSuite) TestCreateHeadersCopiesSupplied(c *C) {
@@ -31,7 +44,7 @@ func (s *HTTPClientTestSuite) TestCreateHeadersCopiesSupplied(c *C) {
 	initialHeaders["Foo"] = []string{"Bar"}
 	contentType := contentTypeJSON
 	contentTypes := []string{contentType}
-	headers := createHeaders(initialHeaders, contentType)
+	headers := createHeaders(initialHeaders, contentType, "")
 	// it should not change the headers passed in
 	c.Assert(initialHeaders, DeepEquals, http.Header{"Foo": []string{"Bar"}})
 	// The initial headers should be in the output
@@ -48,14 +61,14 @@ func (s *HTTPClientTestSuite) setupLoopbackRequest() (*http.Header, *Client) {
 		resp.Write([]byte{})
 	}
 	s.Mux.HandleFunc("/", handler)
-	client := New(*http.DefaultClient, nil, "")
+	client := New(*http.DefaultClient)
 	return &headers, client
 }
 
 func (s *HTTPClientTestSuite) TestBinaryRequestSetsUserAgent(c *C) {
 	headers, client := s.setupLoopbackRequest()
 	req := &RequestData{ExpectedStatus: []int{http.StatusNoContent}}
-	err := client.BinaryRequest("POST", s.Server.URL, req)
+	err := client.BinaryRequest("POST", s.Server.URL, "", req, nil)
 	c.Assert(err, IsNil)
 	agent := headers.Get("User-Agent")
 	c.Check(agent, Not(Equals), "")
@@ -65,9 +78,29 @@ func (s *HTTPClientTestSuite) TestBinaryRequestSetsUserAgent(c *C) {
 func (s *HTTPClientTestSuite) TestJSONRequestSetsUserAgent(c *C) {
 	headers, client := s.setupLoopbackRequest()
 	req := &RequestData{ExpectedStatus: []int{http.StatusNoContent}}
-	err := client.JsonRequest("POST", s.Server.URL, req)
+	err := client.JsonRequest("POST", s.Server.URL, "", req, nil)
 	c.Assert(err, IsNil)
 	agent := headers.Get("User-Agent")
 	c.Check(agent, Not(Equals), "")
 	c.Check(agent, Equals, gooseAgent())
+}
+
+func (s *HTTPClientTestSuite) TestBinaryRequestSetsToken(c *C) {
+	headers, client := s.setupLoopbackRequest()
+	req := &RequestData{ExpectedStatus: []int{http.StatusNoContent}}
+	err := client.BinaryRequest("POST", s.Server.URL, "token", req, nil)
+	c.Assert(err, IsNil)
+	agent := headers.Get("X-Auth-Token")
+	c.Check(agent, Not(Equals), "")
+	c.Check(agent, Equals, "token")
+}
+
+func (s *HTTPClientTestSuite) TestJSONRequestSetsToken(c *C) {
+	headers, client := s.setupLoopbackRequest()
+	req := &RequestData{ExpectedStatus: []int{http.StatusNoContent}}
+	err := client.JsonRequest("POST", s.Server.URL, "token", req, nil)
+	c.Assert(err, IsNil)
+	agent := headers.Get("X-Auth-Token")
+	c.Check(agent, Not(Equals), "")
+	c.Check(agent, Equals, "token")
 }

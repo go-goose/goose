@@ -72,7 +72,7 @@ type UserPass struct {
 
 func (u *UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 	if u.client == nil {
-		u.client = goosehttp.New(http.Client{CheckRedirect: nil}, nil, "")
+		u.client = goosehttp.New(http.Client{CheckRedirect: nil})
 	}
 	auth := authWrapper{Auth: authRequest{
 		PasswordCredentials: passwordCredentials{
@@ -83,7 +83,7 @@ func (u *UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 
 	var accessWrapper accessWrapper
 	requestData := goosehttp.RequestData{ReqValue: auth, RespValue: &accessWrapper}
-	err := u.client.JsonRequest("POST", creds.URL, &requestData)
+	err := u.client.JsonRequest("POST", creds.URL, "", &requestData, nil)
 	if err != nil {
 		return nil, err
 	}
