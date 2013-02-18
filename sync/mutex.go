@@ -7,8 +7,8 @@ import (
 
 // A mutex implementation which allows non-blocking acquisition attempts which time out after a selected period.
 type Mutex struct {
-	mu gosync.Mutex
-	c  chan struct{}
+	mu     gosync.Mutex
+	c      chan struct{}
 	Locked bool
 }
 
