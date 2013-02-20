@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"launchpad.net/goose/testservices/hook"
 	"net/http"
 )
 
@@ -135,6 +136,7 @@ var exampleResponse = `{
 }`
 
 type UserPass struct {
+	hook.TestService
 	Users
 	services []Service
 }
@@ -213,18 +215,11 @@ func (u *UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		u.ReturnFailure(w, http.StatusUnauthorized, errmsg)
 		return
 	}
-	res := AccessResponse{}
-	// We pre-populate the response with genuine entries so that it looks sane.
-	// XXX: We should really build up valid state for this instead, at the
-	//	very least, we should manage the URLs better.
-	if err := json.Unmarshal([]byte(exampleResponse), &res); err != nil {
+	res, err := u.generateAccessResponse(userInfo)
+	if err != nil {
 		u.ReturnFailure(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	res.Access.ServiceCatalog = u.services
-	res.Access.Token.Id = userInfo.Token
-	res.Access.Token.Tenant.Id = userInfo.TenantId
-	res.Access.User.Id = userInfo.Id
 	if content, err := json.Marshal(res); err != nil {
 		u.ReturnFailure(w, http.StatusInternalServerError, err.Error())
 		return
@@ -234,6 +229,24 @@ func (u *UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	panic("All paths should have already returned")
+}
+
+func (u *UserPass) generateAccessResponse(userInfo *UserInfo) (*AccessResponse, error) {
+	res := AccessResponse{}
+	// We pre-populate the response with genuine entries so that it looks sane.
+	// XXX: We should really build up valid state for this instead, at the
+	//	very least, we should manage the URLs better.
+	if err := json.Unmarshal([]byte(exampleResponse), &res); err != nil {
+		return nil, err
+	}
+	res.Access.ServiceCatalog = u.services
+	res.Access.Token.Id = userInfo.Token
+	res.Access.Token.Tenant.Id = userInfo.TenantId
+	res.Access.User.Id = userInfo.Id
+	if err := u.ProcessControlHook("authorisation", u, &res, userInfo); err != nil {
+		return nil, err
+	}
+	return &res, nil
 }
 
 // setupHTTP attaches all the needed handlers to provide the HTTP API.

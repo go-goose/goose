@@ -1,4 +1,4 @@
-package testservices
+package hook
 
 import (
 	"fmt"
@@ -25,13 +25,13 @@ func (s *ServiceSuite) SetUpTest(c *C) {
 }
 
 type testService struct {
-	ServiceInstance
+	TestService
 	label string
 }
 
 func newTestService() *testService {
 	return &testService{
-		ServiceInstance: ServiceInstance{
+		TestService: TestService{
 			ControlHooks: make(map[string]ControlProcessor),
 		},
 	}

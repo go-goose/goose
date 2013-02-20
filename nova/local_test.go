@@ -10,6 +10,8 @@ import (
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/nova"
 	"launchpad.net/goose/testservices"
+	"launchpad.net/goose/testservices/hook"
+	"launchpad.net/goose/testservices/identityservice"
 	"launchpad.net/goose/testservices/openstackservice"
 	"log"
 	"net/http"
@@ -42,6 +44,7 @@ type localLiveSuite struct {
 	retryErrorCountToSend int  // The number of retry errors to send.
 	noMoreIPs             bool // If true, addFloatingIP will return ErrNoMoreFloatingIPs
 	ipLimitExceeded       bool // If true, addFloatingIP will return ErrIPLimitExceeded
+	badTokens             int  // If > 0, authHook will set an invalid token in the AccessResponse data.
 }
 
 func (s *localLiveSuite) SetUpSuite(c *C) {
@@ -94,8 +97,8 @@ func (s *localLiveSuite) TearDownTest(c *C) {
 
 // Additional tests to be run against the service double only go here.
 
-func (s *localLiveSuite) retryLimitHook(sc testservices.ServiceControl) testservices.ControlProcessor {
-	return func(sc testservices.ServiceControl, args ...interface{}) error {
+func (s *localLiveSuite) retryLimitHook(sc hook.ServiceControl) hook.ControlProcessor {
+	return func(sc hook.ServiceControl, args ...interface{}) error {
 		sendError := s.retryErrorCount < s.retryErrorCountToSend
 		if sendError {
 			s.retryErrorCount++
@@ -153,8 +156,8 @@ func (s *localLiveSuite) TestRateLimitRetryExceeded(c *C) {
 	c.Assert(err.Error(), Matches, ".*Maximum number of attempts.*")
 }
 
-func (s *localLiveSuite) addFloatingIPHook(sc testservices.ServiceControl) testservices.ControlProcessor {
-	return func(sc testservices.ServiceControl, args ...interface{}) error {
+func (s *localLiveSuite) addFloatingIPHook(sc hook.ServiceControl) hook.ControlProcessor {
+	return func(sc hook.ServiceControl, args ...interface{}) error {
 		if s.noMoreIPs {
 			return testservices.NoMoreFloatingIPs
 		} else if s.ipLimitExceeded {
@@ -184,4 +187,38 @@ func (s *localLiveSuite) TestAddFloatingIPErrors(c *C) {
 	fip, err = novaClient.AllocateFloatingIP()
 	c.Assert(err, IsNil)
 	c.Assert(fip.IP, Not(Equals), "")
+}
+
+func (s *localLiveSuite) authHook(sc hook.ServiceControl) hook.ControlProcessor {
+	return func(sc hook.ServiceControl, args ...interface{}) error {
+		res := args[0].(*identityservice.AccessResponse)
+		if s.badTokens > 0 {
+			res.Access.Token.Id = "xxx"
+			s.badTokens--
+		}
+		return nil
+	}
+}
+
+func (s *localLiveSuite) TestReauthenticate(c *C) {
+	novaClient := s.setupClient(c, nil)
+	up := s.openstack.Identity.(*identityservice.UserPass)
+	defer up.RegisterControlPoint("authorisation", s.authHook(up))
+
+	// An invalid token is returned after the first authentication step, resulting in the ListServers call
+	// returning a 401. Subsequent authentication calls return the correct token so the auth retry does it's job.
+	s.badTokens = 1
+	_, err := novaClient.ListServers(nil)
+	c.Assert(err, IsNil)
+}
+
+func (s *localLiveSuite) TestReauthenticateFailure(c *C) {
+	novaClient := s.setupClient(c, nil)
+	up := s.openstack.Identity.(*identityservice.UserPass)
+	defer up.RegisterControlPoint("authorisation", s.authHook(up))
+
+	// If the re-authentication fails, ensure an Unauthorised error is returned.
+	s.badTokens = 2
+	_, err := novaClient.ListServers(nil)
+	c.Assert(errors.IsUnauthorised(err), Equals, true)
 }

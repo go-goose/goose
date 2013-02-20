@@ -88,7 +88,6 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 			VersionPath:     versionPath,
 			TenantId:        tenantId,
 			Region:          region,
-			ControlHooks:    make(map[string]testservices.ControlProcessor),
 		},
 	}
 	if identityService != nil {

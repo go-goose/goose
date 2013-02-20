@@ -14,6 +14,7 @@ const (
 	NotFoundError       = Code("NotFound")
 	DuplicateValueError = Code("DuplicateValue")
 	TimeoutError        = Code("Timeout")
+	UnauthorisedError   = Code("Unauthenticted")
 )
 
 // Error instances store an optional error cause.
@@ -88,6 +89,13 @@ func IsTimeout(err error) bool {
 	return false
 }
 
+func IsUnauthorised(err error) bool {
+	if e, ok := err.(*gooseError); ok {
+		return e.causedBy(UnauthorisedError)
+	}
+	return false
+}
+
 // New creates a new Error instance with the specified cause.
 func makeErrorf(code Code, cause error, format string, args ...interface{}) Error {
 	return &gooseError{
@@ -124,4 +132,12 @@ func NewTimeoutf(cause error, context interface{}, format string, args ...interf
 		format = fmt.Sprintf("Timeout: %s", context)
 	}
 	return makeErrorf(TimeoutError, cause, format, args...)
+}
+
+// New creates a new Unauthorised Error instance with the specified cause.
+func NewUnauthorisedf(cause error, context interface{}, format string, args ...interface{}) Error {
+	if format == "" {
+		format = fmt.Sprintf("Unauthorised: %s", context)
+	}
+	return makeErrorf(UnauthorisedError, cause, format, args...)
 }

@@ -41,6 +41,20 @@ func (s *ErrorsSuite) TestCreateDuplicateValueError(c *C) {
 	c.Assert(err.Error(), Equals, "It was duplicate: context")
 }
 
+func (s *ErrorsSuite) TestCreateSimpleUnauthorisedfError(c *C) {
+	context := "context"
+	err := errors.NewUnauthorisedf(nil, context, "")
+	c.Assert(errors.IsUnauthorised(err), Equals, true)
+	c.Assert(err.Error(), Equals, "Unauthorised: context")
+}
+
+func (s *ErrorsSuite) TestCreateUnauthorisedfError(c *C) {
+	context := "context"
+	err := errors.NewUnauthorisedf(nil, context, "It was unauthorised: %s", context)
+	c.Assert(errors.IsUnauthorised(err), Equals, true)
+	c.Assert(err.Error(), Equals, "It was unauthorised: context")
+}
+
 func (s *ErrorsSuite) TestErrorCause(c *C) {
 	rootCause := errors.NewNotFoundf(nil, "some value", "")
 	// Construct a new error, based on a not found root cause.
