@@ -5,7 +5,9 @@ import (
 	"time"
 )
 
-func SetAuthenticationTimeout(timeout time.Duration) func() {
+type AuthCleanup func()
+
+func SetAuthenticationTimeout(timeout time.Duration) AuthCleanup {
 	origTimeout := authenticationTimeout
 	authenticationTimeout = timeout
 	return func() {
