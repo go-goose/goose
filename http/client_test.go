@@ -61,7 +61,7 @@ func (s *HTTPClientTestSuite) setupLoopbackRequest() (*http.Header, *Client) {
 		resp.Write([]byte{})
 	}
 	s.Mux.HandleFunc("/", handler)
-	client := New(*http.DefaultClient)
+	client := New()
 	return &headers, client
 }
 

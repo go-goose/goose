@@ -153,7 +153,7 @@ func (auth *fakeAuthenticator) Auth(creds *identity.Credentials) (*identity.Auth
 
 func (s *localLiveSuite) TestAuthenticationTimeout(c *C) {
 	cl := client.NewClient(s.cred, s.authMode, nil)
-	client.SetAuthenticationTimeout(time.Duration(1) * time.Millisecond)
+	defer client.SetAuthenticationTimeout(time.Duration(1) * time.Millisecond)
 	client.SetAuthenticator(cl, &fakeAuthenticator{})
 	authStart = make(chan struct{})
 
@@ -166,7 +166,7 @@ func (s *localLiveSuite) TestAuthenticationTimeout(c *C) {
 
 func (s *localLiveSuite) TestAuthenticationSuccess(c *C) {
 	cl := client.NewClient(s.cred, s.authMode, nil)
-	client.SetAuthenticationTimeout(time.Duration(1) * time.Millisecond)
+	defer client.SetAuthenticationTimeout(time.Duration(1) * time.Millisecond)
 	client.SetAuthenticator(cl, &fakeAuthenticator{})
 
 	// Signal that the authenticator can proceed immediately.
