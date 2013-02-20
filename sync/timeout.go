@@ -13,7 +13,7 @@ func RunWithTimeout(timeout time.Duration, f func()) bool {
 	}()
 	select {
 	case <-ch:
-			return true
+		return true
 	case <-time.After(timeout):
 	}
 	return false
