@@ -46,7 +46,7 @@ type AuthenticatingClient interface {
 }
 
 // A single http client is shared between all Goose clients.
-var sharedHttpClient *goosehttp.Client
+var sharedHttpClient = goosehttp.New()
 
 // This client sends requests without authenticating.
 type client struct {
@@ -98,21 +98,11 @@ func NewClient(creds *identity.Credentials, auth_method identity.AuthMode, logge
 	return &client
 }
 
-func (c *client) sharedHttpClient() *goosehttp.Client {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if sharedHttpClient == nil {
-		sharedHttpClient = goosehttp.New()
-	}
-	return sharedHttpClient
-}
-
 func (c *client) sendRequest(method, url, token string, requestData *goosehttp.RequestData) (err error) {
-	sharedClient := c.sharedHttpClient()
 	if requestData.ReqValue != nil || requestData.RespValue != nil {
-		err = sharedClient.JsonRequest(method, url, token, requestData, c.logger)
+		err = sharedHttpClient.JsonRequest(method, url, token, requestData, c.logger)
 	} else {
-		err = sharedClient.BinaryRequest(method, url, token, requestData, c.logger)
+		err = sharedHttpClient.BinaryRequest(method, url, token, requestData, c.logger)
 	}
 	return
 }
