@@ -1,14 +1,18 @@
 package client_test
 
 import (
+	"fmt"
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/client"
+	"launchpad.net/goose/errors"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/testing/httpsuite"
 	"launchpad.net/goose/testservices"
 	"launchpad.net/goose/testservices/identityservice"
 	"launchpad.net/goose/testservices/openstackservice"
 	"net/url"
+	"runtime"
+	"sync"
 	"time"
 )
 
@@ -112,11 +116,29 @@ func (s *localLiveSuite) TestInexactRegionMatch(c *C) {
 	c.Assert(err, IsNil)
 }
 
-type fakeAuthenticator struct{}
+type fakeAuthenticator struct {
+	mu        sync.Mutex
+	nrCallers int
+}
 
-// An authentication step which takes a "long" time.
+// authStart is used as a gate to signal the fake authenticator that it can start.
+var authStart chan struct{}
+
 func (auth *fakeAuthenticator) Auth(creds *identity.Credentials) (*identity.AuthDetails, error) {
-	time.Sleep(time.Duration(3) * time.Millisecond)
+	auth.mu.Lock()
+	auth.nrCallers++
+	auth.mu.Unlock()
+	// Wait till the test says the authenticator can proceed.
+	<-authStart
+	runtime.Gosched()
+	defer func() {
+		auth.mu.Lock()
+		auth.nrCallers--
+		auth.mu.Unlock()
+	}()
+	if auth.nrCallers > 1 {
+		return nil, fmt.Errorf("Too many callers of Auth function")
+	}
 	URLs := make(map[string]identity.ServiceURLs)
 	endpoints := make(map[string]string)
 	endpoints["compute"] = "http://localhost"
@@ -131,46 +153,74 @@ func (auth *fakeAuthenticator) Auth(creds *identity.Credentials) (*identity.Auth
 
 func (s *localLiveSuite) TestAuthenticationTimeout(c *C) {
 	cl := client.NewClient(s.cred, s.authMode, nil)
-	// Authentication will take longer than the allowed time.
+	client.SetAuthenticationTimeout(time.Duration(1) * time.Millisecond)
+	client.SetAuthenticator(cl, &fakeAuthenticator{})
+	authStart = make(chan struct{})
+
+	var err error
+	err = cl.Authenticate()
+	// Wake up the authenticator after we have timed out.
+	authStart <- struct{}{}
+	c.Assert(errors.IsTimeout(err), Equals, true)
+}
+
+func (s *localLiveSuite) TestAuthenticationSuccess(c *C) {
+	cl := client.NewClient(s.cred, s.authMode, nil)
 	client.SetAuthenticationTimeout(time.Duration(1) * time.Millisecond)
 	client.SetAuthenticator(cl, &fakeAuthenticator{})
 
-	errCh := make(chan error, 1)
-	var err1, err2 error
-	go func() {
-		err1 = cl.Authenticate()
-		errCh <- err1
-	}()
-	go func() {
-		err2 = cl.Authenticate()
-		errCh <- err2
-	}()
-	err := <-errCh
-	c.Assert(err.Error(), Matches, ".*Timeout.*")
-	// The tardy authentication eventually succeeds.
-	err = <-errCh
+	// Signal that the authenticator can proceed immediately.
+	authStart = make(chan struct{}, 1)
+	authStart <- struct{}{}
+	err := cl.Authenticate()
 	c.Assert(err, IsNil)
+	// It completed with no error but check it also ran correctly.
+	c.Assert(cl.IsAuthenticated(), Equals, true)
+	URL, err := cl.MakeServiceURL("compute", nil)
+	c.Assert(err, IsNil)
+	c.Assert(URL, Equals, "http://localhost/")
 }
 
-func (s *localLiveSuite) TestLongAuthenticationTimeout(c *C) {
+func checkAuthentication(cl client.AuthenticatingClient) error {
+	err := cl.Authenticate()
+	if err != nil {
+		return err
+	}
+	URL, err := cl.MakeServiceURL("compute", nil)
+	if err != nil {
+		return err
+	}
+	if URL != "http://localhost/" {
+		return fmt.Errorf("Unexpected URL: %s", URL)
+	}
+	return nil
+}
+
+func (s *localLiveSuite) TestAuthenticationForbidsMultipleCallers(c *C) {
+	if s.authMode == identity.AuthLegacy {
+		c.Skip("legacy authentication")
+	}
 	cl := client.NewClient(s.cred, s.authMode, nil)
-	// Authentication will take time, but less than than the allowed time.
-	client.SetAuthenticationTimeout(time.Duration(4) * time.Millisecond)
 	client.SetAuthenticator(cl, &fakeAuthenticator{})
 
-	errCh := make(chan error, 1)
+	// Signal that the authenticator can proceed immediately.
+	authStart = make(chan struct{}, 2)
+	authStart <- struct{}{}
+	authStart <- struct{}{}
+	allDone := make(chan struct{})
+	// Record the error outside the go routine since Assert failures inside the func makes
+	// the test hang.
 	var err1, err2 error
 	go func() {
-		err1 = cl.Authenticate()
-		errCh <- err1
+		err1 = checkAuthentication(cl)
+		allDone <- struct{}{}
 	}()
 	go func() {
-		err2 = cl.Authenticate()
-		errCh <- err2
+		err2 = checkAuthentication(cl)
+		allDone <- struct{}{}
 	}()
-	// Both authentication calls succeed.
-	err := <-errCh
-	c.Assert(err, IsNil)
-	err = <-errCh
-	c.Assert(err, IsNil)
+	<-allDone
+	<-allDone
+	c.Assert(err1, IsNil)
+	c.Assert(err2, IsNil)
 }

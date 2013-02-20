@@ -13,6 +13,7 @@ const (
 	UnspecifiedError    = Code("Unspecified")
 	NotFoundError       = Code("NotFound")
 	DuplicateValueError = Code("DuplicateValue")
+	TimeoutError        = Code("Timeout")
 )
 
 // Error instances store an optional error cause.
@@ -80,6 +81,13 @@ func IsDuplicateValue(err error) bool {
 	return false
 }
 
+func IsTimeout(err error) bool {
+	if e, ok := err.(*gooseError); ok {
+		return e.causedBy(TimeoutError)
+	}
+	return false
+}
+
 // New creates a new Error instance with the specified cause.
 func makeErrorf(code Code, cause error, format string, args ...interface{}) Error {
 	return &gooseError{
@@ -108,4 +116,12 @@ func NewDuplicateValuef(cause error, context interface{}, format string, args ..
 		format = fmt.Sprintf("Duplicate: %s", context)
 	}
 	return makeErrorf(DuplicateValueError, cause, format, args...)
+}
+
+// New creates a new Timeout Error instance with the specified cause.
+func NewTimeoutf(cause error, context interface{}, format string, args ...interface{}) Error {
+	if format == "" {
+		format = fmt.Sprintf("Timeout: %s", context)
+	}
+	return makeErrorf(TimeoutError, cause, format, args...)
 }

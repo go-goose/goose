@@ -3,7 +3,6 @@ package identity
 import (
 	"fmt"
 	goosehttp "launchpad.net/goose/http"
-	"net/http"
 )
 
 type passwordCredentials struct {
@@ -72,7 +71,7 @@ type UserPass struct {
 
 func (u *UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 	if u.client == nil {
-		u.client = goosehttp.New(http.Client{CheckRedirect: nil})
+		u.client = goosehttp.New()
 	}
 	auth := authWrapper{Auth: authRequest{
 		PasswordCredentials: passwordCredentials{

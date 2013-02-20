@@ -59,8 +59,8 @@ const (
 	MaxSendAttempts = 3
 )
 
-func New(httpClient http.Client) *Client {
-	return &Client{httpClient, MaxSendAttempts}
+func New() *Client {
+	return &Client{*http.DefaultClient, MaxSendAttempts}
 }
 
 func gooseAgent() string {
@@ -161,9 +161,9 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 // payloadInfo: a string to include with an error message if something goes wrong.
 func (c *Client) sendRequest(method, URL string, reqReader io.Reader, length int, headers http.Header,
 	expectedStatus []int, logger *log.Logger) (rc io.ReadCloser, err error) {
-	var reqData []byte = make([]byte, length)
+	reqData := make([]byte, length)
 	if reqReader != nil {
-		nrRead, err := reqReader.Read(reqData)
+		nrRead, err := io.ReadFull(reqReader, reqData)
 		if nrRead != length || err != nil {
 			err = errors.Newf(err, "failed reading the request data, read %v of %v bytes", nrRead, length)
 			return rc, err

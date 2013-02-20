@@ -6,11 +6,11 @@ import (
 	gooseerrors "launchpad.net/goose/errors"
 	goosehttp "launchpad.net/goose/http"
 	"launchpad.net/goose/identity"
-	"launchpad.net/goose/sync"
+	goosesync "launchpad.net/goose/sync"
 	"log"
-	"net/http"
 	"path"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -50,7 +50,7 @@ var sharedHttpClient *goosehttp.Client
 
 // This client sends requests without authenticating.
 type client struct {
-	sync.Mutex
+	mu      sync.Mutex
 	logger  *log.Logger
 	baseURL string
 }
@@ -99,10 +99,10 @@ func NewClient(creds *identity.Credentials, auth_method identity.AuthMode, logge
 }
 
 func (c *client) sharedHttpClient() *goosehttp.Client {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if sharedHttpClient == nil {
-		sharedHttpClient = goosehttp.New(http.Client{CheckRedirect: nil})
+		sharedHttpClient = goosehttp.New()
 	}
 	return sharedHttpClient
 }
@@ -188,6 +188,8 @@ func regionMatches(userRegion, endpointRegion string) bool {
 }
 
 func (c *authenticatingClient) Token() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	return c.tokenId
 }
 
@@ -200,20 +202,28 @@ func (c *authenticatingClient) TenantId() string {
 }
 
 func (c *authenticatingClient) IsAuthenticated() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	return c.tokenId != ""
 }
 
 var authenticationTimeout = time.Duration(60) * time.Second
 
 func (c *authenticatingClient) Authenticate() (err error) {
-	// Ideally, it's not good to hold a mutex when making a network call. We'll compromise and only try
-	// to acquire the lock for a minute before timing out with an error instead of blocking indefinitely.
-	if !c.Attempt(authenticationTimeout) {
-		return errors.New("Timeout acquiring authentication lock")
+	ok := goosesync.RunWithTimeout(authenticationTimeout, func() {
+		err = c.doAuthenticate()
+	})
+	if !ok {
+		err = gooseerrors.NewTimeoutf(
+			nil, "", "Authentication response not received in %s.", authenticationTimeout)
 	}
-	defer c.Unlock()
+	return err
+}
 
-	if c.creds == nil || c.IsAuthenticated() {
+func (c *authenticatingClient) doAuthenticate() (err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.creds == nil || c.tokenId != "" {
 		return nil
 	}
 	err = nil
@@ -222,20 +232,17 @@ func (c *authenticatingClient) Authenticate() (err error) {
 	}
 	authDetails, err := c.authMode.Auth(c.creds)
 	if err != nil {
-		err = gooseerrors.Newf(err, "authentication failed")
-		return
+		return gooseerrors.Newf(err, "authentication failed")
 	}
-
 	c.regionServiceURLs = authDetails.RegionServiceURLs
 	err = c.createServiceURLs()
 	if err != nil {
-		err = gooseerrors.Newf(err, "cannot create service URLs")
-		return
+		return gooseerrors.Newf(err, "cannot create service URLs")
 	}
 	c.tenantId = authDetails.TenantId
 	c.userId = authDetails.UserId
 	// A valid token indicates authorisation has been successful, so it needs to be set last. It must be set
 	// after the service URLs have been extracted.
 	c.tokenId = authDetails.Token
-	return
+	return nil
 }
