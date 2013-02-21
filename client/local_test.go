@@ -136,7 +136,10 @@ func (auth *fakeAuthenticator) Auth(creds *identity.Credentials) (*identity.Auth
 		auth.nrCallers--
 		auth.mu.Unlock()
 	}()
-	if auth.nrCallers > 1 {
+	auth.mu.Lock()
+	tooManyCallers := auth.nrCallers > 1
+	auth.mu.Unlock()
+	if tooManyCallers {
 		return nil, fmt.Errorf("Too many callers of Auth function")
 	}
 	URLs := make(map[string]identity.ServiceURLs)
@@ -207,20 +210,18 @@ func (s *localLiveSuite) TestAuthenticationForbidsMultipleCallers(c *C) {
 	authStart = make(chan struct{}, 2)
 	authStart <- struct{}{}
 	authStart <- struct{}{}
-	allDone := make(chan struct{})
-	// Record the error outside the go routine since Assert failures inside the func makes
-	// the test hang.
+	var allDone sync.WaitGroup
+	allDone.Add(2)
 	var err1, err2 error
 	go func() {
 		err1 = checkAuthentication(cl)
-		allDone <- struct{}{}
+		allDone.Done()
 	}()
 	go func() {
 		err2 = checkAuthentication(cl)
-		allDone <- struct{}{}
+		allDone.Done()
 	}()
-	<-allDone
-	<-allDone
+	allDone.Wait()
 	c.Assert(err1, IsNil)
 	c.Assert(err2, IsNil)
 }

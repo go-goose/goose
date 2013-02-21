@@ -59,6 +59,7 @@ const (
 	MaxSendAttempts = 3
 )
 
+// New returns a new goose http *Client using the default net/http client.
 func New() *Client {
 	return &Client{*http.DefaultClient, MaxSendAttempts}
 }
@@ -164,7 +165,7 @@ func (c *Client) sendRequest(method, URL string, reqReader io.Reader, length int
 	reqData := make([]byte, length)
 	if reqReader != nil {
 		nrRead, err := io.ReadFull(reqReader, reqData)
-		if nrRead != length || err != nil {
+		if err != nil {
 			err = errors.Newf(err, "failed reading the request data, read %v of %v bytes", nrRead, length)
 			return rc, err
 		}
