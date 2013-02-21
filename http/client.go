@@ -265,19 +265,13 @@ func handleError(URL string, resp *http.Response) error {
 	}
 	switch resp.StatusCode {
 	case http.StatusNotFound:
-		{
-			return errors.NewNotFoundf(httpError, "", "Resource at %s not found", URL)
-		}
+		return errors.NewNotFoundf(httpError, "", "Resource at %s not found", URL)
 	case http.StatusForbidden, http.StatusUnauthorized:
-		{
-			return errors.NewUnauthorisedf(httpError, "", "Unauthorised URL %s", URL)
-		}
+		return errors.NewUnauthorisedf(httpError, "", "Unauthorised URL %s", URL)
 	case http.StatusBadRequest:
-		{
-			dupExp, _ := regexp.Compile(".*already exists.*")
-			if dupExp.Match(errBytes) {
-				return errors.NewDuplicateValuef(httpError, "", string(errBytes))
-			}
+		dupExp, _ := regexp.Compile(".*already exists.*")
+		if dupExp.Match(errBytes) {
+			return errors.NewDuplicateValuef(httpError, "", string(errBytes))
 		}
 	}
 	return httpError

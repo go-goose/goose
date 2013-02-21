@@ -14,7 +14,7 @@ const (
 	NotFoundError       = Code("NotFound")
 	DuplicateValueError = Code("DuplicateValue")
 	TimeoutError        = Code("Timeout")
-	UnauthorisedError   = Code("Unauthenticted")
+	UnauthorisedError   = Code("Unauthorised")
 )
 
 // Error instances store an optional error cause.
