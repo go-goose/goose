@@ -6,7 +6,7 @@ import (
 )
 
 func TestRunSuccess(t *testing.T) {
-	timeout := time.Duration(1) * time.Millisecond
+	timeout := 1 * time.Millisecond
 	var ranOk bool
 	ok := RunWithTimeout(timeout, func() {
 		ranOk = true
@@ -17,7 +17,7 @@ func TestRunSuccess(t *testing.T) {
 }
 
 func TestRunTimeout(t *testing.T) {
-	timeout := time.Duration(1) * time.Millisecond
+	timeout := 1 * time.Millisecond
 	var ranOk bool
 	sig := make(chan struct{})
 	ok := RunWithTimeout(timeout, func() {
