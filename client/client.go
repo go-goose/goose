@@ -121,6 +121,15 @@ func (c *client) MakeServiceURL(serviceType string, parts []string) (string, err
 }
 
 func (c *authenticatingClient) SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) (err error) {
+	err = c.sendAuthRequest(method, svcType, apiCall, requestData)
+	if gooseerrors.IsUnauthorised(err) {
+		c.setToken("")
+		err = c.sendAuthRequest(method, svcType, apiCall, requestData)
+	}
+	return
+}
+
+func (c *authenticatingClient) sendAuthRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) (err error) {
 	if err = c.Authenticate(); err != nil {
 		return
 	}
@@ -129,7 +138,7 @@ func (c *authenticatingClient) SendRequest(method, svcType, apiCall string, requ
 	if err != nil {
 		return
 	}
-	return c.sendRequest(method, url, c.tokenId, requestData)
+	return c.sendRequest(method, url, c.Token(), requestData)
 }
 
 func (c *authenticatingClient) MakeServiceURL(serviceType string, parts []string) (string, error) {
@@ -175,6 +184,12 @@ func regionMatches(userRegion, endpointRegion string) bool {
 	// the endpoint region if the user region equals or ends with the endpoint region.
 	// eg  user region "az-1.region-a.geo-1" matches endpoint region "region-a.geo-1"
 	return strings.HasSuffix(userRegion, endpointRegion)
+}
+
+func (c *authenticatingClient) setToken(tokenId string) {
+	c.mu.Lock()
+	c.tokenId = tokenId
+	c.mu.Unlock()
 }
 
 func (c *authenticatingClient) Token() string {
