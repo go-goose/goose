@@ -78,7 +78,7 @@ func createHeaders(extraHeaders http.Header, contentType, authToken string) http
 		}
 	}
 	if authToken != "" {
-		headers.Add("X-Auth-Token", authToken)
+		headers.Set("X-Auth-Token", authToken)
 	}
 	headers.Add("Content-Type", contentType)
 	headers.Add("Accept", contentType)
@@ -86,8 +86,8 @@ func createHeaders(extraHeaders http.Header, contentType, authToken string) http
 	return headers
 }
 
-// JsonRequest JSON encodes and sends the supplied object (if any) to the specified URL.
-// Optional method arguments are pass using the RequestData object.
+// JsonRequest JSON encodes and sends the object in reqData.ReqValue (if any) to the specified URL.
+// Optional method arguments are passed using the RequestData object.
 // Relevant RequestData fields:
 // ReqHeaders: additional HTTP header values to add to the request.
 // ExpectedStatus: the allowed HTTP response status values, else an error is returned.
@@ -130,8 +130,8 @@ func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, lo
 	return
 }
 
-// Sends the supplied byte array (if any) to the specified URL.
-// Optional method arguments are pass using the RequestData object.
+// Sends the byte array in reqData.ReqValue (if any) to the specified URL.
+// Optional method arguments are passed using the RequestData object.
 // Relevant RequestData fields:
 // ReqHeaders: additional HTTP header values to add to the request.
 // ExpectedStatus: the allowed HTTP response status values, else an error is returned.
@@ -155,11 +155,11 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 	return
 }
 
-// Sends the specified request and checks that the HTTP response status is as expected.
-// req: the request to send.
-// extraHeaders: additional HTTP headers to include with the request.
+// Sends the specified request to URL and checks that the HTTP response status is as expected.
+// reqReader: a reader returning the data to send.
+// length: the number of bytes to send.
+// headers: HTTP headers to include with the request.
 // expectedStatus: a slice of allowed response status codes.
-// payloadInfo: a string to include with an error message if something goes wrong.
 func (c *Client) sendRequest(method, URL string, reqReader io.Reader, length int, headers http.Header,
 	expectedStatus []int, logger *log.Logger) (rc io.ReadCloser, err error) {
 	reqData := make([]byte, length)

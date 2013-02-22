@@ -172,7 +172,7 @@ func (c *authenticatingClient) createServiceURLs() error {
 		for r := range c.regionServiceURLs {
 			knownRegions = append(knownRegions, r)
 		}
-		return fmt.Errorf("invalid region '%s', valid regions are %s",
+		return fmt.Errorf("invalid region '%q', valid regions are %q",
 			c.creds.Region, strings.Join(knownRegions, ", "))
 	}
 	c.serviceURLs = serviceURLs
@@ -225,23 +225,24 @@ func (c *authenticatingClient) Authenticate() (err error) {
 	return err
 }
 
-func (c *authenticatingClient) doAuthenticate() (err error) {
+func (c *authenticatingClient) doAuthenticate() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.creds == nil || c.tokenId != "" {
 		return nil
 	}
-	err = nil
 	if c.authMode == nil {
 		return fmt.Errorf("Authentication method has not been specified")
 	}
-	authDetails, err := c.authMode.Auth(c.creds)
-	if err != nil {
+	var (
+		authDetails *identity.AuthDetails
+		err         error
+	)
+	if authDetails, err = c.authMode.Auth(c.creds); err != nil {
 		return gooseerrors.Newf(err, "authentication failed")
 	}
 	c.regionServiceURLs = authDetails.RegionServiceURLs
-	err = c.createServiceURLs()
-	if err != nil {
+	if err := c.createServiceURLs(); err != nil {
 		return gooseerrors.Newf(err, "cannot create service URLs")
 	}
 	c.tenantId = authDetails.TenantId

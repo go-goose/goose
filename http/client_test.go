@@ -91,7 +91,6 @@ func (s *HTTPClientTestSuite) TestBinaryRequestSetsToken(c *C) {
 	err := client.BinaryRequest("POST", s.Server.URL, "token", req, nil)
 	c.Assert(err, IsNil)
 	agent := headers.Get("X-Auth-Token")
-	c.Check(agent, Not(Equals), "")
 	c.Check(agent, Equals, "token")
 }
 
@@ -101,6 +100,5 @@ func (s *HTTPClientTestSuite) TestJSONRequestSetsToken(c *C) {
 	err := client.JsonRequest("POST", s.Server.URL, "token", req, nil)
 	c.Assert(err, IsNil)
 	agent := headers.Get("X-Auth-Token")
-	c.Check(agent, Not(Equals), "")
 	c.Check(agent, Equals, "token")
 }

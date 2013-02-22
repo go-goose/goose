@@ -119,17 +119,22 @@ func (s *localLiveSuite) TestInexactRegionMatch(c *C) {
 type fakeAuthenticator struct {
 	mu        sync.Mutex
 	nrCallers int
+	// authStart is used as a gate to signal the fake authenticator that it can start.
+	authStart chan struct{}
 }
 
-// authStart is used as a gate to signal the fake authenticator that it can start.
-var authStart chan struct{}
+func newAuthenticator(bufsize int) *fakeAuthenticator {
+	return &fakeAuthenticator{
+		authStart: make(chan struct{}, bufsize),
+	}
+}
 
 func (auth *fakeAuthenticator) Auth(creds *identity.Credentials) (*identity.AuthDetails, error) {
 	auth.mu.Lock()
 	auth.nrCallers++
 	auth.mu.Unlock()
 	// Wait till the test says the authenticator can proceed.
-	<-authStart
+	<-auth.authStart
 	runtime.Gosched()
 	defer func() {
 		auth.mu.Lock()
@@ -156,25 +161,25 @@ func (auth *fakeAuthenticator) Auth(creds *identity.Credentials) (*identity.Auth
 
 func (s *localLiveSuite) TestAuthenticationTimeout(c *C) {
 	cl := client.NewClient(s.cred, s.authMode, nil)
-	defer client.SetAuthenticationTimeout(time.Duration(1) * time.Millisecond)()
-	client.SetAuthenticator(cl, &fakeAuthenticator{})
-	authStart = make(chan struct{})
+	defer client.SetAuthenticationTimeout(1 * time.Millisecond)()
+	auth := newAuthenticator(0)
+	client.SetAuthenticator(cl, auth)
 
 	var err error
 	err = cl.Authenticate()
 	// Wake up the authenticator after we have timed out.
-	authStart <- struct{}{}
+	auth.authStart <- struct{}{}
 	c.Assert(errors.IsTimeout(err), Equals, true)
 }
 
 func (s *localLiveSuite) TestAuthenticationSuccess(c *C) {
 	cl := client.NewClient(s.cred, s.authMode, nil)
-	defer client.SetAuthenticationTimeout(time.Duration(1) * time.Millisecond)()
-	client.SetAuthenticator(cl, &fakeAuthenticator{})
+	defer client.SetAuthenticationTimeout(1 * time.Millisecond)()
+	auth := newAuthenticator(1)
+	client.SetAuthenticator(cl, auth)
 
 	// Signal that the authenticator can proceed immediately.
-	authStart = make(chan struct{}, 1)
-	authStart <- struct{}{}
+	auth.authStart <- struct{}{}
 	err := cl.Authenticate()
 	c.Assert(err, IsNil)
 	// It completed with no error but check it also ran correctly.
@@ -204,12 +209,12 @@ func (s *localLiveSuite) TestAuthenticationForbidsMultipleCallers(c *C) {
 		c.Skip("legacy authentication")
 	}
 	cl := client.NewClient(s.cred, s.authMode, nil)
-	client.SetAuthenticator(cl, &fakeAuthenticator{})
+	auth := newAuthenticator(2)
+	client.SetAuthenticator(cl, auth)
 
 	// Signal that the authenticator can proceed immediately.
-	authStart = make(chan struct{}, 2)
-	authStart <- struct{}{}
-	authStart <- struct{}{}
+	auth.authStart <- struct{}{}
+	auth.authStart <- struct{}{}
 	var allDone sync.WaitGroup
 	allDone.Add(2)
 	var err1, err2 error
