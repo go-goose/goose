@@ -13,7 +13,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"strconv"
 	"time"
@@ -26,8 +25,6 @@ const (
 
 type Client struct {
 	http.Client
-	logger          *log.Logger
-	authToken       string
 	maxSendAttempts int
 }
 
@@ -62,18 +59,16 @@ const (
 	MaxSendAttempts = 3
 )
 
-func New(httpClient http.Client, logger *log.Logger, token string) *Client {
-	if logger == nil {
-		logger = log.New(os.Stderr, "", log.LstdFlags)
-	}
-	return &Client{httpClient, logger, token, MaxSendAttempts}
+// New returns a new goose http *Client using the default net/http client.
+func New() *Client {
+	return &Client{*http.DefaultClient, MaxSendAttempts}
 }
 
 func gooseAgent() string {
 	return fmt.Sprintf("goose (%s)", goose.Version)
 }
 
-func createHeaders(extraHeaders http.Header, contentType string) http.Header {
+func createHeaders(extraHeaders http.Header, contentType, authToken string) http.Header {
 	headers := make(http.Header)
 	if extraHeaders != nil {
 		for header, values := range extraHeaders {
@@ -82,20 +77,23 @@ func createHeaders(extraHeaders http.Header, contentType string) http.Header {
 			}
 		}
 	}
+	if authToken != "" {
+		headers.Set("X-Auth-Token", authToken)
+	}
 	headers.Add("Content-Type", contentType)
 	headers.Add("Accept", contentType)
 	headers.Add("User-Agent", gooseAgent())
 	return headers
 }
 
-// JsonRequest JSON encodes and sends the supplied object (if any) to the specified URL.
-// Optional method arguments are pass using the RequestData object.
+// JsonRequest JSON encodes and sends the object in reqData.ReqValue (if any) to the specified URL.
+// Optional method arguments are passed using the RequestData object.
 // Relevant RequestData fields:
 // ReqHeaders: additional HTTP header values to add to the request.
 // ExpectedStatus: the allowed HTTP response status values, else an error is returned.
 // ReqValue: the data object to send.
 // RespValue: the data object to decode the result into.
-func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err error) {
+func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, logger *log.Logger) (err error) {
 	err = nil
 	var body []byte
 	if reqData.Params != nil {
@@ -108,8 +106,9 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 			return
 		}
 	}
-	headers := createHeaders(reqData.ReqHeaders, contentTypeJSON)
-	respBody, err := c.sendRequest(method, url, bytes.NewReader(body), len(body), headers, reqData.ExpectedStatus)
+	headers := createHeaders(reqData.ReqHeaders, contentTypeJSON, token)
+	respBody, err := c.sendRequest(
+		method, url, bytes.NewReader(body), len(body), headers, reqData.ExpectedStatus, logger)
 	if err != nil {
 		return
 	}
@@ -131,21 +130,22 @@ func (c *Client) JsonRequest(method, url string, reqData *RequestData) (err erro
 	return
 }
 
-// Sends the supplied byte array (if any) to the specified URL.
-// Optional method arguments are pass using the RequestData object.
+// Sends the byte array in reqData.ReqValue (if any) to the specified URL.
+// Optional method arguments are passed using the RequestData object.
 // Relevant RequestData fields:
 // ReqHeaders: additional HTTP header values to add to the request.
 // ExpectedStatus: the allowed HTTP response status values, else an error is returned.
 // ReqReader: an io.Reader providing the bytes to send.
 // RespReader: assigned an io.ReadCloser instance used to read the returned data..
-func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err error) {
+func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, logger *log.Logger) (err error) {
 	err = nil
 
 	if reqData.Params != nil {
 		url += "?" + reqData.Params.Encode()
 	}
-	headers := createHeaders(reqData.ReqHeaders, contentTypeOctetStream)
-	respBody, err := c.sendRequest(method, url, reqData.ReqReader, reqData.ReqLength, headers, reqData.ExpectedStatus)
+	headers := createHeaders(reqData.ReqHeaders, contentTypeOctetStream, token)
+	respBody, err := c.sendRequest(
+		method, url, reqData.ReqReader, reqData.ReqLength, headers, reqData.ExpectedStatus, logger)
 	if err != nil {
 		return
 	}
@@ -155,24 +155,22 @@ func (c *Client) BinaryRequest(method, url string, reqData *RequestData) (err er
 	return
 }
 
-// Sends the specified request and checks that the HTTP response status is as expected.
-// req: the request to send.
-// extraHeaders: additional HTTP headers to include with the request.
+// Sends the specified request to URL and checks that the HTTP response status is as expected.
+// reqReader: a reader returning the data to send.
+// length: the number of bytes to send.
+// headers: HTTP headers to include with the request.
 // expectedStatus: a slice of allowed response status codes.
-// payloadInfo: a string to include with an error message if something goes wrong.
-func (c *Client) sendRequest(method, URL string, reqReader io.Reader, length int, headers http.Header, expectedStatus []int) (rc io.ReadCloser, err error) {
-	if c.authToken != "" {
-		headers.Add("X-Auth-Token", c.authToken)
-	}
-	var reqData []byte = make([]byte, length)
+func (c *Client) sendRequest(method, URL string, reqReader io.Reader, length int, headers http.Header,
+	expectedStatus []int, logger *log.Logger) (rc io.ReadCloser, err error) {
+	reqData := make([]byte, length)
 	if reqReader != nil {
-		nrRead, err := reqReader.Read(reqData)
-		if nrRead != length || err != nil {
+		nrRead, err := io.ReadFull(reqReader, reqData)
+		if err != nil {
 			err = errors.Newf(err, "failed reading the request data, read %v of %v bytes", nrRead, length)
 			return rc, err
 		}
 	}
-	rawResp, err := c.sendRateLimitedRequest(method, URL, headers, reqData)
+	rawResp, err := c.sendRateLimitedRequest(method, URL, headers, reqData, logger)
 	if err != nil {
 		return
 	}
@@ -194,7 +192,8 @@ func (c *Client) sendRequest(method, URL string, reqReader io.Reader, length int
 	return rawResp.Body, err
 }
 
-func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header, reqData []byte) (resp *http.Response, err error) {
+func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header, reqData []byte,
+	logger *log.Logger) (resp *http.Response, err error) {
 	for i := 0; i < c.maxSendAttempts; i++ {
 		var reqReader io.Reader
 		if reqData != nil {
@@ -224,10 +223,13 @@ func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header,
 		if retryAfter == 0 {
 			return nil, errors.Newf(err, URL, "Resource limit exeeded at URL %s.", URL)
 		}
-		c.logger.Printf("Too many requests, retrying in %dms.", int(retryAfter*1000))
+		if logger != nil {
+			logger.Printf("Too many requests, retrying in %dms.", int(retryAfter*1000))
+		}
 		time.Sleep(time.Duration(retryAfter) * time.Second)
 	}
-	return nil, errors.Newf(err, URL, "Maximum number of attempts (%d) reached sending request to %s.", c.maxSendAttempts, URL)
+	return nil, errors.Newf(err, URL,
+		"Maximum number of attempts (%d) reached sending request to %s.", c.maxSendAttempts, URL)
 }
 
 type HttpError struct {

@@ -12,7 +12,7 @@ type Legacy struct {
 
 func (l *Legacy) Auth(creds *Credentials) (*AuthDetails, error) {
 	if l.client == nil {
-		l.client = &http.Client{CheckRedirect: nil}
+		l.client = http.DefaultClient
 	}
 	request, err := http.NewRequest("GET", creds.URL, nil)
 	if err != nil {

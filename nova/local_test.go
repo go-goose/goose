@@ -111,18 +111,18 @@ func (s *localLiveSuite) setupClient(c *C, logger *log.Logger) *nova.Client {
 }
 
 func (s *localLiveSuite) setupRetryErrorTest(c *C, logger *log.Logger) (*nova.Client, *nova.SecurityGroup) {
-	nova := s.setupClient(c, logger)
+	novaClient := s.setupClient(c, logger)
 	// Delete the artifact if it already exists.
-	testGroup, err := nova.SecurityGroupByName("test_group")
+	testGroup, err := novaClient.SecurityGroupByName("test_group")
 	if err != nil {
 		c.Assert(errors.IsNotFound(err), Equals, true)
 	} else {
-		nova.DeleteSecurityGroup(testGroup.Id)
+		novaClient.DeleteSecurityGroup(testGroup.Id)
 		c.Assert(err, IsNil)
 	}
-	testGroup, err = nova.CreateSecurityGroup("test_group", "test")
+	testGroup, err = novaClient.CreateSecurityGroup("test_group", "test")
 	c.Assert(err, IsNil)
-	return nova, testGroup
+	return novaClient, testGroup
 }
 
 // TestRateLimitRetry checks that when we make too many requests and receive a Retry-After response, the retry
@@ -131,11 +131,11 @@ func (s *localLiveSuite) TestRateLimitRetry(c *C) {
 	// Capture the logged output so we can check for retry messages.
 	var logout bytes.Buffer
 	logger := log.New(&logout, "", log.LstdFlags)
-	nova, testGroup := s.setupRetryErrorTest(c, logger)
+	novaClient, testGroup := s.setupRetryErrorTest(c, logger)
 	s.retryErrorCountToSend = goosehttp.MaxSendAttempts - 1
 	s.openstack.Nova.RegisterControlPoint("removeSecurityGroup", s.retryLimitHook(s.openstack.Nova))
 	defer s.openstack.Nova.RegisterControlPoint("removeSecurityGroup", nil)
-	err := nova.DeleteSecurityGroup(testGroup.Id)
+	err := novaClient.DeleteSecurityGroup(testGroup.Id)
 	c.Assert(err, IsNil)
 	// Ensure we got at least one retry message.
 	output := logout.String()
@@ -144,11 +144,11 @@ func (s *localLiveSuite) TestRateLimitRetry(c *C) {
 
 // TestRateLimitRetryExceeded checks that an error is raised if too many retry responses are received from the server.
 func (s *localLiveSuite) TestRateLimitRetryExceeded(c *C) {
-	nova, testGroup := s.setupRetryErrorTest(c, nil)
+	novaClient, testGroup := s.setupRetryErrorTest(c, nil)
 	s.retryErrorCountToSend = goosehttp.MaxSendAttempts
 	s.openstack.Nova.RegisterControlPoint("removeSecurityGroup", s.retryLimitHook(s.openstack.Nova))
 	defer s.openstack.Nova.RegisterControlPoint("removeSecurityGroup", nil)
-	err := nova.DeleteSecurityGroup(testGroup.Id)
+	err := novaClient.DeleteSecurityGroup(testGroup.Id)
 	c.Assert(err, Not(IsNil))
 	c.Assert(err.Error(), Matches, ".*Maximum number of attempts.*")
 }
@@ -165,23 +165,23 @@ func (s *localLiveSuite) addFloatingIPHook(sc testservices.ServiceControl) tests
 }
 
 func (s *localLiveSuite) TestAddFloatingIPErrors(c *C) {
-	nova := s.setupClient(c, nil)
-	fips, err := nova.ListFloatingIPs()
+	novaClient := s.setupClient(c, nil)
+	fips, err := novaClient.ListFloatingIPs()
 	c.Assert(err, IsNil)
 	c.Assert(fips, HasLen, 0)
 	s.openstack.Nova.RegisterControlPoint("addFloatingIP", s.addFloatingIPHook(s.openstack.Nova))
 	defer s.openstack.Nova.RegisterControlPoint("addFloatingIP", nil)
 	s.noMoreIPs = true
-	fip, err := nova.AllocateFloatingIP()
+	fip, err := novaClient.AllocateFloatingIP()
 	c.Assert(err, ErrorMatches, ".*Zero floating ips available.*")
 	c.Assert(fip, IsNil)
 	s.noMoreIPs = false
 	s.ipLimitExceeded = true
-	fip, err = nova.AllocateFloatingIP()
+	fip, err = novaClient.AllocateFloatingIP()
 	c.Assert(err, ErrorMatches, ".*Maximum number of floating ips exceeded.*")
 	c.Assert(fip, IsNil)
 	s.ipLimitExceeded = false
-	fip, err = nova.AllocateFloatingIP()
+	fip, err = novaClient.AllocateFloatingIP()
 	c.Assert(err, IsNil)
 	c.Assert(fip.IP, Not(Equals), "")
 }

@@ -124,7 +124,7 @@ func (s *LiveTests) TestURL(c *C) {
 	c.Check(err, IsNil)
 	url, err := s.swift.URL(s.containerName, object)
 	c.Check(err, IsNil)
-	httpClient := http.Client{CheckRedirect: nil}
+	httpClient := http.DefaultClient
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Add("X-Auth-Token", s.client.Token())
 	c.Check(err, IsNil)
@@ -216,7 +216,7 @@ func (s *LiveTestsPublicContainer) TestPublicURL(c *C) {
 	c.Check(err, IsNil)
 	url, err := s.swift.URL(s.containerName, object)
 	c.Check(err, IsNil)
-	httpClient := http.Client{CheckRedirect: nil}
+	httpClient := http.DefaultClient
 	req, err := http.NewRequest("GET", url, nil)
 	c.Check(err, IsNil)
 	resp, err := httpClient.Do(req)

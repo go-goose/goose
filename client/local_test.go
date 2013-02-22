@@ -1,14 +1,19 @@
 package client_test
 
 import (
+	"fmt"
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/client"
+	"launchpad.net/goose/errors"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/testing/httpsuite"
 	"launchpad.net/goose/testservices"
 	"launchpad.net/goose/testservices/identityservice"
 	"launchpad.net/goose/testservices/openstackservice"
 	"net/url"
+	"runtime"
+	"sync"
+	"time"
 )
 
 func registerLocalTests(authModes []identity.AuthMode) {
@@ -91,9 +96,6 @@ func (s *localLiveSuite) TestInvalidRegion(c *C) {
 	}
 	cl := client.NewClient(creds, s.authMode, nil)
 	err := cl.Authenticate()
-	c.Assert(err, IsNil)
-	_, err = cl.MakeServiceURL("object-store", []string{})
-	c.Assert(err, NotNil)
 	c.Assert(err.Error(), Matches, ".*invalid region.*")
 }
 
@@ -112,4 +114,119 @@ func (s *localLiveSuite) TestInexactRegionMatch(c *C) {
 	c.Assert(err, IsNil)
 	_, err = url.Parse(serviceURL)
 	c.Assert(err, IsNil)
+}
+
+type fakeAuthenticator struct {
+	mu        sync.Mutex
+	nrCallers int
+	// authStart is used as a gate to signal the fake authenticator that it can start.
+	authStart chan struct{}
+}
+
+func newAuthenticator(bufsize int) *fakeAuthenticator {
+	return &fakeAuthenticator{
+		authStart: make(chan struct{}, bufsize),
+	}
+}
+
+func (auth *fakeAuthenticator) Auth(creds *identity.Credentials) (*identity.AuthDetails, error) {
+	auth.mu.Lock()
+	auth.nrCallers++
+	auth.mu.Unlock()
+	// Wait till the test says the authenticator can proceed.
+	<-auth.authStart
+	runtime.Gosched()
+	defer func() {
+		auth.mu.Lock()
+		auth.nrCallers--
+		auth.mu.Unlock()
+	}()
+	auth.mu.Lock()
+	tooManyCallers := auth.nrCallers > 1
+	auth.mu.Unlock()
+	if tooManyCallers {
+		return nil, fmt.Errorf("Too many callers of Auth function")
+	}
+	URLs := make(map[string]identity.ServiceURLs)
+	endpoints := make(map[string]string)
+	endpoints["compute"] = "http://localhost"
+	URLs[creds.Region] = endpoints
+	return &identity.AuthDetails{
+		Token:             "token",
+		TenantId:          "tenant",
+		UserId:            "1",
+		RegionServiceURLs: URLs,
+	}, nil
+}
+
+func (s *localLiveSuite) TestAuthenticationTimeout(c *C) {
+	cl := client.NewClient(s.cred, s.authMode, nil)
+	defer client.SetAuthenticationTimeout(1 * time.Millisecond)()
+	auth := newAuthenticator(0)
+	client.SetAuthenticator(cl, auth)
+
+	var err error
+	err = cl.Authenticate()
+	// Wake up the authenticator after we have timed out.
+	auth.authStart <- struct{}{}
+	c.Assert(errors.IsTimeout(err), Equals, true)
+}
+
+func (s *localLiveSuite) TestAuthenticationSuccess(c *C) {
+	cl := client.NewClient(s.cred, s.authMode, nil)
+	defer client.SetAuthenticationTimeout(1 * time.Millisecond)()
+	auth := newAuthenticator(1)
+	client.SetAuthenticator(cl, auth)
+
+	// Signal that the authenticator can proceed immediately.
+	auth.authStart <- struct{}{}
+	err := cl.Authenticate()
+	c.Assert(err, IsNil)
+	// It completed with no error but check it also ran correctly.
+	c.Assert(cl.IsAuthenticated(), Equals, true)
+	URL, err := cl.MakeServiceURL("compute", nil)
+	c.Assert(err, IsNil)
+	c.Assert(URL, Equals, "http://localhost/")
+}
+
+func checkAuthentication(cl client.AuthenticatingClient) error {
+	err := cl.Authenticate()
+	if err != nil {
+		return err
+	}
+	URL, err := cl.MakeServiceURL("compute", nil)
+	if err != nil {
+		return err
+	}
+	if URL != "http://localhost/" {
+		return fmt.Errorf("Unexpected URL: %s", URL)
+	}
+	return nil
+}
+
+func (s *localLiveSuite) TestAuthenticationForbidsMultipleCallers(c *C) {
+	if s.authMode == identity.AuthLegacy {
+		c.Skip("legacy authentication")
+	}
+	cl := client.NewClient(s.cred, s.authMode, nil)
+	auth := newAuthenticator(2)
+	client.SetAuthenticator(cl, auth)
+
+	// Signal that the authenticator can proceed immediately.
+	auth.authStart <- struct{}{}
+	auth.authStart <- struct{}{}
+	var allDone sync.WaitGroup
+	allDone.Add(2)
+	var err1, err2 error
+	go func() {
+		err1 = checkAuthentication(cl)
+		allDone.Done()
+	}()
+	go func() {
+		err2 = checkAuthentication(cl)
+		allDone.Done()
+	}()
+	allDone.Wait()
+	c.Assert(err1, IsNil)
+	c.Assert(err2, IsNil)
 }

@@ -54,7 +54,7 @@ var authTemplate = `{
 }`
 
 func userPassAuthRequest(URL, user, key string) (*http.Response, error) {
-	client := &http.Client{}
+	client := &http.DefaultClient
 	body := strings.NewReader(fmt.Sprintf(authTemplate, user, key))
 	request, err := http.NewRequest("POST", URL+"/tokens", body)
 	request.Header.Set("Content-Type", "application/json")
@@ -82,7 +82,7 @@ func CheckErrorResponse(c *C, r *http.Response, status int, msg string) {
 func (s *UserPassSuite) TestNotJSON(c *C) {
 	// We do everything in userPassAuthRequest, except set the Content-Type
 	s.setupUserPass("user", "secret")
-	client := &http.Client{}
+	client := &http.DefaultClient
 	body := strings.NewReader(fmt.Sprintf(authTemplate, "user", "secret"))
 	request, err := http.NewRequest("POST", s.Server.URL+"/tokens", body)
 	c.Assert(err, IsNil)
