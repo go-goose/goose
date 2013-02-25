@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -44,7 +45,17 @@ func (s *Swift) handleContainers(container string, w http.ResponseWriter, r *htt
 	}
 	switch r.Method {
 	case "GET":
-		contents, err := s.ListContainer(container)
+		urlParams, err := url.ParseQuery(r.URL.RawQuery)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		params := make(map[string]string, len(urlParams))
+		for k := range urlParams {
+			params[k] = urlParams.Get(k)
+		}
+		contents, err := s.ListContainer(container, params)
 		var objdata []byte
 		if err == nil {
 			objdata, err = json.Marshal(contents)
