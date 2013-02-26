@@ -100,6 +100,8 @@ func (s *Swift) AddContainer(name string) error {
 }
 
 // ListContainer lists the objects in the given container.
+// params contains filtering attributes: prefix, delimiter, marker.
+// Only prefix is currently supported.
 func (s *Swift) ListContainer(name string, params map[string]string) ([]swift.ContainerContents, error) {
 	if err := s.ProcessFunctionHook(s, name); err != nil {
 		return nil, err

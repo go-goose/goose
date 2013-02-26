@@ -92,7 +92,7 @@ func (s *SwiftServiceSuite) TestListContainer(c *C) {
 	data := []byte("test data")
 	err = s.service.AddObject("test", "obj", data)
 	c.Assert(err, IsNil)
-	containerData, err := s.service.ListContainer("test", map[string]string{})
+	containerData, err := s.service.ListContainer("test", nil)
 	c.Assert(err, IsNil)
 	c.Assert(len(containerData), Equals, 1)
 	c.Assert(containerData[0].Name, Equals, "obj")
