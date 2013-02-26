@@ -11,6 +11,7 @@ import (
 	"launchpad.net/goose/testing/httpsuite"
 	"launchpad.net/goose/testservices/identityservice"
 	"net/http"
+	"net/url"
 )
 
 type SwiftHTTPSuite struct {
@@ -44,13 +45,25 @@ func (s *SwiftHTTPSuite) TearDownSuite(c *C) {
 
 func (s *SwiftHTTPSuite) sendRequest(c *C, method, path string, body []byte,
 	expectedStatusCode int) (resp *http.Response) {
+	return s.sendRequestWithParams(c, method, path, nil, body, expectedStatusCode)
+}
+
+func (s *SwiftHTTPSuite) sendRequestWithParams(c *C, method, path string, params map[string]string, body []byte,
+	expectedStatusCode int) (resp *http.Response) {
 	var req *http.Request
 	var err error
-	url := s.service.endpointURL(path)
+	URL := s.service.endpointURL(path)
+	if len(params) > 0 {
+		urlParams := make(url.Values, len(params))
+		for k, v := range params {
+			urlParams.Set(k, v)
+		}
+		URL += "?" + urlParams.Encode()
+	}
 	if body != nil {
-		req, err = http.NewRequest(method, url, bytes.NewBuffer(body))
+		req, err = http.NewRequest(method, URL, bytes.NewBuffer(body))
 	} else {
-		req, err = http.NewRequest(method, url, nil)
+		req, err = http.NewRequest(method, URL, nil)
 	}
 	c.Assert(err, IsNil)
 	if s.token != "" {
@@ -143,6 +156,26 @@ func (s *SwiftHTTPSuite) TestGETContainerExistsOK(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(len(containerData), Equals, 1)
 	c.Assert(containerData[0].Name, Equals, "obj")
+
+	s.removeContainer("test", c)
+}
+
+func (s *SwiftHTTPSuite) TestGETContainerWithPrefix(c *C) {
+	s.ensureContainer("test", c)
+	data := []byte("test data")
+	s.ensureObject("test", "foo", data, c)
+	s.ensureObject("test", "foobar", data, c)
+
+	resp := s.sendRequestWithParams(c, "GET", "test", map[string]string{"prefix": "foob"}, nil, http.StatusOK)
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	c.Assert(err, IsNil)
+	var containerData []swift.ContainerContents
+	err = json.Unmarshal(body, &containerData)
+	c.Assert(err, IsNil)
+	c.Assert(len(containerData), Equals, 1)
+	c.Assert(containerData[0].Name, Equals, "foobar")
 
 	s.removeContainer("test", c)
 }

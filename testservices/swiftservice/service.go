@@ -8,6 +8,7 @@ import (
 	"launchpad.net/goose/testservices"
 	"launchpad.net/goose/testservices/identityservice"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 )
@@ -99,7 +100,9 @@ func (s *Swift) AddContainer(name string) error {
 }
 
 // ListContainer lists the objects in the given container.
-func (s *Swift) ListContainer(name string) ([]swift.ContainerContents, error) {
+// params contains filtering attributes: prefix, delimiter, marker.
+// Only prefix is currently supported.
+func (s *Swift) ListContainer(name string, params map[string]string) ([]swift.ContainerContents, error) {
 	if err := s.ProcessFunctionHook(s, name); err != nil {
 		return nil, err
 	}
@@ -107,13 +110,22 @@ func (s *Swift) ListContainer(name string) ([]swift.ContainerContents, error) {
 		return nil, fmt.Errorf("no such container %q", name)
 	}
 	items := s.containers[name]
-	contents := make([]swift.ContainerContents, len(items))
+	sorted := make([]string, 0, len(items))
+	prefix := params["prefix"]
+	for filename := range items {
+		if prefix != "" && !strings.HasPrefix(filename, prefix) {
+			continue
+		}
+		sorted = append(sorted, filename)
+	}
+	sort.Strings(sorted)
+	contents := make([]swift.ContainerContents, len(sorted))
 	var i = 0
-	for k, v := range items {
+	for _, filename := range sorted {
 		contents[i] = swift.ContainerContents{
-			Name:         k,
+			Name:         filename,
 			Hash:         "", // not implemented
-			LengthBytes:  len(v),
+			LengthBytes:  len(items[filename]),
 			ContentType:  "application/octet-stream",
 			LastModified: time.Now().Format("2006-01-02 15:04:05"), //not implemented
 		}
