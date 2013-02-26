@@ -526,16 +526,6 @@ func newUUID() (string, error) {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
 }
 
-// NewId generates a random numeric id, encoded as a string.
-func newId() (string, error) {
-	buf := make([]byte, 1)
-	_, err := io.ReadFull(rand.Reader, buf)
-	if err != nil {
-		panic(fmt.Sprintf("error from crypto rand: %v", err))
-	}
-	return fmt.Sprintf("%d", buf[0]), nil
-}
-
 // noGroupError constructs a bad request response for an invalid group.
 func noGroupError(groupName, tenantId string) error {
 	return &errorResponse{
@@ -571,10 +561,8 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	if req.Server.FlavorRef == "" {
 		return errBadRequestSrvFlavor
 	}
-	id, err := newId()
-	if err != nil {
-		return err
-	}
+	n.nextServerId++
+	id := strconv.Itoa(n.nextServerId)
 	uuid, err := newUUID()
 	if err != nil {
 		return err
