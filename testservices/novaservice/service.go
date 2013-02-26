@@ -26,6 +26,7 @@ type Nova struct {
 	floatingIPs  map[int]nova.FloatingIP
 	serverGroups map[string][]int
 	serverIPs    map[string][]int
+	nextServerId int
 	nextGroupId  int
 	nextRuleId   int
 	nextIPId     int
