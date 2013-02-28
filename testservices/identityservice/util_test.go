@@ -1,10 +1,10 @@
 package identityservice
 
 import (
-	"bytes"
+        "bytes"
 	"crypto/rand"
 	"fmt"
-	"io"
+        "io"
 	. "launchpad.net/gocheck"
 )
 
@@ -46,7 +46,7 @@ func (s *UtilSuite) TestSetReader(c *C) {
 	// restore it sanely even if tests fail
 	defer func() { randReader = orig }()
 	// "randomize" everything to the letter 'n'
-	nRandom := bytes.NewBufferString("nnnnnnnnnnnnnnnnnnnnnnn")
+        nRandom := bytes.NewBufferString("nnnnnnnnnnnnnnnnnnnnnnn")
 	c.Assert(randReader, Equals, rand.Reader)
 	cleanup := setReader(nRandom)
 	c.Assert(randReader, Equals, nRandom)
@@ -59,26 +59,38 @@ func (s *UtilSuite) TestSetReader(c *C) {
 	c.Assert(randReader, Equals, rand.Reader)
 }
 
+// Change how we get random data, the default is to use crypto/rand
+// This mostly exists to be able to test error side effects
+// The return value is a function you can call to restore the previous
+// randomizer
+// Note: This is not thread safe, but it is really only for testing anyway
+func setReader(r io.Reader) (restore func()) {
+	old := randReader
+	randReader = r
+	return func() {
+		randReader = old
+	}
+}
+
 func (s *UtilSuite) TestNotEnoughRandomBytes(c *C) {
 	// No error, just not enough bytes
-	shortRand := bytes.NewBufferString("xx")
+        shortRand := bytes.NewBufferString("xx")
 	cleanup := setReader(shortRand)
 	defer cleanup()
-	c.Assert(randomHexToken, PanicMatches, "Could not read 16 random bytes safely \\(read 2 bytes\\): unexpected EOF")
+	c.Assert(randomHexToken, PanicMatches, "failed to read 16 random bytes \\(read 2 bytes\\): unexpected EOF")
 }
 
 type ErrReader struct{}
-
 func (e ErrReader) Read(b []byte) (n int, err error) {
-	b[0] = 'x'
-	b[1] = 'x'
-	b[2] = 'x'
-	return 3, fmt.Errorf("Not enough bytes")
+    b[0] = 'x'
+    b[1] = 'x'
+    b[2] = 'x'
+    return 3, fmt.Errorf("Not enough bytes")
 }
 
 func (s *UtilSuite) TestRandomBytesError(c *C) {
 	// No error, just not enough bytes
 	cleanup := setReader(ErrReader{})
 	defer cleanup()
-	c.Assert(randomHexToken, PanicMatches, "Could not read 16 random bytes safely \\(read 3 bytes\\): Not enough bytes")
+	c.Assert(randomHexToken, PanicMatches, "failed to read 16 random bytes \\(read 3 bytes\\): Not enough bytes")
 }
