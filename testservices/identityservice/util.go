@@ -26,7 +26,7 @@ func randomHexToken() string {
 			n, err.Error()))
 	}
 	hex_bytes := make([]byte, 32)
-        // hex.Encode can't fail, no error checking needed.
+	// hex.Encode can't fail, no error checking needed.
 	hex.Encode(hex_bytes, raw_bytes)
 	return string(hex_bytes)
 }
