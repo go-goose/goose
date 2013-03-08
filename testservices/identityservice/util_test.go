@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	. "launchpad.net/gocheck"
+	"testing/iotest"
 )
 
 type UtilSuite struct{}
@@ -63,7 +64,6 @@ func (s *UtilSuite) TestSetReader(c *C) {
 // This mostly exists to be able to test error side effects
 // The return value is a function you can call to restore the previous
 // randomizer
-// Note: This is not thread safe, but it is really only for testing anyway
 func setReader(r io.Reader) (restore func()) {
 	old := randReader
 	randReader = r
@@ -94,4 +94,12 @@ func (s *UtilSuite) TestRandomBytesError(c *C) {
 	cleanup := setReader(ErrReader{})
 	defer cleanup()
 	c.Assert(randomHexToken, PanicMatches, "failed to read 16 random bytes \\(read 3 bytes\\): Not enough bytes")
+}
+
+func (s *UtilSuite) TestSlowBytes(c *C) {
+	// Even when we have to read one byte at a time, we can still get our
+	// hex token
+	defer setReader(iotest.OneByteReader(rand.Reader))()
+	val := randomHexToken()
+	c.Assert(val, HasLen, 32)
 }
