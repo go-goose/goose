@@ -27,6 +27,9 @@ func (s *JsonSuite) assertMarshallRoundtrip(c *C, value interface{}, unmarshalle
 	c.Assert(unmarshalled, DeepEquals, value)
 }
 
+// The following tests all check that unmarshalling of Ids with values > 1E6
+// works properly.
+
 func (s *JsonSuite) TestMarshallEntityLargeIntId(c *C) {
 	entity := nova.Entity{Id: "2000000", Name: "test"}
 	var unmarshalled nova.Entity
