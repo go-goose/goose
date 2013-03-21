@@ -18,6 +18,16 @@ type genericId struct {
 	Id interface{} `json:"id"`
 }
 
+func (id genericId) String() string {
+	if id.Id == nil {
+		return ""
+	}
+	if fid, ok := id.Id.(float64); ok {
+		return fmt.Sprint(int(fid))
+	}
+	return fmt.Sprint(id.Id)
+}
+
 var useNumericIds bool = false
 
 // convertId returns the id as either a string or an int depending on what
@@ -56,7 +66,7 @@ func (entity *Entity) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &id); err != nil {
 		return err
 	}
-	je.Id = fmt.Sprint(id.Id)
+	je.Id = id.String()
 	*entity = Entity(je)
 	return nil
 }
@@ -82,7 +92,7 @@ func (flavorDetail *FlavorDetail) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &id); err != nil {
 		return err
 	}
-	jfd.Id = fmt.Sprint(id.Id)
+	jfd.Id = id.String()
 	*flavorDetail = FlavorDetail(jfd)
 	return nil
 }
@@ -108,7 +118,7 @@ func (serverDetail *ServerDetail) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &id); err != nil {
 		return err
 	}
-	jsd.Id = fmt.Sprint(id.Id)
+	jsd.Id = id.String()
 	*serverDetail = ServerDetail(jsd)
 	return nil
 }
@@ -127,6 +137,16 @@ type genericInstanceId struct {
 	InstanceId interface{} `json:"instance_id"`
 }
 
+func (id genericInstanceId) String() string {
+	if id.InstanceId == nil {
+		return ""
+	}
+	if fid, ok := id.InstanceId.(float64); ok {
+		return fmt.Sprint(int(fid))
+	}
+	return fmt.Sprint(id.InstanceId)
+}
+
 type jsonFloatingIP FloatingIP
 
 func (floatingIP *FloatingIP) UnmarshalJSON(b []byte) error {
@@ -138,8 +158,9 @@ func (floatingIP *FloatingIP) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &id); err != nil {
 		return err
 	}
-	if id.InstanceId != nil && id.InstanceId != "" {
-		strId := fmt.Sprint(id.InstanceId)
+	instId := id.String()
+	if instId != "" {
+		strId := instId
 		jfip.InstanceId = &strId
 	}
 	*floatingIP = FloatingIP(jfip)
