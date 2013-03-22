@@ -15,13 +15,13 @@ import (
 
 // API URL parts.
 const (
-	apiFlavors            = "/flavors"
-	apiFlavorsDetail      = "/flavors/detail"
-	apiServers            = "/servers"
-	apiServersDetail      = "/servers/detail"
-	apiSecurityGroups     = "/os-security-groups"
-	apiSecurityGroupRules = "/os-security-group-rules"
-	apiFloatingIPs        = "/os-floating-ips"
+	apiFlavors            = "flavors"
+	apiFlavorsDetail      = "flavors/detail"
+	apiServers            = "servers"
+	apiServersDetail      = "servers/detail"
+	apiSecurityGroups     = "os-security-groups"
+	apiSecurityGroupRules = "os-security-group-rules"
+	apiFloatingIPs        = "os-floating-ips"
 )
 
 // Server status values.

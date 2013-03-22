@@ -172,7 +172,7 @@ func (s *localLiveSuite) TestAuthenticationTimeout(c *C) {
 	c.Assert(errors.IsTimeout(err), Equals, true)
 }
 
-func (s *localLiveSuite) TestAuthenticationSuccess(c *C) {
+func (s *localLiveSuite) assertAuthenticationSuccess(c *C) client.Client {
 	cl := client.NewClient(s.cred, s.authMode, nil)
 	defer client.SetAuthenticationTimeout(1 * time.Millisecond)()
 	auth := newAuthenticator(1)
@@ -184,9 +184,28 @@ func (s *localLiveSuite) TestAuthenticationSuccess(c *C) {
 	c.Assert(err, IsNil)
 	// It completed with no error but check it also ran correctly.
 	c.Assert(cl.IsAuthenticated(), Equals, true)
+	return cl
+}
+
+func (s *localLiveSuite) TestAuthenticationSuccess(c *C) {
+	cl := s.assertAuthenticationSuccess(c)
 	URL, err := cl.MakeServiceURL("compute", nil)
 	c.Assert(err, IsNil)
-	c.Assert(URL, Equals, "http://localhost/")
+	c.Assert(URL, Equals, "http://localhost")
+}
+
+func (s *localLiveSuite) TestMakeServiceURL(c *C) {
+	cl := s.assertAuthenticationSuccess(c)
+	URL, err := cl.MakeServiceURL("compute", []string{"foo"})
+	c.Assert(err, IsNil)
+	c.Assert(URL, Equals, "http://localhost/foo")
+}
+
+func (s *localLiveSuite) TestMakeServiceURLRetainsTrailingSlash(c *C) {
+	cl := s.assertAuthenticationSuccess(c)
+	URL, err := cl.MakeServiceURL("compute", []string{"foo", "bar/"})
+	c.Assert(err, IsNil)
+	c.Assert(URL, Equals, "http://localhost/foo/bar/")
 }
 
 func checkAuthentication(cl client.AuthenticatingClient) error {
@@ -198,7 +217,7 @@ func checkAuthentication(cl client.AuthenticatingClient) error {
 	if err != nil {
 		return err
 	}
-	if URL != "http://localhost/" {
+	if URL != "http://localhost" {
 		return fmt.Errorf("Unexpected URL: %s", URL)
 	}
 	return nil
