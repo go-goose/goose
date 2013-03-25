@@ -8,7 +8,6 @@ import (
 	"launchpad.net/goose/identity"
 	goosesync "launchpad.net/goose/sync"
 	"log"
-	"path"
 	"strings"
 	"sync"
 	"time"
@@ -112,12 +111,15 @@ func (c *client) SendRequest(method, svcType, apiCall string, requestData *goose
 	return c.sendRequest(method, url, "", requestData)
 }
 
-func (c *client) MakeServiceURL(serviceType string, parts []string) (string, error) {
-	urlParts := parts
-	if !strings.HasSuffix(c.baseURL, "/") {
-		urlParts = append([]string{"/"}, parts...)
+func makeURL(base string, parts []string) string {
+	if !strings.HasSuffix(base, "/") && len(parts) > 0 {
+		base += "/"
 	}
-	return c.baseURL + path.Join(urlParts...), nil
+	return base + strings.Join(parts, "/")
+}
+
+func (c *client) MakeServiceURL(serviceType string, parts []string) (string, error) {
+	return makeURL(c.baseURL, parts), nil
 }
 
 func (c *authenticatingClient) SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) (err error) {
@@ -149,8 +151,7 @@ func (c *authenticatingClient) MakeServiceURL(serviceType string, parts []string
 	if !ok {
 		return "", errors.New("no endpoints known for service type: " + serviceType)
 	}
-	url += path.Join(append([]string{"/"}, parts...)...)
-	return url, nil
+	return makeURL(url, parts), nil
 }
 
 // Return the relevant service endpoint URLs for this client's region.
