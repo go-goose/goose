@@ -153,7 +153,7 @@ func (s *localLiveSuite) TestRateLimitRetryExceeded(c *C) {
 	defer s.openstack.Nova.RegisterControlPoint("removeSecurityGroup", nil)
 	err := novaClient.DeleteSecurityGroup(testGroup.Id)
 	c.Assert(err, Not(IsNil))
-	c.Assert(err.Error(), Matches, ".*Maximum number of attempts.*")
+	c.Assert(err.Error(), Matches, "(.|\n)*Maximum number of attempts.*")
 }
 
 func (s *localLiveSuite) addFloatingIPHook(sc hook.ServiceControl) hook.ControlProcessor {
@@ -176,12 +176,12 @@ func (s *localLiveSuite) TestAddFloatingIPErrors(c *C) {
 	defer s.openstack.Nova.RegisterControlPoint("addFloatingIP", nil)
 	s.noMoreIPs = true
 	fip, err := novaClient.AllocateFloatingIP()
-	c.Assert(err, ErrorMatches, ".*Zero floating ips available.*")
+	c.Assert(err, ErrorMatches, "(.|\n)*Zero floating ips available.*")
 	c.Assert(fip, IsNil)
 	s.noMoreIPs = false
 	s.ipLimitExceeded = true
 	fip, err = novaClient.AllocateFloatingIP()
-	c.Assert(err, ErrorMatches, ".*Maximum number of floating ips exceeded.*")
+	c.Assert(err, ErrorMatches, "(.|\n)*Maximum number of floating ips exceeded.*")
 	c.Assert(fip, IsNil)
 	s.ipLimitExceeded = false
 	fip, err = novaClient.AllocateFloatingIP()
