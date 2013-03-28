@@ -286,7 +286,7 @@ func containsString(values []string, element string) bool {
 // see client.regionMatches.
 func containsBaseRegion(values []string, region string) bool {
 	for _, value := range values {
-		if regionMatches(value, region) {
+		if regionMatches(value, region) && region != value {
 			return true
 		}
 	}

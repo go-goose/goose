@@ -297,6 +297,11 @@ var authRegionTests = []authRegionTest{
 		fmt.Sprintf(invalidRegionMsgf, "b.region.1"),
 	},
 	authRegionTest{
+		"b.region.1",
+		`{"a.region.1":{"compute":"http://foo"}, "region.1":{"object-store":"http://foobar"}}`,
+		fmt.Sprintf(missingEndpointSuggestRegionMsgf, "b.region.1", "compute, object-store", "compute", "a.region.1"),
+	},
+	authRegionTest{
 		"region.1",
 		`{"a.region.1":{"compute":"http://foo"}, "region.1":{"object-store":"http://foobar"}}`,
 		fmt.Sprintf(missingEndpointSuggestRegionMsgf, "region.1", "compute, object-store", "compute", "a.region.1"),
