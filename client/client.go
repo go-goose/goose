@@ -66,10 +66,13 @@ type authenticatingClient struct {
 	authMode identity.Authenticator
 
 	auth AuthenticatingClient
+
 	// Service type to endpoint URLs for each available region
 	regionServiceURLs map[string]identity.ServiceURLs
+
 	// Service type to endpoint URLs for the authenticated region
 	serviceURLs identity.ServiceURLs
+
 	// The service types which must be available after authentication,
 	// or else services which use this client will not be able to function as expected.
 	requiredServiceTypes []string
@@ -208,15 +211,15 @@ func (c *authenticatingClient) createServiceURLs() error {
 			}
 		}
 		missingServiceTypes, possibleRegions = c.possibleRegions(existingServiceTypes)
-		errorPrefix = fmt.Sprintf("the configured region %q does not allow access to all required services, namely: %q\n"+
-			"access to these services is missing: %q",
+		errorPrefix = fmt.Sprintf("the configured region %q does not allow access to all required services, namely: %s\n"+
+			"access to these services is missing: %s",
 			c.creds.Region,
 			strings.Join(c.requiredServiceTypes, ", "),
 			strings.Join(missingServiceTypes, ", "))
 	}
 	if len(missingServiceTypes) > 0 {
 		if len(possibleRegions) > 0 {
-			return fmt.Errorf("%s\none of these regions may be suitable instead: %q",
+			return fmt.Errorf("%s\none of these regions may be suitable instead: %s",
 				errorPrefix,
 				strings.Join(possibleRegions, ", "))
 		} else {
@@ -232,44 +235,59 @@ func (c *authenticatingClient) createServiceURLs() error {
 // required service types. The service types which are accessible, accessibleServiceTypes, is passed in and the
 // method returns what the missing service types are as well as valid regions.
 func (c *authenticatingClient) possibleRegions(accessibleServiceTypes []string) (missingServiceTypes []string, possibleRegions []string) {
-	serviceTypeRegions := make(map[string][]string)
+	var serviceTypeRegions map[string][]string
 	// Figure out the missing service types and build up a map of all service types to regions
 	// obtained from the authentication response.
 	for _, serviceType := range c.requiredServiceTypes {
 		if !containsString(accessibleServiceTypes, serviceType) {
 			missingServiceTypes = append(missingServiceTypes, serviceType)
-			for region, serviceURLs := range c.regionServiceURLs {
-				for regionServiceType := range serviceURLs {
-					regions := serviceTypeRegions[regionServiceType]
-					if !containsString(regions, region) {
-						serviceTypeRegions[regionServiceType] = append(regions, region)
-					}
-				}
-			}
+			serviceTypeRegions = c.extractServiceTypeRegions()
 		}
 	}
+
 	// Look at the region lists for each missing service type and determine which subset of those could
 	// be used to allow access to all required service types. The most specific regions are used.
 	if len(missingServiceTypes) == 1 {
 		possibleRegions = serviceTypeRegions[missingServiceTypes[0]]
 	} else {
 		for _, serviceType := range missingServiceTypes {
-			regions := serviceTypeRegions[serviceType]
 			for _, serviceTypeCompare := range missingServiceTypes {
 				if serviceType == serviceTypeCompare {
 					continue
 				}
-				for _, region := range regions {
-					regionsCompare := serviceTypeRegions[serviceTypeCompare]
-					if !containsBaseRegion(regionsCompare, region) && containsSuperRegion(regionsCompare, region) {
-						possibleRegions = append(possibleRegions, region)
-					}
-				}
+				possibleRegions = appendPossibleRegions(serviceType, serviceTypeCompare, serviceTypeRegions, possibleRegions)
 			}
 		}
 	}
 	sort.Strings(possibleRegions)
 	return
+}
+
+// utility function to extract map of service types -> region
+func (c *authenticatingClient) extractServiceTypeRegions() map[string][]string {
+	serviceTypeRegions := make(map[string][]string)
+	for region, serviceURLs := range c.regionServiceURLs {
+		for regionServiceType := range serviceURLs {
+			regions := serviceTypeRegions[regionServiceType]
+			if !containsString(regions, region) {
+				serviceTypeRegions[regionServiceType] = append(regions, region)
+			}
+		}
+	}
+	return serviceTypeRegions
+}
+
+// extract the common regions for each service type and append them to the possible regions slice.
+func appendPossibleRegions(serviceType, serviceTypeCompare string, serviceTypeRegions map[string][]string,
+	possibleRegions []string) []string {
+	regions := serviceTypeRegions[serviceType]
+	for _, region := range regions {
+		regionsCompare := serviceTypeRegions[serviceTypeCompare]
+		if !containsBaseRegion(regionsCompare, region) && containsSuperRegion(regionsCompare, region) {
+			possibleRegions = append(possibleRegions, region)
+		}
+	}
+	return possibleRegions
 }
 
 // utility function to see if element exists in values slice.

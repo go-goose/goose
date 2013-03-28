@@ -281,8 +281,8 @@ type authRegionTest struct {
 	errorMsg      string
 }
 
-var missingEndpointMsgf = "(.|\n)*the configured region %q does not allow access to all required services, namely: %q(.|\n)*access to these services is missing: %q"
-var missingEndpointSuggestRegionMsgf = "(.|\n)*the configured region %q does not allow access to all required services, namely: %q(.|\n)*access to these services is missing: %q(.|\n)*one of these regions may be suitable instead: %q"
+var missingEndpointMsgf = "(.|\n)*the configured region %q does not allow access to all required services, namely: %s(.|\n)*access to these services is missing: %s"
+var missingEndpointSuggestRegionMsgf = "(.|\n)*the configured region %q does not allow access to all required services, namely: %s(.|\n)*access to these services is missing: %s(.|\n)*one of these regions may be suitable instead: %s"
 var invalidRegionMsgf = "(.|\n)*invalid region %q"
 
 var authRegionTests = []authRegionTest{
@@ -318,6 +318,6 @@ func (s *localLiveSuite) TestNonAccessibleServiceType(c *C) {
 		auth := NewConfigurableAuth(at.regionURLInfo)
 		client.SetAuthenticator(cl, auth)
 		err := cl.Authenticate()
-		c.Assert(err.Error(), Matches, at.errorMsg)
+		c.Assert(err, ErrorMatches, at.errorMsg)
 	}
 }
