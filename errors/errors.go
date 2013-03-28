@@ -63,7 +63,7 @@ func (err *gooseError) causedBy(code Code) bool {
 func (err *gooseError) Error() string {
 	result := err.error.Error()
 	if err.cause != nil {
-		return fmt.Sprintf("%s, caused by: %s", result, err.cause.Error())
+		return fmt.Sprintf("%s\ncaused by: %s", result, err.cause.Error())
 	}
 	return result
 }

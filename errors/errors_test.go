@@ -61,7 +61,7 @@ func (s *ErrorsSuite) TestErrorCause(c *C) {
 	err := errors.Newf(rootCause, "an error occurred")
 	c.Assert(err.Cause(), Equals, rootCause)
 	// Check the other error attributes.
-	c.Assert(err.Error(), Equals, "an error occurred, caused by: Not found: some value")
+	c.Assert(err.Error(), Equals, "an error occurred\ncaused by: Not found: some value")
 }
 
 func (s *ErrorsSuite) TestErrorIsType(c *C) {

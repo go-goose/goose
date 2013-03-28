@@ -208,7 +208,7 @@ func (c *authenticatingClient) createServiceURLs() error {
 			}
 		}
 		missingServiceTypes, possibleRegions = c.possibleRegions(existingServiceTypes)
-		errorPrefix = fmt.Sprintf("the configured region %q does not allow access to all required services, namely: %q, "+
+		errorPrefix = fmt.Sprintf("the configured region %q does not allow access to all required services, namely: %q\n "+
 			"access to these services is missing: %q",
 			c.creds.Region,
 			strings.Join(c.requiredServiceTypes, ", "),
@@ -216,7 +216,7 @@ func (c *authenticatingClient) createServiceURLs() error {
 	}
 	if len(missingServiceTypes) > 0 {
 		if len(possibleRegions) > 0 {
-			return fmt.Errorf("%s, one of these regions may be suitable instead: %q",
+			return fmt.Errorf("%s\none of these regions may be suitable instead: %q",
 				errorPrefix,
 				strings.Join(possibleRegions, ", "))
 		} else {

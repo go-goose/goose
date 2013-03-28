@@ -97,7 +97,7 @@ func (s *localLiveSuite) TestInvalidRegion(c *C) {
 	}
 	cl := client.NewClient(creds, s.authMode, nil)
 	err := cl.Authenticate()
-	c.Assert(err.Error(), Matches, ".*invalid region.*")
+	c.Assert(err.Error(), Matches, "(.|\n)*invalid region(.|\n)*")
 }
 
 // Test service lookup with inexact region matching.
@@ -281,9 +281,9 @@ type authRegionTest struct {
 	errorMsg      string
 }
 
-var missingEndpointMsgf = ".*the configured region %q does not allow access to all required services, namely: %q, access to these services is missing: %q"
-var missingEndpointSuggestRegionMsgf = ".*the configured region %q does not allow access to all required services, namely: %q, access to these services is missing: %q, one of these regions may be suitable instead: %q"
-var invalidRegionMsgf = ".*invalid region %q"
+var missingEndpointMsgf = "(.|\n)*the configured region %q does not allow access to all required services, namely: %q(.|\n)*access to these services is missing: %q"
+var missingEndpointSuggestRegionMsgf = "(.|\n)*the configured region %q does not allow access to all required services, namely: %q(.|\n)*access to these services is missing: %q(.|\n)*one of these regions may be suitable instead: %q"
+var invalidRegionMsgf = "(.|\n)*invalid region %q"
 
 var authRegionTests = []authRegionTest{
 	authRegionTest{
