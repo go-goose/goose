@@ -44,7 +44,7 @@ func (s *LiveTests) TestAuthenticateFail(c *C) {
 	osclient := client.NewClient(&cred, s.authMode, nil)
 	c.Assert(osclient.IsAuthenticated(), Equals, false)
 	err := osclient.Authenticate()
-	c.Assert(err, ErrorMatches, "authentication failed.*")
+	c.Assert(err, ErrorMatches, "authentication failed(\n|.)*")
 }
 
 func (s *LiveTests) TestAuthenticate(c *C) {

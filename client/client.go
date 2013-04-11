@@ -8,7 +8,7 @@ import (
 	"launchpad.net/goose/identity"
 	goosesync "launchpad.net/goose/sync"
 	"log"
-	"path"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -38,6 +38,7 @@ type Client interface {
 // a user's credentials.
 type AuthenticatingClient interface {
 	Client
+	SetRequiredServiceTypes(requiredServiceTypes []string)
 	Authenticate() error
 	IsAuthenticated() bool
 	Token() string
@@ -64,12 +65,20 @@ type authenticatingClient struct {
 	creds    *identity.Credentials
 	authMode identity.Authenticator
 
-	auth              AuthenticatingClient
-	regionServiceURLs map[string]identity.ServiceURLs // Service type to endpoint URLs for each available region
-	serviceURLs       identity.ServiceURLs            // Service type to endpoint URLs for the authenticated region
-	tokenId           string
-	tenantId          string
-	userId            string
+	auth AuthenticatingClient
+
+	// Service type to endpoint URLs for each available region
+	regionServiceURLs map[string]identity.ServiceURLs
+
+	// Service type to endpoint URLs for the authenticated region
+	serviceURLs identity.ServiceURLs
+
+	// The service types which must be available after authentication,
+	// or else services which use this client will not be able to function as expected.
+	requiredServiceTypes []string
+	tokenId              string
+	tenantId             string
+	userId               string
 }
 
 var _ AuthenticatingClient = (*authenticatingClient)(nil)
@@ -79,12 +88,15 @@ func NewPublicClient(baseURL string, logger *log.Logger) Client {
 	return &client
 }
 
+var defaultRequiredServiceTypes = []string{"compute", "object-store"}
+
 func NewClient(creds *identity.Credentials, auth_method identity.AuthMode, logger *log.Logger) AuthenticatingClient {
 	client_creds := *creds
 	client_creds.URL = client_creds.URL + apiTokens
 	client := authenticatingClient{
-		creds:  &client_creds,
-		client: client{logger: logger},
+		creds:                &client_creds,
+		requiredServiceTypes: defaultRequiredServiceTypes,
+		client:               client{logger: logger},
 	}
 	client.auth = &client
 	switch auth_method {
@@ -112,12 +124,19 @@ func (c *client) SendRequest(method, svcType, apiCall string, requestData *goose
 	return c.sendRequest(method, url, "", requestData)
 }
 
-func (c *client) MakeServiceURL(serviceType string, parts []string) (string, error) {
-	urlParts := parts
-	if !strings.HasSuffix(c.baseURL, "/") {
-		urlParts = append([]string{"/"}, parts...)
+func makeURL(base string, parts []string) string {
+	if !strings.HasSuffix(base, "/") && len(parts) > 0 {
+		base += "/"
 	}
-	return c.baseURL + path.Join(urlParts...), nil
+	return base + strings.Join(parts, "/")
+}
+
+func (c *client) MakeServiceURL(serviceType string, parts []string) (string, error) {
+	return makeURL(c.baseURL, parts), nil
+}
+
+func (c *authenticatingClient) SetRequiredServiceTypes(requiredServiceTypes []string) {
+	c.requiredServiceTypes = requiredServiceTypes
 }
 
 func (c *authenticatingClient) SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) (err error) {
@@ -149,14 +168,14 @@ func (c *authenticatingClient) MakeServiceURL(serviceType string, parts []string
 	if !ok {
 		return "", errors.New("no endpoints known for service type: " + serviceType)
 	}
-	url += path.Join(append([]string{"/"}, parts...)...)
-	return url, nil
+	return makeURL(url, parts), nil
 }
 
 // Return the relevant service endpoint URLs for this client's region.
 // The region comes from the client credentials.
 func (c *authenticatingClient) createServiceURLs() error {
 	var serviceURLs identity.ServiceURLs = nil
+	var otherServiceTypeRegions map[string][]string = make(map[string][]string)
 	for region, urls := range c.regionServiceURLs {
 		if regionMatches(c.creds.Region, region) {
 			if serviceURLs == nil {
@@ -165,18 +184,142 @@ func (c *authenticatingClient) createServiceURLs() error {
 			for serviceType, endpointURL := range urls {
 				serviceURLs[serviceType] = endpointURL
 			}
+		} else {
+			for serviceType := range urls {
+				regions := otherServiceTypeRegions[serviceType]
+				if regions == nil {
+					regions = []string{}
+				}
+				otherServiceTypeRegions[serviceType] = append(regions, region)
+			}
 		}
 	}
+	var errorPrefix string
+	var possibleRegions, missingServiceTypes []string
 	if serviceURLs == nil {
 		var knownRegions []string
 		for r := range c.regionServiceURLs {
 			knownRegions = append(knownRegions, r)
 		}
-		return fmt.Errorf("invalid region '%q', valid regions are %q",
-			c.creds.Region, strings.Join(knownRegions, ", "))
+		missingServiceTypes, possibleRegions = c.possibleRegions([]string{})
+		errorPrefix = fmt.Sprintf("invalid region %q", c.creds.Region)
+	} else {
+		existingServiceTypes := []string{}
+		for serviceType, _ := range serviceURLs {
+			if containsString(c.requiredServiceTypes, serviceType) {
+				existingServiceTypes = append(existingServiceTypes, serviceType)
+			}
+		}
+		missingServiceTypes, possibleRegions = c.possibleRegions(existingServiceTypes)
+		errorPrefix = fmt.Sprintf("the configured region %q does not allow access to all required services, namely: %s\n"+
+			"access to these services is missing: %s",
+			c.creds.Region,
+			strings.Join(c.requiredServiceTypes, ", "),
+			strings.Join(missingServiceTypes, ", "))
+	}
+	if len(missingServiceTypes) > 0 {
+		if len(possibleRegions) > 0 {
+			return fmt.Errorf("%s\none of these regions may be suitable instead: %s",
+				errorPrefix,
+				strings.Join(possibleRegions, ", "))
+		} else {
+			return errors.New(errorPrefix)
+		}
 	}
 	c.serviceURLs = serviceURLs
 	return nil
+}
+
+// possibleRegions returns a list of regions, any of which will allow the client to access the required service types.
+// This method is called when a client authenticates and the configured region does not allow access to all the
+// required service types. The service types which are accessible, accessibleServiceTypes, is passed in and the
+// method returns what the missing service types are as well as valid regions.
+func (c *authenticatingClient) possibleRegions(accessibleServiceTypes []string) (missingServiceTypes []string, possibleRegions []string) {
+	var serviceTypeRegions map[string][]string
+	// Figure out the missing service types and build up a map of all service types to regions
+	// obtained from the authentication response.
+	for _, serviceType := range c.requiredServiceTypes {
+		if !containsString(accessibleServiceTypes, serviceType) {
+			missingServiceTypes = append(missingServiceTypes, serviceType)
+			serviceTypeRegions = c.extractServiceTypeRegions()
+		}
+	}
+
+	// Look at the region lists for each missing service type and determine which subset of those could
+	// be used to allow access to all required service types. The most specific regions are used.
+	if len(missingServiceTypes) == 1 {
+		possibleRegions = serviceTypeRegions[missingServiceTypes[0]]
+	} else {
+		for _, serviceType := range missingServiceTypes {
+			for _, serviceTypeCompare := range missingServiceTypes {
+				if serviceType == serviceTypeCompare {
+					continue
+				}
+				possibleRegions = appendPossibleRegions(serviceType, serviceTypeCompare, serviceTypeRegions, possibleRegions)
+			}
+		}
+	}
+	sort.Strings(possibleRegions)
+	return
+}
+
+// utility function to extract map of service types -> region
+func (c *authenticatingClient) extractServiceTypeRegions() map[string][]string {
+	serviceTypeRegions := make(map[string][]string)
+	for region, serviceURLs := range c.regionServiceURLs {
+		for regionServiceType := range serviceURLs {
+			regions := serviceTypeRegions[regionServiceType]
+			if !containsString(regions, region) {
+				serviceTypeRegions[regionServiceType] = append(regions, region)
+			}
+		}
+	}
+	return serviceTypeRegions
+}
+
+// extract the common regions for each service type and append them to the possible regions slice.
+func appendPossibleRegions(serviceType, serviceTypeCompare string, serviceTypeRegions map[string][]string,
+	possibleRegions []string) []string {
+	regions := serviceTypeRegions[serviceType]
+	for _, region := range regions {
+		regionsCompare := serviceTypeRegions[serviceTypeCompare]
+		if !containsBaseRegion(regionsCompare, region) && containsSuperRegion(regionsCompare, region) {
+			possibleRegions = append(possibleRegions, region)
+		}
+	}
+	return possibleRegions
+}
+
+// utility function to see if element exists in values slice.
+func containsString(values []string, element string) bool {
+	for _, value := range values {
+		if value == element {
+			return true
+		}
+	}
+	return false
+}
+
+// containsBaseRegion returns true if any of the regions in values are based on region.
+// see client.regionMatches.
+func containsBaseRegion(values []string, region string) bool {
+	for _, value := range values {
+		if regionMatches(value, region) && region != value {
+			return true
+		}
+	}
+	return false
+}
+
+// containsSuperRegion returns true if region is based on any of the regions in values.
+// see client.regionMatches.
+func containsSuperRegion(values []string, region string) bool {
+	for _, value := range values {
+		if regionMatches(region, value) || region == value {
+			return true
+		}
+	}
+	return false
 }
 
 func regionMatches(userRegion, endpointRegion string) bool {

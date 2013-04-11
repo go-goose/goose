@@ -62,7 +62,7 @@ func (err *gooseError) causedBy(code Code) bool {
 // Error fulfills the error interface, taking account of any caused by error.
 func (err *gooseError) Error() string {
 	if err.cause != nil {
-		return fmt.Sprintf("%v, caused by: %v", err.error, err.cause)
+		return fmt.Sprintf("%v\ncaused by: %v", err.error, err.cause)
 	}
 	return err.error.Error()
 }

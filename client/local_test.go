@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"encoding/json"
 	"fmt"
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/client"
@@ -96,7 +97,7 @@ func (s *localLiveSuite) TestInvalidRegion(c *C) {
 	}
 	cl := client.NewClient(creds, s.authMode, nil)
 	err := cl.Authenticate()
-	c.Assert(err.Error(), Matches, ".*invalid region.*")
+	c.Assert(err.Error(), Matches, "(.|\n)*invalid region(.|\n)*")
 }
 
 // Test service lookup with inexact region matching.
@@ -172,8 +173,9 @@ func (s *localLiveSuite) TestAuthenticationTimeout(c *C) {
 	c.Assert(errors.IsTimeout(err), Equals, true)
 }
 
-func (s *localLiveSuite) TestAuthenticationSuccess(c *C) {
+func (s *localLiveSuite) assertAuthenticationSuccess(c *C) client.Client {
 	cl := client.NewClient(s.cred, s.authMode, nil)
+	cl.SetRequiredServiceTypes([]string{"compute"})
 	defer client.SetAuthenticationTimeout(1 * time.Millisecond)()
 	auth := newAuthenticator(1)
 	client.SetAuthenticator(cl, auth)
@@ -184,9 +186,28 @@ func (s *localLiveSuite) TestAuthenticationSuccess(c *C) {
 	c.Assert(err, IsNil)
 	// It completed with no error but check it also ran correctly.
 	c.Assert(cl.IsAuthenticated(), Equals, true)
+	return cl
+}
+
+func (s *localLiveSuite) TestAuthenticationSuccess(c *C) {
+	cl := s.assertAuthenticationSuccess(c)
 	URL, err := cl.MakeServiceURL("compute", nil)
 	c.Assert(err, IsNil)
-	c.Assert(URL, Equals, "http://localhost/")
+	c.Assert(URL, Equals, "http://localhost")
+}
+
+func (s *localLiveSuite) TestMakeServiceURL(c *C) {
+	cl := s.assertAuthenticationSuccess(c)
+	URL, err := cl.MakeServiceURL("compute", []string{"foo"})
+	c.Assert(err, IsNil)
+	c.Assert(URL, Equals, "http://localhost/foo")
+}
+
+func (s *localLiveSuite) TestMakeServiceURLRetainsTrailingSlash(c *C) {
+	cl := s.assertAuthenticationSuccess(c)
+	URL, err := cl.MakeServiceURL("compute", []string{"foo", "bar/"})
+	c.Assert(err, IsNil)
+	c.Assert(URL, Equals, "http://localhost/foo/bar/")
 }
 
 func checkAuthentication(cl client.AuthenticatingClient) error {
@@ -198,7 +219,7 @@ func checkAuthentication(cl client.AuthenticatingClient) error {
 	if err != nil {
 		return err
 	}
-	if URL != "http://localhost/" {
+	if URL != "http://localhost" {
 		return fmt.Errorf("Unexpected URL: %s", URL)
 	}
 	return nil
@@ -209,6 +230,7 @@ func (s *localLiveSuite) TestAuthenticationForbidsMultipleCallers(c *C) {
 		c.Skip("legacy authentication")
 	}
 	cl := client.NewClient(s.cred, s.authMode, nil)
+	cl.SetRequiredServiceTypes([]string{"compute"})
 	auth := newAuthenticator(2)
 	client.SetAuthenticator(cl, auth)
 
@@ -229,4 +251,73 @@ func (s *localLiveSuite) TestAuthenticationForbidsMultipleCallers(c *C) {
 	allDone.Wait()
 	c.Assert(err1, IsNil)
 	c.Assert(err2, IsNil)
+}
+
+type configurableAuth struct {
+	regionsURLs map[string]identity.ServiceURLs
+}
+
+func NewConfigurableAuth(regionsURLData string) *configurableAuth {
+	auth := &configurableAuth{}
+	err := json.Unmarshal([]byte(regionsURLData), &auth.regionsURLs)
+	if err != nil {
+		panic(err)
+	}
+	return auth
+}
+
+func (auth *configurableAuth) Auth(creds *identity.Credentials) (*identity.AuthDetails, error) {
+	return &identity.AuthDetails{
+		Token:             "token",
+		TenantId:          "tenant",
+		UserId:            "1",
+		RegionServiceURLs: auth.regionsURLs,
+	}, nil
+}
+
+type authRegionTest struct {
+	region        string
+	regionURLInfo string
+	errorMsg      string
+}
+
+var missingEndpointMsgf = "(.|\n)*the configured region %q does not allow access to all required services, namely: %s(.|\n)*access to these services is missing: %s"
+var missingEndpointSuggestRegionMsgf = "(.|\n)*the configured region %q does not allow access to all required services, namely: %s(.|\n)*access to these services is missing: %s(.|\n)*one of these regions may be suitable instead: %s"
+var invalidRegionMsgf = "(.|\n)*invalid region %q"
+
+var authRegionTests = []authRegionTest{
+	authRegionTest{
+		"a.region.1",
+		`{"a.region.1":{"compute":"http://foo"}}`,
+		fmt.Sprintf(missingEndpointMsgf, "a.region.1", "compute, object-store", "object-store"),
+	},
+	authRegionTest{
+		"b.region.1",
+		`{"a.region.1":{"compute":"http://foo"}}`,
+		fmt.Sprintf(invalidRegionMsgf, "b.region.1"),
+	},
+	authRegionTest{
+		"b.region.1",
+		`{"a.region.1":{"compute":"http://foo"}, "region.1":{"object-store":"http://foobar"}}`,
+		fmt.Sprintf(missingEndpointSuggestRegionMsgf, "b.region.1", "compute, object-store", "compute", "a.region.1"),
+	},
+	authRegionTest{
+		"region.1",
+		`{"a.region.1":{"compute":"http://foo"}, "region.1":{"object-store":"http://foobar"}}`,
+		fmt.Sprintf(missingEndpointSuggestRegionMsgf, "region.1", "compute, object-store", "compute", "a.region.1"),
+	},
+}
+
+func (s *localLiveSuite) TestNonAccessibleServiceType(c *C) {
+	if s.authMode == identity.AuthLegacy {
+		c.Skip("legacy authentication")
+	}
+	for _, at := range authRegionTests {
+		s.cred.Region = at.region
+		cl := client.NewClient(s.cred, s.authMode, nil)
+		auth := NewConfigurableAuth(at.regionURLInfo)
+		client.SetAuthenticator(cl, auth)
+		err := cl.Authenticate()
+		c.Assert(err, ErrorMatches, at.errorMsg)
+	}
 }
