@@ -458,7 +458,7 @@ func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (*SecurityGroupRule,
 	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp}
 	err := c.client.SendRequest(client.POST, "compute", apiSecurityGroupRules, &requestData)
 	if err != nil {
-		return nil, errors.Newf(err, "failed to create a rule for the security group with id: %s", ruleInfo.GroupId)
+		return nil, errors.Newf(err, "failed to create a rule for the security group with id: %v", ruleInfo.GroupId)
 	}
 	return &resp.SecurityGroupRule, nil
 }
