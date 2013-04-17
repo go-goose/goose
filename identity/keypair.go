@@ -9,14 +9,28 @@ type KeyPair struct {
 	client *goosehttp.Client
 }
 
+type keypairCredentials struct {
+	AccessKey string `json:"access-key"`
+	SecretKey string `json:"secret-key"`
+}
+
+type authKeypairRequest struct {
+	KeypairCredentials keypairCredentials `json:"apiAccessKeyCredentials"`
+	TenantName          string              `json:"tenantName"`
+}
+
+type authKeypairWrapper struct {
+	Auth authKeypairRequest `json:"auth"`
+}
+
 func (u *KeyPair) Auth(creds *Credentials) (*AuthDetails, error) {
 	if u.client == nil {
 		u.client = goosehttp.New()
 	}
-	auth := authWrapper{Auth: authRequest{
-		PasswordCredentials: passwordCredentials{
-			Username: creds.User,
-			Password: creds.Secrets,
+	auth := authKeypairWrapper{Auth: authKeypairRequest{
+		KeypairCredentials: keypairCredentials{
+			AccessKey: creds.AccessKey,
+			SecretKey: creds.SecretKey,
 		},
 		TenantName: creds.TenantName}}
 
