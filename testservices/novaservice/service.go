@@ -458,10 +458,10 @@ func (n *Nova) addSecurityGroupRule(ruleId int, rule nova.RuleInfo) error {
 			Name:     sourceGroup.Name,
 		}
 	}
-	if rule.FromPort > 0 {
+	if rule.FromPort != 0 {
 		newrule.FromPort = &rule.FromPort
 	}
-	if rule.ToPort > 0 {
+	if rule.ToPort != 0 {
 		newrule.ToPort = &rule.ToPort
 	}
 	if rule.IPProtocol != "" {

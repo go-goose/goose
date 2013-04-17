@@ -789,6 +789,38 @@ func (s *NovaSuite) TestAddSecurityGroupRuleUpdatesParent(c *C) {
 	c.Assert(*gr, DeepEquals, group)
 }
 
+func (s *NovaSuite) TestAddSecurityGroupRuleKeepsNegativePort(c *C) {
+	group := nova.SecurityGroup{
+		Id:       1,
+		Name:     "test",
+		TenantId: s.service.TenantId,
+	}
+	s.createGroup(c, group)
+	defer s.deleteGroup(c, group)
+	ri := nova.RuleInfo{
+		IPProtocol:    "icmp",
+		FromPort:      -1,
+		ToPort:        -1,
+		Cidr:          "0.0.0.0/0",
+		ParentGroupId: group.Id,
+	}
+	rule := nova.SecurityGroupRule{
+		Id:            10,
+		ParentGroupId: group.Id,
+		FromPort:      &ri.FromPort,
+		ToPort:        &ri.ToPort,
+		IPProtocol:    &ri.IPProtocol,
+		IPRange:       map[string]string{"cidr": "0.0.0.0/0"},
+	}
+	s.ensureNoRule(c, rule)
+	err := s.service.addSecurityGroupRule(rule.Id, ri)
+	c.Assert(err, IsNil)
+	defer s.deleteRule(c, rule)
+	returnedGroup, err := s.service.securityGroup(group.Id)
+	c.Assert(err, IsNil)
+	c.Assert(returnedGroup.Rules, DeepEquals, []nova.SecurityGroupRule{rule})
+}
+
 func (s *NovaSuite) TestRemoveSecurityGroupRuleTwiceFails(c *C) {
 	group := nova.SecurityGroup{Id: 1}
 	s.createGroup(c, group)
