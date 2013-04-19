@@ -216,6 +216,7 @@ func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header,
 		if resp.StatusCode != http.StatusRequestEntityTooLarge || resp.Header.Get("Retry-After") == "" {
 			return resp, nil
 		}
+		resp.Body.Close()
 		retryAfter, err := strconv.ParseFloat(resp.Header.Get("Retry-After"), 32)
 		if err != nil {
 			return nil, errors.Newf(err, "Invalid Retry-After header %s", URL)
@@ -226,7 +227,6 @@ func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header,
 		if logger != nil {
 			logger.Printf("Too many requests, retrying in %dms.", int(retryAfter*1000))
 		}
-		resp.Body.Close()
 		time.Sleep(time.Duration(retryAfter) * time.Second)
 	}
 	return nil, errors.Newf(err, "Maximum number of attempts (%d) reached sending request to %s", c.maxSendAttempts, URL)
