@@ -226,6 +226,7 @@ func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header,
 		if logger != nil {
 			logger.Printf("Too many requests, retrying in %dms.", int(retryAfter*1000))
 		}
+		resp.Body.Close()
 		time.Sleep(time.Duration(retryAfter) * time.Second)
 	}
 	return nil, errors.Newf(err, "Maximum number of attempts (%d) reached sending request to %s", c.maxSendAttempts, URL)
