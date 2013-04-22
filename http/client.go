@@ -201,7 +201,7 @@ func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header,
 		}
 		req, err := http.NewRequest(method, URL, reqReader)
 		if err != nil {
-			err = errors.Newf(err, URL, "failed creating the request")
+			err = errors.Newf(err, "failed creating the request %s", URL)
 			return nil, err
 		}
 		for header, values := range headers {
@@ -211,25 +211,25 @@ func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header,
 		}
 		resp, err = c.Do(req)
 		if err != nil {
-			return nil, errors.Newf(err, URL, "failed executing the request")
+			return nil, errors.Newf(err, "failed executing the request %s", URL)
 		}
 		if resp.StatusCode != http.StatusRequestEntityTooLarge || resp.Header.Get("Retry-After") == "" {
 			return resp, nil
 		}
+		resp.Body.Close()
 		retryAfter, err := strconv.ParseFloat(resp.Header.Get("Retry-After"), 32)
 		if err != nil {
-			return nil, errors.Newf(err, URL, "Invalid Retry-After header")
+			return nil, errors.Newf(err, "Invalid Retry-After header %s", URL)
 		}
 		if retryAfter == 0 {
-			return nil, errors.Newf(err, URL, "Resource limit exeeded at URL %s.", URL)
+			return nil, errors.Newf(err, "Resource limit exeeded at URL %s", URL)
 		}
 		if logger != nil {
 			logger.Printf("Too many requests, retrying in %dms.", int(retryAfter*1000))
 		}
 		time.Sleep(time.Duration(retryAfter) * time.Second)
 	}
-	return nil, errors.Newf(err, URL,
-		"Maximum number of attempts (%d) reached sending request to %s.", c.maxSendAttempts, URL)
+	return nil, errors.Newf(err, "Maximum number of attempts (%d) reached sending request to %s", c.maxSendAttempts, URL)
 }
 
 type HttpError struct {
