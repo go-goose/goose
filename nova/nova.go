@@ -10,6 +10,7 @@ import (
 	goosehttp "launchpad.net/goose/http"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strconv"
 )
 
@@ -102,6 +103,28 @@ type Entity struct {
 	Name  string `json:"name"`
 }
 
+func stringValue(item interface{}, attr string) string {
+	return reflect.ValueOf(item).FieldByName(attr).String()
+}
+
+// Allow Entity slices to be sorted by named attribute.
+type EntitySortBy struct {
+	Attr     string
+	Entities []Entity
+}
+
+func (e EntitySortBy) Len() int {
+	return len(e.Entities)
+}
+
+func (e EntitySortBy) Less(i, j int) bool {
+	return stringValue(e.Entities[i], e.Attr) < stringValue(e.Entities[j], e.Attr)
+}
+
+func (e EntitySortBy) Swap(i, j int) {
+	e.Entities[i], e.Entities[j] = e.Entities[j], e.Entities[i]
+}
+
 // ListFlavours lists IDs, names, and links for available flavors.
 func (c *Client) ListFlavors() ([]Entity, error) {
 	var resp struct {
@@ -123,6 +146,24 @@ type FlavorDetail struct {
 	Disk  int    // Available root partition space, in GB
 	Id    string `json:"-"`
 	Links []Link
+}
+
+// Allow FlavorDetail slices to be sorted by named attribute.
+type FlavorDetailSortBy struct {
+	Attr          string
+	FlavorDetails []FlavorDetail
+}
+
+func (e FlavorDetailSortBy) Len() int {
+	return len(e.FlavorDetails)
+}
+
+func (e FlavorDetailSortBy) Less(i, j int) bool {
+	return stringValue(e.FlavorDetails[i], e.Attr) < stringValue(e.FlavorDetails[j], e.Attr)
+}
+
+func (e FlavorDetailSortBy) Swap(i, j int) {
+	e.FlavorDetails[i], e.FlavorDetails[j] = e.FlavorDetails[j], e.FlavorDetails[i]
 }
 
 // ListFlavorsDetail lists all details for available flavors.
