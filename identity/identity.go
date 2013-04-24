@@ -46,8 +46,6 @@ type Credentials struct {
 	URL        string // The URL to authenticate against
 	User       string // The username to authenticate as
 	Secrets    string // The secrets to pass
-	AccessKey  string // The API access key to authenticate as
-	SecretKey  string // The secrets to pass
 	Region     string // Region to send requests to
 	TenantName string // The tenant information for this connection
 }
@@ -75,10 +73,10 @@ func getConfig(envVars ...string) (value string) {
 func CredentialsFromEnv() *Credentials {
 	return &Credentials{
 		URL:        getConfig("OS_AUTH_URL"),
-		User:       getConfig("OS_USERNAME", "NOVA_USERNAME"),
-		Secrets:    getConfig("OS_PASSWORD", "NOVA_PASSWORD"),
-		AccessKey:  getConfig("OS_ACCESS_KEY", "NOVA_API_KEY"),
-		SecretKey:  getConfig("OS_SECRET_KEY", "EC2_SECRET_KEYS",
+		User:       getConfig("OS_USERNAME", "NOVA_USERNAME",
+			"OS_ACCESS_KEY", "NOVA_API_KEY"),
+		Secrets:    getConfig("OS_PASSWORD", "NOVA_PASSWORD",
+			"OS_SECRET_KEY", "EC2_SECRET_KEYS",
 			"AWS_SECRET_ACCESS_KEY"),
 		Region:     getConfig("OS_REGION_NAME", "NOVA_REGION"),
 		TenantName: getConfig("OS_TENANT_NAME", "NOVA_PROJECT_ID"),

@@ -29,8 +29,8 @@ func (u *KeyPair) Auth(creds *Credentials) (*AuthDetails, error) {
 	}
 	auth := authKeypairWrapper{Auth: authKeypairRequest{
 		KeypairCredentials: keypairCredentials{
-			AccessKey: creds.AccessKey,
-			SecretKey: creds.SecretKey,
+			AccessKey: creds.User,
+			SecretKey: creds.Secrets,
 		},
 		TenantName: creds.TenantName}}
 

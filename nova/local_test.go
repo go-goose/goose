@@ -71,7 +71,7 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 		Region:     "some region",
 		TenantName: "tenant",
 	}
-	s.openstack = openstackservice.New(s.cred)
+	s.openstack = openstackservice.New(s.cred, identity.AuthUserPass)
 	s.openstack.SetupHTTP(s.Mux)
 
 	s.testFlavor = "m1.small"

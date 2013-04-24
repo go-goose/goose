@@ -43,8 +43,6 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 		URL:        s.Server.URL,
 		User:       "fred",
 		Secrets:    "secret",
-		AccessKey:  "fred-key",
-		SecretKey:  "secret-key",
 		Region:     "zone1.some region",
 		TenantName: "tenant",
 	}
@@ -53,7 +51,7 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 		panic("Invalid authentication method")
 	case identity.AuthKeyPair:
 		// The openstack test service sets up userpass authentication.
-		s.service = openstackservice.New(s.cred)
+		s.service = openstackservice.New(s.cred, identity.AuthKeyPair)
 		// Add an additional endpoint so region filtering can be properly tested.
 		serviceDef := identityservice.Service{"nova", "compute", []identityservice.Endpoint{
 			identityservice.Endpoint{PublicURL: "http://nova2", Region: "zone2.RegionOne"},
@@ -61,7 +59,7 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 		s.service.(*openstackservice.Openstack).Identity.(*identityservice.KeyPair).AddService(serviceDef)
 	case identity.AuthUserPass:
 		// The openstack test service sets up userpass authentication.
-		s.service = openstackservice.New(s.cred)
+		s.service = openstackservice.New(s.cred, identity.AuthUserPass)
 		// Add an additional endpoint so region filtering can be properly tested.
 		serviceDef := identityservice.Service{"nova", "compute", []identityservice.Endpoint{
 			identityservice.Endpoint{PublicURL: "http://nova2", Region: "zone2.RegionOne"},

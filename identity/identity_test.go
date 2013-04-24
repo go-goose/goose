@@ -19,8 +19,6 @@ func (s *CredentialsTestSuite) TestCredentialsFromEnv(c *C) {
 		env       map[string]string
 		username  string
 		password  string
-		accessKey string
-		secretKey string
 		tenant    string
 		region    string
 		authURL   string
@@ -36,8 +34,6 @@ func (s *CredentialsTestSuite) TestCredentialsFromEnv(c *C) {
 			},
 			username: "test-user",
 			password: "test-pass",
-			accessKey: "test-access-key",
-			secretKey: "test-secret-key",
 			tenant:   "tenant-name",
 			region:   "region",
 		},
@@ -52,8 +48,6 @@ func (s *CredentialsTestSuite) TestCredentialsFromEnv(c *C) {
 			},
 			username: "test-user",
 			password: "test-pass",
-			accessKey: "test-access-key",
-			secretKey: "test-secret-key",
 			tenant:   "tenant-name",
 			region:   "region",
 		},
@@ -66,8 +60,6 @@ func (s *CredentialsTestSuite) TestCredentialsFromEnv(c *C) {
 		c.Check(creds.URL, Equals, scenario.authURL)
 		c.Check(creds.User, Equals, scenario.username)
 		c.Check(creds.Secrets, Equals, scenario.password)
-		c.Check(creds.AccessKey, Equals, scenario.accessKey)
-		c.Check(creds.SecretKey, Equals, scenario.secretKey)
 		c.Check(creds.Region, Equals, scenario.region)
 		c.Check(creds.TenantName, Equals, scenario.tenant)
 	}
@@ -91,8 +83,6 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvValid(c *C) {
 	c.Check(creds.URL, Equals, "http://auth")
 	c.Check(creds.User, Equals, "test-user")
 	c.Check(creds.Secrets, Equals, "test-pass")
-	c.Check(creds.AccessKey, Equals, "test-access-key")
-	c.Check(creds.SecretKey, Equals, "test-secret-key")
 	c.Check(creds.Region, Equals, "region")
 	c.Check(creds.TenantName, Equals, "tenant-name")
 }
@@ -103,7 +93,6 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvInvalid(c *C) {
 		"OS_AUTH_URL":    "http://auth",
 		"OS_USERNAME":    "test-user",
 		"OS_ACCESS_KEY":    "test-access-key",
-		"OS_SECRET_KEY":    "test-secret-key",
 		"OS_TENANT_NAME": "tenant-name",
 		"OS_REGION_NAME": "region",
 	}
@@ -118,8 +107,8 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvInvalid(c *C) {
 func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvKeypair(c *C) {
 	env := map[string]string{
 		"OS_AUTH_URL":    "http://auth",
-		"OS_USERNAME":    "test-user",
-		"OS_PASSWORD":    "test-pass",
+		"OS_USERNAME":    "",
+		"OS_PASSWORD":    "",
 		"OS_ACCESS_KEY":    "test-access-key",
 		"OS_SECRET_KEY":    "test-secret-key",
 		"OS_TENANT_NAME": "tenant-name",
@@ -131,8 +120,8 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvKeypair(c *C) {
 	creds, err := CompleteCredentialsFromEnv()
 	c.Assert(err, IsNil)
 	c.Check(creds.URL, Equals, "http://auth")
-	c.Check(creds.AccessKey, Equals, "test-access-key")
-	c.Check(creds.SecretKey, Equals, "test-secret-key")
+	c.Check(creds.User, Equals, "test-access-key")
+	c.Check(creds.Secrets, Equals, "test-secret-key")
 	c.Check(creds.Region, Equals, "region")
 	c.Check(creds.TenantName, Equals, "tenant-name")
 }
@@ -140,8 +129,8 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvKeypair(c *C) {
 func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvKeypairCompatibleEnvVars(c *C) {
 	env := map[string]string{
 		"OS_AUTH_URL":    "http://auth",
-		"OS_USERNAME":    "test-user",
-		"OS_PASSWORD":    "test-pass",
+		"OS_USERNAME":    "",
+		"OS_PASSWORD":    "",
 		"NOVA_API_KEY":    "test-access-key",
 		"EC2_SECRET_KEYS":    "test-secret-key",
 		"OS_TENANT_NAME": "tenant-name",
@@ -153,8 +142,8 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvKeypairCompatibleEn
 	creds, err := CompleteCredentialsFromEnv()
 	c.Assert(err, IsNil)
 	c.Check(creds.URL, Equals, "http://auth")
-	c.Check(creds.AccessKey, Equals, "test-access-key")
-	c.Check(creds.SecretKey, Equals, "test-secret-key")
+	c.Check(creds.User, Equals, "test-access-key")
+	c.Check(creds.Secrets, Equals, "test-secret-key")
 	c.Check(creds.Region, Equals, "region")
 	c.Check(creds.TenantName, Equals, "tenant-name")
 }
