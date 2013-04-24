@@ -68,8 +68,9 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 	}
 	// Real openstack instances have flavours "out of the box". So we add some here.
 	defaultFlavors := []nova.FlavorDetail{
-		{Id: "1", Name: "m1.tiny"},
-		{Id: "2", Name: "m1.small"},
+		{Id: "1", Name: "m1.tiny", RAM: 512, VCPUs: 1},
+		{Id: "2", Name: "m1.small", RAM: 2048, VCPUs: 1},
+		{Id: "3", Name: "m1.medium", RAM: 4096, VCPUs: 2},
 	}
 	// Real openstack instances have a default security group "out of the box". So we add it here.
 	defaultSecurityGroups := []nova.SecurityGroup{
@@ -458,10 +459,10 @@ func (n *Nova) addSecurityGroupRule(ruleId int, rule nova.RuleInfo) error {
 			Name:     sourceGroup.Name,
 		}
 	}
-	if rule.FromPort > 0 {
+	if rule.FromPort != 0 {
 		newrule.FromPort = &rule.FromPort
 	}
-	if rule.ToPort > 0 {
+	if rule.ToPort != 0 {
 		newrule.ToPort = &rule.ToPort
 	}
 	if rule.IPProtocol != "" {

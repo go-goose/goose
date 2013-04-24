@@ -155,18 +155,18 @@ func (s *NovaSuite) TestRemoveFlavorTwiceFails(c *C) {
 func (s *NovaSuite) TestAllFlavors(c *C) {
 	// The test service has 2 default flavours.
 	flavors := s.service.allFlavors()
-	c.Assert(flavors, HasLen, 2)
+	c.Assert(flavors, HasLen, 3)
 	for _, fl := range flavors {
-		c.Assert(fl.Name == "m1.tiny" || fl.Name == "m1.small", Equals, true)
+		c.Assert(fl.Name == "m1.tiny" || fl.Name == "m1.small" || fl.Name == "m1.medium", Equals, true)
 	}
 }
 
 func (s *NovaSuite) TestAllFlavorsAsEntities(c *C) {
 	// The test service has 2 default flavours.
 	entities := s.service.allFlavorsAsEntities()
-	c.Assert(entities, HasLen, 2)
+	c.Assert(entities, HasLen, 3)
 	for _, fl := range entities {
-		c.Assert(fl.Name == "m1.tiny" || fl.Name == "m1.small", Equals, true)
+		c.Assert(fl.Name == "m1.tiny" || fl.Name == "m1.small" || fl.Name == "m1.medium", Equals, true)
 	}
 }
 
@@ -787,6 +787,38 @@ func (s *NovaSuite) TestAddSecurityGroupRuleUpdatesParent(c *C) {
 	gr, err := s.service.securityGroup(group.Id)
 	c.Assert(err, IsNil)
 	c.Assert(*gr, DeepEquals, group)
+}
+
+func (s *NovaSuite) TestAddSecurityGroupRuleKeepsNegativePort(c *C) {
+	group := nova.SecurityGroup{
+		Id:       1,
+		Name:     "test",
+		TenantId: s.service.TenantId,
+	}
+	s.createGroup(c, group)
+	defer s.deleteGroup(c, group)
+	ri := nova.RuleInfo{
+		IPProtocol:    "icmp",
+		FromPort:      -1,
+		ToPort:        -1,
+		Cidr:          "0.0.0.0/0",
+		ParentGroupId: group.Id,
+	}
+	rule := nova.SecurityGroupRule{
+		Id:            10,
+		ParentGroupId: group.Id,
+		FromPort:      &ri.FromPort,
+		ToPort:        &ri.ToPort,
+		IPProtocol:    &ri.IPProtocol,
+		IPRange:       map[string]string{"cidr": "0.0.0.0/0"},
+	}
+	s.ensureNoRule(c, rule)
+	err := s.service.addSecurityGroupRule(rule.Id, ri)
+	c.Assert(err, IsNil)
+	defer s.deleteRule(c, rule)
+	returnedGroup, err := s.service.securityGroup(group.Id)
+	c.Assert(err, IsNil)
+	c.Assert(returnedGroup.Rules, DeepEquals, []nova.SecurityGroupRule{rule})
 }
 
 func (s *NovaSuite) TestRemoveSecurityGroupRuleTwiceFails(c *C) {
