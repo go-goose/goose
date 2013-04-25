@@ -1,6 +1,6 @@
 Goose - Go bindings for talking to OpenStack
 
-Copyright 2012-2013 Canonical Ltd.
+Copyright 2012-2013, Canonical Ltd.
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU Lesser General Public License as published by the Free
@@ -9,6 +9,7 @@ later version.
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details.
 
-See COPYING.LESSER for the full text of the GNU Lesser General Public License.
+See both COPYING and COPYING.LESSER for the full terms of the GNU Lesser
+General Public License.
