@@ -151,7 +151,7 @@ def run_juju_core_tests(opts):
     """Run the juju-core test suite"""
     orig_wd = os.getcwd()
     try:
-        sys.stderr.write('Switching to juju-core')
+        sys.stderr.write('Switching to juju-core\n')
         os.chdir('../juju-core')
         retval = run_cmd(['go', 'build', './...'])
         if retval != 0:
@@ -176,6 +176,7 @@ def run_live_tests(opts):
                 final_retcode = retcode
         finally:
             os.chdir(orig_wd)
+    return final_retcode
 
 
 def main(args):
@@ -209,5 +210,5 @@ def main(args):
 
 if __name__ == '__main__':
     import sys
-    main(sys.argv[1:])
+    sys.exit(main(sys.argv[1:]))
 
