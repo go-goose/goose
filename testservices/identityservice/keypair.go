@@ -8,13 +8,13 @@ import (
 	"net/http"
 )
 
-// Implement the v2 User Pass form of identity (Keystone)
+// Implement the v2 Key Pair form of identity based on Keystone
 
 type KeyPairRequest struct {
 	Auth struct {
 		ApiAccessKeyCredentials struct {
-			AccessKey string `json:"accessKey"`
-			SecretKey string `json:"secretKey"`
+			AccessKey string `json:"access-key"`
+			SecretKey string `json:"secret-key"`
 		} `json:"apiAccessKeyCredentials"`
 		TenantName string `json:"tenantName"`
 	} `json:"auth"`

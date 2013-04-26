@@ -19,9 +19,6 @@ import (
 
 func registerLocalTests(authModes []identity.AuthMode) {
 	for _, authMode := range authModes {
-		if authMode == identity.AuthKeyPair {
-			continue
-		}
 		Suite(&localLiveSuite{
 			LiveTests: LiveTests{
 				authMode: authMode,
