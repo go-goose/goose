@@ -10,8 +10,8 @@ type KeyPair struct {
 }
 
 type keypairCredentials struct {
-	AccessKey string `json:"access-key"`
-	SecretKey string `json:"secret-key"`
+	AccessKey string `json:"accessKey"`
+	SecretKey string `json:"secretKey"`
 }
 
 type authKeypairRequest struct {
