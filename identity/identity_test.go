@@ -15,13 +15,13 @@ var _ = Suite(&CredentialsTestSuite{})
 
 func (s *CredentialsTestSuite) TestCredentialsFromEnv(c *C) {
 	var scenarios = []struct {
-		summary   string
-		env       map[string]string
-		username  string
-		password  string
-		tenant    string
-		region    string
-		authURL   string
+		summary  string
+		env      map[string]string
+		username string
+		password string
+		tenant   string
+		region   string
+		authURL  string
 	}{
 		{summary: "Old 'NOVA' style creds",
 			env: map[string]string{
@@ -70,8 +70,8 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvValid(c *C) {
 		"OS_AUTH_URL":    "http://auth",
 		"OS_USERNAME":    "test-user",
 		"OS_PASSWORD":    "test-pass",
-		"OS_ACCESS_KEY":    "test-access-key",
-		"OS_SECRET_KEY":    "test-secret-key",
+		"OS_ACCESS_KEY":  "test-access-key",
+		"OS_SECRET_KEY":  "test-secret-key",
 		"OS_TENANT_NAME": "tenant-name",
 		"OS_REGION_NAME": "region",
 	}
@@ -92,7 +92,7 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvInvalid(c *C) {
 	env := map[string]string{
 		"OS_AUTH_URL":    "http://auth",
 		"OS_USERNAME":    "test-user",
-		"OS_ACCESS_KEY":    "test-access-key",
+		"OS_ACCESS_KEY":  "test-access-key",
 		"OS_TENANT_NAME": "tenant-name",
 		"OS_REGION_NAME": "region",
 	}
@@ -109,8 +109,8 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvKeypair(c *C) {
 		"OS_AUTH_URL":    "http://auth",
 		"OS_USERNAME":    "",
 		"OS_PASSWORD":    "",
-		"OS_ACCESS_KEY":    "test-access-key",
-		"OS_SECRET_KEY":    "test-secret-key",
+		"OS_ACCESS_KEY":  "test-access-key",
+		"OS_SECRET_KEY":  "test-secret-key",
 		"OS_TENANT_NAME": "tenant-name",
 		"OS_REGION_NAME": "region",
 	}
@@ -128,13 +128,13 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvKeypair(c *C) {
 
 func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvKeypairCompatibleEnvVars(c *C) {
 	env := map[string]string{
-		"OS_AUTH_URL":    "http://auth",
-		"OS_USERNAME":    "",
-		"OS_PASSWORD":    "",
+		"OS_AUTH_URL":     "http://auth",
+		"OS_USERNAME":     "",
+		"OS_PASSWORD":     "",
 		"NOVA_API_KEY":    "test-access-key",
-		"EC2_SECRET_KEYS":    "test-secret-key",
-		"OS_TENANT_NAME": "tenant-name",
-		"OS_REGION_NAME": "region",
+		"EC2_SECRET_KEYS": "test-secret-key",
+		"OS_TENANT_NAME":  "tenant-name",
+		"OS_REGION_NAME":  "region",
 	}
 	for key, value := range env {
 		os.Setenv(key, value)

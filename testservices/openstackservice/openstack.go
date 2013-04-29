@@ -20,7 +20,7 @@ type Openstack struct {
 // An initial user with the specified credentials is registered with the identity service.
 func New(cred *identity.Credentials, authMode identity.AuthMode) *Openstack {
 	var openstack Openstack
-	if (authMode == identity.AuthKeyPair) {
+	if authMode == identity.AuthKeyPair {
 		openstack = Openstack{
 			Identity: identityservice.NewKeyPair(),
 		}

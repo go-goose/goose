@@ -72,10 +72,10 @@ func getConfig(envVars ...string) (value string) {
 // environment variables.
 func CredentialsFromEnv() *Credentials {
 	return &Credentials{
-		URL:        getConfig("OS_AUTH_URL"),
-		User:       getConfig("OS_USERNAME", "NOVA_USERNAME",
+		URL: getConfig("OS_AUTH_URL"),
+		User: getConfig("OS_USERNAME", "NOVA_USERNAME",
 			"OS_ACCESS_KEY", "NOVA_API_KEY"),
-		Secrets:    getConfig("OS_PASSWORD", "NOVA_PASSWORD",
+		Secrets: getConfig("OS_PASSWORD", "NOVA_PASSWORD",
 			"OS_SECRET_KEY", "EC2_SECRET_KEYS",
 			"AWS_SECRET_ACCESS_KEY"),
 		Region:     getConfig("OS_REGION_NAME", "NOVA_REGION"),

@@ -16,7 +16,7 @@ type keypairCredentials struct {
 
 type authKeypairRequest struct {
 	KeypairCredentials keypairCredentials `json:"apiAccessKeyCredentials"`
-	TenantName          string              `json:"tenantName"`
+	TenantName         string             `json:"tenantName"`
 }
 
 type authKeypairWrapper struct {

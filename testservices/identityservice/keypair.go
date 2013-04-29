@@ -44,7 +44,6 @@ func (u *KeyPair) AddService(service Service) {
 	u.services = append(u.services, service)
 }
 
-
 func (u *KeyPair) ReturnFailure(w http.ResponseWriter, status int, message string) {
 	e := ErrorWrapper{
 		Error: ErrorResponse{
