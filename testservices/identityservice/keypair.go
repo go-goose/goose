@@ -29,7 +29,7 @@ type KeyPair struct {
 func NewKeyPair() *KeyPair {
 	return &KeyPair{
 		Users: Users{
-			users: make(map[string]UserInfo),
+			users:   make(map[string]UserInfo),
 			tenants: make(map[string]string),
 		},
 	}
