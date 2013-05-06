@@ -5,6 +5,10 @@ import (
 	goosehttp "launchpad.net/goose/http"
 )
 
+// KeyPair allows OpenStack cloud authentication using an access and
+// secret key.
+//
+// It implements Authenticator interface by providing the Auth method.
 type KeyPair struct {
 	client *goosehttp.Client
 }
@@ -45,7 +49,7 @@ func (u *KeyPair) Auth(creds *Credentials) (*AuthDetails, error) {
 	access := accessWrapper.Access
 	respToken := access.Token
 	if respToken.Id == "" {
-		return nil, fmt.Errorf("Did not get valid Token from auth request")
+		return nil, fmt.Errorf("keypair authentication failed")
 	}
 	details.Token = respToken.Id
 	details.TenantId = respToken.Tenant.Id

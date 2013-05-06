@@ -43,11 +43,11 @@ func (s *KeyPairSuite) setupKeyPairWithServices(user, secret string, services []
 	return
 }
 
-var authKeyPairTemplate = `{
+const authKeyPairTemplate = `{
     "auth": {
-        "tenantName": "tenant-something", 
+        "tenantName": "tenant-something",
         "apiAccessKeyCredentials": {
-            "accessKey": "%s", 
+            "accessKey": "%s",
             "secretKey": "%s"
         }
     }
@@ -80,7 +80,7 @@ func (s *KeyPairSuite) TestNotJSON(c *C) {
 func (s *KeyPairSuite) TestBadJSON(c *C) {
 	// We do everything in keyPairAuthRequest, except set the Content-Type
 	s.setupKeyPair("user", "secret")
-	res, err := keyPairAuthRequest(s.Server.URL, "garbage\"in", "secret")
+	res, err := keyPairAuthRequest(s.Server.URL, `garbage"in`, "secret")
 	defer res.Body.Close()
 	c.Assert(err, IsNil)
 	CheckErrorResponse(c, res, http.StatusBadRequest, notJSON)

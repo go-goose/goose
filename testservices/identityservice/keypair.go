@@ -27,12 +27,12 @@ type KeyPair struct {
 }
 
 func NewKeyPair() *KeyPair {
-	keypair := &KeyPair{
-		services: make([]Service, 0),
+	return &KeyPair{
+		Users: Users{
+			users: make(map[string]UserInfo),
+			tenants: make(map[string]string),
+		},
 	}
-	keypair.users = make(map[string]UserInfo)
-	keypair.tenants = make(map[string]string)
-	return keypair
 }
 
 func (u *KeyPair) RegisterServiceProvider(name, serviceType string, serviceProvider ServiceProvider) {
@@ -98,14 +98,12 @@ func (u *KeyPair) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write(content)
 		return
 	}
-	panic("All paths should have already returned")
+	panic("unreachable")
 }
 
 func (u *KeyPair) generateAccessResponse(userInfo *UserInfo) (*AccessResponse, error) {
 	res := AccessResponse{}
 	// We pre-populate the response with genuine entries so that it looks sane.
-	// XXX: We should really build up valid state for this instead, at the
-	//	very least, we should manage the URLs better.
 	if err := json.Unmarshal([]byte(exampleResponse), &res); err != nil {
 		return nil, err
 	}
