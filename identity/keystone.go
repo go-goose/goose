@@ -5,7 +5,6 @@ import (
 	goosehttp "launchpad.net/goose/http"
 )
 
-
 type endpoint struct {
 	AdminURL    string `json:"adminURL"`
 	InternalURL string `json:"internalURL"`
