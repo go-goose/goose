@@ -5,6 +5,53 @@ import (
 	goosehttp "launchpad.net/goose/http"
 )
 
+
+type endpoint struct {
+	AdminURL    string `json:"adminURL"`
+	InternalURL string `json:"internalURL"`
+	PublicURL   string `json:"publicURL"`
+	Region      string `json:"region"`
+}
+
+type serviceResponse struct {
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Endpoints []endpoint
+}
+
+type tokenResponse struct {
+	Expires string `json:"expires"` // should this be a date object?
+	Id      string `json:"id"`      // Actual token string
+	Tenant  struct {
+		Id          string `json:"id"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		Enabled     bool   `json:"enabled"`
+	} `json:"tenant"`
+}
+
+type roleResponse struct {
+	Id       string `json:"id"`
+	Name     string `json:"name"`
+	TenantId string `json:"tenantId"`
+}
+
+type userResponse struct {
+	Id    string         `json:"id"`
+	Name  string         `json:"name"`
+	Roles []roleResponse `json:"roles"`
+}
+
+type accessWrapper struct {
+	Access accessResponse `json:"access"`
+}
+
+type accessResponse struct {
+	ServiceCatalog []serviceResponse `json:"serviceCatalog"`
+	Token          tokenResponse     `json:"token"`
+	User           userResponse      `json:"user"`
+}
+
 // Authenticate to OpenStack cloud using keystone v2 authentication.
 //
 // Uses `client` to submit HTTP requests to `URL`
