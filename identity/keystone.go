@@ -19,7 +19,7 @@ type serviceResponse struct {
 }
 
 type tokenResponse struct {
-	Expires string `json:"expires"` // should this be a date object?
+	Expires string `json:"expires"`
 	Id      string `json:"id"`      // Actual token string
 	Tenant  struct {
 		Id          string `json:"id"`
