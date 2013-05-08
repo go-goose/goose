@@ -1,13 +1,13 @@
 package openstackservice
 
 import (
+	"fmt"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/testservices/identityservice"
 	"launchpad.net/goose/testservices/novaservice"
 	"launchpad.net/goose/testservices/swiftservice"
 	"net/http"
 	"strings"
-	"fmt"
 )
 
 // Openstack provides an Openstack service double implementation.
