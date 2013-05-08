@@ -6,6 +6,8 @@ import (
 	"launchpad.net/goose/testservices/openstackservice"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 )
 
 func registerLocalTests() {
@@ -61,3 +63,13 @@ func (s *localLiveSuite) TearDownTest(c *C) {
 }
 
 // Additional tests to be run against the service double only go here.
+
+func (s *localLiveSuite) TestProductStreamsEndpoint(c *C) {
+	err := s.client.Authenticate()
+	c.Assert(err, IsNil)
+	serviceURL, err := s.client.MakeServiceURL("product-streams", nil)
+	c.Assert(err, IsNil)
+	_, err = url.Parse(serviceURL)
+	c.Assert(err, IsNil)
+	c.Assert(strings.HasSuffix(serviceURL, "/imagemetadata"), Equals, true)
+}

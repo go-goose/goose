@@ -7,6 +7,7 @@ import (
 	"launchpad.net/goose/testservices/swiftservice"
 	"net/http"
 	"strings"
+	"fmt"
 )
 
 // Openstack provides an Openstack service double implementation.
@@ -31,6 +32,17 @@ func New(cred *identity.Credentials) *Openstack {
 	regionParts := strings.Split(cred.Region, ".")
 	baseRegion := regionParts[len(regionParts)-1]
 	openstack.Swift = swiftservice.New(cred.URL, "v1", userInfo.TenantId, baseRegion, openstack.Identity)
+	// Create container and add image metadata endpoint so that product-streams URLs are included
+	// in the keystone catalog.
+	err := openstack.Swift.AddContainer("imagemetadata")
+	if err != nil {
+		panic(fmt.Errorf("setting up image metadata container: %v", err))
+	}
+	url := openstack.Swift.Endpoints()[0].PublicURL
+	serviceDef := identityservice.Service{"simplestreams", "product-streams", []identityservice.Endpoint{
+		identityservice.Endpoint{PublicURL: url + "/imagemetadata", Region: cred.Region},
+	}}
+	openstack.Identity.(*identityservice.UserPass).AddService(serviceDef)
 	return &openstack
 }
 
