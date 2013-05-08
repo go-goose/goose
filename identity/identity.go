@@ -21,7 +21,7 @@ const (
 func (a AuthMode) String() string {
 	switch a {
 	case AuthKeyPair:
-		return "API Access/Secret Key Authentication"
+		return "Access/Secret Key Authentication"
 	case AuthLegacy:
 		return "Legacy Authentication"
 	case AuthUserPass:

@@ -51,7 +51,7 @@ type accessResponse struct {
 	User           userResponse      `json:"user"`
 }
 
-// Authenticate to OpenStack cloud using keystone v2 authentication.
+// keystoneAuth authenticates to OpenStack cloud using keystone v2 authentication.
 //
 // Uses `client` to submit HTTP requests to `URL`
 // and posts `auth_data` as JSON.
