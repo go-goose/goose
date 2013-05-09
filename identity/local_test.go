@@ -41,7 +41,7 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 		Region:     "zone1.some region",
 		TenantName: "tenant",
 	}
-	openstack := openstackservice.New(s.cred)
+	openstack := openstackservice.New(s.cred, identity.AuthUserPass)
 	openstack.SetupHTTP(s.Mux)
 
 	s.LiveTests.SetUpSuite(c)

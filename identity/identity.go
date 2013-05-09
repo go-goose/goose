@@ -15,10 +15,13 @@ type AuthMode int
 const (
 	AuthLegacy   = AuthMode(iota) // Legacy authentication
 	AuthUserPass                  // Username + password authentication
+	AuthKeyPair                   // Access/secret key pair authentication
 )
 
 func (a AuthMode) String() string {
 	switch a {
+	case AuthKeyPair:
+		return "Access/Secret Key Authentication"
 	case AuthLegacy:
 		return "Legacy Authentication"
 	case AuthUserPass:
@@ -69,9 +72,12 @@ func getConfig(envVars ...string) (value string) {
 // environment variables.
 func CredentialsFromEnv() *Credentials {
 	return &Credentials{
-		URL:        getConfig("OS_AUTH_URL"),
-		User:       getConfig("OS_USERNAME", "NOVA_USERNAME"),
-		Secrets:    getConfig("OS_PASSWORD", "NOVA_PASSWORD"),
+		URL: getConfig("OS_AUTH_URL"),
+		User: getConfig("OS_USERNAME", "NOVA_USERNAME",
+			"OS_ACCESS_KEY", "NOVA_API_KEY"),
+		Secrets: getConfig("OS_PASSWORD", "NOVA_PASSWORD",
+			"OS_SECRET_KEY", "EC2_SECRET_KEYS",
+			"AWS_SECRET_ACCESS_KEY"),
 		Region:     getConfig("OS_REGION_NAME", "NOVA_REGION"),
 		TenantName: getConfig("OS_TENANT_NAME", "NOVA_PROJECT_ID"),
 	}

@@ -33,7 +33,8 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 		TenantName: "tenant",
 	}
 	s.LiveTestsPublicContainer.cred = s.LiveTests.cred
-	s.openstack = openstackservice.New(s.LiveTests.cred)
+	s.openstack = openstackservice.New(s.LiveTests.cred,
+		identity.AuthUserPass)
 
 	s.LiveTests.SetUpSuite(c)
 	s.LiveTestsPublicContainer.SetUpSuite(c)
