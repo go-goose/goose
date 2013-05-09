@@ -49,9 +49,17 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 	switch s.authMode {
 	default:
 		panic("Invalid authentication method")
+	case identity.AuthKeyPair:
+		// The openstack test service sets up keypair authentication.
+		s.service = openstackservice.New(s.cred, identity.AuthKeyPair)
+		// Add an additional endpoint so region filtering can be properly tested.
+		serviceDef := identityservice.Service{"nova", "compute", []identityservice.Endpoint{
+			identityservice.Endpoint{PublicURL: "http://nova2", Region: "zone2.RegionOne"},
+		}}
+		s.service.(*openstackservice.Openstack).Identity.(*identityservice.KeyPair).AddService(serviceDef)
 	case identity.AuthUserPass:
 		// The openstack test service sets up userpass authentication.
-		s.service = openstackservice.New(s.cred)
+		s.service = openstackservice.New(s.cred, identity.AuthUserPass)
 		// Add an additional endpoint so region filtering can be properly tested.
 		serviceDef := identityservice.Service{"nova", "compute", []identityservice.Endpoint{
 			identityservice.Endpoint{PublicURL: "http://nova2", Region: "zone2.RegionOne"},

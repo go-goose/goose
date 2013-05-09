@@ -106,6 +106,8 @@ func NewClient(creds *identity.Credentials, auth_method identity.AuthMode, logge
 		client.authMode = &identity.Legacy{}
 	case identity.AuthUserPass:
 		client.authMode = &identity.UserPass{}
+	case identity.AuthKeyPair:
+		client.authMode = &identity.KeyPair{}
 	}
 	return &client
 }

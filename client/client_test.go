@@ -9,10 +9,10 @@ import (
 
 var live = flag.Bool("live", false, "Include live OpenStack (Canonistack) tests")
 var liveAuthMode = flag.String(
-	"live-auth-mode", "userpass", "The authentication mode to use when running live tests [all|legacy|userpass]")
+	"live-auth-mode", "userpass", "The authentication mode to use when running live tests [all|legacy|userpass|keypair]")
 
 func Test(t *testing.T) {
-	var allAuthModes = []identity.AuthMode{identity.AuthLegacy, identity.AuthUserPass}
+	var allAuthModes = []identity.AuthMode{identity.AuthLegacy, identity.AuthUserPass, identity.AuthKeyPair}
 	var liveAuthModes []identity.AuthMode
 	switch *liveAuthMode {
 	default:
@@ -20,6 +20,8 @@ func Test(t *testing.T) {
 	case "all":
 		liveAuthModes = allAuthModes
 	case "":
+	case "keypair":
+		liveAuthModes = []identity.AuthMode{identity.AuthKeyPair}
 	case "userpass":
 		liveAuthModes = []identity.AuthMode{identity.AuthUserPass}
 	case "legacy":
