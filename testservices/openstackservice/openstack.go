@@ -1,6 +1,7 @@
 package openstackservice
 
 import (
+	"fmt"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/testservices/identityservice"
 	"launchpad.net/goose/testservices/novaservice"
@@ -38,6 +39,17 @@ func New(cred *identity.Credentials, authMode identity.AuthMode) *Openstack {
 	regionParts := strings.Split(cred.Region, ".")
 	baseRegion := regionParts[len(regionParts)-1]
 	openstack.Swift = swiftservice.New(cred.URL, "v1", userInfo.TenantId, baseRegion, openstack.Identity)
+	// Create container and add image metadata endpoint so that product-streams URLs are included
+	// in the keystone catalog.
+	err := openstack.Swift.AddContainer("imagemetadata")
+	if err != nil {
+		panic(fmt.Errorf("setting up image metadata container: %v", err))
+	}
+	url := openstack.Swift.Endpoints()[0].PublicURL
+	serviceDef := identityservice.Service{"simplestreams", "product-streams", []identityservice.Endpoint{
+		identityservice.Endpoint{PublicURL: url + "/imagemetadata", Region: cred.Region},
+	}}
+	openstack.Identity.(*identityservice.UserPass).AddService(serviceDef)
 	return &openstack
 }
 
