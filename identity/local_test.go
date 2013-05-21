@@ -73,3 +73,12 @@ func (s *localLiveSuite) TestProductStreamsEndpoint(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(strings.HasSuffix(serviceURL, "/imagemetadata"), Equals, true)
 }
+
+func (s *localLiveSuite) TestJujuToolsEndpoint(c *C) {
+	err := s.client.Authenticate()
+	c.Assert(err, IsNil)
+	serviceURL, err := s.client.MakeServiceURL("juju-tools", nil)
+	c.Assert(err, IsNil)
+	_, err = url.Parse(serviceURL)
+	c.Assert(err, IsNil)
+}

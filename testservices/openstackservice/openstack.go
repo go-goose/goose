@@ -49,7 +49,12 @@ func New(cred *identity.Credentials, authMode identity.AuthMode) *Openstack {
 	serviceDef := identityservice.Service{"simplestreams", "product-streams", []identityservice.Endpoint{
 		identityservice.Endpoint{PublicURL: url + "/imagemetadata", Region: cred.Region},
 	}}
-	openstack.Identity.(*identityservice.UserPass).AddService(serviceDef)
+	openstack.Identity.AddService(serviceDef)
+	// Add public bucket endpoint so that juju-tools URLs are included in the keystone catalog.
+	serviceDef = identityservice.Service{"juju", "juju-tools", []identityservice.Endpoint{
+		identityservice.Endpoint{PublicURL: url, Region: cred.Region},
+	}}
+	openstack.Identity.AddService(serviceDef)
 	return &openstack
 }
 

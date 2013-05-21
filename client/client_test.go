@@ -31,7 +31,7 @@ func Test(t *testing.T) {
 	if *live {
 		cred, err := identity.CompleteCredentialsFromEnv()
 		if err != nil {
-			t.Fatalf("Error setting up test suite: %s", err.Error())
+			t.Fatalf("Error setting up test suite: %v", err)
 		}
 		registerOpenStackTests(cred, liveAuthModes)
 	}

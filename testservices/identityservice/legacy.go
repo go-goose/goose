@@ -20,6 +20,10 @@ func (lis *Legacy) RegisterServiceProvider(name, serviceType string, serviceProv
 	// NOOP for legacy identity service.
 }
 
+func (lis *Legacy) AddService(service Service) {
+	// NOOP for legacy identity service.
+}
+
 func (lis *Legacy) SetManagementURL(URL string) {
 	lis.managementURL = URL
 }

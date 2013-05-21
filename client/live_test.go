@@ -48,16 +48,16 @@ func (s *LiveTests) TestAuthenticateFail(c *C) {
 }
 
 func (s *LiveTests) TestAuthenticate(c *C) {
-	client := client.NewClient(s.cred, s.authMode, nil)
-	err := client.Authenticate()
+	cl := client.NewClient(s.cred, s.authMode, nil)
+	err := cl.Authenticate()
 	c.Assert(err, IsNil)
-	c.Assert(client.IsAuthenticated(), Equals, true)
+	c.Assert(cl.IsAuthenticated(), Equals, true)
 
 	// Check service endpoints are discovered
-	url, err := client.MakeServiceURL("compute", nil)
+	url, err := cl.MakeServiceURL("compute", nil)
 	c.Check(err, IsNil)
 	c.Check(url, NotNil)
-	url, err = client.MakeServiceURL("object-store", nil)
+	url, err = cl.MakeServiceURL("object-store", nil)
 	c.Check(err, IsNil)
 	c.Check(url, NotNil)
 }

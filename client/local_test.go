@@ -56,7 +56,7 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 		serviceDef := identityservice.Service{"nova", "compute", []identityservice.Endpoint{
 			identityservice.Endpoint{PublicURL: "http://nova2", Region: "zone2.RegionOne"},
 		}}
-		s.service.(*openstackservice.Openstack).Identity.(*identityservice.KeyPair).AddService(serviceDef)
+		s.service.(*openstackservice.Openstack).Identity.AddService(serviceDef)
 	case identity.AuthUserPass:
 		// The openstack test service sets up userpass authentication.
 		s.service = openstackservice.New(s.cred, identity.AuthUserPass)
@@ -64,7 +64,7 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 		serviceDef := identityservice.Service{"nova", "compute", []identityservice.Endpoint{
 			identityservice.Endpoint{PublicURL: "http://nova2", Region: "zone2.RegionOne"},
 		}}
-		s.service.(*openstackservice.Openstack).Identity.(*identityservice.UserPass).AddService(serviceDef)
+		s.service.(*openstackservice.Openstack).Identity.AddService(serviceDef)
 
 	case identity.AuthLegacy:
 		legacy := identityservice.NewLegacy()

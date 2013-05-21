@@ -13,8 +13,8 @@ import (
 type KeyPairRequest struct {
 	Auth struct {
 		ApiAccessKeyCredentials struct {
-			AccessKey string `json:"access-key"`
-			SecretKey string `json:"secret-key"`
+			AccessKey string `json:"accessKey"`
+			SecretKey string `json:"secretKey"`
 		} `json:"apiAccessKeyCredentials"`
 		TenantName string `json:"tenantName"`
 	} `json:"auth"`
