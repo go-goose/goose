@@ -21,11 +21,11 @@ type Nova struct {
 	testservices.ServiceInstance
 	flavors      map[string]nova.FlavorDetail
 	servers      map[string]nova.ServerDetail
-	groups       map[int]nova.SecurityGroup
-	rules        map[int]nova.SecurityGroupRule
-	floatingIPs  map[int]nova.FloatingIP
-	serverGroups map[string][]int
-	serverIPs    map[string][]int
+	groups       map[string]nova.SecurityGroup
+	rules        map[string]nova.SecurityGroupRule
+	floatingIPs  map[string]nova.FloatingIP
+	serverGroups map[string][]string
+	serverIPs    map[string][]string
 	nextServerId int
 	nextGroupId  int
 	nextRuleId   int
@@ -74,16 +74,16 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 	}
 	// Real openstack instances have a default security group "out of the box". So we add it here.
 	defaultSecurityGroups := []nova.SecurityGroup{
-		{Id: 999, Name: "default", Description: "default group"},
+		{Id: "999", Name: "default", Description: "default group"},
 	}
 	novaService := &Nova{
 		flavors:      make(map[string]nova.FlavorDetail),
 		servers:      make(map[string]nova.ServerDetail),
-		groups:       make(map[int]nova.SecurityGroup),
-		rules:        make(map[int]nova.SecurityGroupRule),
-		floatingIPs:  make(map[int]nova.FloatingIP),
-		serverGroups: make(map[string][]int),
-		serverIPs:    make(map[string][]int),
+		groups:       make(map[string]nova.SecurityGroup),
+		rules:        make(map[string]nova.SecurityGroupRule),
+		floatingIPs:  make(map[string]nova.FloatingIP),
+		serverGroups: make(map[string][]string),
+		serverIPs:    make(map[string][]string),
 		ServiceInstance: testservices.ServiceInstance{
 			IdentityService: identityService,
 			Hostname:        hostname,
@@ -368,7 +368,7 @@ func (n *Nova) addSecurityGroup(group nova.SecurityGroup) error {
 		return err
 	}
 	if _, err := n.securityGroup(group.Id); err == nil {
-		return fmt.Errorf("a security group with id %d already exists", group.Id)
+		return fmt.Errorf("a security group with id %s already exists", group.Id)
 	}
 	group.TenantId = n.TenantId
 	if group.Rules == nil {
@@ -379,13 +379,13 @@ func (n *Nova) addSecurityGroup(group nova.SecurityGroup) error {
 }
 
 // securityGroup retrieves an existing group by ID.
-func (n *Nova) securityGroup(groupId int) (*nova.SecurityGroup, error) {
+func (n *Nova) securityGroup(groupId string) (*nova.SecurityGroup, error) {
 	if err := n.ProcessFunctionHook(n, groupId); err != nil {
 		return nil, err
 	}
 	group, ok := n.groups[groupId]
 	if !ok {
-		return nil, fmt.Errorf("no such security group %d", groupId)
+		return nil, fmt.Errorf("no such security group %s", groupId)
 	}
 	return &group, nil
 }
@@ -413,7 +413,7 @@ func (n *Nova) allSecurityGroups() []nova.SecurityGroup {
 }
 
 // removeSecurityGroup deletes an existing group.
-func (n *Nova) removeSecurityGroup(groupId int) error {
+func (n *Nova) removeSecurityGroup(groupId string) error {
 	if err := n.ProcessFunctionHook(n, groupId); err != nil {
 		return err
 	}
@@ -427,12 +427,12 @@ func (n *Nova) removeSecurityGroup(groupId int) error {
 // addSecurityGroupRule creates a new rule in an existing group.
 // This can be either an ingress or a group rule (see the notes
 // about nova.RuleInfo).
-func (n *Nova) addSecurityGroupRule(ruleId int, rule nova.RuleInfo) error {
+func (n *Nova) addSecurityGroupRule(ruleId string, rule nova.RuleInfo) error {
 	if err := n.ProcessFunctionHook(n, ruleId, rule); err != nil {
 		return err
 	}
 	if _, err := n.securityGroupRule(ruleId); err == nil {
-		return fmt.Errorf("a security group rule with id %d already exists", ruleId)
+		return fmt.Errorf("a security group rule with id %s already exists", ruleId)
 	}
 	group, err := n.securityGroup(rule.ParentGroupId)
 	if err != nil {
@@ -440,7 +440,7 @@ func (n *Nova) addSecurityGroupRule(ruleId int, rule nova.RuleInfo) error {
 	}
 	for _, ru := range group.Rules {
 		if ru.Id == ruleId {
-			return fmt.Errorf("cannot add twice rule %d to security group %d", ru.Id, group.Id)
+			return fmt.Errorf("cannot add twice rule %s to security group %s", ru.Id, group.Id)
 		}
 	}
 	var zeroSecurityGroupRef nova.SecurityGroupRef
@@ -452,7 +452,7 @@ func (n *Nova) addSecurityGroupRule(ruleId int, rule nova.RuleInfo) error {
 	if rule.GroupId != nil {
 		sourceGroup, err := n.securityGroup(*rule.GroupId)
 		if err != nil {
-			return fmt.Errorf("unknown source security group %d", *rule.GroupId)
+			return fmt.Errorf("unknown source security group %s", *rule.GroupId)
 		}
 		newrule.Group = nova.SecurityGroupRef{
 			TenantId: sourceGroup.TenantId,
@@ -480,27 +480,27 @@ func (n *Nova) addSecurityGroupRule(ruleId int, rule nova.RuleInfo) error {
 }
 
 // hasSecurityGroupRule returns whether the given group contains the given rule,
-// or (when groupId=-1) whether the given rule exists.
-func (n *Nova) hasSecurityGroupRule(groupId, ruleId int) bool {
+// or (when groupId="-1") whether the given rule exists.
+func (n *Nova) hasSecurityGroupRule(groupId, ruleId string) bool {
 	rule, ok := n.rules[ruleId]
 	_, err := n.securityGroup(groupId)
-	return ok && (groupId == -1 || (err == nil && rule.ParentGroupId == groupId))
+	return ok && (groupId == "-1" || (err == nil && rule.ParentGroupId == groupId))
 }
 
 // securityGroupRule retrieves an existing rule by ID.
-func (n *Nova) securityGroupRule(ruleId int) (*nova.SecurityGroupRule, error) {
+func (n *Nova) securityGroupRule(ruleId string) (*nova.SecurityGroupRule, error) {
 	if err := n.ProcessFunctionHook(n, ruleId); err != nil {
 		return nil, err
 	}
 	rule, ok := n.rules[ruleId]
 	if !ok {
-		return nil, fmt.Errorf("no such security group rule %d", ruleId)
+		return nil, fmt.Errorf("no such security group rule %s", ruleId)
 	}
 	return &rule, nil
 }
 
 // removeSecurityGroupRule deletes an existing rule from its group.
-func (n *Nova) removeSecurityGroupRule(ruleId int) error {
+func (n *Nova) removeSecurityGroupRule(ruleId string) error {
 	if err := n.ProcessFunctionHook(n, ruleId); err != nil {
 		return err
 	}
@@ -528,7 +528,7 @@ func (n *Nova) removeSecurityGroupRule(ruleId int) error {
 }
 
 // addServerSecurityGroup attaches an existing server to a group.
-func (n *Nova) addServerSecurityGroup(serverId string, groupId int) error {
+func (n *Nova) addServerSecurityGroup(serverId string, groupId string) error {
 	if err := n.ProcessFunctionHook(n, serverId, groupId); err != nil {
 		return err
 	}
@@ -542,7 +542,7 @@ func (n *Nova) addServerSecurityGroup(serverId string, groupId int) error {
 	if ok {
 		for _, gid := range groups {
 			if gid == groupId {
-				return fmt.Errorf("server %q already belongs to group %d", serverId, groupId)
+				return fmt.Errorf("server %q already belongs to group %s", serverId, groupId)
 			}
 		}
 	}
@@ -552,7 +552,7 @@ func (n *Nova) addServerSecurityGroup(serverId string, groupId int) error {
 }
 
 // hasServerSecurityGroup returns whether the given server belongs to the group.
-func (n *Nova) hasServerSecurityGroup(serverId string, groupId int) bool {
+func (n *Nova) hasServerSecurityGroup(serverId string, groupId string) bool {
 	if _, err := n.server(serverId); err != nil {
 		return false
 	}
@@ -586,7 +586,7 @@ func (n *Nova) allServerSecurityGroups(serverId string) []nova.SecurityGroup {
 }
 
 // removeServerSecurityGroup detaches an existing server from a group.
-func (n *Nova) removeServerSecurityGroup(serverId string, groupId int) error {
+func (n *Nova) removeServerSecurityGroup(serverId string, groupId string) error {
 	if err := n.ProcessFunctionHook(n, serverId, groupId); err != nil {
 		return err
 	}
@@ -608,7 +608,7 @@ func (n *Nova) removeServerSecurityGroup(serverId string, groupId int) error {
 		}
 	}
 	if idx == -1 {
-		return fmt.Errorf("server %q does not belong to group %d", serverId, groupId)
+		return fmt.Errorf("server %q does not belong to group %s", serverId, groupId)
 	}
 	groups = append(groups[:idx], groups[idx+1:]...)
 	n.serverGroups[serverId] = groups
@@ -621,7 +621,7 @@ func (n *Nova) addFloatingIP(ip nova.FloatingIP) error {
 		return err
 	}
 	if _, err := n.floatingIP(ip.Id); err == nil {
-		return fmt.Errorf("a floating IP with id %d already exists", ip.Id)
+		return fmt.Errorf("a floating IP with id %s already exists", ip.Id)
 	}
 	n.floatingIPs[ip.Id] = ip
 	return nil
@@ -641,13 +641,13 @@ func (n *Nova) hasFloatingIP(address string) bool {
 }
 
 // floatingIP retrieves the floating IP by ID.
-func (n *Nova) floatingIP(ipId int) (*nova.FloatingIP, error) {
+func (n *Nova) floatingIP(ipId string) (*nova.FloatingIP, error) {
 	if err := n.ProcessFunctionHook(n, ipId); err != nil {
 		return nil, err
 	}
 	ip, ok := n.floatingIPs[ipId]
 	if !ok {
-		return nil, fmt.Errorf("no such floating IP %d", ipId)
+		return nil, fmt.Errorf("no such floating IP %s", ipId)
 	}
 	return &ip, nil
 }
@@ -675,7 +675,7 @@ func (n *Nova) allFloatingIPs() []nova.FloatingIP {
 }
 
 // removeFloatingIP deletes an existing floating IP by ID.
-func (n *Nova) removeFloatingIP(ipId int) error {
+func (n *Nova) removeFloatingIP(ipId string) error {
 	if err := n.ProcessFunctionHook(n, ipId); err != nil {
 		return err
 	}
@@ -687,7 +687,7 @@ func (n *Nova) removeFloatingIP(ipId int) error {
 }
 
 // addServerFloatingIP attaches an existing floating IP to a server.
-func (n *Nova) addServerFloatingIP(serverId string, ipId int) error {
+func (n *Nova) addServerFloatingIP(serverId string, ipId string) error {
 	if err := n.ProcessFunctionHook(n, serverId, ipId); err != nil {
 		return err
 	}
@@ -706,7 +706,7 @@ func (n *Nova) addServerFloatingIP(serverId string, ipId int) error {
 	if ok {
 		for _, fipId := range fips {
 			if fipId == ipId {
-				return fmt.Errorf("server %q already has floating IP %d", serverId, ipId)
+				return fmt.Errorf("server %q already has floating IP %s", serverId, ipId)
 			}
 		}
 	}
@@ -734,7 +734,7 @@ func (n *Nova) hasServerFloatingIP(serverId, address string) bool {
 }
 
 // removeServerFloatingIP deletes an attached floating IP from a server.
-func (n *Nova) removeServerFloatingIP(serverId string, ipId int) error {
+func (n *Nova) removeServerFloatingIP(serverId string, ipId string) error {
 	if err := n.ProcessFunctionHook(n, serverId); err != nil {
 		return err
 	}
@@ -760,7 +760,7 @@ func (n *Nova) removeServerFloatingIP(serverId string, ipId int) error {
 		}
 	}
 	if idx == -1 {
-		return fmt.Errorf("server %q does not have floating IP %d", serverId, ipId)
+		return fmt.Errorf("server %q does not have floating IP %s", serverId, ipId)
 	}
 	fips = append(fips[:idx], fips[idx+1:]...)
 	n.serverIPs[serverId] = fips

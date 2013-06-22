@@ -52,7 +52,7 @@ func (s *JsonSuite) TestMarshallServerDetailLargeIntId(c *C) {
 
 func (s *JsonSuite) TestMarshallFloatingIPLargeIntId(c *C) {
 	id := "3000000"
-	fip := nova.FloatingIP{Id: 2000000, InstanceId: &id}
+	fip := nova.FloatingIP{Id: "2000000", InstanceId: &id}
 	var unmarshalled nova.FloatingIP
 	s.assertMarshallRoundtrip(c, &fip, &unmarshalled)
 }
