@@ -1,6 +1,9 @@
 package http
 
 import (
+	"bytes"
+	"fmt"
+	"io/ioutil"
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/testing/httpsuite"
 	"net/http"
@@ -52,21 +55,27 @@ func (s *HTTPClientTestSuite) TestCreateHeadersCopiesSupplied(c *C) {
 		http.Header{"Foo": []string{"Bar"}, "Content-Type": contentTypes, "Accept": contentTypes, "User-Agent": []string{gooseAgent()}})
 }
 
-func (s *HTTPClientTestSuite) setupLoopbackRequest() (*http.Header, *Client) {
+func (s *HTTPClientTestSuite) setupLoopbackRequest() (*http.Header, *string, *Client) {
 	headers := http.Header{}
+	emptyBody := "<no-response-yet>"
+	body := &emptyBody
 	handler := func(resp http.ResponseWriter, req *http.Request) {
 		headers = req.Header
+		bodyBytes, _ := ioutil.ReadAll(req.Body)
+		content := string(bodyBytes)
+		*body = content
+		req.Body.Close()
 		resp.Header().Add("Content-Length", "0")
 		resp.WriteHeader(http.StatusNoContent)
 		resp.Write([]byte{})
 	}
 	s.Mux.HandleFunc("/", handler)
 	client := New()
-	return &headers, client
+	return &headers, body, client
 }
 
 func (s *HTTPClientTestSuite) TestBinaryRequestSetsUserAgent(c *C) {
-	headers, client := s.setupLoopbackRequest()
+	headers, _, client := s.setupLoopbackRequest()
 	req := &RequestData{ExpectedStatus: []int{http.StatusNoContent}}
 	err := client.BinaryRequest("POST", s.Server.URL, "", req, nil)
 	c.Assert(err, IsNil)
@@ -76,7 +85,7 @@ func (s *HTTPClientTestSuite) TestBinaryRequestSetsUserAgent(c *C) {
 }
 
 func (s *HTTPClientTestSuite) TestJSONRequestSetsUserAgent(c *C) {
-	headers, client := s.setupLoopbackRequest()
+	headers, _, client := s.setupLoopbackRequest()
 	req := &RequestData{ExpectedStatus: []int{http.StatusNoContent}}
 	err := client.JsonRequest("POST", s.Server.URL, "", req, nil)
 	c.Assert(err, IsNil)
@@ -85,8 +94,42 @@ func (s *HTTPClientTestSuite) TestJSONRequestSetsUserAgent(c *C) {
 	c.Check(agent, Equals, gooseAgent())
 }
 
+func (s *HTTPClientTestSuite) TestBinaryRequestSetsContentLength(c *C) {
+	headers, body, client := s.setupLoopbackRequest()
+	content := "binary\ncontent\n"
+	req := &RequestData{
+		ExpectedStatus: []int{http.StatusNoContent},
+		ReqReader:      bytes.NewBufferString(content),
+		ReqLength:      len(content),
+	}
+	err := client.BinaryRequest("POST", s.Server.URL, "", req, nil)
+	c.Assert(err, IsNil)
+	encoding := headers.Get("Transfer-Encoding")
+	c.Check(encoding, Equals, "")
+	length := headers.Get("Content-Length")
+	c.Assert(body, NotNil)
+	c.Check(length, Equals, fmt.Sprintf("%d", len(content)))
+	c.Check(*body, Equals, content)
+}
+
+func (s *HTTPClientTestSuite) TestJSONRequestSetsContentLength(c *C) {
+	headers, body, client := s.setupLoopbackRequest()
+	reqMap := map[string]string{"key": "value"}
+	req := &RequestData{
+		ExpectedStatus: []int{http.StatusNoContent},
+		ReqValue:       reqMap,
+	}
+	err := client.JsonRequest("POST", s.Server.URL, "", req, nil)
+	c.Assert(err, IsNil)
+	encoding := headers.Get("Transfer-Encoding")
+	c.Check(encoding, Equals, "")
+	length := headers.Get("Content-Length")
+	c.Assert(body, NotNil)
+	c.Check(length, Equals, fmt.Sprintf("%d", len(*body)))
+}
+
 func (s *HTTPClientTestSuite) TestBinaryRequestSetsToken(c *C) {
-	headers, client := s.setupLoopbackRequest()
+	headers, _, client := s.setupLoopbackRequest()
 	req := &RequestData{ExpectedStatus: []int{http.StatusNoContent}}
 	err := client.BinaryRequest("POST", s.Server.URL, "token", req, nil)
 	c.Assert(err, IsNil)
@@ -95,7 +138,7 @@ func (s *HTTPClientTestSuite) TestBinaryRequestSetsToken(c *C) {
 }
 
 func (s *HTTPClientTestSuite) TestJSONRequestSetsToken(c *C) {
-	headers, client := s.setupLoopbackRequest()
+	headers, _, client := s.setupLoopbackRequest()
 	req := &RequestData{ExpectedStatus: []int{http.StatusNoContent}}
 	err := client.JsonRequest("POST", s.Server.URL, "token", req, nil)
 	c.Assert(err, IsNil)
