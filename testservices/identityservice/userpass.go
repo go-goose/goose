@@ -47,8 +47,9 @@ type TokenResponse struct {
 	Expires string `json:"expires"` // should this be a date object?
 	Id      string `json:"id"`      // Actual token string
 	Tenant  struct {
-		Id   string `json:"id"`
-		Name string `json:"name"`
+		Id          string  `json:"id"`
+		Name        string  `json:"name"`
+		Description *string `json:"description"`
 	} `json:"tenant"`
 }
 
@@ -118,7 +119,8 @@ var exampleResponse = `{
             "id": "5df9d45d-d198-4222-9b4c-7a280aa35666", 
             "tenant": {
                 "id": "1", 
-                "name": "admin"
+                "name": "admin",
+                "description": null
             }
         }, 
         "user": {
