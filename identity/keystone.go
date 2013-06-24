@@ -22,10 +22,11 @@ type tokenResponse struct {
 	Expires string `json:"expires"`
 	Id      string `json:"id"` // Actual token string
 	Tenant  struct {
-		Id          string `json:"id"`
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		Enabled     bool   `json:"enabled"`
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		// Description is a pointer since it may be null and this breaks Go < 1.1
+		Description *string `json:"description"`
+		Enabled     bool    `json:"enabled"`
 	} `json:"tenant"`
 }
 

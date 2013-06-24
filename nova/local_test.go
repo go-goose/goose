@@ -172,8 +172,8 @@ func (s *localLiveSuite) TestAddFloatingIPErrors(c *C) {
 	fips, err := novaClient.ListFloatingIPs()
 	c.Assert(err, IsNil)
 	c.Assert(fips, HasLen, 0)
-	s.openstack.Nova.RegisterControlPoint("addFloatingIP", s.addFloatingIPHook(s.openstack.Nova))
-	defer s.openstack.Nova.RegisterControlPoint("addFloatingIP", nil)
+	cleanup := s.openstack.Nova.RegisterControlPoint("addFloatingIP", s.addFloatingIPHook(s.openstack.Nova))
+	defer cleanup()
 	s.noMoreIPs = true
 	fip, err := novaClient.AllocateFloatingIP()
 	c.Assert(err, ErrorMatches, "(.|\n)*Zero floating ips available.*")
@@ -203,7 +203,8 @@ func (s *localLiveSuite) authHook(sc hook.ServiceControl) hook.ControlProcessor 
 func (s *localLiveSuite) TestReauthenticate(c *C) {
 	novaClient := s.setupClient(c, nil)
 	up := s.openstack.Identity.(*identityservice.UserPass)
-	defer up.RegisterControlPoint("authorisation", s.authHook(up))
+	cleanup := up.RegisterControlPoint("authorisation", s.authHook(up))
+	defer cleanup()
 
 	// An invalid token is returned after the first authentication step, resulting in the ListServers call
 	// returning a 401. Subsequent authentication calls return the correct token so the auth retry does it's job.
@@ -215,7 +216,8 @@ func (s *localLiveSuite) TestReauthenticate(c *C) {
 func (s *localLiveSuite) TestReauthenticateFailure(c *C) {
 	novaClient := s.setupClient(c, nil)
 	up := s.openstack.Identity.(*identityservice.UserPass)
-	defer up.RegisterControlPoint("authorisation", s.authHook(up))
+	cleanup := up.RegisterControlPoint("authorisation", s.authHook(up))
+	defer cleanup()
 
 	// If the re-authentication fails, ensure an Unauthorised error is returned.
 	s.badTokens = 2
