@@ -14,19 +14,12 @@ import (
 	"strconv"
 )
 
-type genericId struct {
-	Id interface{} `json:"id"`
-}
-
-func (id genericId) String() string {
-	if id.Id == nil {
-		return ""
-	}
-	if fid, ok := id.Id.(float64); ok {
-		return fmt.Sprint(int(fid))
-	}
-	return fmt.Sprint(id.Id)
-}
+const (
+	idTag            = "id"
+	instanceIdTag    = "instance_id"
+	groupIdTag       = "group_id"
+	parentGroupIdTag = "parent_group_id"
+)
 
 var useNumericIds bool = false
 
@@ -41,6 +34,25 @@ func convertId(id string) interface{} {
 		panic(err)
 	}
 	return result
+}
+
+// getIdAsString extracts the field with the specified tag from the json data
+// and returns it converted to a string.
+func getIdAsString(b []byte, tag string) (string, error) {
+	var out map[string]interface{}
+	if err := json.Unmarshal(b, &out); err != nil {
+		return "", err
+	}
+	if val, ok := out[tag]; !ok {
+		return "", nil
+	} else {
+		if floatVal, ok := val.(float64); ok {
+			return fmt.Sprint(int(floatVal)), nil
+		} else {
+			return fmt.Sprint(val), nil
+		}
+	}
+	panic("unreachable")
 }
 
 // appendJSON marshals the given attribute value and appends it as an encoded value to the given json data.
@@ -59,14 +71,13 @@ type jsonEntity Entity
 
 func (entity *Entity) UnmarshalJSON(b []byte) error {
 	var je jsonEntity = jsonEntity(*entity)
-	if err := json.Unmarshal(b, &je); err != nil {
+	var err error
+	if err = json.Unmarshal(b, &je); err != nil {
 		return err
 	}
-	var id genericId
-	if err := json.Unmarshal(b, &id); err != nil {
+	if je.Id, err = getIdAsString(b, idTag); err != nil {
 		return err
 	}
-	je.Id = id.String()
 	*entity = Entity(je)
 	return nil
 }
@@ -78,21 +89,20 @@ func (entity Entity) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	id := convertId(entity.Id)
-	return appendJSON(data, "Id", id)
+	return appendJSON(data, idTag, id)
 }
 
 type jsonFlavorDetail FlavorDetail
 
 func (flavorDetail *FlavorDetail) UnmarshalJSON(b []byte) error {
 	var jfd jsonFlavorDetail = jsonFlavorDetail(*flavorDetail)
-	if err := json.Unmarshal(b, &jfd); err != nil {
+	var err error
+	if err = json.Unmarshal(b, &jfd); err != nil {
 		return err
 	}
-	var id genericId
-	if err := json.Unmarshal(b, &id); err != nil {
+	if jfd.Id, err = getIdAsString(b, idTag); err != nil {
 		return err
 	}
-	jfd.Id = id.String()
 	*flavorDetail = FlavorDetail(jfd)
 	return nil
 }
@@ -104,21 +114,20 @@ func (flavorDetail FlavorDetail) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	id := convertId(flavorDetail.Id)
-	return appendJSON(data, "Id", id)
+	return appendJSON(data, idTag, id)
 }
 
 type jsonServerDetail ServerDetail
 
 func (serverDetail *ServerDetail) UnmarshalJSON(b []byte) error {
 	var jsd jsonServerDetail = jsonServerDetail(*serverDetail)
-	if err := json.Unmarshal(b, &jsd); err != nil {
+	var err error
+	if err = json.Unmarshal(b, &jsd); err != nil {
 		return err
 	}
-	var id genericId
-	if err := json.Unmarshal(b, &id); err != nil {
+	if jsd.Id, err = getIdAsString(b, idTag); err != nil {
 		return err
 	}
-	jsd.Id = id.String()
 	*serverDetail = ServerDetail(jsd)
 	return nil
 }
@@ -130,44 +139,26 @@ func (serverDetail ServerDetail) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	id := convertId(serverDetail.Id)
-	return appendJSON(data, "Id", id)
-}
-
-type genericInstanceId struct {
-	InstanceId interface{} `json:"instance_id"`
-}
-
-func (id genericInstanceId) String() string {
-	if id.InstanceId == nil {
-		return ""
-	}
-	if fid, ok := id.InstanceId.(float64); ok {
-		return fmt.Sprint(int(fid))
-	}
-	return fmt.Sprint(id.InstanceId)
+	return appendJSON(data, idTag, id)
 }
 
 type jsonFloatingIP FloatingIP
 
 func (floatingIP *FloatingIP) UnmarshalJSON(b []byte) error {
 	var jfip jsonFloatingIP = jsonFloatingIP(*floatingIP)
-	if err := json.Unmarshal(b, &jfip); err != nil {
+	var err error
+	if err = json.Unmarshal(b, &jfip); err != nil {
 		return err
 	}
-	var instId genericInstanceId
-	if err := json.Unmarshal(b, &instId); err != nil {
+	if instIdStr, err := getIdAsString(b, instanceIdTag); err != nil {
 		return err
-	}
-	instIdStr := instId.String()
-	if instIdStr != "" {
+	} else if instIdStr != "" {
 		strId := instIdStr
 		jfip.InstanceId = &strId
 	}
-	var id genericId
-	if err := json.Unmarshal(b, &id); err != nil {
+	if jfip.Id, err = getIdAsString(b, idTag); err != nil {
 		return err
 	}
-	jfip.Id = id.String()
 	*floatingIP = FloatingIP(jfip)
 	return nil
 }
@@ -179,7 +170,7 @@ func (floatingIP FloatingIP) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	id := convertId(floatingIP.Id)
-	data, err = appendJSON(data, "Id", id)
+	data, err = appendJSON(data, idTag, id)
 	if err != nil {
 		return nil, err
 	}
@@ -187,21 +178,20 @@ func (floatingIP FloatingIP) MarshalJSON() ([]byte, error) {
 		return data, nil
 	}
 	instId := convertId(*floatingIP.InstanceId)
-	return appendJSON(data, "instance_id", instId)
+	return appendJSON(data, instanceIdTag, instId)
 }
 
 type jsonSecurityGroup SecurityGroup
 
 func (securityGroup *SecurityGroup) UnmarshalJSON(b []byte) error {
 	var jsg jsonSecurityGroup = jsonSecurityGroup(*securityGroup)
-	if err := json.Unmarshal(b, &jsg); err != nil {
+	var err error
+	if err = json.Unmarshal(b, &jsg); err != nil {
 		return err
 	}
-	var id genericId
-	if err := json.Unmarshal(b, &id); err != nil {
+	if jsg.Id, err = getIdAsString(b, idTag); err != nil {
 		return err
 	}
-	jsg.Id = id.String()
 	*securityGroup = SecurityGroup(jsg)
 	return nil
 }
@@ -213,40 +203,23 @@ func (securityGroup SecurityGroup) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	id := convertId(securityGroup.Id)
-	return appendJSON(data, "Id", id)
-}
-
-type genericParentGroupId struct {
-	ParentGroupId interface{} `json:"parent_group_id"`
-}
-
-func (id genericParentGroupId) String() string {
-	if id.ParentGroupId == nil {
-		return ""
-	}
-	if pgid, ok := id.ParentGroupId.(float64); ok {
-		return fmt.Sprint(int(pgid))
-	}
-	return fmt.Sprint(id.ParentGroupId)
+	return appendJSON(data, idTag, id)
 }
 
 type jsonSecurityGroupRule SecurityGroupRule
 
 func (securityGroupRule *SecurityGroupRule) UnmarshalJSON(b []byte) error {
 	var jsgr jsonSecurityGroupRule = jsonSecurityGroupRule(*securityGroupRule)
-	if err := json.Unmarshal(b, &jsgr); err != nil {
+	var err error
+	if err = json.Unmarshal(b, &jsgr); err != nil {
 		return err
 	}
-	var id genericId
-	if err := json.Unmarshal(b, &id); err != nil {
+	if jsgr.Id, err = getIdAsString(b, idTag); err != nil {
 		return err
 	}
-	jsgr.Id = id.String()
-	var pgid genericParentGroupId
-	if err := json.Unmarshal(b, &pgid); err != nil {
+	if jsgr.ParentGroupId, err = getIdAsString(b, parentGroupIdTag); err != nil {
 		return err
 	}
-	jsgr.ParentGroupId = pgid.String()
 	*securityGroupRule = SecurityGroupRule(jsgr)
 	return nil
 }
@@ -258,7 +231,7 @@ func (securityGroupRule SecurityGroupRule) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	id := convertId(securityGroupRule.Id)
-	data, err = appendJSON(data, "Id", id)
+	data, err = appendJSON(data, idTag, id)
 	if err != nil {
 		return nil, err
 	}
@@ -266,43 +239,23 @@ func (securityGroupRule SecurityGroupRule) MarshalJSON() ([]byte, error) {
 		return data, nil
 	}
 	id = convertId(securityGroupRule.ParentGroupId)
-	return appendJSON(data, "parent_group_id", id)
-}
-
-type genericGroupId struct {
-	GroupId interface{} `json:"group_id"`
-}
-
-func (id genericGroupId) String() string {
-	if id.GroupId == nil {
-		return ""
-	}
-	if gid, ok := id.GroupId.(float64); ok {
-		return fmt.Sprint(int(gid))
-	}
-	return fmt.Sprint(id.GroupId)
+	return appendJSON(data, parentGroupIdTag, id)
 }
 
 type jsonRuleInfo RuleInfo
 
 func (ruleInfo *RuleInfo) UnmarshalJSON(b []byte) error {
 	var jri jsonRuleInfo = jsonRuleInfo(*ruleInfo)
-	if err := json.Unmarshal(b, &jri); err != nil {
+	var err error
+	if err = json.Unmarshal(b, &jri); err != nil {
 		return err
 	}
-
-	var pgid genericParentGroupId
-	if err := json.Unmarshal(b, &pgid); err != nil {
+	if jri.ParentGroupId, err = getIdAsString(b, parentGroupIdTag); err != nil {
 		return err
 	}
-	jri.ParentGroupId = pgid.String()
-
-	var gid genericGroupId
-	if err := json.Unmarshal(b, &gid); err != nil {
+	if groupId, err := getIdAsString(b, groupIdTag); err != nil {
 		return err
-	}
-	groupId := gid.String()
-	if groupId != "" {
+	} else if groupId != "" {
 		strId := groupId
 		jri.GroupId = &strId
 	}
@@ -317,7 +270,7 @@ func (ruleInfo RuleInfo) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	id := convertId(ruleInfo.ParentGroupId)
-	data, err = appendJSON(data, "parent_group_id", id)
+	data, err = appendJSON(data, parentGroupIdTag, id)
 	if err != nil {
 		return nil, err
 	}
@@ -325,5 +278,5 @@ func (ruleInfo RuleInfo) MarshalJSON() ([]byte, error) {
 		return data, nil
 	}
 	id = convertId(*ruleInfo.GroupId)
-	return appendJSON(data, "group_id", id)
+	return appendJSON(data, groupIdTag, id)
 }
