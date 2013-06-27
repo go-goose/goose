@@ -56,7 +56,7 @@ func (s *HTTPClientTestSuite) TestCreateHeadersCopiesSupplied(c *C) {
 }
 
 func (s *HTTPClientTestSuite) setupLoopbackRequest() (*http.Header, *string, *Client) {
-	headers := http.Header{}
+	var headers http.Header
 	emptyBody := "<no-response-yet>"
 	body := &emptyBody
 	handler := func(resp http.ResponseWriter, req *http.Request) {
