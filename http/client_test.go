@@ -55,23 +55,21 @@ func (s *HTTPClientTestSuite) TestCreateHeadersCopiesSupplied(c *C) {
 		http.Header{"Foo": []string{"Bar"}, "Content-Type": contentTypes, "Accept": contentTypes, "User-Agent": []string{gooseAgent()}})
 }
 
-func (s *HTTPClientTestSuite) setupLoopbackRequest() (*http.Header, *string, *Client) {
+func (s *HTTPClientTestSuite) setupLoopbackRequest() (*http.Header, chan string, *Client) {
 	var headers http.Header
-	emptyBody := "<no-response-yet>"
-	body := &emptyBody
+	bodyChan := make(chan string, 1)
 	handler := func(resp http.ResponseWriter, req *http.Request) {
 		headers = req.Header
 		bodyBytes, _ := ioutil.ReadAll(req.Body)
-		content := string(bodyBytes)
-		*body = content
 		req.Body.Close()
+		bodyChan <- string(bodyBytes)
 		resp.Header().Add("Content-Length", "0")
 		resp.WriteHeader(http.StatusNoContent)
 		resp.Write([]byte{})
 	}
 	s.Mux.HandleFunc("/", handler)
 	client := New()
-	return &headers, body, client
+	return &headers, bodyChan, client
 }
 
 func (s *HTTPClientTestSuite) TestBinaryRequestSetsUserAgent(c *C) {
@@ -95,7 +93,7 @@ func (s *HTTPClientTestSuite) TestJSONRequestSetsUserAgent(c *C) {
 }
 
 func (s *HTTPClientTestSuite) TestBinaryRequestSetsContentLength(c *C) {
-	headers, body, client := s.setupLoopbackRequest()
+	headers, bodyChan, client := s.setupLoopbackRequest()
 	content := "binary\ncontent\n"
 	req := &RequestData{
 		ExpectedStatus: []int{http.StatusNoContent},
@@ -107,13 +105,14 @@ func (s *HTTPClientTestSuite) TestBinaryRequestSetsContentLength(c *C) {
 	encoding := headers.Get("Transfer-Encoding")
 	c.Check(encoding, Equals, "")
 	length := headers.Get("Content-Length")
-	c.Assert(body, NotNil)
 	c.Check(length, Equals, fmt.Sprintf("%d", len(content)))
-	c.Check(*body, Equals, content)
+	body, ok := <-bodyChan
+	c.Assert(ok, Equals, true)
+	c.Check(body, Equals, content)
 }
 
 func (s *HTTPClientTestSuite) TestJSONRequestSetsContentLength(c *C) {
-	headers, body, client := s.setupLoopbackRequest()
+	headers, bodyChan, client := s.setupLoopbackRequest()
 	reqMap := map[string]string{"key": "value"}
 	req := &RequestData{
 		ExpectedStatus: []int{http.StatusNoContent},
@@ -124,8 +123,10 @@ func (s *HTTPClientTestSuite) TestJSONRequestSetsContentLength(c *C) {
 	encoding := headers.Get("Transfer-Encoding")
 	c.Check(encoding, Equals, "")
 	length := headers.Get("Content-Length")
-	c.Assert(body, NotNil)
-	c.Check(length, Equals, fmt.Sprintf("%d", len(*body)))
+	body, ok := <-bodyChan
+	c.Assert(ok, Equals, true)
+	c.Check(body, Not(Equals), "")
+	c.Check(length, Equals, fmt.Sprintf("%d", len(body)))
 }
 
 func (s *HTTPClientTestSuite) TestBinaryRequestSetsToken(c *C) {
