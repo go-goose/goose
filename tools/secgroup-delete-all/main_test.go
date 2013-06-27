@@ -74,7 +74,7 @@ var doNotDelete *nova.SecurityGroup
 
 // deleteGroupError hook raises an error if a group with id 2 is deleted.
 func deleteGroupError(s hook.ServiceControl, args ...interface{}) error {
-	groupId := args[0].(int)
+	groupId := args[0].(string)
 	if groupId == doNotDelete.Id {
 		return fmt.Errorf("cannot delete group %d", groupId)
 	}

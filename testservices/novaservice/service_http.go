@@ -114,14 +114,6 @@ This server could not verify that you are authorized to access the ` +
 		nil,
 		nil,
 	}
-	errBadRequestSG = &errorResponse{
-		http.StatusBadRequest,
-		`{"badRequest": {"message": "Security group id should be integer", "code": 400}}`,
-		"application/json; charset=UTF-8",
-		"bad security group id type",
-		nil,
-		nil,
-	}
 	errNotFound = &errorResponse{
 		http.StatusNotFound,
 		`404 Not Found
@@ -567,7 +559,7 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		return err
 	}
-	var groups []int
+	var groups []string
 	if len(req.Server.SecurityGroups) > 0 {
 		for _, group := range req.Server.SecurityGroups {
 			groupName := group["name"]
@@ -772,11 +764,7 @@ func (n *Nova) handleServersDetail(w http.ResponseWriter, r *http.Request) error
 // If there was no group id specified in the path, it returns errNoGroupId
 func (n *Nova) processGroupId(w http.ResponseWriter, r *http.Request) (*nova.SecurityGroup, error) {
 	if groupId := path.Base(r.URL.Path); groupId != "os-security-groups" {
-		id, err := strconv.Atoi(groupId)
-		if err != nil {
-			return nil, errBadRequestSG
-		}
-		group, err := n.securityGroup(id)
+		group, err := n.securityGroup(groupId)
 		if err != nil {
 			return nil, errNotFoundJSONSG
 		}
@@ -829,7 +817,7 @@ func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) erro
 				return errBadRequestDuplicateValue
 			}
 			n.nextGroupId++
-			nextId := n.nextGroupId
+			nextId := strconv.Itoa(n.nextGroupId)
 			err = n.addSecurityGroup(nova.SecurityGroup{
 				Id:          nextId,
 				Name:        req.Group.Name,
@@ -912,7 +900,7 @@ func (n *Nova) handleSecurityGroupRules(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 		n.nextRuleId++
-		nextId := n.nextRuleId
+		nextId := strconv.Itoa(n.nextRuleId)
 		err = n.addSecurityGroupRule(nextId, req.Rule)
 		if err != nil {
 			return err
@@ -933,15 +921,10 @@ func (n *Nova) handleSecurityGroupRules(w http.ResponseWriter, r *http.Request) 
 		return errNotFound
 	case "DELETE":
 		if ruleId := path.Base(r.URL.Path); ruleId != "os-security-group-rules" {
-			id, err := strconv.Atoi(ruleId)
-			if err != nil {
-				// weird, but this is how nova responds
-				return errBadRequestSG
-			}
-			if _, err = n.securityGroupRule(id); err != nil {
+			if _, err := n.securityGroupRule(ruleId); err != nil {
 				return errNotFoundJSONSGR
 			}
-			if err = n.removeSecurityGroupRule(id); err != nil {
+			if err := n.removeSecurityGroupRule(ruleId); err != nil {
 				return err
 			}
 			writeResponse(w, http.StatusAccepted, nil)
@@ -957,11 +940,7 @@ func (n *Nova) handleFloatingIPs(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
 	case "GET":
 		if ipId := path.Base(r.URL.Path); ipId != "os-floating-ips" {
-			nId, err := strconv.Atoi(ipId)
-			if err != nil {
-				return errNotFoundJSON
-			}
-			fip, err := n.floatingIP(nId)
+			fip, err := n.floatingIP(ipId)
 			if err != nil {
 				return errNotFoundJSON
 			}
@@ -983,8 +962,8 @@ func (n *Nova) handleFloatingIPs(w http.ResponseWriter, r *http.Request) error {
 			return errNotFound
 		}
 		n.nextIPId++
-		nextId := n.nextIPId
-		addr := fmt.Sprintf("10.0.0.%d", nextId)
+		addr := fmt.Sprintf("10.0.0.%d", n.nextIPId)
+		nextId := strconv.Itoa(n.nextIPId)
 		fip := nova.FloatingIP{Id: nextId, IP: addr, Pool: "nova"}
 		err := n.addFloatingIP(fip)
 		if err != nil {
@@ -1001,11 +980,9 @@ func (n *Nova) handleFloatingIPs(w http.ResponseWriter, r *http.Request) error {
 		return errNotFound
 	case "DELETE":
 		if ipId := path.Base(r.URL.Path); ipId != "os-floating-ips" {
-			if nId, err := strconv.Atoi(ipId); err == nil {
-				if err := n.removeFloatingIP(nId); err == nil {
-					writeResponse(w, http.StatusAccepted, nil)
-					return nil
-				}
+			if err := n.removeFloatingIP(ipId); err == nil {
+				writeResponse(w, http.StatusAccepted, nil)
+				return nil
 			}
 			return errNotFoundJSON
 		}

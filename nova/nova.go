@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
-	"strconv"
 )
 
 // API URL parts.
@@ -327,9 +326,9 @@ type SecurityGroupRule struct {
 	FromPort      *int              `json:"from_port"`   // Can be nil
 	IPProtocol    *string           `json:"ip_protocol"` // Can be nil
 	ToPort        *int              `json:"to_port"`     // Can be nil
-	ParentGroupId int               `json:"parent_group_id"`
+	ParentGroupId string            `json:"-"`
 	IPRange       map[string]string `json:"ip_range"` // Can be empty
-	Id            int
+	Id            string            `json:"-"`
 	Group         SecurityGroupRef
 }
 
@@ -337,7 +336,7 @@ type SecurityGroupRule struct {
 type SecurityGroup struct {
 	Rules       []SecurityGroupRule
 	TenantId    string `json:"tenant_id"`
-	Id          int
+	Id          string `json:"-"`
 	Name        string
 	Description string
 }
@@ -389,12 +388,8 @@ func (c *Client) GetServerSecurityGroups(serverId string) ([]SecurityGroup, erro
 			if err == nil {
 				result := make([]SecurityGroup, len(serverDetails.Groups))
 				for i, e := range serverDetails.Groups {
-					id, err := strconv.Atoi(e.Id)
-					if err != nil {
-						return nil, errors.Newf(err, "failed to parse security group id %s", e.Id)
-					}
 					result[i] = SecurityGroup{
-						Id:   id,
+						Id:   e.Id,
 						Name: e.Name,
 					}
 				}
@@ -429,8 +424,8 @@ func (c *Client) CreateSecurityGroup(name, description string) (*SecurityGroup, 
 }
 
 // DeleteSecurityGroup deletes the specified security group.
-func (c *Client) DeleteSecurityGroup(groupId int) error {
-	url := fmt.Sprintf("%s/%d", apiSecurityGroups, groupId)
+func (c *Client) DeleteSecurityGroup(groupId string) error {
+	url := fmt.Sprintf("%s/%s", apiSecurityGroups, groupId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData)
 	if err != nil {
@@ -473,14 +468,14 @@ type RuleInfo struct {
 	// Cidr cannot be specified with GroupId. Ingress rules need a valid
 	// subnet mast in CIDR format here, while if GroupID is specifed, it
 	// means you're adding a group rule, specifying source group ID, which
-	// must exists already and can be equal to ParentGroupId).
+	// must exist already and can be equal to ParentGroupId).
 	// need Cidr, while
-	Cidr    string `json:"cidr"`
-	GroupId *int   `json:"group_id"`
+	Cidr    string  `json:"cidr"`
+	GroupId *string `json:"-"`
 
 	// ParentGroupId is always required and specifies the group to which
 	// the rule is added.
-	ParentGroupId int `json:"parent_group_id"`
+	ParentGroupId string `json:"-"`
 }
 
 // CreateSecurityGroupRule creates a security group rule.
@@ -505,8 +500,8 @@ func (c *Client) CreateSecurityGroupRule(ruleInfo RuleInfo) (*SecurityGroupRule,
 }
 
 // DeleteSecurityGroupRule deletes the specified security group rule.
-func (c *Client) DeleteSecurityGroupRule(ruleId int) error {
-	url := fmt.Sprintf("%s/%d", apiSecurityGroupRules, ruleId)
+func (c *Client) DeleteSecurityGroupRule(ruleId string) error {
+	url := fmt.Sprintf("%s/%s", apiSecurityGroupRules, ruleId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData)
 	if err != nil {
@@ -556,7 +551,7 @@ func (c *Client) RemoveServerSecurityGroup(serverId, groupName string) error {
 type FloatingIP struct {
 	// FixedIP holds the private IP address of the machine (when assigned)
 	FixedIP *string `json:"fixed_ip"`
-	Id      int     `json:"id"`
+	Id      string  `json:"-"`
 	// InstanceId holds the instance id of the machine, if this FIP is assigned to one
 	InstanceId *string `json:"-"`
 	IP         string  `json:"ip"`
@@ -578,16 +573,16 @@ func (c *Client) ListFloatingIPs() ([]FloatingIP, error) {
 }
 
 // GetFloatingIP lists details of the floating IP address associated with specified id.
-func (c *Client) GetFloatingIP(ipId int) (*FloatingIP, error) {
+func (c *Client) GetFloatingIP(ipId string) (*FloatingIP, error) {
 	var resp struct {
 		FloatingIP FloatingIP `json:"floating_ip"`
 	}
 
-	url := fmt.Sprintf("%s/%d", apiFloatingIPs, ipId)
+	url := fmt.Sprintf("%s/%s", apiFloatingIPs, ipId)
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "compute", url, &requestData)
 	if err != nil {
-		return nil, errors.Newf(err, "failed to get floating ip %d details", ipId)
+		return nil, errors.Newf(err, "failed to get floating ip %s details", ipId)
 	}
 	return &resp.FloatingIP, nil
 }
@@ -607,12 +602,12 @@ func (c *Client) AllocateFloatingIP() (*FloatingIP, error) {
 }
 
 // DeleteFloatingIP deallocates the floating IP address associated with the specified id.
-func (c *Client) DeleteFloatingIP(ipId int) error {
-	url := fmt.Sprintf("%s/%d", apiFloatingIPs, ipId)
+func (c *Client) DeleteFloatingIP(ipId string) error {
+	url := fmt.Sprintf("%s/%s", apiFloatingIPs, ipId)
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted}}
 	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, "failed to delete floating ip %d details", ipId)
+		err = errors.Newf(err, "failed to delete floating ip %s details", ipId)
 	}
 	return err
 }

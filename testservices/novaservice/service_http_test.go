@@ -322,11 +322,6 @@ func (s *NovaHTTPSuite) simpleTests() []SimpleTest {
 		},
 		{
 			method: "GET",
-			url:    "/os-security-groups/invalid",
-			expect: errBadRequestSG,
-		},
-		{
-			method: "GET",
 			url:    "/os-security-groups/42",
 			expect: errNotFoundJSONSG,
 		},
@@ -354,11 +349,6 @@ func (s *NovaHTTPSuite) simpleTests() []SimpleTest {
 			method: "DELETE",
 			url:    "/os-security-groups",
 			expect: errNotFound,
-		},
-		{
-			method: "DELETE",
-			url:    "/os-security-groups/invalid",
-			expect: errBadRequestSG,
 		},
 		{
 			method: "DELETE",
@@ -404,11 +394,6 @@ func (s *NovaHTTPSuite) simpleTests() []SimpleTest {
 			method: "DELETE",
 			url:    "/os-security-group-rules",
 			expect: errNotFound,
-		},
-		{
-			method: "DELETE",
-			url:    "/os-security-group-rules/invalid",
-			expect: errBadRequestSG, // sic; should've been rule-specific
 		},
 		{
 			method: "DELETE",
@@ -676,12 +661,12 @@ func (s *NovaHTTPSuite) TestRunServer(c *C) {
 		{"name": "group1"},
 		{"name": "group2"},
 	}
-	err = s.service.addSecurityGroup(nova.SecurityGroup{Id: 1, Name: "group1"})
+	err = s.service.addSecurityGroup(nova.SecurityGroup{Id: "1", Name: "group1"})
 	c.Assert(err, IsNil)
-	defer s.service.removeSecurityGroup(1)
-	err = s.service.addSecurityGroup(nova.SecurityGroup{Id: 2, Name: "group2"})
+	defer s.service.removeSecurityGroup("1")
+	err = s.service.addSecurityGroup(nova.SecurityGroup{Id: "2", Name: "group2"})
 	c.Assert(err, IsNil)
-	defer s.service.removeSecurityGroup(2)
+	defer s.service.removeSecurityGroup("2")
 	resp, err = s.jsonRequest("POST", "/servers", req, nil)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusAccepted)
@@ -689,12 +674,12 @@ func (s *NovaHTTPSuite) TestRunServer(c *C) {
 	c.Assert(expected.Server.SecurityGroups, DeepEquals, req.Server.SecurityGroups)
 	srv, err = s.service.server(expected.Server.Id)
 	c.Assert(err, IsNil)
-	ok := s.service.hasServerSecurityGroup(srv.Id, 1)
+	ok := s.service.hasServerSecurityGroup(srv.Id, "1")
 	c.Assert(ok, Equals, true)
-	ok = s.service.hasServerSecurityGroup(srv.Id, 2)
+	ok = s.service.hasServerSecurityGroup(srv.Id, "2")
 	c.Assert(ok, Equals, true)
-	s.service.removeServerSecurityGroup(srv.Id, 1)
-	s.service.removeServerSecurityGroup(srv.Id, 2)
+	s.service.removeServerSecurityGroup(srv.Id, "1")
+	s.service.removeServerSecurityGroup(srv.Id, "2")
 	s.service.removeServer(srv.Id)
 }
 
@@ -794,13 +779,13 @@ func (s *NovaHTTPSuite) TestGetSecurityGroups(c *C) {
 	c.Assert(expected.Groups, HasLen, 1)
 	groups = []nova.SecurityGroup{
 		{
-			Id:       1,
+			Id:       "1",
 			Name:     "group 1",
 			TenantId: s.service.TenantId,
 			Rules:    []nova.SecurityGroupRule{},
 		},
 		{
-			Id:       2,
+			Id:       "2",
 			Name:     "group 2",
 			TenantId: s.service.TenantId,
 			Rules:    []nova.SecurityGroupRule{},
@@ -829,7 +814,7 @@ func (s *NovaHTTPSuite) TestGetSecurityGroups(c *C) {
 
 func (s *NovaHTTPSuite) TestAddSecurityGroup(c *C) {
 	group := nova.SecurityGroup{
-		Id:          1,
+		Id:          "1",
 		Name:        "group 1",
 		Description: "desc",
 		TenantId:    s.service.TenantId,
@@ -858,7 +843,7 @@ func (s *NovaHTTPSuite) TestAddSecurityGroup(c *C) {
 }
 
 func (s *NovaHTTPSuite) TestDeleteSecurityGroup(c *C) {
-	group := nova.SecurityGroup{Id: 1, Name: "group 1"}
+	group := nova.SecurityGroup{Id: "1", Name: "group 1"}
 	_, err := s.service.securityGroup(group.Id)
 	c.Assert(err, NotNil)
 	err = s.service.addSecurityGroup(group)
@@ -872,8 +857,8 @@ func (s *NovaHTTPSuite) TestDeleteSecurityGroup(c *C) {
 }
 
 func (s *NovaHTTPSuite) TestAddSecurityGroupRule(c *C) {
-	group1 := nova.SecurityGroup{Id: 1, Name: "src"}
-	group2 := nova.SecurityGroup{Id: 2, Name: "tgt"}
+	group1 := nova.SecurityGroup{Id: "1", Name: "src"}
+	group2 := nova.SecurityGroup{Id: "2", Name: "tgt"}
 	err := s.service.addSecurityGroup(group1)
 	c.Assert(err, IsNil)
 	defer s.service.removeSecurityGroup(group1.Id)
@@ -881,7 +866,7 @@ func (s *NovaHTTPSuite) TestAddSecurityGroupRule(c *C) {
 	c.Assert(err, IsNil)
 	defer s.service.removeSecurityGroup(group2.Id)
 	riIngress := nova.RuleInfo{
-		ParentGroupId: 1,
+		ParentGroupId: "1",
 		FromPort:      1234,
 		ToPort:        4321,
 		IPProtocol:    "tcp",
@@ -894,7 +879,7 @@ func (s *NovaHTTPSuite) TestAddSecurityGroupRule(c *C) {
 	iprange := make(map[string]string)
 	iprange["cidr"] = riIngress.Cidr
 	rule1 := nova.SecurityGroupRule{
-		Id:            1,
+		Id:            "1",
 		ParentGroupId: group1.Id,
 		FromPort:      &riIngress.FromPort,
 		ToPort:        &riIngress.ToPort,
@@ -902,7 +887,7 @@ func (s *NovaHTTPSuite) TestAddSecurityGroupRule(c *C) {
 		IPRange:       iprange,
 	}
 	rule2 := nova.SecurityGroupRule{
-		Id:            2,
+		Id:            "2",
 		ParentGroupId: group2.Id,
 		Group: nova.SecurityGroupRef{
 			Name:     group1.Name,
@@ -945,8 +930,8 @@ func (s *NovaHTTPSuite) TestAddSecurityGroupRule(c *C) {
 }
 
 func (s *NovaHTTPSuite) TestDeleteSecurityGroupRule(c *C) {
-	group1 := nova.SecurityGroup{Id: 1, Name: "src"}
-	group2 := nova.SecurityGroup{Id: 2, Name: "tgt"}
+	group1 := nova.SecurityGroup{Id: "1", Name: "src"}
+	group2 := nova.SecurityGroup{Id: "2", Name: "tgt"}
 	err := s.service.addSecurityGroup(group1)
 	c.Assert(err, IsNil)
 	defer s.service.removeSecurityGroup(group1.Id)
@@ -958,7 +943,7 @@ func (s *NovaHTTPSuite) TestDeleteSecurityGroupRule(c *C) {
 		GroupId:       &group1.Id,
 	}
 	rule := nova.SecurityGroupRule{
-		Id:            1,
+		Id:            "1",
 		ParentGroupId: group2.Id,
 		Group: nova.SecurityGroupRef{
 			Name:     group1.Name,
@@ -975,7 +960,7 @@ func (s *NovaHTTPSuite) TestDeleteSecurityGroupRule(c *C) {
 }
 
 func (s *NovaHTTPSuite) TestAddServerSecurityGroup(c *C) {
-	group := nova.SecurityGroup{Id: 1, Name: "group"}
+	group := nova.SecurityGroup{Id: "1", Name: "group"}
 	err := s.service.addSecurityGroup(group)
 	c.Assert(err, IsNil)
 	defer s.service.removeSecurityGroup(group.Id)
@@ -1004,13 +989,13 @@ func (s *NovaHTTPSuite) TestGetServerSecurityGroups(c *C) {
 	server := nova.ServerDetail{Id: "sr1"}
 	groups := []nova.SecurityGroup{
 		{
-			Id:       1,
+			Id:       "1",
 			Name:     "group1",
 			TenantId: s.service.TenantId,
 			Rules:    []nova.SecurityGroupRule{},
 		},
 		{
-			Id:       2,
+			Id:       "2",
 			Name:     "group2",
 			TenantId: s.service.TenantId,
 			Rules:    []nova.SecurityGroupRule{},
@@ -1040,7 +1025,7 @@ func (s *NovaHTTPSuite) TestGetServerSecurityGroups(c *C) {
 }
 
 func (s *NovaHTTPSuite) TestDeleteServerSecurityGroup(c *C) {
-	group := nova.SecurityGroup{Id: 1, Name: "group"}
+	group := nova.SecurityGroup{Id: "1", Name: "group"}
 	err := s.service.addSecurityGroup(group)
 	c.Assert(err, IsNil)
 	defer s.service.removeSecurityGroup(group.Id)
@@ -1066,7 +1051,7 @@ func (s *NovaHTTPSuite) TestDeleteServerSecurityGroup(c *C) {
 }
 
 func (s *NovaHTTPSuite) TestPostFloatingIP(c *C) {
-	fip := nova.FloatingIP{Id: 1, IP: "10.0.0.1", Pool: "nova"}
+	fip := nova.FloatingIP{Id: "1", IP: "10.0.0.1", Pool: "nova"}
 	c.Assert(s.service.allFloatingIPs(), HasLen, 0)
 	var expected struct {
 		IP nova.FloatingIP `json:"floating_ip"`
@@ -1091,8 +1076,8 @@ func (s *NovaHTTPSuite) TestGetFloatingIPs(c *C) {
 	assertJSON(c, resp, &expected)
 	c.Assert(expected.IPs, HasLen, 0)
 	fips := []nova.FloatingIP{
-		{Id: 1, IP: "1.2.3.4", Pool: "nova"},
-		{Id: 2, IP: "4.3.2.1", Pool: "nova"},
+		{Id: "1", IP: "1.2.3.4", Pool: "nova"},
+		{Id: "2", IP: "4.3.2.1", Pool: "nova"},
 	}
 	for _, fip := range fips {
 		err := s.service.addFloatingIP(fip)
@@ -1118,7 +1103,7 @@ func (s *NovaHTTPSuite) TestGetFloatingIPs(c *C) {
 }
 
 func (s *NovaHTTPSuite) TestDeleteFloatingIP(c *C) {
-	fip := nova.FloatingIP{Id: 1, IP: "10.0.0.1", Pool: "nova"}
+	fip := nova.FloatingIP{Id: "1", IP: "10.0.0.1", Pool: "nova"}
 	err := s.service.addFloatingIP(fip)
 	c.Assert(err, IsNil)
 	defer s.service.removeFloatingIP(fip.Id)
@@ -1130,7 +1115,7 @@ func (s *NovaHTTPSuite) TestDeleteFloatingIP(c *C) {
 }
 
 func (s *NovaHTTPSuite) TestAddServerFloatingIP(c *C) {
-	fip := nova.FloatingIP{Id: 1, IP: "1.2.3.4"}
+	fip := nova.FloatingIP{Id: "1", IP: "1.2.3.4"}
 	server := nova.ServerDetail{Id: "sr1"}
 	err := s.service.addFloatingIP(fip)
 	c.Assert(err, IsNil)
@@ -1154,7 +1139,7 @@ func (s *NovaHTTPSuite) TestAddServerFloatingIP(c *C) {
 }
 
 func (s *NovaHTTPSuite) TestRemoveServerFloatingIP(c *C) {
-	fip := nova.FloatingIP{Id: 1, IP: "1.2.3.4"}
+	fip := nova.FloatingIP{Id: "1", IP: "1.2.3.4"}
 	server := nova.ServerDetail{Id: "sr1"}
 	err := s.service.addFloatingIP(fip)
 	c.Assert(err, IsNil)

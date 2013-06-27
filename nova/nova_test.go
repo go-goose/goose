@@ -18,9 +18,9 @@ type imageDetails struct {
 // Out-of-the-box, we support live testing using Canonistack or HP Cloud.
 var testConstraints = map[string]imageDetails{
 	"canonistack": imageDetails{
-		flavor: "m1.tiny", imageId: "c876e5fe-abb0-41f0-8f29-f0b47481f523"},
+		flavor: "m1.tiny", imageId: "f2ca48ce-30d5-4f1f-9075-12e64510368d"},
 	"hpcloud": imageDetails{
-		flavor: "standard.xsmall", imageId: "75845"},
+		flavor: "standard.xsmall", imageId: "81078"},
 }
 
 var live = flag.Bool("live", false, "Include live OpenStack tests")
