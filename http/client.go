@@ -209,6 +209,7 @@ func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header,
 				req.Header.Add(header, value)
 			}
 		}
+		req.ContentLength = int64(len(reqData))
 		resp, err = c.Do(req)
 		if err != nil {
 			return nil, errors.Newf(err, "failed executing the request %s", URL)
