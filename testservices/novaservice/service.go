@@ -210,7 +210,7 @@ func (n *Nova) buildServerLinks(server *nova.ServerDetail) {
 
 // addServer creates a new server.
 func (n *Nova) addServer(server nova.ServerDetail) error {
-	if err := n.ProcessFunctionHook(n, server); err != nil {
+	if err := n.ProcessFunctionHook(n, &server); err != nil {
 		return err
 	}
 	if _, err := n.server(server.Id); err == nil {

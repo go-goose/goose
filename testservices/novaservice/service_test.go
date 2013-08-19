@@ -246,7 +246,7 @@ func (s *NovaSuite) TestAddServerControlPoint(c *C) {
 	cleanup := s.service.RegisterControlPoint(
 		"addServer",
 		func(sc hook.ServiceControl, args ...interface{}) error {
-			details := args[0].(nova.ServerDetail)
+			details := args[0].(*nova.ServerDetail)
 			details.Status = nova.StatusBuildSpawning
 			return nil
 		},
