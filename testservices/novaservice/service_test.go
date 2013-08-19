@@ -253,15 +253,15 @@ func (s *NovaSuite) TestAddServerControlPoint(c *C) {
 	)
 	defer cleanup()
 
-	server := nova.ServerDetail{
+	server := &nova.ServerDetail{
 		Id:     "test",
 		Status: nova.StatusActive,
 	}
-	s.createServer(c, server)
-	defer s.deleteServer(c, server)
+	s.createServer(c, *server)
+	defer s.deleteServer(c, *server)
 
-	sr, _ := s.service.server(server.Id)
-	c.Assert(sr.Status, Equals, nova.StatusBuildSpawning)
+	server, _ = s.service.server(server.Id)
+	c.Assert(server.Status, Equals, nova.StatusBuildSpawning)
 }
 
 func (s *NovaSuite) TestRemoveServerTwiceFails(c *C) {

@@ -28,7 +28,7 @@ const (
 const (
 	StatusActive        = "ACTIVE"          // The server is active.
 	StatusBuild         = "BUILD"           // The server has not finished the original build process.
-	StatusBuildSpawning = "BUILD(spawning)" // The HP server has not finished the original build process but does have networking.
+	StatusBuildSpawning = "BUILD(spawning)" // The server has not finished the original build process but networking works (HP Cloud specific)
 	StatusDeleted       = "DELETED"         // The server is deleted.
 	StatusError         = "ERROR"           // The server is in error.
 	StatusHardReboot    = "HARD_REBOOT"     // The server is hard rebooting.
