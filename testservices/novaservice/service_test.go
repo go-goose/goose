@@ -6,6 +6,7 @@ import (
 	"fmt"
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/nova"
+	"launchpad.net/goose/testservices/hook"
 )
 
 type NovaSuite struct {
@@ -238,6 +239,29 @@ func (s *NovaSuite) TestAddServerTwiceFails(c *C) {
 	defer s.deleteServer(c, server)
 	err := s.service.addServer(server)
 	c.Assert(err, ErrorMatches, `a server with id "test" already exists`)
+}
+
+// A control point can be used to change the status of the added server.
+func (s *NovaSuite) TestAddServerControlPoint(c *C) {
+	cleanup := s.service.RegisterControlPoint(
+		"addServer",
+		func(sc hook.ServiceControl, args ...interface{}) error {
+			details := args[0].(*nova.ServerDetail)
+			details.Status = nova.StatusBuildSpawning
+			return nil
+		},
+	)
+	defer cleanup()
+
+	server := &nova.ServerDetail{
+		Id:     "test",
+		Status: nova.StatusActive,
+	}
+	s.createServer(c, *server)
+	defer s.deleteServer(c, *server)
+
+	server, _ = s.service.server(server.Id)
+	c.Assert(server.Status, Equals, nova.StatusBuildSpawning)
 }
 
 func (s *NovaSuite) TestRemoveServerTwiceFails(c *C) {

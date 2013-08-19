@@ -26,20 +26,21 @@ const (
 
 // Server status values.
 const (
-	StatusActive       = "ACTIVE"        // The server is active.
-	StatusBuild        = "BUILD"         // The server has not finished the original build process.
-	StatusDeleted      = "DELETED"       // The server is deleted.
-	StatusError        = "ERROR"         // The server is in error.
-	StatusHardReboot   = "HARD_REBOOT"   // The server is hard rebooting.
-	StatusPassword     = "PASSWORD"      // The password is being reset on the server.
-	StatusReboot       = "REBOOT"        // The server is in a soft reboot state.
-	StatusRebuild      = "REBUILD"       // The server is currently being rebuilt from an image.
-	StatusRescue       = "RESCUE"        // The server is in rescue mode.
-	StatusResize       = "RESIZE"        // Server is performing the differential copy of data that changed during its initial copy.
-	StatusShutoff      = "SHUTOFF"       // The virtual machine (VM) was powered down by the user, but not through the OpenStack Compute API.
-	StatusSuspended    = "SUSPENDED"     // The server is suspended, either by request or necessity.
-	StatusUnknown      = "UNKNOWN"       // The state of the server is unknown. Contact your cloud provider.
-	StatusVerifyResize = "VERIFY_RESIZE" // System is awaiting confirmation that the server is operational after a move or resize.
+	StatusActive        = "ACTIVE"          // The server is active.
+	StatusBuild         = "BUILD"           // The server has not finished the original build process.
+	StatusBuildSpawning = "BUILD(spawning)" // The server has not finished the original build process but networking works (HP Cloud specific)
+	StatusDeleted       = "DELETED"         // The server is deleted.
+	StatusError         = "ERROR"           // The server is in error.
+	StatusHardReboot    = "HARD_REBOOT"     // The server is hard rebooting.
+	StatusPassword      = "PASSWORD"        // The password is being reset on the server.
+	StatusReboot        = "REBOOT"          // The server is in a soft reboot state.
+	StatusRebuild       = "REBUILD"         // The server is currently being rebuilt from an image.
+	StatusRescue        = "RESCUE"          // The server is in rescue mode.
+	StatusResize        = "RESIZE"          // Server is performing the differential copy of data that changed during its initial copy.
+	StatusShutoff       = "SHUTOFF"         // The virtual machine (VM) was powered down by the user, but not through the OpenStack Compute API.
+	StatusSuspended     = "SUSPENDED"       // The server is suspended, either by request or necessity.
+	StatusUnknown       = "UNKNOWN"         // The state of the server is unknown. Contact your cloud provider.
+	StatusVerifyResize  = "VERIFY_RESIZE"   // System is awaiting confirmation that the server is operational after a move or resize.
 )
 
 // Filter keys.
