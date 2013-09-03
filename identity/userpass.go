@@ -19,12 +19,12 @@ type authWrapper struct {
 }
 
 type UserPass struct {
-	client *goosehttp.Client
+	Client *goosehttp.Client
 }
 
 func (u *UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
-	if u.client == nil {
-		u.client = goosehttp.New()
+	if u.Client == nil {
+		u.Client = goosehttp.New()
 	}
 	auth := authWrapper{Auth: authRequest{
 		PasswordCredentials: passwordCredentials{
@@ -33,5 +33,5 @@ func (u *UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 		},
 		TenantName: creds.TenantName}}
 
-	return keystoneAuth(u.client, auth, creds.URL)
+	return keystoneAuth(u.Client, auth, creds.URL)
 }

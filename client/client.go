@@ -106,7 +106,7 @@ func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpC
 	case identity.AuthLegacy:
 		client.authMode = &identity.Legacy{}
 	case identity.AuthUserPass:
-		client.authMode = &identity.UserPass{}
+		client.authMode = &identity.UserPass{Client: httpClient}
 	case identity.AuthKeyPair:
 		client.authMode = &identity.KeyPair{}
 	}
