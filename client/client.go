@@ -51,9 +51,10 @@ var sharedHttpClient = goosehttp.New()
 
 // This client sends requests without authenticating.
 type client struct {
-	mu      sync.Mutex
-	logger  *log.Logger
-	baseURL string
+	mu         sync.Mutex
+	logger     *log.Logger
+	baseURL    string
+	httpClient *goosehttp.Client
 }
 
 var _ Client = (*client)(nil)
@@ -84,19 +85,19 @@ type authenticatingClient struct {
 var _ AuthenticatingClient = (*authenticatingClient)(nil)
 
 func NewPublicClient(baseURL string, logger *log.Logger) Client {
-	client := client{baseURL: baseURL, logger: logger}
+	client := client{baseURL: baseURL, logger: logger, httpClient: sharedHttpClient}
 	return &client
 }
 
 var defaultRequiredServiceTypes = []string{"compute", "object-store"}
 
-func NewClient(creds *identity.Credentials, auth_method identity.AuthMode, logger *log.Logger) AuthenticatingClient {
+func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpClient *goosehttp.Client, logger *log.Logger) AuthenticatingClient {
 	client_creds := *creds
 	client_creds.URL = client_creds.URL + apiTokens
 	client := authenticatingClient{
 		creds:                &client_creds,
 		requiredServiceTypes: defaultRequiredServiceTypes,
-		client:               client{logger: logger},
+		client:               client{logger: logger, httpClient: httpClient},
 	}
 	client.auth = &client
 	switch auth_method {
@@ -112,11 +113,19 @@ func NewClient(creds *identity.Credentials, auth_method identity.AuthMode, logge
 	return &client
 }
 
+func NewClient(creds *identity.Credentials, auth_method identity.AuthMode, logger *log.Logger) AuthenticatingClient {
+	return newClient(creds, auth_method, sharedHttpClient, logger)
+}
+
+func NewNonValidatingClient(creds *identity.Credentials, auth_method identity.AuthMode, logger *log.Logger) AuthenticatingClient {
+	return newClient(creds, auth_method, goosehttp.NewNonSSLValidating(), logger)
+}
+
 func (c *client) sendRequest(method, url, token string, requestData *goosehttp.RequestData) (err error) {
 	if requestData.ReqValue != nil || requestData.RespValue != nil {
-		err = sharedHttpClient.JsonRequest(method, url, token, requestData, c.logger)
+		err = c.httpClient.JsonRequest(method, url, token, requestData, c.logger)
 	} else {
-		err = sharedHttpClient.BinaryRequest(method, url, token, requestData, c.logger)
+		err = c.httpClient.BinaryRequest(method, url, token, requestData, c.logger)
 	}
 	return
 }
