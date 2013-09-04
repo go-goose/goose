@@ -37,6 +37,7 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 		containers: make(map[string]object),
 		ServiceInstance: testservices.ServiceInstance{
 			IdentityService: identityService,
+			Scheme:          URL.Scheme,
 			Hostname:        hostname,
 			VersionPath:     versionPath,
 			TenantId:        tenantId,
@@ -50,7 +51,7 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 }
 
 func (s *Swift) endpointURL(path string) string {
-	ep := "http://" + s.Hostname + s.VersionPath + "/" + s.TenantId
+	ep := s.Scheme + "://" + s.Hostname + s.VersionPath + "/" + s.TenantId
 	if path != "" {
 		ep += "/" + strings.TrimLeft(path, "/")
 	}

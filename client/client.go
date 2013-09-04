@@ -116,7 +116,9 @@ func (c *client) sendRequest(method, url, token string, requestData *goosehttp.R
 	if requestData.ReqValue != nil || requestData.RespValue != nil {
 		err = sharedHttpClient.JsonRequest(method, url, token, requestData, c.logger)
 	} else {
-		err = sharedHttpClient.BinaryRequest(method, url, token, requestData, c.logger)
+		//panic(fmt.Sprintf("cannot send Binary request via: %#v",
+		//c.httpClient.Client.Transport.(*http.Transport).TLSClientConfig))
+		err = c.httpClient.BinaryRequest(method, url, token, requestData, c.logger)
 	}
 	return
 }

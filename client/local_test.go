@@ -7,6 +7,7 @@ import (
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/errors"
 	"launchpad.net/goose/identity"
+	"launchpad.net/goose/swift"
 	"launchpad.net/goose/testing/httpsuite"
 	"launchpad.net/goose/testservices"
 	"launchpad.net/goose/testservices/identityservice"
@@ -341,6 +342,7 @@ type localHTTPSSuite struct {
 func (s *localHTTPSSuite) SetUpSuite(c *C) {
 	c.Logf("Using identity service test double")
 	s.HTTPSuite.SetUpSuite(c)
+	c.Assert(s.Server.URL[:8], Equals, "https://")
 	s.cred = &identity.Credentials{
 		URL:        s.Server.URL,
 		User:       "fred",
@@ -352,7 +354,7 @@ func (s *localHTTPSSuite) SetUpSuite(c *C) {
 	s.service = openstackservice.New(s.cred, identity.AuthUserPass)
 	// Add an additional endpoint so region filtering can be properly tested.
 	serviceDef := identityservice.Service{"nova", "compute", []identityservice.Endpoint{
-		identityservice.Endpoint{PublicURL: "http://nova2", Region: "zone2.RegionOne"},
+		identityservice.Endpoint{PublicURL: "https://nova2", Region: "zone2.RegionOne"},
 	}}
 	s.service.(*openstackservice.Openstack).Identity.AddService(serviceDef)
 }
@@ -380,4 +382,13 @@ func (s *localHTTPSSuite) TestNonValidatingClientAcceptsSelfSigned(c *C) {
 	cl := client.NewNonValidatingClient(s.cred, identity.AuthUserPass, nil)
 	err := cl.Authenticate()
 	c.Assert(err, IsNil)
+
+	// Requests into this client should be https:// URLs
+	swiftURL, err := cl.MakeServiceURL("object-store", []string{"test_container"})
+	c.Assert(err, IsNil)
+	c.Assert(swiftURL[:8], Equals, "https://")
+	// We use swiftClient.CreateContainer to test a Binary request
+	swiftClient := swift.New(cl)
+	c.Assert(swiftClient.CreateContainer("test_container", swift.Private), IsNil)
+	//c.Assert(swiftClient.PutObject("test-container", "test-obj", []byte("content")), IsNil)
 }
