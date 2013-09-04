@@ -390,5 +390,9 @@ func (s *localHTTPSSuite) TestNonValidatingClientAcceptsSelfSigned(c *C) {
 	// We use swiftClient.CreateContainer to test a Binary request
 	swiftClient := swift.New(cl)
 	c.Assert(swiftClient.CreateContainer("test_container", swift.Private), IsNil)
-	//c.Assert(swiftClient.PutObject("test-container", "test-obj", []byte("content")), IsNil)
+
+	// And we use List to test the JsonRequest
+	contents, err := swiftClient.List("test_container", "", "", "", 0)
+	c.Assert(err, IsNil)
+	c.Check(contents, DeepEquals, []swift.ContainerContents{})
 }

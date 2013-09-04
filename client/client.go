@@ -114,10 +114,8 @@ func NewNonValidatingClient(creds *identity.Credentials, auth_method identity.Au
 
 func (c *client) sendRequest(method, url, token string, requestData *goosehttp.RequestData) (err error) {
 	if requestData.ReqValue != nil || requestData.RespValue != nil {
-		err = sharedHttpClient.JsonRequest(method, url, token, requestData, c.logger)
+		err = c.httpClient.JsonRequest(method, url, token, requestData, c.logger)
 	} else {
-		//panic(fmt.Sprintf("cannot send Binary request via: %#v",
-		//c.httpClient.Client.Transport.(*http.Transport).TLSClientConfig))
 		err = c.httpClient.BinaryRequest(method, url, token, requestData, c.logger)
 	}
 	return
