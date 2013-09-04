@@ -17,11 +17,16 @@ type HTTPSuite struct {
 	Server     *httptest.Server
 	Mux        *http.ServeMux
 	oldHandler http.Handler
+	UseTLS     bool
 }
 
 func (s *HTTPSuite) SetUpSuite(c *C) {
 	// fmt.Printf("Starting New Server\n")
-	s.Server = httptest.NewServer(nil)
+	if s.UseTLS {
+		s.Server = httptest.NewTLSServer(nil)
+	} else {
+		s.Server = httptest.NewServer(nil)
+	}
 }
 
 func (s *HTTPSuite) SetUpTest(c *C) {

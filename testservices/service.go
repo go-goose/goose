@@ -17,6 +17,7 @@ type ServiceInstance struct {
 	identityservice.ServiceProvider
 	hook.TestService
 	IdentityService identityservice.IdentityService
+	Scheme          string
 	Hostname        string
 	VersionPath     string
 	TenantId        string

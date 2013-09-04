@@ -35,7 +35,7 @@ type Nova struct {
 // endpoint returns either a versioned or non-versioned service
 // endpoint URL from the given path.
 func (n *Nova) endpointURL(version bool, path string) string {
-	ep := "http://" + n.Hostname
+	ep := n.Scheme + "://" + n.Hostname
 	if version {
 		ep += n.VersionPath + "/"
 	}
@@ -86,6 +86,7 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 		serverIPs:    make(map[string][]string),
 		ServiceInstance: testservices.ServiceInstance{
 			IdentityService: identityService,
+			Scheme:          URL.Scheme,
 			Hostname:        hostname,
 			VersionPath:     versionPath,
 			TenantId:        tenantId,
