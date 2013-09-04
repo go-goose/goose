@@ -14,11 +14,37 @@ func Test(t *testing.T) {
 	TestingT(t)
 }
 
-type HTTPClientTestSuite struct {
+type LoopingHTTPSuite struct {
 	httpsuite.HTTPSuite
 }
 
+func (s *LoopingHTTPSuite) setupLoopbackRequest() (*http.Header, chan string, *Client) {
+	var headers http.Header
+	bodyChan := make(chan string, 1)
+	handler := func(resp http.ResponseWriter, req *http.Request) {
+		headers = req.Header
+		bodyBytes, _ := ioutil.ReadAll(req.Body)
+		req.Body.Close()
+		bodyChan <- string(bodyBytes)
+		resp.Header().Add("Content-Length", "0")
+		resp.WriteHeader(http.StatusNoContent)
+		resp.Write([]byte{})
+	}
+	s.Mux.HandleFunc("/", handler)
+	client := New()
+	return &headers, bodyChan, client
+}
+
+type HTTPClientTestSuite struct {
+	LoopingHTTPSuite
+}
+
+type HTTPSClientTestSuite struct {
+	LoopingHTTPSuite
+}
+
 var _ = Suite(&HTTPClientTestSuite{})
+var _ = Suite(&HTTPSClientTestSuite{LoopingHTTPSuite{httpsuite.HTTPSuite{UseTLS: true}}})
 
 func (s *HTTPClientTestSuite) assertHeaderValues(c *C, token string) {
 	emptyHeaders := http.Header{}
@@ -53,23 +79,6 @@ func (s *HTTPClientTestSuite) TestCreateHeadersCopiesSupplied(c *C) {
 	// The initial headers should be in the output
 	c.Assert(headers, DeepEquals,
 		http.Header{"Foo": []string{"Bar"}, "Content-Type": contentTypes, "Accept": contentTypes, "User-Agent": []string{gooseAgent()}})
-}
-
-func (s *HTTPClientTestSuite) setupLoopbackRequest() (*http.Header, chan string, *Client) {
-	var headers http.Header
-	bodyChan := make(chan string, 1)
-	handler := func(resp http.ResponseWriter, req *http.Request) {
-		headers = req.Header
-		bodyBytes, _ := ioutil.ReadAll(req.Body)
-		req.Body.Close()
-		bodyChan <- string(bodyBytes)
-		resp.Header().Add("Content-Length", "0")
-		resp.WriteHeader(http.StatusNoContent)
-		resp.Write([]byte{})
-	}
-	s.Mux.HandleFunc("/", handler)
-	client := New()
-	return &headers, bodyChan, client
 }
 
 func (s *HTTPClientTestSuite) TestBinaryRequestSetsUserAgent(c *C) {
@@ -145,4 +154,23 @@ func (s *HTTPClientTestSuite) TestJSONRequestSetsToken(c *C) {
 	c.Assert(err, IsNil)
 	agent := headers.Get("X-Auth-Token")
 	c.Check(agent, Equals, "token")
+}
+
+func (s *HTTPSClientTestSuite) TestDefaultClientRejectSelfSigned(c *C) {
+	_, _, client := s.setupLoopbackRequest()
+	req := &RequestData{ExpectedStatus: []int{http.StatusNoContent}}
+	err := client.BinaryRequest("POST", s.Server.URL, "", req, nil)
+	c.Assert(err, NotNil)
+	c.Check(err, ErrorMatches, "(.|\\n)*x509: certificate signed by unknown authority")
+}
+
+func (s *HTTPSClientTestSuite) TestInsecureClientAllowsSelfSigned(c *C) {
+	headers, _, _ := s.setupLoopbackRequest()
+	client := NewNonSSLValidating()
+	req := &RequestData{ExpectedStatus: []int{http.StatusNoContent}}
+	err := client.BinaryRequest("POST", s.Server.URL, "", req, nil)
+	c.Assert(err, IsNil)
+	agent := headers.Get("User-Agent")
+	c.Check(agent, Not(Equals), "")
+	c.Check(agent, Equals, gooseAgent())
 }

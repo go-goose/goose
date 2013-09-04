@@ -4,6 +4,7 @@ package http
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -59,9 +61,25 @@ const (
 	MaxSendAttempts = 3
 )
 
+var insecureClient *http.Client
+var insecureClientMutex sync.Mutex
+
 // New returns a new goose http *Client using the default net/http client.
 func New() *Client {
 	return &Client{*http.DefaultClient, MaxSendAttempts}
+}
+
+func NewNonSSLValidating() *Client {
+	insecureClientMutex.Lock()
+	httpClient := insecureClient
+	if httpClient == nil {
+		insecureConfig := &tls.Config{InsecureSkipVerify: true}
+		insecureTransport := &http.Transport{TLSClientConfig: insecureConfig}
+		insecureClient = &http.Client{Transport: insecureTransport}
+		httpClient = insecureClient
+	}
+	insecureClientMutex.Unlock()
+	return &Client{*httpClient, MaxSendAttempts}
 }
 
 func gooseAgent() string {
