@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+
+	goosehttp "launchpad.net/goose/http"
 )
 
 // AuthMode defines the authentication method to use (see Auth*
@@ -96,4 +98,23 @@ func CompleteCredentialsFromEnv() (cred *Credentials, err error) {
 		}
 	}
 	return
+}
+
+// NewAuthenticator creates an authenticator matching the supplied AuthMode.
+// The httpclient is allowed to be nil, the Authenticator will just use the
+// default http.Client
+func NewAuthenticator(authMode AuthMode, httpClient *goosehttp.Client) Authenticator {
+	if httpClient == nil {
+		httpClient = goosehttp.New()
+	}
+	switch authMode {
+	default:
+		panic(fmt.Errorf("Invalid identity authorisation mode: %d", authMode))
+	case AuthLegacy:
+		return &Legacy{client: httpClient}
+	case AuthUserPass:
+		return &UserPass{client: httpClient}
+	case AuthKeyPair:
+		return &KeyPair{client: httpClient}
+	}
 }

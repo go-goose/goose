@@ -7,6 +7,7 @@ import (
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/errors"
 	"launchpad.net/goose/identity"
+	"launchpad.net/goose/swift"
 	"launchpad.net/goose/testing/httpsuite"
 	"launchpad.net/goose/testservices"
 	"launchpad.net/goose/testservices/identityservice"
@@ -25,6 +26,7 @@ func registerLocalTests(authModes []identity.AuthMode) {
 			},
 		})
 	}
+	Suite(&localHTTPSSuite{HTTPSuite: httpsuite.HTTPSuite{UseTLS: true}})
 }
 
 // localLiveSuite runs tests from LiveTests using a fake
@@ -328,4 +330,69 @@ func (s *localLiveSuite) TestNonAccessibleServiceType(c *C) {
 		err := cl.Authenticate()
 		c.Assert(err, ErrorMatches, at.errorMsg)
 	}
+}
+
+type localHTTPSSuite struct {
+	// The following attributes are for using testing doubles.
+	httpsuite.HTTPSuite
+	service testservices.HttpService
+	cred    *identity.Credentials
+}
+
+func (s *localHTTPSSuite) SetUpSuite(c *C) {
+	c.Logf("Using identity service test double")
+	s.HTTPSuite.SetUpSuite(c)
+	c.Assert(s.Server.URL[:8], Equals, "https://")
+	s.cred = &identity.Credentials{
+		URL:        s.Server.URL,
+		User:       "fred",
+		Secrets:    "secret",
+		Region:     "zone1.some region",
+		TenantName: "tenant",
+	}
+	// The openstack test service sets up userpass authentication.
+	s.service = openstackservice.New(s.cred, identity.AuthUserPass)
+	// Add an additional endpoint so region filtering can be properly tested.
+	serviceDef := identityservice.Service{"nova", "compute", []identityservice.Endpoint{
+		identityservice.Endpoint{PublicURL: "https://nova2", Region: "zone2.RegionOne"},
+	}}
+	s.service.(*openstackservice.Openstack).Identity.AddService(serviceDef)
+}
+
+func (s *localHTTPSSuite) TearDownSuite(c *C) {
+	s.HTTPSuite.TearDownSuite(c)
+}
+
+func (s *localHTTPSSuite) SetUpTest(c *C) {
+	s.HTTPSuite.SetUpTest(c)
+	s.service.SetupHTTP(s.Mux)
+}
+
+func (s *localHTTPSSuite) TearDownTest(c *C) {
+	s.HTTPSuite.TearDownTest(c)
+}
+
+func (s *localHTTPSSuite) TestDefaultClientRefusesSelfSigned(c *C) {
+	cl := client.NewClient(s.cred, identity.AuthUserPass, nil)
+	err := cl.Authenticate()
+	c.Assert(err, ErrorMatches, "(.|\n)*x509: certificate signed by unknown authority")
+}
+
+func (s *localHTTPSSuite) TestNonValidatingClientAcceptsSelfSigned(c *C) {
+	cl := client.NewNonValidatingClient(s.cred, identity.AuthUserPass, nil)
+	err := cl.Authenticate()
+	c.Assert(err, IsNil)
+
+	// Requests into this client should be https:// URLs
+	swiftURL, err := cl.MakeServiceURL("object-store", []string{"test_container"})
+	c.Assert(err, IsNil)
+	c.Assert(swiftURL[:8], Equals, "https://")
+	// We use swiftClient.CreateContainer to test a Binary request
+	swiftClient := swift.New(cl)
+	c.Assert(swiftClient.CreateContainer("test_container", swift.Private), IsNil)
+
+	// And we use List to test the JsonRequest
+	contents, err := swiftClient.List("test_container", "", "", "", 0)
+	c.Assert(err, IsNil)
+	c.Check(contents, DeepEquals, []swift.ContainerContents{})
 }
