@@ -2,6 +2,7 @@ package identity
 
 import (
 	. "launchpad.net/gocheck"
+	goosehttp "launchpad.net/goose/http"
 	"launchpad.net/goose/testing/envsuite"
 	"os"
 )
@@ -11,7 +12,10 @@ type CredentialsTestSuite struct {
 	envsuite.EnvSuite
 }
 
+type NewAuthenticatorSuite struct{}
+
 var _ = Suite(&CredentialsTestSuite{})
+var _ = Suite(&NewAuthenticatorSuite{})
 
 func (s *CredentialsTestSuite) TestCredentialsFromEnv(c *C) {
 	var scenarios = []struct {
@@ -146,4 +150,54 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvKeypairCompatibleEn
 	c.Check(creds.Secrets, Equals, "test-secret-key")
 	c.Check(creds.Region, Equals, "region")
 	c.Check(creds.TenantName, Equals, "tenant-name")
+}
+
+func (s *NewAuthenticatorSuite) TestUserPassNoHTTPClient(c *C) {
+	auth := NewAuthenticator(AuthUserPass, nil)
+	userAuth, ok := auth.(*UserPass)
+	c.Assert(ok, Equals, true)
+	c.Assert(userAuth.client, NotNil)
+}
+
+func (s *NewAuthenticatorSuite) TestUserPassCustomHTTPClient(c *C) {
+	httpClient := goosehttp.New()
+	auth := NewAuthenticator(AuthUserPass, httpClient)
+	userAuth, ok := auth.(*UserPass)
+	c.Assert(ok, Equals, true)
+	c.Assert(userAuth.client, Equals, httpClient)
+}
+
+func (s *NewAuthenticatorSuite) TestKeyPairNoHTTPClient(c *C) {
+	auth := NewAuthenticator(AuthKeyPair, nil)
+	keyPairAuth, ok := auth.(*KeyPair)
+	c.Assert(ok, Equals, true)
+	c.Assert(keyPairAuth.client, NotNil)
+}
+
+func (s *NewAuthenticatorSuite) TestKeyPairCustomHTTPClient(c *C) {
+	httpClient := goosehttp.New()
+	auth := NewAuthenticator(AuthKeyPair, httpClient)
+	keyPairAuth, ok := auth.(*KeyPair)
+	c.Assert(ok, Equals, true)
+	c.Assert(keyPairAuth.client, Equals, httpClient)
+}
+
+func (s *NewAuthenticatorSuite) TestLegacyNoHTTPClient(c *C) {
+	auth := NewAuthenticator(AuthLegacy, nil)
+	legacyAuth, ok := auth.(*Legacy)
+	c.Assert(ok, Equals, true)
+	c.Assert(legacyAuth.client, NotNil)
+}
+
+func (s *NewAuthenticatorSuite) TestLegacyCustomHTTPClient(c *C) {
+	httpClient := goosehttp.New()
+	auth := NewAuthenticator(AuthLegacy, httpClient)
+	legacyAuth, ok := auth.(*Legacy)
+	c.Assert(ok, Equals, true)
+	c.Assert(legacyAuth.client, Equals, httpClient)
+}
+
+func (s *NewAuthenticatorSuite) TestUnknownMode(c *C) {
+	c.Assert(func() { NewAuthenticator(1235, nil) },
+		PanicMatches, "Invalid identity authorisation mode: 1235")
 }

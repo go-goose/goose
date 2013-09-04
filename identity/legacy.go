@@ -3,16 +3,17 @@ package identity
 import (
 	"fmt"
 	"io/ioutil"
+	goosehttp "launchpad.net/goose/http"
 	"net/http"
 )
 
 type Legacy struct {
-	client *http.Client
+	client *goosehttp.Client
 }
 
 func (l *Legacy) Auth(creds *Credentials) (*AuthDetails, error) {
 	if l.client == nil {
-		l.client = http.DefaultClient
+		l.client = goosehttp.New()
 	}
 	request, err := http.NewRequest("GET", creds.URL, nil)
 	if err != nil {

@@ -100,16 +100,7 @@ func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpC
 		client:               client{logger: logger, httpClient: httpClient},
 	}
 	client.auth = &client
-	switch auth_method {
-	default:
-		panic(fmt.Errorf("Invalid identity authorisation method: %d", auth_method))
-	case identity.AuthLegacy:
-		client.authMode = &identity.Legacy{}
-	case identity.AuthUserPass:
-		client.authMode = &identity.UserPass{Client: httpClient}
-	case identity.AuthKeyPair:
-		client.authMode = &identity.KeyPair{}
-	}
+	client.authMode = identity.NewAuthenticator(auth_method, httpClient)
 	return &client
 }
 
@@ -123,9 +114,9 @@ func NewNonValidatingClient(creds *identity.Credentials, auth_method identity.Au
 
 func (c *client) sendRequest(method, url, token string, requestData *goosehttp.RequestData) (err error) {
 	if requestData.ReqValue != nil || requestData.RespValue != nil {
-		err = c.httpClient.JsonRequest(method, url, token, requestData, c.logger)
+		err = sharedHttpClient.JsonRequest(method, url, token, requestData, c.logger)
 	} else {
-		err = c.httpClient.BinaryRequest(method, url, token, requestData, c.logger)
+		err = sharedHttpClient.BinaryRequest(method, url, token, requestData, c.logger)
 	}
 	return
 }
