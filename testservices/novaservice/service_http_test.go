@@ -25,6 +25,14 @@ type NovaHTTPSuite struct {
 
 var _ = Suite(&NovaHTTPSuite{})
 
+type NovaHTTPSSuite struct {
+	httpsuite.HTTPSuite
+	service *Nova
+	token   string
+}
+
+var _ = Suite(&NovaHTTPSSuite{HTTPSuite: httpsuite.HTTPSuite{UseTLS: true}})
+
 func (s *NovaHTTPSuite) SetUpSuite(c *C) {
 	s.HTTPSuite.SetUpSuite(c)
 	identityDouble := identityservice.NewUserPass()
@@ -1161,4 +1169,31 @@ func (s *NovaHTTPSuite) TestRemoveServerFloatingIP(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, http.StatusAccepted)
 	c.Assert(s.service.hasServerFloatingIP(server.Id, fip.IP), Equals, false)
+}
+
+func (s *NovaHTTPSSuite) SetUpSuite(c *C) {
+	s.HTTPSuite.SetUpSuite(c)
+	identityDouble := identityservice.NewUserPass()
+	userInfo := identityDouble.AddUser("fred", "secret", "tenant")
+	s.token = userInfo.Token
+	c.Assert(s.Server.URL[:8], Equals, "https://")
+	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble)
+}
+
+func (s *NovaHTTPSSuite) TearDownSuite(c *C) {
+	s.HTTPSuite.TearDownSuite(c)
+}
+
+func (s *NovaHTTPSSuite) SetUpTest(c *C) {
+	s.HTTPSuite.SetUpTest(c)
+	s.service.SetupHTTP(s.Mux)
+}
+
+func (s *NovaHTTPSSuite) TearDownTest(c *C) {
+	s.HTTPSuite.TearDownTest(c)
+}
+
+func (s *NovaHTTPSSuite) TestHasHTTPSServiceURL(c *C) {
+	endpoints := s.service.Endpoints()
+	c.Assert(endpoints[0].PublicURL[:8], Equals, "https://")
 }

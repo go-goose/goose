@@ -22,6 +22,14 @@ type SwiftHTTPSuite struct {
 
 var _ = Suite(&SwiftHTTPSuite{})
 
+type SwiftHTTPSSuite struct {
+	httpsuite.HTTPSuite
+	service *Swift
+	token   string
+}
+
+var _ = Suite(&SwiftHTTPSSuite{HTTPSuite: httpsuite.HTTPSuite{UseTLS: true}})
+
 func (s *SwiftHTTPSuite) SetUpSuite(c *C) {
 	s.HTTPSuite.SetUpSuite(c)
 	identityDouble := identityservice.NewUserPass()
@@ -301,4 +309,31 @@ func (s *SwiftHTTPSuite) TestUnauthorizedFails(c *C) {
 	s.sendRequest(c, "PUT", "test", nil, http.StatusUnauthorized)
 
 	s.sendRequest(c, "DELETE", "test", nil, http.StatusUnauthorized)
+}
+
+func (s *SwiftHTTPSSuite) SetUpSuite(c *C) {
+	s.HTTPSuite.SetUpSuite(c)
+	identityDouble := identityservice.NewUserPass()
+	userInfo := identityDouble.AddUser("fred", "secret", "tenant")
+	s.token = userInfo.Token
+	c.Assert(s.Server.URL[:8], Equals, "https://")
+	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble)
+}
+
+func (s *SwiftHTTPSSuite) TearDownSuite(c *C) {
+	s.HTTPSuite.TearDownSuite(c)
+}
+
+func (s *SwiftHTTPSSuite) SetUpTest(c *C) {
+	s.HTTPSuite.SetUpTest(c)
+	s.service.SetupHTTP(s.Mux)
+}
+
+func (s *SwiftHTTPSSuite) TearDownTest(c *C) {
+	s.HTTPSuite.TearDownTest(c)
+}
+
+func (s *SwiftHTTPSSuite) TestHasHTTPSServiceURL(c *C) {
+	endpoints := s.service.Endpoints()
+	c.Assert(endpoints[0].PublicURL[:8], Equals, "https://")
 }
