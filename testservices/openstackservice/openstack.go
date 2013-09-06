@@ -52,7 +52,7 @@ func New(cred *identity.Credentials, authMode identity.AuthMode) *Openstack {
 	openstack.Identity.AddService(serviceDef)
 	// Add public bucket endpoint so that juju-tools URLs are included in the keystone catalog.
 	serviceDef = identityservice.Service{"juju", "juju-tools", []identityservice.Endpoint{
-		identityservice.Endpoint{PublicURL: url, Region: cred.Region},
+		identityservice.Endpoint{PublicURL: url + "/tools", Region: cred.Region},
 	}}
 	openstack.Identity.AddService(serviceDef)
 	return &openstack
