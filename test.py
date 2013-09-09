@@ -99,7 +99,6 @@ def tarmac_setup(opts):
     """Do all the bits of setup that need to happen for the tarmac bot."""
     ensure_tarmac_log_dir()
     create_tarmac_repository()
-    ensure_juju_core_dependencies()
 
 
 def setup_gopath():
@@ -199,6 +198,7 @@ def main(args):
         tarmac_setup(opts)
     to_run = [run_go_fmt, run_go_build, run_go_test]
     if opts.juju_core:
+        ensure_juju_core_dependencies()
         to_run.append(run_juju_core_tests)
     if opts.live:
         to_run.append(run_live_tests)
