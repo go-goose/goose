@@ -89,6 +89,14 @@ func NewPublicClient(baseURL string, logger *log.Logger) Client {
 	return &client
 }
 
+func NewNonValidatingPublicClient(baseURL string, logger *log.Logger) Client {
+	return &client{
+		baseURL:    baseURL,
+		logger:     logger,
+		httpClient: goosehttp.NewNonSSLValidating(),
+	}
+}
+
 var defaultRequiredServiceTypes = []string{"compute", "object-store"}
 
 func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpClient *goosehttp.Client, logger *log.Logger) AuthenticatingClient {

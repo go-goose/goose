@@ -396,3 +396,32 @@ func (s *localHTTPSSuite) TestNonValidatingClientAcceptsSelfSigned(c *C) {
 	c.Assert(err, IsNil)
 	c.Check(contents, DeepEquals, []swift.ContainerContents{})
 }
+
+func (s *localHTTPSSuite) setupPublicContainer(c *C) string {
+	// First set up a container that can be read publically
+	authClient := client.NewNonValidatingClient(s.cred, identity.AuthUserPass, nil)
+	authSwift := swift.New(authClient)
+	err := authSwift.CreateContainer("test_container", swift.PublicRead)
+	c.Assert(err, IsNil)
+
+	baseURL, err := authClient.MakeServiceURL("object-store", nil)
+	c.Assert(err, IsNil)
+	c.Assert(baseURL[:8], Equals, "https://")
+	return baseURL
+}
+
+func (s *localHTTPSSuite) TestDefaultPublicClientRefusesSelfSigned(c *C) {
+	baseURL := s.setupPublicContainer(c)
+	swiftClient := swift.New(client.NewPublicClient(baseURL, nil))
+	contents, err := swiftClient.List("test_container", "", "", "", 0)
+	c.Assert(err, ErrorMatches, "(.|\n)*x509: certificate signed by unknown authority")
+	c.Assert(contents, DeepEquals, []swift.ContainerContents(nil))
+}
+
+func (s *localHTTPSSuite) TestNonValidatingPublicClientAcceptsSelfSigned(c *C) {
+	baseURL := s.setupPublicContainer(c)
+	swiftClient := swift.New(client.NewNonValidatingPublicClient(baseURL, nil))
+	contents, err := swiftClient.List("test_container", "", "", "", 0)
+	c.Assert(err, IsNil)
+	c.Assert(contents, DeepEquals, []swift.ContainerContents{})
+}
