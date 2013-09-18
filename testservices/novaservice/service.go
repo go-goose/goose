@@ -459,6 +459,13 @@ func (n *Nova) addSecurityGroupRule(ruleId string, rule nova.RuleInfo) error {
 			TenantId: sourceGroup.TenantId,
 			Name:     sourceGroup.Name,
 		}
+	} else if rule.Cidr == "" {
+		// http://pad.lv/1226996
+		// It seems that if you don't supply Cidr or GroupId then
+		// Openstack treats the Cidr as 0.0.0.0/0
+		// However, since that is not clearly specified we just panic()
+		// because we don't want to rely on that behavior
+		panic(fmt.Sprintf("Neither Cidr nor GroupId are set for this SecurityGroup Rule: %v", rule))
 	}
 	if rule.FromPort != 0 {
 		newrule.FromPort = &rule.FromPort
