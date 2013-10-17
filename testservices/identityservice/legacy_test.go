@@ -2,9 +2,12 @@ package identityservice
 
 import (
 	"io/ioutil"
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/testing/httpsuite"
 	"net/http"
+
+	. "launchpad.net/gocheck"
+
+	goosehttp "launchpad.net/goose/http"
+	"launchpad.net/goose/testing/httpsuite"
 )
 
 type LegacySuite struct {
@@ -28,7 +31,6 @@ func (s *LegacySuite) setupLegacy(user, secret string) (token, managementURL str
 }
 
 func LegacyAuthRequest(URL, user, key string) (*http.Response, error) {
-	client := &http.DefaultClient
 	request, err := http.NewRequest("GET", URL, nil)
 	if err != nil {
 		return nil, err
@@ -39,7 +41,7 @@ func LegacyAuthRequest(URL, user, key string) (*http.Response, error) {
 	if key != "" {
 		request.Header.Set("X-Auth-Key", key)
 	}
-	return client.Do(request)
+	return goosehttp.SendRequest(http.DefaultClient, request)
 }
 
 func AssertUnauthorized(c *C, response *http.Response) {

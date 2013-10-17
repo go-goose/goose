@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/testing/httpsuite"
 	"net/http"
 	"strings"
+
+	. "launchpad.net/gocheck"
+
+	goosehttp "launchpad.net/goose/http"
+	"launchpad.net/goose/testing/httpsuite"
 )
 
 type KeyPairSuite struct {
@@ -54,24 +57,22 @@ const authKeyPairTemplate = `{
 }`
 
 func keyPairAuthRequest(URL, access, secret string) (*http.Response, error) {
-	client := &http.DefaultClient
 	body := strings.NewReader(fmt.Sprintf(authKeyPairTemplate, access, secret))
 	request, err := http.NewRequest("POST", URL+"/tokens", body)
 	request.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		return nil, err
 	}
-	return client.Do(request)
+	return goosehttp.SendRequest(http.DefaultClient, request)
 }
 
 func (s *KeyPairSuite) TestNotJSON(c *C) {
 	// We do everything in keyPairAuthRequest, except set the Content-Type
 	s.setupKeyPair("user", "secret")
-	client := &http.DefaultClient
 	body := strings.NewReader(fmt.Sprintf(authTemplate, "user", "secret"))
 	request, err := http.NewRequest("POST", s.Server.URL+"/tokens", body)
 	c.Assert(err, IsNil)
-	res, err := client.Do(request)
+	res, err := goosehttp.SendRequest(http.DefaultClient, request)
 	defer res.Body.Close()
 	c.Assert(err, IsNil)
 	CheckErrorResponse(c, res, http.StatusBadRequest, notJSON)

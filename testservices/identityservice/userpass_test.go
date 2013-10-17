@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/testing/httpsuite"
 	"net/http"
 	"strings"
+
+	. "launchpad.net/gocheck"
+
+	goosehttp "launchpad.net/goose/http"
+	"launchpad.net/goose/testing/httpsuite"
 )
 
 type UserPassSuite struct {
@@ -54,14 +57,13 @@ var authTemplate = `{
 }`
 
 func userPassAuthRequest(URL, user, key string) (*http.Response, error) {
-	client := &http.DefaultClient
 	body := strings.NewReader(fmt.Sprintf(authTemplate, user, key))
 	request, err := http.NewRequest("POST", URL+"/tokens", body)
 	request.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		return nil, err
 	}
-	return client.Do(request)
+	return goosehttp.SendRequest(http.DefaultClient, request)
 }
 
 func CheckErrorResponse(c *C, r *http.Response, status int, msg string) {
@@ -82,11 +84,10 @@ func CheckErrorResponse(c *C, r *http.Response, status int, msg string) {
 func (s *UserPassSuite) TestNotJSON(c *C) {
 	// We do everything in userPassAuthRequest, except set the Content-Type
 	s.setupUserPass("user", "secret")
-	client := &http.DefaultClient
 	body := strings.NewReader(fmt.Sprintf(authTemplate, "user", "secret"))
 	request, err := http.NewRequest("POST", s.Server.URL+"/tokens", body)
 	c.Assert(err, IsNil)
-	res, err := client.Do(request)
+	res, err := goosehttp.SendRequest(http.DefaultClient, request)
 	defer res.Body.Close()
 	c.Assert(err, IsNil)
 	CheckErrorResponse(c, res, http.StatusBadRequest, notJSON)

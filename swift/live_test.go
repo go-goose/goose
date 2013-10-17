@@ -6,12 +6,15 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
+
 	. "launchpad.net/gocheck"
+
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/errors"
+	goosehttp "launchpad.net/goose/http"
 	"launchpad.net/goose/identity"
 	"launchpad.net/goose/swift"
-	"net/http"
 )
 
 func registerOpenStackTests(cred *identity.Credentials) {
@@ -128,7 +131,7 @@ func (s *LiveTests) TestURL(c *C) {
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Add("X-Auth-Token", s.client.Token())
 	c.Check(err, IsNil)
-	resp, err := httpClient.Do(req)
+	resp, err := goosehttp.SendRequest(httpClient, req)
 	defer resp.Body.Close()
 	c.Check(err, IsNil)
 	c.Check(resp.StatusCode, Equals, http.StatusOK)
@@ -219,7 +222,7 @@ func (s *LiveTestsPublicContainer) TestPublicURL(c *C) {
 	httpClient := http.DefaultClient
 	req, err := http.NewRequest("GET", url, nil)
 	c.Check(err, IsNil)
-	resp, err := httpClient.Do(req)
+	resp, err := goosehttp.SendRequest(httpClient, req)
 	defer resp.Body.Close()
 	c.Check(err, IsNil)
 	c.Check(resp.StatusCode, Equals, http.StatusOK)

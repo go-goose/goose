@@ -7,14 +7,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/nova"
-	"launchpad.net/goose/testing/httpsuite"
-	"launchpad.net/goose/testservices/identityservice"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
+
+	. "launchpad.net/gocheck"
+
+	goosehttp "launchpad.net/goose/http"
+	"launchpad.net/goose/nova"
+	"launchpad.net/goose/testing/httpsuite"
+	"launchpad.net/goose/testservices/identityservice"
 )
 
 type NovaHTTPSuite struct {
@@ -93,7 +96,7 @@ func (s *NovaHTTPSuite) sendRequest(method, url string, body []byte, headers htt
 	}
 	// workaround for https://code.google.com/p/go/issues/detail?id=4454
 	req.Header.Set("Content-Length", strconv.Itoa(len(body)))
-	return http.DefaultClient.Do(req)
+	return goosehttp.SendRequest(http.DefaultClient, req)
 }
 
 // authRequest is a shortcut for sending requests with pre-set token

@@ -3,8 +3,9 @@ package identity
 import (
 	"fmt"
 	"io/ioutil"
-	goosehttp "launchpad.net/goose/http"
 	"net/http"
+
+	goosehttp "launchpad.net/goose/http"
 )
 
 type Legacy struct {
@@ -21,7 +22,7 @@ func (l *Legacy) Auth(creds *Credentials) (*AuthDetails, error) {
 	}
 	request.Header.Set("X-Auth-User", creds.User)
 	request.Header.Set("X-Auth-Key", creds.Secrets)
-	response, err := l.client.Do(request)
+	response, err := goosehttp.SendRequest(&l.client.Client, request)
 	defer response.Body.Close()
 	if err != nil {
 		return nil, err
