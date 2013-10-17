@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+
 	. "launchpad.net/gocheck"
+
 	"launchpad.net/goose/testing/httpsuite"
 	"net/http"
 	"testing"
@@ -154,6 +156,15 @@ func (s *HTTPClientTestSuite) TestJSONRequestSetsToken(c *C) {
 	c.Assert(err, IsNil)
 	agent := headers.Get("X-Auth-Token")
 	c.Check(agent, Equals, "token")
+}
+
+func (s *HTTPClientTestSuite) TestRequestSetsClose(c *C) {
+	headers, _, client := s.setupLoopbackRequest()
+	res, err := SendHTTPRequest(client, "GET", s.Server.URL, headers)
+	c.Assert(err, IsNil)
+	defer res.Body.Close()
+	c.Assert(err, IsNil)
+	c.Assert(res.Close, Equals, true)
 }
 
 func (s *HTTPSClientTestSuite) TestDefaultClientRejectSelfSigned(c *C) {
