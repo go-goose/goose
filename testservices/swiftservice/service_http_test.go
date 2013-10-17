@@ -6,15 +6,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
-	"net/http"
-	"net/url"
-
 	. "launchpad.net/gocheck"
-
-	goosehttp "launchpad.net/goose/http"
 	"launchpad.net/goose/swift"
 	"launchpad.net/goose/testing/httpsuite"
 	"launchpad.net/goose/testservices/identityservice"
+	"net/http"
+	"net/url"
 )
 
 type SwiftHTTPSuite struct {
@@ -80,7 +77,8 @@ func (s *SwiftHTTPSuite) sendRequestWithParams(c *C, method, path string, params
 	if s.token != "" {
 		req.Header.Add("X-Auth-Token", s.token)
 	}
-	resp, err = goosehttp.SendRequest(http.DefaultClient, req)
+	client := &http.DefaultClient
+	resp, err = client.Do(req)
 	c.Assert(err, IsNil)
 	c.Assert(resp.StatusCode, Equals, expectedStatusCode)
 	return resp

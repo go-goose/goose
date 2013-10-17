@@ -158,13 +158,9 @@ func (s *HTTPClientTestSuite) TestJSONRequestSetsToken(c *C) {
 	c.Check(agent, Equals, "token")
 }
 
-func (s *HTTPClientTestSuite) TestRequestSetsClose(c *C) {
-	headers, _, client := s.setupLoopbackRequest()
-	res, err := SendHTTPRequest(client, "GET", s.Server.URL, headers)
-	c.Assert(err, IsNil)
-	defer res.Body.Close()
-	c.Assert(err, IsNil)
-	c.Assert(res.Close, Equals, true)
+func (s *HTTPClientTestSuite) TestHttpTransport(c *C) {
+	transport := http.DefaultTransport.(*http.Transport)
+	c.Assert(transport.DisableKeepAlives, Equals, true)
 }
 
 func (s *HTTPSClientTestSuite) TestDefaultClientRejectSelfSigned(c *C) {

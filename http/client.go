@@ -25,6 +25,16 @@ const (
 	contentTypeOctetStream = "application/octet-stream"
 )
 
+func init() {
+	// See https://code.google.com/p/go/issues/detail?id=4677
+	// We need to force the connection to close each time so that we don't
+	// hit the above Go bug.
+	http.DefaultTransport = &http.Transport{
+		Proxy:             http.ProxyFromEnvironment,
+		DisableKeepAlives: true,
+	}
+}
+
 type Client struct {
 	http.Client
 	maxSendAttempts int
