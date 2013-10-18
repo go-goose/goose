@@ -29,10 +29,11 @@ func init() {
 	// See https://code.google.com/p/go/issues/detail?id=4677
 	// We need to force the connection to close each time so that we don't
 	// hit the above Go bug.
-	http.DefaultTransport = &http.Transport{
-		Proxy:             http.ProxyFromEnvironment,
-		DisableKeepAlives: true,
+	roundTripper := http.DefaultClient.Transport
+	if transport, ok := roundTripper.(*http.Transport); ok {
+		transport.DisableKeepAlives = true
 	}
+	http.DefaultTransport.(*http.Transport).DisableKeepAlives = true
 }
 
 type Client struct {
