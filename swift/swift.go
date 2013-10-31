@@ -35,15 +35,23 @@ const (
 
 // CreateContainer creates a container with the given name.
 func (c *Client) CreateContainer(containerName string, acl ACL) error {
-	// Normally accessing a container or objects within requires a token
-	// for the tenant. Setting an ACL using the X-Container-Read header
-	// can be used to allow unauthenticated HTTP access.
-	headers := make(http.Header)
-	headers.Add("X-Container-Read", string(acl))
-	requestData := goosehttp.RequestData{ReqHeaders: headers, ExpectedStatus: []int{http.StatusAccepted, http.StatusCreated}}
+	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted, http.StatusCreated}}
 	err := c.client.SendRequest(client.PUT, "object-store", containerName, &requestData)
 	if err != nil {
 		err = maybeNotFound(err, "failed to create container: %s", containerName)
+		return err
+	}
+	// Normally accessing a container or objects within requires a token
+	// for the tenant. Setting an ACL using the X-Container-Read header
+	// can be used to allow unauthenticated HTTP access.
+	// sodre: Due to a possible bug in ceph-radosgw, we need to split the
+	// creation of the bucket and the posting of its ACL.
+	headers := make(http.Header)
+	headers.Add("X-Container-Read", string(acl))
+	requestData = goosehttp.RequestData{ReqHeaders: headers, ExpectedStatus: []int{http.StatusAccepted, http.StatusCreated}}
+	err = c.client.SendRequest(client.POST, "object-store", containerName, &requestData)
+	if err != nil {
+		err = maybeNotFound(err, "failed to update container read acl: %s", containerName)
 	}
 	return err
 }
