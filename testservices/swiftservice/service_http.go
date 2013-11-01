@@ -89,6 +89,10 @@ func (s *Swift) handleContainers(container string, w http.ResponseWriter, r *htt
 				w.Write([]byte(createdResponse))
 			}
 		}
+	case "POST":
+		// [sodre]: we don't implement changing ACLs, so this always succeeds.
+		w.WriteHeader(http.StatusAccepted)
+		w.Write([]byte(createdResponse))
 	default:
 		panic("not implemented request type: " + r.Method)
 	}
