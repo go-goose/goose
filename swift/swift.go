@@ -143,6 +143,7 @@ func (c *Client) List(containerName, prefix, delim, marker string, limit int) (c
 	params.Add("prefix", prefix)
 	params.Add("delimiter", delim)
 	params.Add("marker", marker)
+	params.Add("format", "json")
 	if limit > 0 {
 		params.Add("limit", fmt.Sprintf("%d", limit))
 	}
