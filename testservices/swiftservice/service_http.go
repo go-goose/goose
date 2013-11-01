@@ -90,16 +90,9 @@ func (s *Swift) handleContainers(container string, w http.ResponseWriter, r *htt
 			}
 		}
 	case "POST":
-		bodydata, err := ioutil.ReadAll(r.Body)
-		fmt.Sprintf("%s", bodydata)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(err.Error()))
-			return
-		} else {
-			w.WriteHeader(http.StatusAccepted)
-			w.Write([]byte(createdResponse))
-		}
+		// [sodre]: we don't implement changing ACLs, so this always succeeds.
+		w.WriteHeader(http.StatusAccepted)
+		w.Write([]byte(createdResponse))
 	default:
 		panic("not implemented request type: " + r.Method)
 	}
