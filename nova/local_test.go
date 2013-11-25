@@ -2,7 +2,6 @@ package nova_test
 
 import (
 	"bytes"
-	"fmt"
 	. "launchpad.net/gocheck"
 	"launchpad.net/goose/client"
 	"launchpad.net/goose/errors"
@@ -102,7 +101,7 @@ func (s *localLiveSuite) retryLimitHook(sc hook.ServiceControl) hook.ControlProc
 		sendError := s.retryErrorCount < s.retryErrorCountToSend
 		if sendError {
 			s.retryErrorCount++
-			return &testservices.RateLimitExceededError{fmt.Errorf("retry limit exceeded")}
+			return testservices.RateLimitExceededError
 		}
 		return nil
 	}
