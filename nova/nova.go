@@ -184,7 +184,7 @@ func (c *Client) ListServers(filter *Filter) ([]Entity, error) {
 	var resp struct {
 		Servers []Entity
 	}
-	var params *url.Values = nil
+	var params *url.Values
 	if filter != nil {
 		params = &filter.v
 	}
@@ -252,7 +252,7 @@ func (c *Client) ListServersDetail(filter *Filter) ([]ServerDetail, error) {
 	var resp struct {
 		Servers []ServerDetail
 	}
-	var params *url.Values = nil
+	var params *url.Values
 	if filter != nil {
 		params = &filter.v
 	}
