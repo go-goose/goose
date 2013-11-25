@@ -29,7 +29,13 @@ type ServiceControl interface {
 
 // currentServiceMethodName returns the method executing on the service when ProcessControlHook was invoked.
 func (s *TestService) currentServiceMethodName() string {
-	pc, _, _, ok := runtime.Caller(2)
+	var pc uintptr
+	var ok bool
+	if runtime.Compiler == "gccgo" {
+		pc, _, _, ok = runtime.Caller(3)
+	} else {
+		pc, _, _, ok = runtime.Caller(2)
+	}
 	if !ok {
 		panic("current method name cannot be found")
 	}
@@ -39,8 +45,13 @@ func (s *TestService) currentServiceMethodName() string {
 func unqualifiedMethodName(pc uintptr) string {
 	f := runtime.FuncForPC(pc)
 	fullName := f.Name()
-	nameParts := strings.Split(fullName, ".")
-	return nameParts[len(nameParts)-1]
+	if runtime.Compiler == "gccgo" {
+		nameParts := strings.Split(fullName, ".")
+		return nameParts[2]
+	} else {
+		nameParts := strings.Split(fullName, ".")
+		return nameParts[len(nameParts)-1]
+	}
 }
 
 // ProcessControlHook retrieves the ControlProcessor for the specified hook name and runs it, returning any error.
