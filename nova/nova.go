@@ -184,7 +184,11 @@ func (c *Client) ListServers(filter *Filter) ([]Entity, error) {
 	var resp struct {
 		Servers []Entity
 	}
-	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.v, ExpectedStatus: []int{http.StatusOK}}
+	var params *url.Values
+	if filter != nil {
+		params = &filter.v
+	}
+	requestData := goosehttp.RequestData{RespValue: &resp, Params: params, ExpectedStatus: []int{http.StatusOK}}
 	err := c.client.SendRequest(client.GET, "compute", apiServers, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get list of servers")
@@ -248,7 +252,11 @@ func (c *Client) ListServersDetail(filter *Filter) ([]ServerDetail, error) {
 	var resp struct {
 		Servers []ServerDetail
 	}
-	requestData := goosehttp.RequestData{RespValue: &resp, Params: &filter.v}
+	var params *url.Values
+	if filter != nil {
+		params = &filter.v
+	}
+	requestData := goosehttp.RequestData{RespValue: &resp, Params: params}
 	err := c.client.SendRequest(client.GET, "compute", apiServersDetail, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get list of server details")
