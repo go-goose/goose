@@ -26,9 +26,7 @@ type ServiceInstance struct {
 
 // Internal Openstack errors.
 
-type RateLimitExceededError struct {
-	error
-}
+var RateLimitExceededError = errors.New("retry limit exceeded")
 
 // NoMoreFloatingIPs corresponds to "HTTP 404 Zero floating ips available."
 var NoMoreFloatingIPs = errors.New("zero floating ips available")
