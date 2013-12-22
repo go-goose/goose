@@ -666,6 +666,7 @@ func (s *NovaHTTPSuite) TestRunServer(c *C) {
 	s.service.removeServer(srv.Id)
 	req.Server.Name = "test2"
 	req.Server.SecurityGroups = []map[string]string{
+		{"name": "default"},
 		{"name": "group1"},
 		{"name": "group2"},
 	}
@@ -686,8 +687,11 @@ func (s *NovaHTTPSuite) TestRunServer(c *C) {
 	c.Assert(ok, Equals, true)
 	ok = s.service.hasServerSecurityGroup(srv.Id, "2")
 	c.Assert(ok, Equals, true)
+	ok = s.service.hasServerSecurityGroup(srv.Id, "999")
+	c.Assert(ok, Equals, true)
 	s.service.removeServerSecurityGroup(srv.Id, "1")
 	s.service.removeServerSecurityGroup(srv.Id, "2")
+	s.service.removeServerSecurityGroup(srv.Id, "999")
 	s.service.removeServer(srv.Id)
 }
 

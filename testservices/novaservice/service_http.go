@@ -563,10 +563,6 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	if len(req.Server.SecurityGroups) > 0 {
 		for _, group := range req.Server.SecurityGroups {
 			groupName := group["name"]
-			if groupName == "default" {
-				// assume default security group exists
-				continue
-			}
 			if sg, err := n.securityGroupByName(groupName); err != nil {
 				return noGroupError(groupName, n.TenantId)
 			} else {
