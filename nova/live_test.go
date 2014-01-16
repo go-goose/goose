@@ -515,6 +515,6 @@ func (s *LiveTests) TestListNetworks(c *C) {
 	for _, network := range networks {
 		c.Check(network.Id, Not(Equals), "")
 		c.Check(network.Label, Not(Equals), "")
-		c.Assert(network.Cidr, Not(Equals), "")
+		c.Assert(network.Cidr, Matches, `\d{1,3}(\.+\d{1,3}){3}\/\d+`)
 	}
 }

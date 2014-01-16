@@ -1,6 +1,11 @@
 // Copyright 2014 Canonical Ltd.
 // Licensed under the LGPLv3, see COPYING and COPYING.LESSER file for details.
 
+// Nova api calls for managing networks, which may use either the old
+// nova-network code or delegate through to the neutron api.
+// See documentation at:
+// <http://docs.openstack.org/api/openstack-compute/2/content/ext-os-networks.html>
+
 package nova
 
 import (
@@ -10,7 +15,9 @@ import (
 )
 
 const (
-	apiNetworks       = "os-networks"
+	apiNetworks = "os-networks"
+	// The os-tenant-networks extension is a newer addition aimed at exposing
+	// management of networks to unprivileged accounts. Not used at present.
 	apiTenantNetworks = "os-tenant-networks"
 )
 
