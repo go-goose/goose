@@ -508,3 +508,13 @@ func (s *LiveTests) TestRegexpInstanceFilters(c *C) {
 	c.Assert(servers[0].Name, Equals, serverNames[1])
 	c.Assert(servers[1].Name, Equals, serverNames[2])
 }
+
+func (s *LiveTests) TestListNetworks(c *C) {
+	networks, err := s.nova.ListNetworks()
+	c.Assert(err, IsNil)
+	for _, network := range networks {
+		c.Check(network.Id, Not(Equals), "")
+		c.Check(network.Label, Not(Equals), "")
+		c.Assert(network.Cidr, Not(Equals), "")
+	}
+}
