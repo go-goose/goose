@@ -987,6 +987,27 @@ func (n *Nova) handleFloatingIPs(w http.ResponseWriter, r *http.Request) error {
 	return fmt.Errorf("unknown request method %q for %s", r.Method, r.URL.Path)
 }
 
+// handleNetworks handles the os-networks HTTP API.
+func (n *Nova) handleNetworks(w http.ResponseWriter, r *http.Request) error {
+	switch r.Method {
+	case "GET":
+		if ipId := path.Base(r.URL.Path); ipId != "os-networks" {
+			// TODO(gz): handle listing a single group
+			return errNotFoundJSON
+		}
+		nets := n.allNetworks()
+		if len(nets) == 0 {
+			nets = []nova.Network{}
+		}
+		resp := struct {
+			Network []nova.Network `json:"networks"`
+		}{nets}
+		return sendJSON(http.StatusOK, resp, w, r)
+		// TODO(gz): proper handling of other methods
+	}
+	return fmt.Errorf("unknown request method %q for %s", r.Method, r.URL.Path)
+}
+
 // setupHTTP attaches all the needed handlers to provide the HTTP API.
 func (n *Nova) SetupHTTP(mux *http.ServeMux) {
 	handlers := map[string]http.Handler{
@@ -1000,6 +1021,7 @@ func (n *Nova) SetupHTTP(mux *http.ServeMux) {
 		"/$v/$t/os-security-groups":      n.handler((*Nova).handleSecurityGroups),
 		"/$v/$t/os-security-group-rules": n.handler((*Nova).handleSecurityGroupRules),
 		"/$v/$t/os-floating-ips":         n.handler((*Nova).handleFloatingIPs),
+		"/$v/$t/os-networks":             n.handler((*Nova).handleNetworks),
 	}
 	for path, h := range handlers {
 		path = strings.Replace(path, "$v", n.VersionPath, 1)

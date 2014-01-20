@@ -24,6 +24,7 @@ type Nova struct {
 	groups       map[string]nova.SecurityGroup
 	rules        map[string]nova.SecurityGroupRule
 	floatingIPs  map[string]nova.FloatingIP
+	networks     map[string]nova.Network
 	serverGroups map[string][]string
 	serverIPs    map[string][]string
 	nextServerId int
@@ -82,6 +83,7 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 		groups:       make(map[string]nova.SecurityGroup),
 		rules:        make(map[string]nova.SecurityGroupRule),
 		floatingIPs:  make(map[string]nova.FloatingIP),
+		networks:     make(map[string]nova.Network),
 		serverGroups: make(map[string][]string),
 		serverIPs:    make(map[string][]string),
 		ServiceInstance: testservices.ServiceInstance{
@@ -109,6 +111,13 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 		if err != nil {
 			panic(err)
 		}
+	}
+	// Add a sample default network
+	var netId = "1"
+	novaService.networks[netId] = nova.Network{
+		Id:    netId,
+		Label: "net",
+		Cidr:  "10.0.0.0/24",
 	}
 	return novaService
 }
@@ -766,4 +775,12 @@ func (n *Nova) removeServerFloatingIP(serverId string, ipId string) error {
 	fips = append(fips[:idx], fips[idx+1:]...)
 	n.serverIPs[serverId] = fips
 	return nil
+}
+
+// allNetworks returns a list of all existing networks.
+func (n *Nova) allNetworks() (networks []nova.Network) {
+	for _, net := range n.networks {
+		networks = append(networks, net)
+	}
+	return networks
 }
