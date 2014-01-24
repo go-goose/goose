@@ -539,6 +539,7 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 			Name           string
 			Metadata       map[string]string
 			SecurityGroups []map[string]string `json:"security_groups"`
+			Networks       []map[string]string
 		}
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -568,6 +569,14 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 			} else {
 				groups = append(groups, sg.Id)
 			}
+		}
+	}
+	// TODO(gz) some kind of sane handling of networks
+	for _, network := range req.Server.Networks {
+		networkId := network["uuid"]
+		_, ok := n.networks[networkId]
+		if !ok {
+			return errNotFoundJSON
 		}
 	}
 	// TODO(dimitern) - 2013-02-11 bug=1121684
