@@ -296,6 +296,15 @@ type SecurityGroupName struct {
 	Name string `json:"name"`
 }
 
+// ServerNetworks sets what networks a server should be connected to on boot.
+// - FixedIp may be supplied only when NetworkId is also given.
+// - PortId may be supplied only if neither NetworkId or FixedIp is set.
+type ServerNetworks struct {
+	NetworkId string `json:"uuid,omitempty"`
+	FixedIp   string `json:"fixed_ip,omitempty"`
+	PortId    string `json:"port,omitempty"`
+}
+
 // RunServerOpts defines required and optional arguments for RunServer().
 type RunServerOpts struct {
 	Name               string              `json:"name"`            // Required
@@ -303,6 +312,7 @@ type RunServerOpts struct {
 	ImageId            string              `json:"imageRef"`        // Required
 	UserData           []byte              `json:"user_data"`       // Optional
 	SecurityGroupNames []SecurityGroupName `json:"security_groups"` // Optional
+	Networks           []ServerNetworks    `json:"networks"`        // Optional
 }
 
 // RunServer creates a new server, based on the given RunServerOpts.
