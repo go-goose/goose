@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+const (
+	callerDepth = 2 // gccgo 4.8	
+	// callerDepth = 3 // gccgo 4.9
+	namePartsPos = 2
+)
+
 // currentServiceMethodName returns the method executing on the service when ProcessControlHook was invoked.
 func (s *TestService) currentServiceMethodName() string {
 	// We have to go deeper into the stack with gccgo because in a situation like:
@@ -18,7 +24,7 @@ func (s *TestService) currentServiceMethodName() string {
 	// gccgo generates a method called "meth" on *Outer, and this shows up
 	// on the stack as seen by runtime.Caller (this might be a gccgo bug).
 
-	pc, _, _, ok := runtime.Caller(3)
+	pc, _, _, ok := runtime.Caller(callerDepth)
 	if !ok {
 		panic("current method name cannot be found")
 	}
@@ -33,5 +39,5 @@ func unqualifiedMethodName(pc uintptr) string {
 	// so if the number of dots in the full package path changes,
 	// this will need to too...
 	nameParts := strings.Split(fullName, ".")
-	return nameParts[2]
+	return nameParts[namePartsPos]
 }
