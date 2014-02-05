@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	callerDepth = 2 // gccgo 4.8	
+	callerDepth = 2 // gccgo 4.8
 	// callerDepth = 3 // gccgo 4.9
 	namePartsPos = 2
 )
