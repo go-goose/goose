@@ -641,7 +641,7 @@ func (s *NovaSuite) TestGetSecurityGroupByName(c *C) {
 
 func (s *NovaSuite) TestAddHasRemoveSecurityGroupRule(c *C) {
 	group := nova.SecurityGroup{Id: "1"}
-	ri := nova.RuleInfo{ParentGroupId: group.Id}
+	ri := nova.RuleInfo{ParentGroupId: group.Id, GroupId: &group.Id}
 	rule := nova.SecurityGroupRule{Id: "10", ParentGroupId: group.Id}
 	s.ensureNoGroup(c, group)
 	s.ensureNoRule(c, rule)
@@ -739,7 +739,7 @@ func (s *NovaSuite) TestAddSecurityGroupRuleTwiceFails(c *C) {
 	group := nova.SecurityGroup{Id: "1"}
 	s.createGroup(c, group)
 	defer s.deleteGroup(c, group)
-	ri := nova.RuleInfo{ParentGroupId: group.Id}
+	ri := nova.RuleInfo{ParentGroupId: group.Id, GroupId: &group.Id}
 	rule := nova.SecurityGroupRule{Id: "10"}
 	s.ensureNoRule(c, rule)
 	err := s.service.addSecurityGroupRule(rule.Id, ri)
@@ -797,11 +797,11 @@ func (s *NovaSuite) TestAddSecurityGroupRuleUpdatesParent(c *C) {
 	}
 	s.createGroup(c, group)
 	defer s.deleteGroup(c, group)
-	ri := nova.RuleInfo{ParentGroupId: group.Id}
+	ri := nova.RuleInfo{ParentGroupId: group.Id, GroupId: &group.Id}
 	rule := nova.SecurityGroupRule{
 		Id:            "10",
 		ParentGroupId: group.Id,
-		Group:         nova.SecurityGroupRef{},
+		Group:         nova.SecurityGroupRef{TenantId: s.service.TenantId, Name:"test"},
 	}
 	s.ensureNoRule(c, rule)
 	err := s.service.addSecurityGroupRule(rule.Id, ri)
@@ -849,7 +849,7 @@ func (s *NovaSuite) TestRemoveSecurityGroupRuleTwiceFails(c *C) {
 	group := nova.SecurityGroup{Id: "1"}
 	s.createGroup(c, group)
 	defer s.deleteGroup(c, group)
-	ri := nova.RuleInfo{ParentGroupId: group.Id}
+	ri := nova.RuleInfo{ParentGroupId: group.Id, GroupId: &group.Id}
 	rule := nova.SecurityGroupRule{Id: "10"}
 	s.ensureNoRule(c, rule)
 	err := s.service.addSecurityGroupRule(rule.Id, ri)
