@@ -180,6 +180,8 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 	}
 	if reqData.RespReader != nil {
 		reqData.RespReader = respBody
+	} else {
+		respBody.Close()
 	}
 	return
 }
