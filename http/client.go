@@ -64,6 +64,7 @@ type RequestData struct {
 	ReqReader      io.Reader
 	ReqLength      int
 	RespReader     io.ReadCloser
+	RespHeaders    http.Header
 }
 
 const (
@@ -136,13 +137,14 @@ func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, lo
 		}
 	}
 	headers := createHeaders(reqData.ReqHeaders, contentTypeJSON, token)
-	respBody, err := c.sendRequest(
+	resp, err := c.sendRequest(
 		method, url, bytes.NewReader(body), len(body), headers, reqData.ExpectedStatus, logger)
 	if err != nil {
 		return
 	}
-	defer respBody.Close()
-	respData, err := ioutil.ReadAll(respBody)
+	reqData.RespHeaders = resp.Header
+	defer resp.Body.Close()
+	respData, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		err = errors.Newf(err, "failed reading the response body")
 		return
@@ -173,15 +175,16 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 		url += "?" + reqData.Params.Encode()
 	}
 	headers := createHeaders(reqData.ReqHeaders, contentTypeOctetStream, token)
-	respBody, err := c.sendRequest(
+	resp, err := c.sendRequest(
 		method, url, reqData.ReqReader, reqData.ReqLength, headers, reqData.ExpectedStatus, logger)
 	if err != nil {
 		return
 	}
+	reqData.RespHeaders = resp.Header
 	if reqData.RespReader != nil {
-		reqData.RespReader = respBody
+		reqData.RespReader = resp.Body
 	} else {
-		respBody.Close()
+		resp.Body.Close()
 	}
 	return
 }
@@ -192,18 +195,18 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 // headers: HTTP headers to include with the request.
 // expectedStatus: a slice of allowed response status codes.
 func (c *Client) sendRequest(method, URL string, reqReader io.Reader, length int, headers http.Header,
-	expectedStatus []int, logger *log.Logger) (rc io.ReadCloser, err error) {
+	expectedStatus []int, logger *log.Logger) (*http.Response, error) {
 	reqData := make([]byte, length)
 	if reqReader != nil {
 		nrRead, err := io.ReadFull(reqReader, reqData)
 		if err != nil {
 			err = errors.Newf(err, "failed reading the request data, read %v of %v bytes", nrRead, length)
-			return rc, err
+			return nil, err
 		}
 	}
 	rawResp, err := c.sendRateLimitedRequest(method, URL, headers, reqData, logger)
 	if err != nil {
-		return
+		return nil, err
 	}
 	foundStatus := false
 	if len(expectedStatus) == 0 {
@@ -218,9 +221,9 @@ func (c *Client) sendRequest(method, URL string, reqReader io.Reader, length int
 	if !foundStatus && len(expectedStatus) > 0 {
 		err = handleError(URL, rawResp)
 		rawResp.Body.Close()
-		return
+		return nil, err
 	}
-	return rawResp.Body, err
+	return rawResp, err
 }
 
 func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header, reqData []byte,
