@@ -231,3 +231,16 @@ func (s *LiveTestsPublicContainer) TestPublicURL(c *C) {
 	err = s.swift.DeleteObject(s.containerName, object)
 	c.Assert(err, IsNil)
 }
+
+func (s *LiveTests) TestHeadObject(c *C) {
+	object := "test_obj2"
+	data := "...some data..."
+	err := s.swift.PutReader(s.containerName, object, bytes.NewReader([]byte(data)), int64(len(data)))
+	c.Check(err, IsNil)
+	headers, err := s.swift.HeadObject(s.containerName, object)
+	c.Check(err, IsNil)
+	err = s.swift.DeleteObject(s.containerName, object)
+	c.Assert(err, IsNil)
+	c.Check(headers.Get("Date"), Not(Equals), "")
+}
+

@@ -77,10 +77,10 @@ func (c *Client) touchObject(requestData *goosehttp.RequestData, op, containerNa
 }
 
 // HeadObject retrieves object metadata and other standard HTTP headers.
-func (c *Client) HeadObject(containerName, objectName string) (headers http.Header, err error) {
-	requestData := goosehttp.RequestData{ReqHeaders: headers}
-	err = c.touchObject(&requestData, client.HEAD, containerName, objectName)
-	return headers, err
+func (c *Client) HeadObject(containerName, objectName string) (http.Header, error) {
+	requestData := goosehttp.RequestData{}
+    err := c.touchObject(&requestData, client.HEAD, containerName, objectName)
+	return requestData.RespHeaders, err
 }
 
 // GetObject retrieves the specified object's data.
