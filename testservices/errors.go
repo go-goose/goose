@@ -22,7 +22,7 @@ type ServerError struct {
 }
 
 func serverErrorf(code int, message string, args ...interface{}) *ServerError {
-    return &ServerError{code: code, message: fmt.Sprintf(message, args...)}
+	return &ServerError{code: code, message: fmt.Sprintf(message, args...)}
 }
 
 func (n *ServerError) Error() string {
