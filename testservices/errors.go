@@ -2,6 +2,8 @@ package testservices
 
 import "fmt"
 
+// This map is copied from nova python client
+// https://github.com/openstack/nova/blob/master/nova/api/openstack/wsgi.py#L1185
 var nameReference = map[int]string{
 	400: "badRequest",
 	401: "unauthorized",
