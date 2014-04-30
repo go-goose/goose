@@ -21,6 +21,10 @@ type ServerError struct {
 	code    int
 }
 
+func serverErrorf(code int, message string, args ...interface{}) *ServerError {
+    return &ServerError{code: code, message: fmt.Sprintf(message, args...)}
+}
+
 func (n *ServerError) Error() string {
 	return fmt.Sprintf("%s: %s", n.Name(), n.message)
 }
@@ -34,170 +38,98 @@ func (n *ServerError) Name() string {
 }
 
 func NewNotFoundError(message string) *ServerError {
-	return &ServerError{
-		message: message,
-		code:    404,
-	}
+	return serverErrorf(404, message)
 }
 
 func NewNoMoreFloatingIpsError() *ServerError {
-	return &ServerError{
-		message: "Zero floating ips available",
-		code:    404,
-	}
+	return serverErrorf(404, "Zero floating ips available")
 }
 
 func NewIPLimitExceededError() *ServerError {
-	return &ServerError{
-		message: "Maximum number of floating ips exceeded",
-		code:    413,
-	}
+	return serverErrorf(413, "Maximum number of floating ips exceeded")
 }
 
 func NewRateLimitExceededError() *ServerError {
-	return &ServerError{
-		message: "Retry limit exceeded",
-		// XXX: hduran-8 I infered this from the python nova code, might be wrong
-		code: 413,
-	}
+	// This is an undocumented error
+	return serverErrorf(413, "Retry limit exceeded")
 }
 
 func NewAddFlavorError(id string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("A flavor with id %q already exists", id),
-		code:    409,
-	}
+	return serverErrorf(409, "A flavor with id %q already exists", id)
 }
 
 func NewNoSuchFlavorError(id string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("No such flavor %q", id),
-		code:    404,
-	}
+	return serverErrorf(404, "No such flavor %q", id)
 }
 
 func NewServerByIDNotFoundError(id string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("No such server %q", id),
-		code:    404,
-	}
+	return serverErrorf(404, "No such server %q", id)
 }
 
 func NewServerByNameNotFoundError(name string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("No such server named %q", name),
-		code:    404,
-	}
+	return serverErrorf(404, "No such server named %q", name)
 }
 
 func NewServerAlreadyExistsError(id string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("A server with id %q already exists", id),
-		code:    409,
-	}
+	return serverErrorf(409, "A server with id %q already exists", id)
 }
 
 func NewSecurityGroupAlreadyExistsError(id string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("A security group with id %s already exists", id),
-		code:    409,
-	}
+	return serverErrorf(409, "A security group with id %s already exists", id)
 }
 
 func NewSecurityGroupByIDNotFoundError(groupId string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("No such security group %s", groupId),
-		code:    404,
-	}
+	return serverErrorf(404, "No such security group %s", groupId)
 }
 
 func NewSecurityGroupByNameNotFoundError(name string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("No such security group named %q", name),
-		code:    404,
-	}
+	return serverErrorf(404, "No such security group named %q", name)
 }
 
 func NewSecurityGroupRuleAlreadyExistsError(id string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("A security group rule with id %s already exists", id),
-		code:    409,
-	}
+	return serverErrorf(409, "A security group rule with id %s already exists", id)
 }
 
 func NewCannotAddTwiceRuleToGroupError(ruleId, groupId string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("Cannot add twice rule %s to security group %s", ruleId, groupId),
-		code:    409,
-	}
+	return serverErrorf(409, "Cannot add twice rule %s to security group %s", ruleId, groupId)
 }
 
 func NewUnknownSecurityGroupError(groupId string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("Unknown source security group %s", groupId),
-		code:    409,
-	}
+	return serverErrorf(409, "Unknown source security group %s", groupId)
 }
 
 func NewSecurityGroupRuleNotFoundError(ruleId string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("No such security group rule %s", ruleId),
-		code:    404,
-	}
+	return serverErrorf(404, "No such security group rule %s", ruleId)
 }
 
 func NewServerBelongsToGroupError(serverId, groupId string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("Server %q already belongs to group %s", serverId, groupId),
-		code:    409,
-	}
+	return serverErrorf(409, "Server %q already belongs to group %s", serverId, groupId)
 }
 
 func NewServerDoesNotBelongToGroupsError(serverId string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("Server %q does not belong to any groups", serverId),
-		code:    400,
-	}
+	return serverErrorf(400, "Server %q does not belong to any groups", serverId)
 }
 
 func NewServerDoesNotBelongToGroupError(serverId, groupId string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("Server %q does not belong to group %s", serverId, groupId),
-		code:    400,
-	}
+	return serverErrorf(400, "Server %q does not belong to group %s", serverId, groupId)
 }
 
 func NewFloatingIPExistsError(ipID string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("A floating IP with id %s already exists", ipID),
-		code:    409,
-	}
+	return serverErrorf(409, "A floating IP with id %s already exists", ipID)
 }
 
 func NewFloatingIPNotFoundError(address string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("No such floating IP %q", address),
-		code:    404,
-	}
+	return serverErrorf(404, "No such floating IP %q", address)
 }
 
 func NewServerHasFloatingIPError(serverId, ipId string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("Server %q already has floating IP %s", serverId, ipId),
-		code:    409,
-	}
+	return serverErrorf(409, "Server %q already has floating IP %s", serverId, ipId)
 }
 
 func NewNoFloatingIPsToRemoveError(serverId string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("Server %q does not have any floating IPs to remove", serverId),
-		code:    409,
-	}
+	return serverErrorf(409, "Server %q does not have any floating IPs to remove", serverId)
 }
 
 func NewNoFloatingIPsError(serverId, ipId string) *ServerError {
-	return &ServerError{
-		message: fmt.Sprintf("Server %q does not have floating IP %s", serverId, ipId),
-		code:    404,
-	}
+	return serverErrorf(404, "Server %q does not have floating IP %s", serverId, ipId)
 }

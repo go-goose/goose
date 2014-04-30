@@ -17,8 +17,6 @@ func (s *ErrorsSuite) TestServerErrorMessage(c *gc.C) {
 		message: "Instance could not be found",
 		code:    404,
 	}
-	// _, ok := err.(*error)
-	// c.Assert(ok, gc.Equals, true)
 	c.Assert(err, gc.ErrorMatches, "itemNotFound: Instance could not be found")
 }
 
@@ -27,7 +25,5 @@ func (s *ErrorsSuite) TestServerUnknownErrcode(c *gc.C) {
 		message: "Impossible http code.",
 		code:    999,
 	}
-	// _, ok := err.(*error)
-	// c.Assert(ok, gc.Equals, true)
 	c.Assert(err, gc.ErrorMatches, "computeFault: Impossible http code.")
 }
