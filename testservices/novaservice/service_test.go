@@ -27,27 +27,27 @@ func (s *NovaSuite) SetUpSuite(c *C) {
 
 func (s *NovaSuite) ensureNoFlavor(c *C, flavor nova.FlavorDetail) {
 	_, err := s.service.flavor(flavor.Id)
-	c.Assert(err, ErrorMatches, fmt.Sprintf("no such flavor %q", flavor.Id))
+	c.Assert(err, ErrorMatches, fmt.Sprintf("itemNotFound: No such flavor %q", flavor.Id))
 }
 
 func (s *NovaSuite) ensureNoServer(c *C, server nova.ServerDetail) {
 	_, err := s.service.server(server.Id)
-	c.Assert(err, ErrorMatches, fmt.Sprintf("no such server %q", server.Id))
+	c.Assert(err, ErrorMatches, fmt.Sprintf("itemNotFound: No such server %q", server.Id))
 }
 
 func (s *NovaSuite) ensureNoGroup(c *C, group nova.SecurityGroup) {
 	_, err := s.service.securityGroup(group.Id)
-	c.Assert(err, ErrorMatches, fmt.Sprintf("no such security group %s", group.Id))
+	c.Assert(err, ErrorMatches, fmt.Sprintf("itemNotFound: No such security group %s", group.Id))
 }
 
 func (s *NovaSuite) ensureNoRule(c *C, rule nova.SecurityGroupRule) {
 	_, err := s.service.securityGroupRule(rule.Id)
-	c.Assert(err, ErrorMatches, fmt.Sprintf("no such security group rule %s", rule.Id))
+	c.Assert(err, ErrorMatches, fmt.Sprintf("itemNotFound: No such security group rule %s", rule.Id))
 }
 
 func (s *NovaSuite) ensureNoIP(c *C, ip nova.FloatingIP) {
 	_, err := s.service.floatingIP(ip.Id)
-	c.Assert(err, ErrorMatches, fmt.Sprintf("no such floating IP %s", ip.Id))
+	c.Assert(err, ErrorMatches, fmt.Sprintf("itemNotFound: No such floating IP %q", ip.Id))
 }
 
 func (s *NovaSuite) createFlavor(c *C, flavor nova.FlavorDetail) {
@@ -142,7 +142,7 @@ func (s *NovaSuite) TestAddFlavorTwiceFails(c *C) {
 	s.createFlavor(c, flavor)
 	defer s.deleteFlavor(c, flavor)
 	err := s.service.addFlavor(flavor)
-	c.Assert(err, ErrorMatches, `a flavor with id "test" already exists`)
+	c.Assert(err, ErrorMatches, `conflictingRequest: A flavor with id "test" already exists`)
 }
 
 func (s *NovaSuite) TestRemoveFlavorTwiceFails(c *C) {
@@ -150,7 +150,7 @@ func (s *NovaSuite) TestRemoveFlavorTwiceFails(c *C) {
 	s.createFlavor(c, flavor)
 	s.deleteFlavor(c, flavor)
 	err := s.service.removeFlavor(flavor.Id)
-	c.Assert(err, ErrorMatches, `no such flavor "test"`)
+	c.Assert(err, ErrorMatches, `itemNotFound: No such flavor "test"`)
 }
 
 func (s *NovaSuite) TestAllFlavors(c *C) {
@@ -238,7 +238,7 @@ func (s *NovaSuite) TestAddServerTwiceFails(c *C) {
 	s.createServer(c, server)
 	defer s.deleteServer(c, server)
 	err := s.service.addServer(server)
-	c.Assert(err, ErrorMatches, `a server with id "test" already exists`)
+	c.Assert(err, ErrorMatches, `conflictingRequest: A server with id "test" already exists`)
 }
 
 // A control point can be used to change the status of the added server.
@@ -269,7 +269,7 @@ func (s *NovaSuite) TestRemoveServerTwiceFails(c *C) {
 	s.createServer(c, server)
 	s.deleteServer(c, server)
 	err := s.service.removeServer(server.Id)
-	c.Assert(err, ErrorMatches, `no such server "test"`)
+	c.Assert(err, ErrorMatches, `itemNotFound: No such server "test"`)
 }
 
 func (s *NovaSuite) TestAllServers(c *C) {
@@ -523,7 +523,7 @@ func (s *NovaSuite) TestGetServerAsEntity(c *C) {
 
 func (s *NovaSuite) TestGetServerByName(c *C) {
 	named, err := s.service.serverByName("test")
-	c.Assert(err, ErrorMatches, `no such server named "test"`)
+	c.Assert(err, ErrorMatches, `itemNotFound: No such server named "test"`)
 	servers := []nova.ServerDetail{
 		{Id: "sr1", Name: "test"},
 		{Id: "sr2", Name: "test"},
@@ -570,7 +570,7 @@ func (s *NovaSuite) TestAddSecurityGroupTwiceFails(c *C) {
 	s.createGroup(c, group)
 	defer s.deleteGroup(c, group)
 	err := s.service.addSecurityGroup(group)
-	c.Assert(err, ErrorMatches, "a security group with id 1 already exists")
+	c.Assert(err, ErrorMatches, "conflictingRequest: A security group with id 1 already exists")
 }
 
 func (s *NovaSuite) TestRemoveSecurityGroupTwiceFails(c *C) {
@@ -578,7 +578,7 @@ func (s *NovaSuite) TestRemoveSecurityGroupTwiceFails(c *C) {
 	s.createGroup(c, group)
 	s.deleteGroup(c, group)
 	err := s.service.removeSecurityGroup(group.Id)
-	c.Assert(err, ErrorMatches, "no such security group 1")
+	c.Assert(err, ErrorMatches, "itemNotFound: No such security group 1")
 }
 
 func (s *NovaSuite) TestAllSecurityGroups(c *C) {
@@ -631,7 +631,7 @@ func (s *NovaSuite) TestGetSecurityGroupByName(c *C) {
 	}
 	s.ensureNoGroup(c, group)
 	gr, err := s.service.securityGroupByName(group.Name)
-	c.Assert(err, ErrorMatches, `no such security group named "test"`)
+	c.Assert(err, ErrorMatches, `itemNotFound: No such security group named "test"`)
 	s.createGroup(c, group)
 	defer s.deleteGroup(c, group)
 	gr, err = s.service.securityGroupByName(group.Name)
@@ -746,7 +746,7 @@ func (s *NovaSuite) TestAddSecurityGroupRuleTwiceFails(c *C) {
 	c.Assert(err, IsNil)
 	defer s.deleteRule(c, rule)
 	err = s.service.addSecurityGroupRule(rule.Id, ri)
-	c.Assert(err, ErrorMatches, "a security group rule with id 10 already exists")
+	c.Assert(err, ErrorMatches, "conflictingRequest: A security group rule with id 10 already exists")
 }
 
 func (s *NovaSuite) TestAddSecurityGroupRuleToParentTwiceFails(c *C) {
@@ -761,7 +761,7 @@ func (s *NovaSuite) TestAddSecurityGroupRuleToParentTwiceFails(c *C) {
 	ri := nova.RuleInfo{ParentGroupId: group.Id}
 	rule := nova.SecurityGroupRule{Id: "10"}
 	err := s.service.addSecurityGroupRule(rule.Id, ri)
-	c.Assert(err, ErrorMatches, "cannot add twice rule 10 to security group 1")
+	c.Assert(err, ErrorMatches, "conflictingRequest: Cannot add twice rule 10 to security group 1")
 }
 
 func (s *NovaSuite) TestAddSecurityGroupRuleWithInvalidParentFails(c *C) {
@@ -771,7 +771,7 @@ func (s *NovaSuite) TestAddSecurityGroupRuleWithInvalidParentFails(c *C) {
 	rule := nova.SecurityGroupRule{Id: "10"}
 	s.ensureNoRule(c, rule)
 	err := s.service.addSecurityGroupRule(rule.Id, ri)
-	c.Assert(err, ErrorMatches, "no such security group 1")
+	c.Assert(err, ErrorMatches, "itemNotFound: No such security group 1")
 }
 
 func (s *NovaSuite) TestAddGroupSecurityGroupRuleWithInvalidSourceFails(c *C) {
@@ -786,7 +786,7 @@ func (s *NovaSuite) TestAddGroupSecurityGroupRuleWithInvalidSourceFails(c *C) {
 	rule := nova.SecurityGroupRule{Id: "10"}
 	s.ensureNoRule(c, rule)
 	err := s.service.addSecurityGroupRule(rule.Id, ri)
-	c.Assert(err, ErrorMatches, "unknown source security group 42")
+	c.Assert(err, ErrorMatches, "conflictingRequest: Unknown source security group 42")
 }
 
 func (s *NovaSuite) TestAddSecurityGroupRuleUpdatesParent(c *C) {
@@ -856,7 +856,7 @@ func (s *NovaSuite) TestRemoveSecurityGroupRuleTwiceFails(c *C) {
 	c.Assert(err, IsNil)
 	s.deleteRule(c, rule)
 	err = s.service.removeSecurityGroupRule(rule.Id)
-	c.Assert(err, ErrorMatches, "no such security group rule 10")
+	c.Assert(err, ErrorMatches, "itemNotFound: No such security group rule 10")
 }
 
 func (s *NovaSuite) TestAddHasRemoveServerSecurityGroup(c *C) {
@@ -891,7 +891,7 @@ func (s *NovaSuite) TestAddServerSecurityGroupWithInvalidServerFails(c *C) {
 	s.createGroup(c, group)
 	defer s.deleteGroup(c, group)
 	err := s.service.addServerSecurityGroup(server.Id, group.Id)
-	c.Assert(err, ErrorMatches, `no such server "sr1"`)
+	c.Assert(err, ErrorMatches, `itemNotFound: No such server "sr1"`)
 }
 
 func (s *NovaSuite) TestAddServerSecurityGroupWithInvalidGroupFails(c *C) {
@@ -901,7 +901,7 @@ func (s *NovaSuite) TestAddServerSecurityGroupWithInvalidGroupFails(c *C) {
 	s.createServer(c, server)
 	defer s.deleteServer(c, server)
 	err := s.service.addServerSecurityGroup(server.Id, group.Id)
-	c.Assert(err, ErrorMatches, "no such security group 1")
+	c.Assert(err, ErrorMatches, "itemNotFound: No such security group 1")
 }
 
 func (s *NovaSuite) TestAddServerSecurityGroupTwiceFails(c *C) {
@@ -914,7 +914,7 @@ func (s *NovaSuite) TestAddServerSecurityGroupTwiceFails(c *C) {
 	err := s.service.addServerSecurityGroup(server.Id, group.Id)
 	c.Assert(err, IsNil)
 	err = s.service.addServerSecurityGroup(server.Id, group.Id)
-	c.Assert(err, ErrorMatches, `server "sr1" already belongs to group 1`)
+	c.Assert(err, ErrorMatches, `conflictingRequest: Server "sr1" already belongs to group 1`)
 	err = s.service.removeServerSecurityGroup(server.Id, group.Id)
 	c.Assert(err, IsNil)
 }
@@ -964,7 +964,7 @@ func (s *NovaSuite) TestRemoveServerSecurityGroupWithInvalidServerFails(c *C) {
 	c.Assert(err, IsNil)
 	s.deleteServer(c, server)
 	err = s.service.removeServerSecurityGroup(server.Id, group.Id)
-	c.Assert(err, ErrorMatches, `no such server "sr1"`)
+	c.Assert(err, ErrorMatches, `itemNotFound: No such server "sr1"`)
 	s.createServer(c, server)
 	defer s.deleteServer(c, server)
 	err = s.service.removeServerSecurityGroup(server.Id, group.Id)
@@ -981,7 +981,7 @@ func (s *NovaSuite) TestRemoveServerSecurityGroupWithInvalidGroupFails(c *C) {
 	c.Assert(err, IsNil)
 	s.deleteGroup(c, group)
 	err = s.service.removeServerSecurityGroup(server.Id, group.Id)
-	c.Assert(err, ErrorMatches, "no such security group 1")
+	c.Assert(err, ErrorMatches, "itemNotFound: No such security group 1")
 	s.createGroup(c, group)
 	defer s.deleteGroup(c, group)
 	err = s.service.removeServerSecurityGroup(server.Id, group.Id)
@@ -1000,7 +1000,7 @@ func (s *NovaSuite) TestRemoveServerSecurityGroupTwiceFails(c *C) {
 	err = s.service.removeServerSecurityGroup(server.Id, group.Id)
 	c.Assert(err, IsNil)
 	err = s.service.removeServerSecurityGroup(server.Id, group.Id)
-	c.Assert(err, ErrorMatches, `server "sr1" does not belong to group 1`)
+	c.Assert(err, ErrorMatches, `badRequest: Server "sr1" does not belong to group 1`)
 }
 
 func (s *NovaSuite) TestAddHasRemoveFloatingIP(c *C) {
@@ -1023,7 +1023,7 @@ func (s *NovaSuite) TestAddFloatingIPTwiceFails(c *C) {
 	s.createIP(c, ip)
 	defer s.deleteIP(c, ip)
 	err := s.service.addFloatingIP(ip)
-	c.Assert(err, ErrorMatches, "a floating IP with id 1 already exists")
+	c.Assert(err, ErrorMatches, "conflictingRequest: A floating IP with id 1 already exists")
 }
 
 func (s *NovaSuite) TestRemoveFloatingIPTwiceFails(c *C) {
@@ -1031,7 +1031,7 @@ func (s *NovaSuite) TestRemoveFloatingIPTwiceFails(c *C) {
 	s.createIP(c, ip)
 	s.deleteIP(c, ip)
 	err := s.service.removeFloatingIP(ip.Id)
-	c.Assert(err, ErrorMatches, "no such floating IP 1")
+	c.Assert(err, ErrorMatches, "itemNotFound: No such floating IP \"1\"")
 }
 
 func (s *NovaSuite) TestAllFloatingIPs(c *C) {
@@ -1080,7 +1080,7 @@ func (s *NovaSuite) TestGetFloatingIPByAddr(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(*ip, DeepEquals, fip)
 	_, err = s.service.floatingIPByAddr("invalid")
-	c.Assert(err, ErrorMatches, `no such floating IP with address "invalid"`)
+	c.Assert(err, ErrorMatches, `itemNotFound: No such floating IP "invalid"`)
 }
 
 func (s *NovaSuite) TestAddHasRemoveServerFloatingIP(c *C) {
@@ -1115,7 +1115,7 @@ func (s *NovaSuite) TestAddServerFloatingIPWithInvalidServerFails(c *C) {
 	s.createIP(c, fip)
 	defer s.deleteIP(c, fip)
 	err := s.service.addServerFloatingIP(server.Id, fip.Id)
-	c.Assert(err, ErrorMatches, `no such server "sr1"`)
+	c.Assert(err, ErrorMatches, `itemNotFound: No such server "sr1"`)
 }
 
 func (s *NovaSuite) TestAddServerFloatingIPWithInvalidIPFails(c *C) {
@@ -1125,7 +1125,7 @@ func (s *NovaSuite) TestAddServerFloatingIPWithInvalidIPFails(c *C) {
 	s.createServer(c, server)
 	defer s.deleteServer(c, server)
 	err := s.service.addServerFloatingIP(server.Id, fip.Id)
-	c.Assert(err, ErrorMatches, "no such floating IP 1")
+	c.Assert(err, ErrorMatches, "itemNotFound: No such floating IP \"1\"")
 }
 
 func (s *NovaSuite) TestAddServerFloatingIPTwiceFails(c *C) {
@@ -1138,7 +1138,7 @@ func (s *NovaSuite) TestAddServerFloatingIPTwiceFails(c *C) {
 	err := s.service.addServerFloatingIP(server.Id, fip.Id)
 	c.Assert(err, IsNil)
 	err = s.service.addServerFloatingIP(server.Id, fip.Id)
-	c.Assert(err, ErrorMatches, `server "sr1" already has floating IP 1`)
+	c.Assert(err, ErrorMatches, `conflictingRequest: Server "sr1" already has floating IP 1`)
 	err = s.service.removeServerFloatingIP(server.Id, fip.Id)
 	c.Assert(err, IsNil)
 }
@@ -1153,7 +1153,7 @@ func (s *NovaSuite) TestRemoveServerFloatingIPWithInvalidServerFails(c *C) {
 	c.Assert(err, IsNil)
 	s.deleteServer(c, server)
 	err = s.service.removeServerFloatingIP(server.Id, fip.Id)
-	c.Assert(err, ErrorMatches, `no such server "sr1"`)
+	c.Assert(err, ErrorMatches, `itemNotFound: No such server "sr1"`)
 	s.createServer(c, server)
 	defer s.deleteServer(c, server)
 	err = s.service.removeServerFloatingIP(server.Id, fip.Id)
@@ -1170,7 +1170,7 @@ func (s *NovaSuite) TestRemoveServerFloatingIPWithInvalidIPFails(c *C) {
 	c.Assert(err, IsNil)
 	s.deleteIP(c, fip)
 	err = s.service.removeServerFloatingIP(server.Id, fip.Id)
-	c.Assert(err, ErrorMatches, "no such floating IP 1")
+	c.Assert(err, ErrorMatches, "itemNotFound: No such floating IP \"1\"")
 	s.createIP(c, fip)
 	defer s.deleteIP(c, fip)
 	err = s.service.removeServerFloatingIP(server.Id, fip.Id)
@@ -1189,5 +1189,5 @@ func (s *NovaSuite) TestRemoveServerFloatingIPTwiceFails(c *C) {
 	err = s.service.removeServerFloatingIP(server.Id, fip.Id)
 	c.Assert(err, IsNil)
 	err = s.service.removeServerFloatingIP(server.Id, fip.Id)
-	c.Assert(err, ErrorMatches, `server "sr1" does not have floating IP 1`)
+	c.Assert(err, ErrorMatches, `itemNotFound: Server "sr1" does not have floating IP 1`)
 }
