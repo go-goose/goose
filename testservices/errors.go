@@ -58,7 +58,7 @@ func NewRateLimitExceededError() *ServerError {
 	return &ServerError{
 		message: "Retry limit exceeded",
 		// XXX: hduran-8 I infered this from the python nova code, might be wrong
-		code:    413,
+		code: 413,
 	}
 }
 

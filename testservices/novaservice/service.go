@@ -378,7 +378,7 @@ func (n *Nova) addSecurityGroup(group nova.SecurityGroup) error {
 		return err
 	}
 	if _, err := n.securityGroup(group.Id); err == nil {
-		return testservices.NewSecurityGroupAlreadyExistsError(group.Id)	
+		return testservices.NewSecurityGroupAlreadyExistsError(group.Id)
 	}
 	group.TenantId = n.TenantId
 	if group.Rules == nil {
