@@ -85,7 +85,7 @@ func (c *Client) HeadObject(containerName, objectName string) (headers http.Head
 
 // GetObject retrieves the specified object's data.
 func (c *Client) GetObject(containerName, objectName string) (obj []byte, err error) {
-	rc, err := c.GetReader(containerName, objectName)
+	rc, _, err := c.GetReader(containerName, objectName)
 	if err != nil {
 		return
 	}
@@ -102,10 +102,10 @@ type noData struct {
 }
 
 // GetObject retrieves the specified object's data.
-func (c *Client) GetReader(containerName, objectName string) (rc io.ReadCloser, err error) {
+func (c *Client) GetReader(containerName, objectName string) (io.ReadCloser, http.Header, error) {
 	requestData := goosehttp.RequestData{RespReader: &emptyReadCloser}
-	err = c.touchObject(&requestData, client.GET, containerName, objectName)
-	return requestData.RespReader, err
+	err := c.touchObject(&requestData, client.GET, containerName, objectName)
+	return requestData.RespReader, requestData.RespHeaders, err
 }
 
 // DeleteObject removes an object from the storage system permanently.
