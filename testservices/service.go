@@ -1,7 +1,6 @@
 package testservices
 
 import (
-	"errors"
 	"launchpad.net/goose/testservices/hook"
 	"launchpad.net/goose/testservices/identityservice"
 	"net/http"
@@ -26,10 +25,10 @@ type ServiceInstance struct {
 
 // Internal Openstack errors.
 
-var RateLimitExceededError = errors.New("retry limit exceeded")
+var RateLimitExceededError = NewRateLimitExceededError()
 
 // NoMoreFloatingIPs corresponds to "HTTP 404 Zero floating ips available."
-var NoMoreFloatingIPs = errors.New("zero floating ips available")
+var NoMoreFloatingIPs = NewNoMoreFloatingIpsError()
 
 // IPLimitExceeded corresponds to "HTTP 413 Maximum number of floating ips exceeded"
-var IPLimitExceeded = errors.New("maximum number of floating ips exceeded")
+var IPLimitExceeded = NewIPLimitExceededError()
