@@ -27,7 +27,7 @@ func serverErrorf(code int, message string, args ...interface{}) *ServerError {
 	return &ServerError{code: code, message: fmt.Sprintf(message, args...)}
 }
 
-func (n *ServerError) JSONIfy() string {
+func (n *ServerError) AsJSON() string {
 	return fmt.Sprintf(`{%q:{"message":%q, "code":%d}}`, n.Name(), n.message, n.code)
 }
 
@@ -43,8 +43,8 @@ func (n *ServerError) Name() string {
 	return name
 }
 
-func NewInternalServerError() *ServerError {
-	return serverErrorf(500, "Internal server error")
+func NewInternalServerError(message string) *ServerError {
+	return serverErrorf(500, message)
 }
 
 func NewNotFoundError(message string) *ServerError {

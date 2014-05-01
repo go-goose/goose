@@ -33,12 +33,12 @@ type Nova struct {
 	nextIPId     int
 }
 
-func errorJSONEncode(err error) string{
+func errorJSONEncode(err error) string {
 	serverError, ok := err.(*testservices.ServerError)
 	if !ok {
-		serverError = testservices.NewInternalServerError()
+		serverError = testservices.NewInternalServerError(err.Error())
 	}
-	return serverError.JSONIfy()
+	return serverError.AsJSON()
 }
 
 // endpoint returns either a versioned or non-versioned service
