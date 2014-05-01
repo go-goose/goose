@@ -1,4 +1,4 @@
-package main_test
+package main
 
 import (
 	"bytes"
@@ -10,7 +10,6 @@ import (
 	"launchpad.net/goose/testing/httpsuite"
 	"launchpad.net/goose/testservices/hook"
 	"launchpad.net/goose/testservices/openstackservice"
-	tool "launchpad.net/goose/tools/secgroup-delete-all"
 	"testing"
 )
 
@@ -33,7 +32,7 @@ type ToolSuite struct {
 var _ = Suite(&ToolSuite{})
 
 // GZ 2013-01-21: Should require EnvSuite for this, but clashes with HTTPSuite
-func createNovaClient(creds *identity.Credentials) *nova.Client {
+func createNovaClientFromCreds(creds *identity.Credentials) *nova.Client {
 	osc := client.NewClient(creds, identity.AuthUserPass, nil)
 	return nova.New(osc)
 }
@@ -48,13 +47,13 @@ func (s *ToolSuite) makeServices(c *C) (*openstackservice.Openstack, *nova.Clien
 	}
 	openstack := openstackservice.New(creds, identity.AuthUserPass)
 	openstack.SetupHTTP(s.Mux)
-	return openstack, createNovaClient(creds)
+	return openstack, createNovaClientFromCreds(creds)
 }
 
 func (s *ToolSuite) TestNoGroups(c *C) {
 	_, nova := s.makeServices(c)
 	var buf bytes.Buffer
-	err := tool.DeleteAll(&buf, nova)
+	err := DeleteAll(&buf, nova)
 	c.Assert(err, IsNil)
 	c.Assert(string(buf.Bytes()), Equals, "No security groups to delete.\n")
 }
@@ -64,7 +63,7 @@ func (s *ToolSuite) TestTwoGroups(c *C) {
 	novaClient.CreateSecurityGroup("group-a", "A group")
 	novaClient.CreateSecurityGroup("group-b", "Another group")
 	var buf bytes.Buffer
-	err := tool.DeleteAll(&buf, novaClient)
+	err := DeleteAll(&buf, novaClient)
 	c.Assert(err, IsNil)
 	c.Assert(string(buf.Bytes()), Equals, "2 security groups deleted.\n")
 }
@@ -89,7 +88,7 @@ func (s *ToolSuite) TestUndeleteableGroup(c *C) {
 	cleanup := os.Nova.RegisterControlPoint("removeSecurityGroup", deleteGroupError)
 	defer cleanup()
 	var buf bytes.Buffer
-	err := tool.DeleteAll(&buf, novaClient)
+	err := DeleteAll(&buf, novaClient)
 	c.Assert(err, IsNil)
 	c.Assert(string(buf.Bytes()), Equals, "2 security groups deleted.\n1 security groups could not be deleted.\n")
 }
