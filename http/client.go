@@ -51,8 +51,22 @@ func (e *ErrorResponse) Error() string {
 	return fmt.Sprintf("Failed: %d %s: %s", e.Code, e.Title, e.Message)
 }
 
-type ErrorWrapper struct {
-	Error ErrorResponse `json:"error"`
+func unmarshallError(jsonBytes []byte) (*ErrorResponse, error) {
+	var response ErrorResponse
+	var transientObject = make(map[string]*json.RawMessage)
+	if err := json.Unmarshal(jsonBytes, &transientObject); err != nil {
+		return nil, err
+	}
+	for key, value := range transientObject {
+		if err := json.Unmarshal(*value, &response); err != nil {
+			return nil, err
+		}
+		response.Title = key
+	}
+	if response.Code != 0 && response.Message != "" {
+		return &response, nil
+	}
+	return nil, fmt.Errorf("Unexpected response format: %q", jsonBytes)
 }
 
 type RequestData struct {
@@ -287,9 +301,10 @@ func handleError(URL string, resp *http.Response) error {
 	errInfo := string(errBytes)
 	// Check if we have a JSON representation of the failure, if so decode it.
 	if resp.Header.Get("Content-Type") == contentTypeJSON {
-		var wrappedErr ErrorWrapper
-		if err := json.Unmarshal(errBytes, &wrappedErr); err == nil {
-			errInfo = wrappedErr.Error.Error()
+		errorResponse, err := unmarshallError(errBytes)
+		//TODO (hduran-8): Obtain a logger and log the error
+		if err == nil {
+			errInfo = errorResponse.Error()
 		}
 	}
 	httpError := &HttpError{

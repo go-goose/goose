@@ -181,3 +181,44 @@ func (s *HTTPSClientTestSuite) TestInsecureClientAllowsSelfSigned(c *C) {
 	c.Check(agent, Not(Equals), "")
 	c.Check(agent, Equals, gooseAgent())
 }
+
+func (s *HTTPSClientTestSuite) TestProperlyFormattedJsonUnmarshalling(c *C) {
+	validJSON := `{"itemNotFound": {"message": "A Meaningful error", "code": 404}}`
+	unmarshalled, err := unmarshallError([]byte(validJSON))
+	c.Assert(err, IsNil)
+	c.Assert(unmarshalled.Code, Equals, 404)
+	c.Assert(unmarshalled.Title, Equals, "itemNotFound")
+	c.Assert(unmarshalled.Message, Equals, "A Meaningful error")
+}
+
+func (s *HTTPSClientTestSuite) TestImproperlyFormattedJSONUnmarshalling(c *C) {
+	invalidJSON := `This string is not a valid JSON`
+	unmarshalled, err := unmarshallError([]byte(invalidJSON))
+	c.Assert(err, NotNil)
+	c.Assert(unmarshalled, IsNil)
+	c.Check(err, ErrorMatches, "invalid character 'T' looking for beginning of value")
+}
+
+func (s *HTTPSClientTestSuite) TestJSONMissingCodeUnmarshalling(c *C) {
+	missingCodeJSON := `{"itemNotFound": {"message": "A Meaningful error"}}`
+	unmarshalled, err := unmarshallError([]byte(missingCodeJSON))
+	c.Assert(err, NotNil)
+	c.Assert(unmarshalled, IsNil)
+	c.Check(err, ErrorMatches, `Unexpected response format: "{\\"itemNotFound\\": {\\"message\\": \\"A Meaningful error\\"}}"`)
+}
+
+func (s *HTTPSClientTestSuite) TestJSONMissingMessageUnmarshalling(c *C) {
+	missingMessageJSON := `{"itemNotFound": {"code": 404}}`
+	unmarshalled, err := unmarshallError([]byte(missingMessageJSON))
+	c.Assert(err, NotNil)
+	c.Assert(unmarshalled, IsNil)
+	c.Check(err, ErrorMatches, `Unexpected response format: "{\\"itemNotFound\\": {\\"code\\": 404}}"`)
+}
+
+func (s *HTTPSClientTestSuite) TestBrokenBodyJSONUnmarshalling(c *C) {
+	invalidBodyJSON := `{"itemNotFound": {}}`
+	unmarshalled, err := unmarshallError([]byte(invalidBodyJSON))
+	c.Assert(err, NotNil)
+	c.Assert(unmarshalled, IsNil)
+	c.Check(err, ErrorMatches, `Unexpected response format: \"{\\\"itemNotFound\\\": {}}\"`)
+}

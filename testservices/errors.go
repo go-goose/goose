@@ -27,6 +27,10 @@ func serverErrorf(code int, message string, args ...interface{}) *ServerError {
 	return &ServerError{code: code, message: fmt.Sprintf(message, args...)}
 }
 
+func (n *ServerError) Code() int {
+	return n.code
+}
+
 func (n *ServerError) AsJSON() string {
 	return fmt.Sprintf(`{%q:{"message":%q, "code":%d}}`, n.Name(), n.message, n.code)
 }
