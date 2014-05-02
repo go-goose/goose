@@ -297,6 +297,7 @@ func (h *novaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var resp http.Handler
+
 	if err == testservices.RateLimitExceededError {
 		resp = errRateLimitExceeded
 	} else if err == testservices.NoMoreFloatingIPs {
@@ -306,9 +307,10 @@ func (h *novaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		resp, _ = err.(http.Handler)
 		if resp == nil {
+			code, encodedErr := errorJSONEncode(err)
 			resp = &errorResponse{
-				http.StatusInternalServerError,
-				`{"internalServerError":{"message":"$ERROR$",code:500}}`,
+				code,
+				encodedErr,
 				"application/json",
 				err.Error(),
 				nil,
@@ -651,7 +653,7 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 			}
 			server, err := n.server(serverId)
 			if err != nil {
-				return errNotFoundJSON
+				return err
 			}
 			if groups {
 				srvGroups := n.allServerSecurityGroups(serverId)

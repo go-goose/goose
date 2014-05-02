@@ -261,7 +261,7 @@ func (s *NovaHTTPSuite) simpleTests() []SimpleTest {
 		{
 			method: "GET",
 			url:    "/servers/invalid",
-			expect: errNotFoundJSON,
+			expect: &errorResponse{code: 404, body: "{\"itemNotFound\":{\"message\":\"No such server \\\"invalid\\\"\", \"code\":404}}"},
 		},
 		{
 			method: "POST",
