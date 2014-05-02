@@ -186,9 +186,9 @@ func (s *HTTPSClientTestSuite) TestProperlyFormattedJsonUnmarshalling(c *C) {
 	validJSON := `{"itemNotFound": {"message": "A Meaningful error", "code": 404}}`
 	unmarshalled, err := unmarshallError([]byte(validJSON))
 	c.Assert(err, IsNil)
-	c.Assert(unmarshalled.Code, Equals, 404)
-	c.Assert(unmarshalled.Title, Equals, "itemNotFound")
-	c.Assert(unmarshalled.Message, Equals, "A Meaningful error")
+	c.Check(unmarshalled.Code, Equals, 404)
+	c.Check(unmarshalled.Title, Equals, "itemNotFound")
+	c.Check(unmarshalled.Message, Equals, "A Meaningful error")
 }
 
 func (s *HTTPSClientTestSuite) TestImproperlyFormattedJSONUnmarshalling(c *C) {
@@ -204,7 +204,7 @@ func (s *HTTPSClientTestSuite) TestJSONMissingCodeUnmarshalling(c *C) {
 	unmarshalled, err := unmarshallError([]byte(missingCodeJSON))
 	c.Assert(err, NotNil)
 	c.Assert(unmarshalled, IsNil)
-	c.Check(err, ErrorMatches, `Unexpected response format: "{\\"itemNotFound\\": {\\"message\\": \\"A Meaningful error\\"}}"`)
+	c.Check(err, ErrorMatches, `Unparsable json error body: "{\\"itemNotFound\\": {\\"message\\": \\"A Meaningful error\\"}}"`)
 }
 
 func (s *HTTPSClientTestSuite) TestJSONMissingMessageUnmarshalling(c *C) {
@@ -212,7 +212,7 @@ func (s *HTTPSClientTestSuite) TestJSONMissingMessageUnmarshalling(c *C) {
 	unmarshalled, err := unmarshallError([]byte(missingMessageJSON))
 	c.Assert(err, NotNil)
 	c.Assert(unmarshalled, IsNil)
-	c.Check(err, ErrorMatches, `Unexpected response format: "{\\"itemNotFound\\": {\\"code\\": 404}}"`)
+	c.Check(err, ErrorMatches, `Unparsable json error body: "{\\"itemNotFound\\": {\\"code\\": 404}}"`)
 }
 
 func (s *HTTPSClientTestSuite) TestBrokenBodyJSONUnmarshalling(c *C) {
@@ -220,5 +220,5 @@ func (s *HTTPSClientTestSuite) TestBrokenBodyJSONUnmarshalling(c *C) {
 	unmarshalled, err := unmarshallError([]byte(invalidBodyJSON))
 	c.Assert(err, NotNil)
 	c.Assert(unmarshalled, IsNil)
-	c.Check(err, ErrorMatches, `Unexpected response format: \"{\\\"itemNotFound\\\": {}}\"`)
+	c.Check(err, ErrorMatches, `Unparsable json error body: \"{\\\"itemNotFound\\\": {}}\"`)
 }

@@ -62,11 +62,12 @@ func unmarshallError(jsonBytes []byte) (*ErrorResponse, error) {
 			return nil, err
 		}
 		response.Title = key
+		break
 	}
 	if response.Code != 0 && response.Message != "" {
 		return &response, nil
 	}
-	return nil, fmt.Errorf("Unexpected response format: %q", jsonBytes)
+	return nil, fmt.Errorf("Unparsable json error body: %q", jsonBytes)
 }
 
 type RequestData struct {
