@@ -295,6 +295,56 @@ func (s *SwiftHTTPSuite) TestDELETEObjectExistsNoContent(c *C) {
 	s.removeContainer("test", c)
 }
 
+func (s *SwiftHTTPSuite) TestHEADContainerExistsOK(c *C) {
+	s.ensureContainer("test", c)
+	data := []byte("test data")
+	s.ensureObject("test", "obj", data, c)
+
+	resp := s.sendRequest(c, "HEAD", "test", nil, http.StatusOK)
+	c.Assert(resp.Header.Get("Date"), Not(Equals), "")
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	c.Assert(err, IsNil)
+	c.Assert(body, DeepEquals, []byte{})
+	s.removeContainer("test", c)
+}
+
+func (s *SwiftHTTPSuite) TestHEADContainerMissingNotFound(c *C) {
+	s.ensureNotContainer("test", c)
+
+	s.sendRequest(c, "HEAD", "test", nil, http.StatusNotFound)
+
+	s.ensureNotContainer("test", c)
+}
+
+func (s *SwiftHTTPSuite) TestHEADObjectExistsOK(c *C) {
+	data := []byte("test data")
+	s.ensureContainer("test", c)
+	s.ensureObject("test", "obj", data, c)
+
+	resp := s.sendRequest(c, "HEAD", "test/obj", nil, http.StatusOK)
+
+	s.ensureObjectData("test", "obj", data, c)
+	c.Assert(resp.Header.Get("Date"), Not(Equals), "")
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	c.Assert(err, IsNil)
+	c.Assert(body, DeepEquals, []byte{})
+
+	s.removeContainer("test", c)
+}
+
+func (s *SwiftHTTPSuite) TestHEADObjectMissingNotFound(c *C) {
+	s.ensureContainer("test", c)
+	s.ensureNotObject("test", "obj", c)
+
+	s.sendRequest(c, "HEAD", "test/obj", nil, http.StatusNotFound)
+
+	s.removeContainer("test", c)
+}
+
 func (s *SwiftHTTPSuite) TestUnauthorizedFails(c *C) {
 	oldtoken := s.token
 	defer func() {

@@ -76,6 +76,25 @@ func (s *Swift) handleContainers(container string, w http.ResponseWriter, r *htt
 			w.Header().Set("Content-Length", "0")
 			w.WriteHeader(http.StatusNoContent)
 		}
+	case "HEAD":
+		urlParams, err := url.ParseQuery(r.URL.RawQuery)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+			return
+		}
+		params := make(map[string]string, len(urlParams))
+		for k := range urlParams {
+			params[k] = urlParams.Get(k)
+		}
+		_, err = s.ListContainer(container, params)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+		} else {
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/json; charset=UF-8")
+		}
 	case "PUT":
 		if exists {
 			w.WriteHeader(http.StatusAccepted)
@@ -127,6 +146,9 @@ func (s *Swift) handleObjects(container, object string, w http.ResponseWriter, r
 			w.Header().Set("Content-Length", "0")
 			w.WriteHeader(http.StatusNoContent)
 		}
+	case "HEAD":
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json; charset=UF-8")
 	case "PUT":
 		bodydata, err := ioutil.ReadAll(r.Body)
 		if err != nil {

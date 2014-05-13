@@ -86,7 +86,7 @@ func (s *LiveTests) TestObjectReader(c *C) {
 	data := "...some data..."
 	err := s.swift.PutReader(s.containerName, object, bytes.NewReader([]byte(data)), int64(len(data)))
 	c.Check(err, IsNil)
-	r, err := s.swift.GetReader(s.containerName, object)
+	r, headers, err := s.swift.GetReader(s.containerName, object)
 	c.Check(err, IsNil)
 	readData, err := ioutil.ReadAll(r)
 	c.Check(err, IsNil)
@@ -94,6 +94,7 @@ func (s *LiveTests) TestObjectReader(c *C) {
 	c.Check(string(readData), Equals, data)
 	err = s.swift.DeleteObject(s.containerName, object)
 	c.Assert(err, IsNil)
+	c.Check(headers.Get("Date"), Not(Equals), "")
 }
 
 func (s *LiveTests) TestList(c *C) {
@@ -178,7 +179,7 @@ func (s *LiveTestsPublicContainer) TestPublicObjectReader(c *C) {
 	data := "...some data..."
 	err := s.swift.PutReader(s.containerName, object, bytes.NewReader([]byte(data)), int64(len(data)))
 	c.Check(err, IsNil)
-	r, err := s.publicSwift.GetReader(s.containerName, object)
+	r, headers, err := s.publicSwift.GetReader(s.containerName, object)
 	c.Check(err, IsNil)
 	readData, err := ioutil.ReadAll(r)
 	c.Check(err, IsNil)
@@ -186,6 +187,7 @@ func (s *LiveTestsPublicContainer) TestPublicObjectReader(c *C) {
 	c.Check(string(readData), Equals, data)
 	err = s.swift.DeleteObject(s.containerName, object)
 	c.Assert(err, IsNil)
+	c.Check(headers.Get("Date"), Not(Equals), "")
 }
 
 func (s *LiveTestsPublicContainer) TestPublicList(c *C) {
@@ -228,4 +230,16 @@ func (s *LiveTestsPublicContainer) TestPublicURL(c *C) {
 	c.Check(string(objdata), Equals, data)
 	err = s.swift.DeleteObject(s.containerName, object)
 	c.Assert(err, IsNil)
+}
+
+func (s *LiveTests) TestHeadObject(c *C) {
+	object := "test_obj2"
+	data := "...some data..."
+	err := s.swift.PutReader(s.containerName, object, bytes.NewReader([]byte(data)), int64(len(data)))
+	c.Check(err, IsNil)
+	headers, err := s.swift.HeadObject(s.containerName, object)
+	c.Check(err, IsNil)
+	err = s.swift.DeleteObject(s.containerName, object)
+	c.Assert(err, IsNil)
+	c.Check(headers.Get("Date"), Not(Equals), "")
 }

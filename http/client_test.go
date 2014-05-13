@@ -29,6 +29,7 @@ func (s *LoopingHTTPSuite) setupLoopbackRequest() (*http.Header, chan string, *C
 		req.Body.Close()
 		bodyChan <- string(bodyBytes)
 		resp.Header().Add("Content-Length", "0")
+		resp.Header().Add("Testing", "true")
 		resp.WriteHeader(http.StatusNoContent)
 		resp.Write([]byte{})
 	}
@@ -91,6 +92,7 @@ func (s *HTTPClientTestSuite) TestBinaryRequestSetsUserAgent(c *C) {
 	agent := headers.Get("User-Agent")
 	c.Check(agent, Not(Equals), "")
 	c.Check(agent, Equals, gooseAgent())
+	c.Check(req.RespHeaders.Get("Testing"), Equals, "true")
 }
 
 func (s *HTTPClientTestSuite) TestJSONRequestSetsUserAgent(c *C) {
@@ -101,6 +103,7 @@ func (s *HTTPClientTestSuite) TestJSONRequestSetsUserAgent(c *C) {
 	agent := headers.Get("User-Agent")
 	c.Check(agent, Not(Equals), "")
 	c.Check(agent, Equals, gooseAgent())
+	c.Check(req.RespHeaders.Get("Testing"), Equals, "true")
 }
 
 func (s *HTTPClientTestSuite) TestBinaryRequestSetsContentLength(c *C) {

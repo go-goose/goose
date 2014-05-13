@@ -77,15 +77,15 @@ func (c *Client) touchObject(requestData *goosehttp.RequestData, op, containerNa
 }
 
 // HeadObject retrieves object metadata and other standard HTTP headers.
-func (c *Client) HeadObject(containerName, objectName string) (headers http.Header, err error) {
-	requestData := goosehttp.RequestData{ReqHeaders: headers}
-	err = c.touchObject(&requestData, client.HEAD, containerName, objectName)
-	return headers, err
+func (c *Client) HeadObject(containerName, objectName string) (http.Header, error) {
+	requestData := goosehttp.RequestData{}
+	err := c.touchObject(&requestData, client.HEAD, containerName, objectName)
+	return requestData.RespHeaders, err
 }
 
 // GetObject retrieves the specified object's data.
 func (c *Client) GetObject(containerName, objectName string) (obj []byte, err error) {
-	rc, err := c.GetReader(containerName, objectName)
+	rc, _, err := c.GetReader(containerName, objectName)
 	if err != nil {
 		return
 	}
@@ -102,10 +102,10 @@ type noData struct {
 }
 
 // GetObject retrieves the specified object's data.
-func (c *Client) GetReader(containerName, objectName string) (rc io.ReadCloser, err error) {
+func (c *Client) GetReader(containerName, objectName string) (io.ReadCloser, http.Header, error) {
 	requestData := goosehttp.RequestData{RespReader: &emptyReadCloser}
-	err = c.touchObject(&requestData, client.GET, containerName, objectName)
-	return requestData.RespReader, err
+	err := c.touchObject(&requestData, client.GET, containerName, objectName)
+	return requestData.RespReader, requestData.RespHeaders, err
 }
 
 // DeleteObject removes an object from the storage system permanently.
