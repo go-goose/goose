@@ -46,11 +46,11 @@ func getIdAsString(b []byte, tag string) (string, error) {
 	val, ok := out[tag]
 	if !ok {
 		return "", nil
-	} 
+	}
 	floatVal, ok := val.(float64)
 	if ok {
 		return fmt.Sprint(int(floatVal)), nil
-	} 
+	}
 	return fmt.Sprint(val), nil
 }
 
