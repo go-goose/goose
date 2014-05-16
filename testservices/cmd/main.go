@@ -38,7 +38,6 @@ var serveAddr = gnuflag.String("addr", "localhost:8080", "serve the provider on 
 var users userValues
 
 func init() {
-
 	gnuflag.Var(&users, "user", "supply to add a user to the identity provider. Can be supplied multiple times. Should be of the form \"user:secret:token\".")
 }
 
@@ -59,7 +58,7 @@ func main() {
 	gnuflag.Parse(true)
 	p, ok := providerMap[*provider]
 	if !ok {
-		log.Fatalf("No such provider: %s, pick one of: %v", provider, providers())
+		log.Fatalf("No such provider: %s, pick one of: %v", *provider, providers())
 	}
 	mux := http.NewServeMux()
 	p.SetupHTTP(mux)

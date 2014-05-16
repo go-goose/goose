@@ -898,7 +898,7 @@ func (n *Nova) handleSecurityGroupRules(w http.ResponseWriter, r *http.Request) 
 				// TODO: Use a proper helper and sane error type
 				return &errorResponse{
 					http.StatusBadRequest,
-					fmt.Sprintf(`{"badRequest": {"message": "This rule already exists in group %d", "code": 400}}`, group.Id),
+					fmt.Sprintf(`{"badRequest": {"message": "This rule already exists in group %s", "code": 400}}`, group.Id),
 					"application/json; charset=UTF-8",
 					"rule already exists",
 					nil,
