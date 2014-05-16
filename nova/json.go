@@ -43,16 +43,15 @@ func getIdAsString(b []byte, tag string) (string, error) {
 	if err := json.Unmarshal(b, &out); err != nil {
 		return "", err
 	}
-	if val, ok := out[tag]; !ok {
+	val, ok := out[tag]
+	if !ok {
 		return "", nil
-	} else {
-		if floatVal, ok := val.(float64); ok {
-			return fmt.Sprint(int(floatVal)), nil
-		} else {
-			return fmt.Sprint(val), nil
-		}
-	}
-	panic("unreachable")
+	} 
+	floatVal, ok := val.(float64)
+	if ok {
+		return fmt.Sprint(int(floatVal)), nil
+	} 
+	return fmt.Sprint(val), nil
 }
 
 // appendJSON marshals the given attribute value and appends it as an encoded value to the given json data.

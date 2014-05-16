@@ -90,15 +90,13 @@ func (u *KeyPair) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		u.ReturnFailure(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if content, err := json.Marshal(res); err != nil {
+	content, err := json.Marshal(res)
+	if err != nil {
 		u.ReturnFailure(w, http.StatusInternalServerError, err.Error())
 		return
-	} else {
-		w.WriteHeader(http.StatusOK)
-		w.Write(content)
-		return
 	}
-	panic("unreachable")
+	w.WriteHeader(http.StatusOK)
+	w.Write(content)
 }
 
 func (u *KeyPair) generateAccessResponse(userInfo *UserInfo) (*AccessResponse, error) {
