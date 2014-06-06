@@ -28,17 +28,18 @@ func registerOpenStackTests(cred *identity.Credentials, testImageDetails imageDe
 }
 
 type LiveTests struct {
-	cred          *identity.Credentials
-	client        client.AuthenticatingClient
-	nova          *nova.Client
-	testServer    *nova.Entity
-	userId        string
-	tenantId      string
-	testImageId   string
-	testFlavor    string
-	testFlavorId  string
-	vendor        string
-	useNumericIds bool
+	cred                 *identity.Credentials
+	client               client.AuthenticatingClient
+	nova                 *nova.Client
+	testServer           *nova.Entity
+	userId               string
+	tenantId             string
+	testImageId          string
+	testFlavor           string
+	testFlavorId         string
+	testAvailabilityZone string
+	vendor               string
+	useNumericIds        bool
 }
 
 func (s *LiveTests) SetUpSuite(c *C) {
@@ -47,7 +48,7 @@ func (s *LiveTests) SetUpSuite(c *C) {
 	var err error
 	s.testFlavorId, err = s.findFlavorId(s.testFlavor)
 	c.Assert(err, IsNil)
-	s.testServer, err = s.createInstance(c, testImageName)
+	s.testServer, err = s.createInstance(testImageName)
 	c.Assert(err, IsNil)
 	s.waitTestServerToStart(c)
 	// These will not be filled in until a client has authorised which will happen creating the instance above.
@@ -88,12 +89,13 @@ func (s *LiveTests) TearDownTest(c *C) {
 	// noop, called by local test suite.
 }
 
-func (s *LiveTests) createInstance(c *C, name string) (instance *nova.Entity, err error) {
+func (s *LiveTests) createInstance(name string) (instance *nova.Entity, err error) {
 	opts := nova.RunServerOpts{
-		Name:     name,
-		FlavorId: s.testFlavorId,
-		ImageId:  s.testImageId,
-		UserData: nil,
+		Name:             name,
+		FlavorId:         s.testFlavorId,
+		ImageId:          s.testImageId,
+		AvailabilityZone: s.testAvailabilityZone,
+		UserData:         nil,
 	}
 	instance, err = s.nova.RunServer(opts)
 	if err != nil {
@@ -108,6 +110,9 @@ func (s *LiveTests) assertServerDetails(c *C, sr *nova.ServerDetail) {
 	c.Check(sr.Name, Equals, testImageName)
 	c.Check(sr.Flavor.Id, Equals, s.testFlavorId)
 	c.Check(sr.Image.Id, Equals, s.testImageId)
+	if s.testAvailabilityZone != "" {
+		c.Check(sr.AvailabilityZone, Equals, s.testAvailabilityZone)
+	}
 }
 
 func (s *LiveTests) TestListFlavors(c *C) {
@@ -163,7 +168,7 @@ func (s *LiveTests) TestListServers(c *C) {
 }
 
 func (s *LiveTests) TestListServersWithFilter(c *C) {
-	inst, err := s.createInstance(c, "filtered_server")
+	inst, err := s.createInstance("filtered_server")
 	c.Assert(err, IsNil)
 	defer s.nova.DeleteServer(inst.Id)
 	filter := nova.NewFilter()
@@ -224,7 +229,7 @@ func (s *LiveTests) TestListServersDetail(c *C) {
 }
 
 func (s *LiveTests) TestListServersDetailWithFilter(c *C) {
-	inst, err := s.createInstance(c, "filtered_server")
+	inst, err := s.createInstance("filtered_server")
 	c.Assert(err, IsNil)
 	defer s.nova.DeleteServer(inst.Id)
 	filter := nova.NewFilter()
@@ -488,7 +493,7 @@ func (s *LiveTests) TestRegexpInstanceFilters(c *C) {
 		"123barbaz",
 	}
 	for _, name := range serverNames {
-		inst, err := s.createInstance(c, name)
+		inst, err := s.createInstance(name)
 		c.Assert(err, IsNil)
 		defer s.nova.DeleteServer(inst.Id)
 	}
@@ -517,4 +522,16 @@ func (s *LiveTests) TestListNetworks(c *C) {
 		c.Check(network.Label, Not(Equals), "")
 		c.Assert(network.Cidr, Matches, `\d{1,3}(\.+\d{1,3}){3}\/\d+`)
 	}
+}
+
+func (s *LiveTests) runServerAvailabilityZone(zone string) (*nova.Entity, error) {
+	old := s.testAvailabilityZone
+	defer func() { s.testAvailabilityZone = old }()
+	s.testAvailabilityZone = zone
+	return s.createInstance(testImageName)
+}
+
+func (s *LiveTests) TestRunServerUnknownAvailabilityZone(c *C) {
+	_, err := s.runServerAvailabilityZone("something_that_will_never_exist")
+	c.Assert(err, ErrorMatches, "(.|\n)*The requested availability zone is not available(.|\n)*")
 }

@@ -225,6 +225,14 @@ The resource could not be found.
 		nil,
 		nil,
 	}
+	errAvailabilityZoneIsNotAvailable = &errorResponse{
+		http.StatusBadRequest,
+		`{"badRequest": {"message": "The requested availability zone is not available", "code": 400}}`,
+		"application/json; charset=UTF-8",
+		"",
+		nil,
+		nil,
+	}
 )
 
 func (e *errorResponse) Error() string {
@@ -536,12 +544,13 @@ func noGroupError(groupName, tenantId string) error {
 func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Request) error {
 	var req struct {
 		Server struct {
-			FlavorRef      string
-			ImageRef       string
-			Name           string
-			Metadata       map[string]string
-			SecurityGroups []map[string]string `json:"security_groups"`
-			Networks       []map[string]string
+			FlavorRef        string
+			ImageRef         string
+			Name             string
+			Metadata         map[string]string
+			SecurityGroups   []map[string]string `json:"security_groups"`
+			Networks         []map[string]string
+			AvailabilityZone string `json:"availability_zone"`
 		}
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -555,6 +564,11 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	}
 	if req.Server.FlavorRef == "" {
 		return errBadRequestSrvFlavor
+	}
+	if az := req.Server.AvailabilityZone; az != "" {
+		if !n.availabilityZones[az].State.Available {
+			return errAvailabilityZoneIsNotAvailable
+		}
 	}
 	n.nextServerId++
 	id := strconv.Itoa(n.nextServerId)
@@ -590,18 +604,19 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	timestr := time.Now().Format(time.RFC3339)
 	userInfo, _ := userInfo(n.IdentityService, r)
 	server := nova.ServerDetail{
-		Id:        id,
-		UUID:      uuid,
-		Name:      req.Server.Name,
-		TenantId:  n.TenantId,
-		UserId:    userInfo.Id,
-		HostId:    "1",
-		Image:     image,
-		Flavor:    flavorEnt,
-		Status:    nova.StatusActive,
-		Created:   timestr,
-		Updated:   timestr,
-		Addresses: make(map[string][]nova.IPAddress),
+		Id:               id,
+		UUID:             uuid,
+		Name:             req.Server.Name,
+		TenantId:         n.TenantId,
+		UserId:           userInfo.Id,
+		HostId:           "1",
+		Image:            image,
+		Flavor:           flavorEnt,
+		Status:           nova.StatusActive,
+		Created:          timestr,
+		Updated:          timestr,
+		Addresses:        make(map[string][]nova.IPAddress),
+		AvailabilityZone: req.Server.AvailabilityZone,
 	}
 	nextServer := len(n.allServers(nil)) + 1
 	n.buildServerLinks(&server)
@@ -1019,6 +1034,27 @@ func (n *Nova) handleNetworks(w http.ResponseWriter, r *http.Request) error {
 	return fmt.Errorf("unknown request method %q for %s", r.Method, r.URL.Path)
 }
 
+// handleAvailabilityZones handles the os-availability-zone HTTP API.
+func (n *Nova) handleAvailabilityZones(w http.ResponseWriter, r *http.Request) error {
+	switch r.Method {
+	case "GET":
+		if ipId := path.Base(r.URL.Path); ipId != "os-availability-zone" {
+			return errNotFoundJSON
+		}
+		zones := n.allAvailabilityZones()
+		if len(zones) == 0 {
+			// If there are no availability zones defined, act as
+			// if we don't support the availability zones extension.
+			return errNotFoundJSON
+		}
+		resp := struct {
+			Zones []nova.AvailabilityZone `json:"availabilityZoneInfo"`
+		}{zones}
+		return sendJSON(http.StatusOK, resp, w, r)
+	}
+	return fmt.Errorf("unknown request method %q for %s", r.Method, r.URL.Path)
+}
+
 // setupHTTP attaches all the needed handlers to provide the HTTP API.
 func (n *Nova) SetupHTTP(mux *http.ServeMux) {
 	handlers := map[string]http.Handler{
@@ -1033,6 +1069,7 @@ func (n *Nova) SetupHTTP(mux *http.ServeMux) {
 		"/$v/$t/os-security-group-rules": n.handler((*Nova).handleSecurityGroupRules),
 		"/$v/$t/os-floating-ips":         n.handler((*Nova).handleFloatingIPs),
 		"/$v/$t/os-networks":             n.handler((*Nova).handleNetworks),
+		"/$v/$t/os-availability-zone":    n.handler((*Nova).handleAvailabilityZones),
 	}
 	for path, h := range handlers {
 		path = strings.Replace(path, "$v", n.VersionPath, 1)

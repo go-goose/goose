@@ -9,6 +9,7 @@ import (
 	"launchpad.net/goose/testservices/identityservice"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -19,18 +20,19 @@ var _ identityservice.ServiceProvider = (*Nova)(nil)
 // contains the service double's internal state.
 type Nova struct {
 	testservices.ServiceInstance
-	flavors      map[string]nova.FlavorDetail
-	servers      map[string]nova.ServerDetail
-	groups       map[string]nova.SecurityGroup
-	rules        map[string]nova.SecurityGroupRule
-	floatingIPs  map[string]nova.FloatingIP
-	networks     map[string]nova.Network
-	serverGroups map[string][]string
-	serverIPs    map[string][]string
-	nextServerId int
-	nextGroupId  int
-	nextRuleId   int
-	nextIPId     int
+	flavors           map[string]nova.FlavorDetail
+	servers           map[string]nova.ServerDetail
+	groups            map[string]nova.SecurityGroup
+	rules             map[string]nova.SecurityGroupRule
+	floatingIPs       map[string]nova.FloatingIP
+	networks          map[string]nova.Network
+	serverGroups      map[string][]string
+	serverIPs         map[string][]string
+	availabilityZones map[string]nova.AvailabilityZone
+	nextServerId      int
+	nextGroupId       int
+	nextRuleId        int
+	nextIPId          int
 }
 
 func errorJSONEncode(err error) (int, string) {
@@ -86,14 +88,15 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 		{Id: "999", Name: "default", Description: "default group"},
 	}
 	novaService := &Nova{
-		flavors:      make(map[string]nova.FlavorDetail),
-		servers:      make(map[string]nova.ServerDetail),
-		groups:       make(map[string]nova.SecurityGroup),
-		rules:        make(map[string]nova.SecurityGroupRule),
-		floatingIPs:  make(map[string]nova.FloatingIP),
-		networks:     make(map[string]nova.Network),
-		serverGroups: make(map[string][]string),
-		serverIPs:    make(map[string][]string),
+		flavors:           make(map[string]nova.FlavorDetail),
+		servers:           make(map[string]nova.ServerDetail),
+		groups:            make(map[string]nova.SecurityGroup),
+		rules:             make(map[string]nova.SecurityGroupRule),
+		floatingIPs:       make(map[string]nova.FloatingIP),
+		networks:          make(map[string]nova.Network),
+		serverGroups:      make(map[string][]string),
+		serverIPs:         make(map[string][]string),
+		availabilityZones: make(map[string]nova.AvailabilityZone),
 		ServiceInstance: testservices.ServiceInstance{
 			IdentityService: identityService,
 			Scheme:          URL.Scheme,
@@ -128,6 +131,21 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 		Cidr:  "10.0.0.0/24",
 	}
 	return novaService
+}
+
+// SetAvailabilityZones sets the availability zones for setting
+// availability zones.
+//
+// Note: this is implemented as a public method rather than as
+// an HTTP API for two reasons: availability zones are created
+// indirectly via "host aggregates", which are a cloud-provider
+// concept that we have not implemented, and because we want to
+// be able to synthesize zone state changes.
+func (n *Nova) SetAvailabilityZones(zones ...nova.AvailabilityZone) {
+	n.availabilityZones = make(map[string]nova.AvailabilityZone)
+	for _, z := range zones {
+		n.availabilityZones[z.Name] = z
+	}
 }
 
 // buildFlavorLinks populates the Links field of the passed
@@ -798,4 +816,27 @@ func (n *Nova) allNetworks() (networks []nova.Network) {
 		networks = append(networks, net)
 	}
 	return networks
+}
+
+// allAvailabilityZones returns a list of all existing availability zones.
+func (n *Nova) allAvailabilityZones() (zones []nova.AvailabilityZone) {
+	for _, zone := range n.availabilityZones {
+		zones = append(zones, zone)
+	}
+	sort.Sort(azByName(zones))
+	return zones
+}
+
+type azByName []nova.AvailabilityZone
+
+func (a azByName) Len() int {
+	return len(a)
+}
+
+func (a azByName) Less(i, j int) bool {
+	return a[i].Name < a[j].Name
+}
+
+func (a azByName) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
 }

@@ -1175,6 +1175,27 @@ func (s *NovaHTTPSuite) TestRemoveServerFloatingIP(c *C) {
 	c.Assert(s.service.hasServerFloatingIP(server.Id, fip.IP), Equals, false)
 }
 
+func (s *NovaHTTPSuite) TestListAvailabilityZones(c *C) {
+	resp, err := s.jsonRequest("GET", "/os-availability-zone", nil, nil)
+	c.Assert(err, IsNil)
+	assertBody(c, resp, errNotFoundJSON)
+
+	zones := []nova.AvailabilityZone{
+		nova.AvailabilityZone{Name: "az1"},
+		nova.AvailabilityZone{
+			Name: "az2", State: nova.AvailabilityZoneState{Available: true},
+		},
+	}
+	s.service.SetAvailabilityZones(zones...)
+	resp, err = s.jsonRequest("GET", "/os-availability-zone", nil, nil)
+	c.Assert(err, IsNil)
+	var expected struct {
+		Zones []nova.AvailabilityZone `json:"availabilityZoneInfo"`
+	}
+	assertJSON(c, resp, &expected)
+	c.Assert(expected.Zones, DeepEquals, zones)
+}
+
 func (s *NovaHTTPSSuite) SetUpSuite(c *C) {
 	s.HTTPSuite.SetUpSuite(c)
 	identityDouble := identityservice.NewUserPass()
