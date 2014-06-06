@@ -818,7 +818,8 @@ func (n *Nova) allNetworks() (networks []nova.Network) {
 	return networks
 }
 
-// allAvailabilityZones returns a list of all existing availability zones.
+// allAvailabilityZones returns a list of all existing availability zones,
+// sorted by name.
 func (n *Nova) allAvailabilityZones() (zones []nova.AvailabilityZone) {
 	for _, zone := range n.availabilityZones {
 		zones = append(zones, zone)
