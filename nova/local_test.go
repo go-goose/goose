@@ -230,7 +230,7 @@ func (s *localLiveSuite) TestListAvailabilityZonesUnimplemented(c *C) {
 	// that error.
 	s.openstack.Nova.SetAvailabilityZones()
 	listedZones, err := s.nova.ListAvailabilityZones()
-	c.Assert(err, IsNil)
+	c.Assert(err, ErrorMatches, "the server does not support availability zones(.|\n)*")
 	c.Assert(listedZones, HasLen, 0)
 }
 

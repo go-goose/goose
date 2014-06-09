@@ -32,3 +32,7 @@ var NoMoreFloatingIPs = NewNoMoreFloatingIpsError()
 
 // IPLimitExceeded corresponds to "HTTP 413 Maximum number of floating ips exceeded"
 var IPLimitExceeded = NewIPLimitExceededError()
+
+// AvailabilityZoneIsNotAvailable corresponds to
+// "HTTP 400 The requested availability zone is not available"
+var AvailabilityZoneIsNotAvailable = NewAvailabilityZoneIsNotAvailableError()

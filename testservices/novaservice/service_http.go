@@ -225,14 +225,6 @@ The resource could not be found.
 		nil,
 		nil,
 	}
-	errAvailabilityZoneIsNotAvailable = &errorResponse{
-		http.StatusBadRequest,
-		`{"badRequest": {"message": "The requested availability zone is not available", "code": 400}}`,
-		"application/json; charset=UTF-8",
-		"",
-		nil,
-		nil,
-	}
 )
 
 func (e *errorResponse) Error() string {
@@ -567,7 +559,7 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	}
 	if az := req.Server.AvailabilityZone; az != "" {
 		if !n.availabilityZones[az].State.Available {
-			return errAvailabilityZoneIsNotAvailable
+			return testservices.AvailabilityZoneIsNotAvailable
 		}
 	}
 	n.nextServerId++

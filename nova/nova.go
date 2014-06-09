@@ -683,6 +683,10 @@ type AvailabilityZoneState struct {
 }
 
 // ListAvailabilityZones lists all availability zones.
+//
+// Availability zones are an OpenStack extension; if the server does not
+// support them, then an error satisfying errors.IsNotImplemented will be
+// returned.
 func (c *Client) ListAvailabilityZones() ([]AvailabilityZone, error) {
 	var resp struct {
 		AvailabilityZoneInfo []AvailabilityZone
@@ -692,7 +696,9 @@ func (c *Client) ListAvailabilityZones() ([]AvailabilityZone, error) {
 	if errors.IsNotFound(err) {
 		// Availability zones are an extension, so don't
 		// return an error if the API does not exist.
-		return nil, nil
+		return nil, errors.NewNotImplementedf(
+			err, nil, "the server does not support availability zones",
+		)
 	}
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get list of availability zones")
