@@ -22,6 +22,7 @@ const (
 	apiSecurityGroups     = "os-security-groups"
 	apiSecurityGroupRules = "os-security-group-rules"
 	apiFloatingIPs        = "os-floating-ips"
+	apiAvailabilityZone   = "os-availability-zone"
 )
 
 // Server status values.
@@ -245,6 +246,8 @@ type ServerDetail struct {
 	Updated string
 
 	UserId string `json:"user_id"`
+
+	AvailabilityZone string `json:"OS-EXT-AZ:availability_zone"`
 }
 
 // ListServersDetail lists all details for available servers.
@@ -307,12 +310,13 @@ type ServerNetworks struct {
 
 // RunServerOpts defines required and optional arguments for RunServer().
 type RunServerOpts struct {
-	Name               string              `json:"name"`            // Required
-	FlavorId           string              `json:"flavorRef"`       // Required
-	ImageId            string              `json:"imageRef"`        // Required
-	UserData           []byte              `json:"user_data"`       // Optional
-	SecurityGroupNames []SecurityGroupName `json:"security_groups"` // Optional
-	Networks           []ServerNetworks    `json:"networks"`        // Optional
+	Name               string              `json:"name"`                        // Required
+	FlavorId           string              `json:"flavorRef"`                   // Required
+	ImageId            string              `json:"imageRef"`                    // Required
+	UserData           []byte              `json:"user_data"`                   // Optional
+	SecurityGroupNames []SecurityGroupName `json:"security_groups"`             // Optional
+	Networks           []ServerNetworks    `json:"networks"`                    // Optional
+	AvailabilityZone   string              `json:"availability_zone,omitempty"` // Optional
 }
 
 // RunServer creates a new server, based on the given RunServerOpts.
@@ -665,4 +669,39 @@ func (c *Client) RemoveServerFloatingIP(serverId, address string) error {
 		err = errors.Newf(err, "failed to remove floating ip %s from server with id: %s", address, serverId)
 	}
 	return err
+}
+
+// AvailabilityZone identifies an availability zone, and describes its state.
+type AvailabilityZone struct {
+	Name  string                `json:"zoneName"`
+	State AvailabilityZoneState `json:"zoneState"`
+}
+
+// AvailabilityZoneState describes an availability zone's state.
+type AvailabilityZoneState struct {
+	Available bool
+}
+
+// ListAvailabilityZones lists all availability zones.
+//
+// Availability zones are an OpenStack extension; if the server does not
+// support them, then an error satisfying errors.IsNotImplemented will be
+// returned.
+func (c *Client) ListAvailabilityZones() ([]AvailabilityZone, error) {
+	var resp struct {
+		AvailabilityZoneInfo []AvailabilityZone
+	}
+	requestData := goosehttp.RequestData{RespValue: &resp}
+	err := c.client.SendRequest(client.GET, "compute", apiAvailabilityZone, &requestData)
+	if errors.IsNotFound(err) {
+		// Availability zones are an extension, so don't
+		// return an error if the API does not exist.
+		return nil, errors.NewNotImplementedf(
+			err, nil, "the server does not support availability zones",
+		)
+	}
+	if err != nil {
+		return nil, errors.Newf(err, "failed to get list of availability zones")
+	}
+	return resp.AvailabilityZoneInfo, nil
 }

@@ -55,6 +55,20 @@ func (s *ErrorsSuite) TestCreateUnauthorisedfError(c *C) {
 	c.Assert(err.Error(), Equals, "It was unauthorised: context")
 }
 
+func (s *ErrorsSuite) TestCreateSimpleNotImplementedfError(c *C) {
+	context := "context"
+	err := errors.NewNotImplementedf(nil, context, "")
+	c.Assert(errors.IsNotImplemented(err), Equals, true)
+	c.Assert(err.Error(), Equals, "Not implemented: context")
+}
+
+func (s *ErrorsSuite) TestCreateNotImplementedfError(c *C) {
+	context := "context"
+	err := errors.NewNotImplementedf(nil, context, "It was not implemented: %s", context)
+	c.Assert(errors.IsNotImplemented(err), Equals, true)
+	c.Assert(err.Error(), Equals, "It was not implemented: context")
+}
+
 func (s *ErrorsSuite) TestErrorCause(c *C) {
 	rootCause := errors.NewNotFoundf(nil, "some value", "")
 	// Construct a new error, based on a not found root cause.

@@ -15,6 +15,7 @@ const (
 	DuplicateValueError = Code("DuplicateValue")
 	TimeoutError        = Code("Timeout")
 	UnauthorisedError   = Code("Unauthorised")
+	NotImplementedError = Code("NotImplemented")
 )
 
 // Error instances store an optional error cause.
@@ -95,7 +96,14 @@ func IsUnauthorised(err error) bool {
 	return false
 }
 
-// New creates a new Error instance with the specified cause.
+func IsNotImplemented(err error) bool {
+	if e, ok := err.(*gooseError); ok {
+		return e.causedBy(NotImplementedError)
+	}
+	return false
+}
+
+// makeErrorf creates a new Error instance with the specified cause.
 func makeErrorf(code Code, cause error, format string, args ...interface{}) Error {
 	return &gooseError{
 		errcode: code,
@@ -104,12 +112,12 @@ func makeErrorf(code Code, cause error, format string, args ...interface{}) Erro
 	}
 }
 
-// New creates a new Unspecified Error instance with the specified cause.
+// Newf creates a new Unspecified Error instance with the specified cause.
 func Newf(cause error, format string, args ...interface{}) Error {
 	return makeErrorf(UnspecifiedError, cause, format, args...)
 }
 
-// New creates a new NotFound Error instance with the specified cause.
+// NewNotFoundf creates a new NotFound Error instance with the specified cause.
 func NewNotFoundf(cause error, context interface{}, format string, args ...interface{}) Error {
 	if format == "" {
 		format = fmt.Sprintf("Not found: %s", context)
@@ -117,7 +125,7 @@ func NewNotFoundf(cause error, context interface{}, format string, args ...inter
 	return makeErrorf(NotFoundError, cause, format, args...)
 }
 
-// New creates a new DuplicateValue Error instance with the specified cause.
+// NewDuplicateValuef creates a new DuplicateValue Error instance with the specified cause.
 func NewDuplicateValuef(cause error, context interface{}, format string, args ...interface{}) Error {
 	if format == "" {
 		format = fmt.Sprintf("Duplicate: %s", context)
@@ -125,7 +133,7 @@ func NewDuplicateValuef(cause error, context interface{}, format string, args ..
 	return makeErrorf(DuplicateValueError, cause, format, args...)
 }
 
-// New creates a new Timeout Error instance with the specified cause.
+// NewTimeoutf creates a new Timeout Error instance with the specified cause.
 func NewTimeoutf(cause error, context interface{}, format string, args ...interface{}) Error {
 	if format == "" {
 		format = fmt.Sprintf("Timeout: %s", context)
@@ -133,10 +141,18 @@ func NewTimeoutf(cause error, context interface{}, format string, args ...interf
 	return makeErrorf(TimeoutError, cause, format, args...)
 }
 
-// New creates a new Unauthorised Error instance with the specified cause.
+// NewUnauthorisedf creates a new Unauthorised Error instance with the specified cause.
 func NewUnauthorisedf(cause error, context interface{}, format string, args ...interface{}) Error {
 	if format == "" {
 		format = fmt.Sprintf("Unauthorised: %s", context)
 	}
 	return makeErrorf(UnauthorisedError, cause, format, args...)
+}
+
+// NewNotImplementedf creates a new NotImplemented Error instance with the specified cause.
+func NewNotImplementedf(cause error, context interface{}, format string, args ...interface{}) Error {
+	if format == "" {
+		format = fmt.Sprintf("Not implemented: %s", context)
+	}
+	return makeErrorf(NotImplementedError, cause, format, args...)
 }

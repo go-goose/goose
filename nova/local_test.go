@@ -223,3 +223,48 @@ func (s *localLiveSuite) TestReauthenticateFailure(c *C) {
 	_, err := novaClient.ListServers(nil)
 	c.Assert(errors.IsUnauthorised(err), Equals, true)
 }
+
+func (s *localLiveSuite) TestListAvailabilityZonesUnimplemented(c *C) {
+	// When the test service has no availability zones registered,
+	// the /os-availability-zone API will return 404. We swallow
+	// that error.
+	s.openstack.Nova.SetAvailabilityZones()
+	listedZones, err := s.nova.ListAvailabilityZones()
+	c.Assert(err, ErrorMatches, "the server does not support availability zones(.|\n)*")
+	c.Assert(listedZones, HasLen, 0)
+}
+
+func (s *localLiveSuite) setAvailabilityZones() []nova.AvailabilityZone {
+	zones := []nova.AvailabilityZone{
+		nova.AvailabilityZone{Name: "az1"},
+		nova.AvailabilityZone{
+			Name: "az2", State: nova.AvailabilityZoneState{Available: true},
+		},
+	}
+	s.openstack.Nova.SetAvailabilityZones(zones...)
+	return zones
+}
+
+func (s *localLiveSuite) TestListAvailabilityZones(c *C) {
+	zones := s.setAvailabilityZones()
+	listedZones, err := s.nova.ListAvailabilityZones()
+	c.Assert(err, IsNil)
+	c.Assert(listedZones, DeepEquals, zones)
+}
+
+func (s *localLiveSuite) TestRunServerAvailabilityZone(c *C) {
+	s.setAvailabilityZones()
+	inst, err := s.runServerAvailabilityZone("az2")
+	c.Assert(err, IsNil)
+	defer s.nova.DeleteServer(inst.Id)
+	server, err := s.nova.GetServer(inst.Id)
+	c.Assert(err, IsNil)
+	c.Assert(server.AvailabilityZone, Equals, "az2")
+}
+
+func (s *localLiveSuite) TestRunServerAvailabilityZoneNotAvailable(c *C) {
+	s.setAvailabilityZones()
+	// az1 is known, but not currently available.
+	_, err := s.runServerAvailabilityZone("az1")
+	c.Assert(err, ErrorMatches, "(.|\n)*The requested availability zone is not available(.|\n)*")
+}

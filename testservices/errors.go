@@ -68,6 +68,10 @@ func NewRateLimitExceededError() *ServerError {
 	return serverErrorf(413, "Retry limit exceeded")
 }
 
+func NewAvailabilityZoneIsNotAvailableError() *ServerError {
+	return serverErrorf(400, "The requested availability zone is not available")
+}
+
 func NewAddFlavorError(id string) *ServerError {
 	return serverErrorf(409, "A flavor with id %q already exists", id)
 }
