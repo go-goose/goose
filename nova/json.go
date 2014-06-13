@@ -36,22 +36,38 @@ func convertId(id string) interface{} {
 	return result
 }
 
+// getIdAsStringPtr extracts the field with the specified tag from the json data
+// and returns it converted to a string pointer.
+func getIdAsStringPtr(b []byte, tag string) (*string, error) {
+	var out map[string]interface{}
+	if err := json.Unmarshal(b, &out); err != nil {
+		return nil, err
+	}
+	val, ok := out[tag]
+	if !ok || val == nil {
+		return nil, nil
+	}
+	floatVal, ok := val.(float64)
+	var strVal string
+	if ok {
+		strVal = fmt.Sprint(int(floatVal))
+	} else {
+		strVal = fmt.Sprint(val)
+	}
+	return &strVal, nil
+}
+
 // getIdAsString extracts the field with the specified tag from the json data
 // and returns it converted to a string.
 func getIdAsString(b []byte, tag string) (string, error) {
-	var out map[string]interface{}
-	if err := json.Unmarshal(b, &out); err != nil {
+	strPtr, err := getIdAsStringPtr(b, tag)
+	if err != nil {
 		return "", err
 	}
-	val, ok := out[tag]
-	if !ok {
+	if strPtr == nil {
 		return "", nil
 	}
-	floatVal, ok := val.(float64)
-	if ok {
-		return fmt.Sprint(int(floatVal)), nil
-	}
-	return fmt.Sprint(val), nil
+	return *strPtr, nil
 }
 
 // appendJSON marshals the given attribute value and appends it as an encoded value to the given json data.
@@ -149,11 +165,10 @@ func (floatingIP *FloatingIP) UnmarshalJSON(b []byte) error {
 	if err = json.Unmarshal(b, &jfip); err != nil {
 		return err
 	}
-	if instIdStr, err := getIdAsString(b, instanceIdTag); err != nil {
+	if instIdPtr, err := getIdAsStringPtr(b, instanceIdTag); err != nil {
 		return err
-	} else if instIdStr != "" {
-		strId := instIdStr
-		jfip.InstanceId = &strId
+	} else {
+		jfip.InstanceId = instIdPtr
 	}
 	if jfip.Id, err = getIdAsString(b, idTag); err != nil {
 		return err
@@ -252,11 +267,10 @@ func (ruleInfo *RuleInfo) UnmarshalJSON(b []byte) error {
 	if jri.ParentGroupId, err = getIdAsString(b, parentGroupIdTag); err != nil {
 		return err
 	}
-	if groupId, err := getIdAsString(b, groupIdTag); err != nil {
+	if groupIdPtr, err := getIdAsStringPtr(b, groupIdTag); err != nil {
 		return err
-	} else if groupId != "" {
-		strId := groupId
-		jri.GroupId = &strId
+	} else {
+		jri.GroupId = groupIdPtr
 	}
 	*ruleInfo = RuleInfo(jri)
 	return nil
