@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"sort"
 	"strings"
-	"time"
 	"sync"
+	"time"
 )
 
 type object map[string][]byte
@@ -22,7 +22,7 @@ var _ identityservice.ServiceProvider = (*Swift)(nil)
 type Swift struct {
 	testservices.ServiceInstance
 
-	mu sync.Mutex	// protects the remaining fields
+	mu         sync.Mutex // protects the remaining fields
 	containers map[string]object
 }
 
