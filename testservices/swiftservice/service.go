@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"sync"
 )
 
 type object map[string][]byte
@@ -20,6 +21,8 @@ var _ identityservice.ServiceProvider = (*Swift)(nil)
 
 type Swift struct {
 	testservices.ServiceInstance
+
+	mu sync.Mutex	// protects the remaining fields
 	containers map[string]object
 }
 
@@ -70,7 +73,9 @@ func (s *Swift) Endpoints() []identityservice.Endpoint {
 
 // HasContainer verifies the given container exists or not.
 func (s *Swift) HasContainer(name string) bool {
+	s.mu.Lock()
 	_, ok := s.containers[name]
+	s.mu.Unlock()
 	return ok
 }
 
@@ -80,7 +85,9 @@ func (s *Swift) GetObject(container, name string) ([]byte, error) {
 	if err := s.ProcessFunctionHook(s, container, name); err != nil {
 		return nil, err
 	}
+	s.mu.Lock()
 	data, ok := s.containers[container][name]
+	s.mu.Unlock()
 	if !ok {
 		return nil, fmt.Errorf("no such object %q in container %q", name, container)
 	}
@@ -96,7 +103,9 @@ func (s *Swift) AddContainer(name string) error {
 	if s.HasContainer(name) {
 		return fmt.Errorf("container already exists %q", name)
 	}
+	s.mu.Lock()
 	s.containers[name] = make(object)
+	s.mu.Unlock()
 	return nil
 }
 
@@ -110,7 +119,9 @@ func (s *Swift) ListContainer(name string, params map[string]string) ([]swift.Co
 	if ok := s.HasContainer(name); !ok {
 		return nil, fmt.Errorf("no such container %q", name)
 	}
+	s.mu.Lock()
 	items := s.containers[name]
+	s.mu.Unlock()
 	sorted := make([]string, 0, len(items))
 	prefix := params["prefix"]
 	for filename := range items {
@@ -154,7 +165,9 @@ func (s *Swift) AddObject(container, name string, data []byte) error {
 			return err
 		}
 	}
+	s.mu.Lock()
 	s.containers[container][name] = data
+	s.mu.Unlock()
 	return nil
 }
 
@@ -166,7 +179,9 @@ func (s *Swift) RemoveContainer(name string) error {
 	if ok := s.HasContainer(name); !ok {
 		return fmt.Errorf("no such container %q", name)
 	}
+	s.mu.Lock()
 	delete(s.containers, name)
+	s.mu.Unlock()
 	return nil
 }
 
@@ -178,7 +193,9 @@ func (s *Swift) RemoveObject(container, name string) error {
 	if _, err := s.GetObject(container, name); err != nil {
 		return err
 	}
+	s.mu.Lock()
 	delete(s.containers[container], name)
+	s.mu.Unlock()
 	return nil
 }
 
