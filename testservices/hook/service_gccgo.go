@@ -12,6 +12,9 @@ import (
 // versions.
 var callerDepth int
 
+// namePartsPos defines the position within the raw method name, deliniated by periods.
+var namePartsPos = -1 // will panic if we cannot determine the position.
+
 type inner struct{}
 
 func (i *inner) m() {
@@ -21,6 +24,12 @@ func (i *inner) m() {
 			panic("current method name cannot be found")
 		}
 		if name := runtime.FuncForPC(pc).Name(); name == "hook.setCallerDepth" {
+			for i, s := range strings.Split(name, ".") {
+				if s == "setCallerDepth" {
+					namePartsPos = i
+					break
+				}
+			}
 			return
 		}
 	}
@@ -67,8 +76,7 @@ func unqualifiedMethodName(pc uintptr) string {
 	// This is very fragile.  fullName will be something like:
 	// launchpad.net_goose_testservices_novaservice.removeServer.pN49_launchpad.net_goose_testservices_novaservice.Nova
 	// so if the number of dots in the full package path changes,
-	// this will need to too...
-	const namePartsPos = 2
+	// We try to figure sniff this value at the top, but it may not work.
 	nameParts := strings.Split(fullName, ".")
 	return nameParts[namePartsPos]
 }
