@@ -4,13 +4,14 @@ package novaservice
 
 import (
 	"fmt"
-	"launchpad.net/goose/nova"
-	"launchpad.net/goose/testservices"
-	"launchpad.net/goose/testservices/identityservice"
 	"net/url"
 	"regexp"
 	"sort"
 	"strings"
+
+	"gopkg.in/goose.v1/nova"
+	"gopkg.in/goose.v1/testservices"
+	"gopkg.in/goose.v1/testservices/identityservice"
 )
 
 var _ testservices.HttpService = (*Nova)(nil)

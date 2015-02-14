@@ -1,7 +1,7 @@
 package identity
 
 import (
-	goosehttp "launchpad.net/goose/http"
+	goosehttp "gopkg.in/goose.v1/http"
 )
 
 // KeyPair allows OpenStack cloud authentication using an access and

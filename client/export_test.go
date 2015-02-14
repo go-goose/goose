@@ -1,8 +1,9 @@
 package client
 
 import (
-	"launchpad.net/goose/identity"
 	"time"
+
+	"gopkg.in/goose.v1/identity"
 )
 
 type AuthCleanup func()

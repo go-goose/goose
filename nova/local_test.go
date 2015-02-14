@@ -2,20 +2,21 @@ package nova_test
 
 import (
 	"bytes"
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/client"
-	"launchpad.net/goose/errors"
-	goosehttp "launchpad.net/goose/http"
-	"launchpad.net/goose/identity"
-	"launchpad.net/goose/nova"
-	"launchpad.net/goose/testservices"
-	"launchpad.net/goose/testservices/hook"
-	"launchpad.net/goose/testservices/identityservice"
-	"launchpad.net/goose/testservices/openstackservice"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/client"
+	"gopkg.in/goose.v1/errors"
+	goosehttp "gopkg.in/goose.v1/http"
+	"gopkg.in/goose.v1/identity"
+	"gopkg.in/goose.v1/nova"
+	"gopkg.in/goose.v1/testservices"
+	"gopkg.in/goose.v1/testservices/hook"
+	"gopkg.in/goose.v1/testservices/identityservice"
+	"gopkg.in/goose.v1/testservices/openstackservice"
 )
 
 func registerLocalTests() {

@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"launchpad.net/goose"
-	"launchpad.net/goose/errors"
 	"log"
 	"net/http"
 	"net/url"
@@ -18,6 +16,9 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"gopkg.in/goose.v1"
+	"gopkg.in/goose.v1/errors"
 )
 
 const (

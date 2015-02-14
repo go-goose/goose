@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"launchpad.net/goose/testservices/hook"
 	"net/http"
+
+	"gopkg.in/goose.v1/testservices/hook"
 )
 
 // Implement the v2 User Pass form of identity (Keystone)

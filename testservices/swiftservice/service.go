@@ -4,14 +4,15 @@ package swiftservice
 
 import (
 	"fmt"
-	"launchpad.net/goose/swift"
-	"launchpad.net/goose/testservices"
-	"launchpad.net/goose/testservices/identityservice"
 	"net/url"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"gopkg.in/goose.v1/swift"
+	"gopkg.in/goose.v1/testservices"
+	"gopkg.in/goose.v1/testservices/identityservice"
 )
 
 type object map[string][]byte

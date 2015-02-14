@@ -6,9 +6,10 @@ package httpsuite
 // server is shut down at the end of the test suite.
 
 import (
-	. "launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+
+	. "gopkg.in/check.v1"
 )
 
 var _ = Suite(&HTTPSuite{})

@@ -1,10 +1,10 @@
 package swift_test
 
 import (
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/identity"
-	"launchpad.net/goose/testing/httpsuite"
-	"launchpad.net/goose/testservices/openstackservice"
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/identity"
+	"gopkg.in/goose.v1/testing/httpsuite"
+	"gopkg.in/goose.v1/testservices/openstackservice"
 )
 
 func registerLocalTests() {

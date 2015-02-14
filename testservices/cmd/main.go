@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"launchpad.net/gnuflag"
-	"launchpad.net/goose/testservices/identityservice"
 	"log"
 	"net/http"
 	"strings"
+
+	"gopkg.in/goose.v1/testservices/identityservice"
+	"launchpad.net/gnuflag"
 )
 
 type userInfo struct {

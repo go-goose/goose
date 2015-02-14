@@ -2,9 +2,10 @@ package identityservice
 
 import (
 	"io/ioutil"
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/testing/httpsuite"
 	"net/http"
+
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/testing/httpsuite"
 )
 
 type LegacySuite struct {

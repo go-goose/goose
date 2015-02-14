@@ -3,19 +3,20 @@ package client_test
 import (
 	"encoding/json"
 	"fmt"
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/client"
-	"launchpad.net/goose/errors"
-	"launchpad.net/goose/identity"
-	"launchpad.net/goose/swift"
-	"launchpad.net/goose/testing/httpsuite"
-	"launchpad.net/goose/testservices"
-	"launchpad.net/goose/testservices/identityservice"
-	"launchpad.net/goose/testservices/openstackservice"
 	"net/url"
 	"runtime"
 	"sync"
 	"time"
+
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/client"
+	"gopkg.in/goose.v1/errors"
+	"gopkg.in/goose.v1/identity"
+	"gopkg.in/goose.v1/swift"
+	"gopkg.in/goose.v1/testing/httpsuite"
+	"gopkg.in/goose.v1/testservices"
+	"gopkg.in/goose.v1/testservices/identityservice"
+	"gopkg.in/goose.v1/testservices/openstackservice"
 )
 
 func registerLocalTests(authModes []identity.AuthMode) {

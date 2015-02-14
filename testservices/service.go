@@ -1,9 +1,10 @@
 package testservices
 
 import (
-	"launchpad.net/goose/testservices/hook"
-	"launchpad.net/goose/testservices/identityservice"
 	"net/http"
+
+	"gopkg.in/goose.v1/testservices/hook"
+	"gopkg.in/goose.v1/testservices/identityservice"
 )
 
 // An HttpService provides the HTTP API for a service double.

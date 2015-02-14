@@ -3,15 +3,16 @@ package client
 import (
 	"errors"
 	"fmt"
-	gooseerrors "launchpad.net/goose/errors"
-	goosehttp "launchpad.net/goose/http"
-	"launchpad.net/goose/identity"
-	goosesync "launchpad.net/goose/sync"
 	"log"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	gooseerrors "gopkg.in/goose.v1/errors"
+	goosehttp "gopkg.in/goose.v1/http"
+	"gopkg.in/goose.v1/identity"
+	goosesync "gopkg.in/goose.v1/sync"
 )
 
 const (

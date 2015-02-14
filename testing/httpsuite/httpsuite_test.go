@@ -4,11 +4,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
-	. "launchpad.net/gocheck"
 	"net/http"
 	"net/url"
 	"reflect"
 	"testing"
+
+	. "gopkg.in/check.v1"
 )
 
 type HTTPTestSuite struct {

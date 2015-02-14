@@ -2,8 +2,9 @@ package nova_test
 
 import (
 	"encoding/json"
-	gc "launchpad.net/gocheck"
-	"launchpad.net/goose/nova"
+
+	gc "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/nova"
 )
 
 type JsonSuite struct {

@@ -7,7 +7,7 @@ import (
 	"os"
 	"reflect"
 
-	goosehttp "launchpad.net/goose/http"
+	goosehttp "gopkg.in/goose.v1/http"
 )
 
 // AuthMode defines the authentication method to use (see Auth*

@@ -1,13 +1,14 @@
 package identity_test
 
 import (
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/identity"
-	"launchpad.net/goose/testservices/openstackservice"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
+
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/identity"
+	"gopkg.in/goose.v1/testservices/openstackservice"
 )
 
 func registerLocalTests() {

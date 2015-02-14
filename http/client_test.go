@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
-
-	. "launchpad.net/gocheck"
-
-	"launchpad.net/goose/testing/httpsuite"
 	"net/http"
 	"testing"
+
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/testing/httpsuite"
 )
 
 func Test(t *testing.T) {

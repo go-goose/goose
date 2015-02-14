@@ -9,9 +9,9 @@
 package nova
 
 import (
-	"launchpad.net/goose/client"
-	"launchpad.net/goose/errors"
-	goosehttp "launchpad.net/goose/http"
+	"gopkg.in/goose.v1/client"
+	"gopkg.in/goose.v1/errors"
+	goosehttp "gopkg.in/goose.v1/http"
 )
 
 const (

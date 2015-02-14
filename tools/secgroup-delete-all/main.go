@@ -3,11 +3,12 @@ package main
 import (
 	"fmt"
 	"io"
-	"launchpad.net/gnuflag"
-	"launchpad.net/goose/client"
-	"launchpad.net/goose/identity"
-	"launchpad.net/goose/nova"
 	"os"
+
+	"gopkg.in/goose.v1/client"
+	"gopkg.in/goose.v1/identity"
+	"gopkg.in/goose.v1/nova"
+	"launchpad.net/gnuflag"
 )
 
 // DeleteAll destroys all security groups except the default

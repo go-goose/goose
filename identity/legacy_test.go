@@ -1,9 +1,9 @@
 package identity
 
 import (
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/testing/httpsuite"
-	"launchpad.net/goose/testservices/identityservice"
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/testing/httpsuite"
+	"gopkg.in/goose.v1/testservices/identityservice"
 )
 
 type LegacyTestSuite struct {

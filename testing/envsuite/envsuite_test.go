@@ -1,9 +1,10 @@
 package envsuite
 
 import (
-	. "launchpad.net/gocheck"
 	"os"
 	"testing"
+
+	. "gopkg.in/check.v1"
 )
 
 type EnvTestSuite struct {

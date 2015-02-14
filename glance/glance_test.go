@@ -2,11 +2,12 @@ package glance_test
 
 import (
 	"flag"
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/client"
-	"launchpad.net/goose/glance"
-	"launchpad.net/goose/identity"
 	"testing"
+
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/client"
+	"gopkg.in/goose.v1/glance"
+	"gopkg.in/goose.v1/identity"
 )
 
 func Test(t *testing.T) { TestingT(t) }

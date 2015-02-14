@@ -2,7 +2,8 @@ package identity
 
 import (
 	"fmt"
-	goosehttp "launchpad.net/goose/http"
+
+	goosehttp "gopkg.in/goose.v1/http"
 )
 
 type endpoint struct {

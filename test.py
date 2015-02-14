@@ -105,9 +105,9 @@ def setup_gopath():
     pwd = os.getcwd()
     if sys.platform == 'win32':
         pwd = pwd.replace('\\', '/')
-    offset = pwd.rfind('src/launchpad.net/goose')
+    offset = pwd.rfind('src/gopkg.in/goose.v1')
     if offset == -1:
-        sys.stderr.write('Could not find "src/launchpad.net/goose" in cwd: %s\n'
+        sys.stderr.write('Could not find "src/gopkg.in/goose.v1" in cwd: %s\n'
                          % (pwd,))
         sys.stderr.write('Unable to automatically set GOPATH\n')
         return

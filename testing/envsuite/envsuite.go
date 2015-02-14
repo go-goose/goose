@@ -5,9 +5,10 @@ package envsuite
 // reset on tear down.
 
 import (
-	. "launchpad.net/gocheck"
 	"os"
 	"strings"
+
+	. "gopkg.in/check.v1"
 )
 
 type EnvSuite struct {

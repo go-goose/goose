@@ -2,9 +2,10 @@ package identity_test
 
 import (
 	"flag"
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/identity"
 	"testing"
+
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/identity"
 )
 
 var live = flag.Bool("live", false, "Include live OpenStack (Canonistack) tests")

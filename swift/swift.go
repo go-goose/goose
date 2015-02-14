@@ -8,12 +8,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"launchpad.net/goose/client"
-	"launchpad.net/goose/errors"
-	goosehttp "launchpad.net/goose/http"
 	"net/http"
 	"net/url"
 	"time"
+
+	"gopkg.in/goose.v1/client"
+	"gopkg.in/goose.v1/errors"
+	goosehttp "gopkg.in/goose.v1/http"
 )
 
 // Client provides a means to access the OpenStack Object Storage Service.

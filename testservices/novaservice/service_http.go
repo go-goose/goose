@@ -8,14 +8,15 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"launchpad.net/goose/nova"
-	"launchpad.net/goose/testservices"
-	"launchpad.net/goose/testservices/identityservice"
 	"net/http"
 	"path"
 	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/goose.v1/nova"
+	"gopkg.in/goose.v1/testservices"
+	"gopkg.in/goose.v1/testservices/identityservice"
 )
 
 const authToken = "X-Auth-Token"

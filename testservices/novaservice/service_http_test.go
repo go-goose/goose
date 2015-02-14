@@ -7,14 +7,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/nova"
-	"launchpad.net/goose/testing/httpsuite"
-	"launchpad.net/goose/testservices/identityservice"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
+
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/nova"
+	"gopkg.in/goose.v1/testing/httpsuite"
+	"gopkg.in/goose.v1/testservices/identityservice"
 )
 
 type NovaHTTPSuite struct {

@@ -4,7 +4,7 @@
 package goose
 
 import (
-	. "launchpad.net/gocheck"
+	. "gopkg.in/check.v1"
 )
 
 type VersionTestSuite struct {

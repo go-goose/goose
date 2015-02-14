@@ -5,12 +5,13 @@ package nova
 
 import (
 	"fmt"
-	"launchpad.net/goose/client"
-	"launchpad.net/goose/errors"
-	goosehttp "launchpad.net/goose/http"
 	"net/http"
 	"net/url"
 	"reflect"
+
+	"gopkg.in/goose.v1/client"
+	"gopkg.in/goose.v1/errors"
+	goosehttp "gopkg.in/goose.v1/http"
 )
 
 // API URL parts.

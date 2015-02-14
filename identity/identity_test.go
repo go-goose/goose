@@ -1,10 +1,11 @@
 package identity
 
 import (
-	. "launchpad.net/gocheck"
-	goosehttp "launchpad.net/goose/http"
-	"launchpad.net/goose/testing/envsuite"
 	"os"
+
+	. "gopkg.in/check.v1"
+	goosehttp "gopkg.in/goose.v1/http"
+	"gopkg.in/goose.v1/testing/envsuite"
 )
 
 type CredentialsTestSuite struct {

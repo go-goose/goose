@@ -3,8 +3,9 @@ package identity
 import (
 	"fmt"
 	"io/ioutil"
-	goosehttp "launchpad.net/goose/http"
 	"net/http"
+
+	goosehttp "gopkg.in/goose.v1/http"
 )
 
 type Legacy struct {

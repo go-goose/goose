@@ -1,10 +1,11 @@
 package identity_test
 
 import (
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/client"
-	"launchpad.net/goose/identity"
 	"net/url"
+
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/client"
+	"gopkg.in/goose.v1/identity"
 )
 
 func registerOpenStackTests(cred *identity.Credentials) {

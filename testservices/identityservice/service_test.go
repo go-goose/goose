@@ -1,8 +1,8 @@
 package identityservice
 
 import (
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/testing/httpsuite"
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/testing/httpsuite"
 )
 
 // All tests in the IdentityServiceSuite run against each IdentityService

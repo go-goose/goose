@@ -3,14 +3,15 @@ package main
 import (
 	"bytes"
 	"fmt"
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/client"
-	"launchpad.net/goose/identity"
-	"launchpad.net/goose/nova"
-	"launchpad.net/goose/testing/httpsuite"
-	"launchpad.net/goose/testservices/hook"
-	"launchpad.net/goose/testservices/openstackservice"
 	"testing"
+
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/client"
+	"gopkg.in/goose.v1/identity"
+	"gopkg.in/goose.v1/nova"
+	"gopkg.in/goose.v1/testing/httpsuite"
+	"gopkg.in/goose.v1/testservices/hook"
+	"gopkg.in/goose.v1/testservices/openstackservice"
 )
 
 func Test(t *testing.T) {

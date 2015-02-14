@@ -5,8 +5,9 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-	. "launchpad.net/gocheck"
 	"testing/iotest"
+
+	. "gopkg.in/check.v1"
 )
 
 type UtilSuite struct{}

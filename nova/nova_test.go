@@ -2,10 +2,11 @@ package nova_test
 
 import (
 	"flag"
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/identity"
 	"reflect"
 	"testing"
+
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/identity"
 )
 
 // imageDetails specify parameters used to start a test machine for the live tests.

@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/client"
-	"launchpad.net/goose/errors"
-	"launchpad.net/goose/identity"
-	"launchpad.net/goose/swift"
 	"net/http"
+
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/client"
+	"gopkg.in/goose.v1/errors"
+	"gopkg.in/goose.v1/identity"
+	"gopkg.in/goose.v1/swift"
 )
 
 func registerOpenStackTests(cred *identity.Credentials) {

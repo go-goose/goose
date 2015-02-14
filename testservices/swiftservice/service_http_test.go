@@ -6,12 +6,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/swift"
-	"launchpad.net/goose/testing/httpsuite"
-	"launchpad.net/goose/testservices/identityservice"
 	"net/http"
 	"net/url"
+
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/swift"
+	"gopkg.in/goose.v1/testing/httpsuite"
+	"gopkg.in/goose.v1/testservices/identityservice"
 )
 
 type SwiftHTTPSuite struct {

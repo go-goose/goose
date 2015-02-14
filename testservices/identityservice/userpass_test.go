@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/testing/httpsuite"
 	"net/http"
 	"strings"
+
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/testing/httpsuite"
 )
 
 type UserPassSuite struct {

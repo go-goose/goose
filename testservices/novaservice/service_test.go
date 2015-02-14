@@ -4,9 +4,10 @@ package novaservice
 
 import (
 	"fmt"
-	. "launchpad.net/gocheck"
-	"launchpad.net/goose/nova"
-	"launchpad.net/goose/testservices/hook"
+
+	. "gopkg.in/check.v1"
+	"gopkg.in/goose.v1/nova"
+	"gopkg.in/goose.v1/testservices/hook"
 )
 
 type NovaSuite struct {
