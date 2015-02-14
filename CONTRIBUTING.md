@@ -41,7 +41,7 @@ Contributing a patch
 Found a bug or want to suggest an improvement?
 Great! Here are the steps anyone can follow to propose a bug fix or patch.
 
- * [Fork](https://help.github.com/articles/fork-a-repo/) the go-goose/goose repository.
+ * [Fork](https://help.github.com/articles/fork-a-repo/) the [`go-goose/goose`](https://github.com/go-goose/goose) repository.
  * If you think you found a bug, please check the existing [issues](https://github.com/go-goose/goose/issues) to see if it's a known problem.
  * Otherwise, [open a new issue](https://github.com/go-goose/goose/issues/new) for it.
  * Clone your forked repository locally:

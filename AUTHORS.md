@@ -18,7 +18,7 @@ Dimiter Naydenov | dimiter.naydenov {at} canonical.com | [@dimitern](http://gith
 Horacio Durán | horacio.duran {at} canonical.com | [@perrito666](https://github.com/perrito666)
 Ian Booth | ian.booth {at} canonical.com | [@wallyworld](http://github.com/wallyworld)
 John Meinel | john.meinel {at} canonical.com | [@jameinel](https://github.com/jameinel)
-Jorge Niedbalski | jorge.niedbalski {at} canonical.com | [@](https://github.com/niedbalski)
+Jorge Niedbalski | jorge.niedbalski {at} canonical.com | [@niedbalski](https://github.com/niedbalski)
 Justin Santa Barbara | justin {at} meteor.com (?) | [@justinsb](https://github.com/justinsb)
 Kevin McDermott | kevin {at} bigkevmcd.com | [@bigkevmcd](https://github.com/bigkevmcd)
 Martin Packman | martin.packman {at} canonical.com | [@bz2](http://github.com/bz2)

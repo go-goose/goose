@@ -32,7 +32,7 @@ For more details, check the API documentation:
 Contacts
 --------
 
-You can contact directly one of the [maintainers](https://github.com/orgs/go-goose/people)/
+You can contact directly one of the [maintainers](https://github.com/orgs/go-goose/people).
 
 Issues
 ------
@@ -53,4 +53,4 @@ List of people who made relevant contributions to goose can be found in [AUTHORS
 License
 -------
 
-goamz is licensed under LGPLv3. See the [LICENSE](LICENSE) for details.
+goose is licensed under LGPLv3. See the [LICENSE](LICENSE) for details.
