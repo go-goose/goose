@@ -4,20 +4,20 @@ import (
 	"fmt"
 	"testing"
 
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {
-	TestingT(t)
+	gc.TestingT(t)
 }
 
-var _ = Suite(&ServiceSuite{})
+var _ = gc.Suite(&ServiceSuite{})
 
 type ServiceSuite struct {
 	ts *testService
 }
 
-func (s *ServiceSuite) SetUpTest(c *C) {
+func (s *ServiceSuite) SetUpTest(c *gc.C) {
 	s.ts = newTestService()
 	// This hook is called based on the function name.
 	s.ts.RegisterControlPoint("foo", functionControlHook)
@@ -67,40 +67,40 @@ func (s *testService) bar() error {
 	return nil
 }
 
-func (s *ServiceSuite) TestFunctionHookNoError(c *C) {
+func (s *ServiceSuite) TestFunctionHookNoError(c *gc.C) {
 	err := s.ts.foo("success", false)
-	c.Assert(err, IsNil)
-	c.Assert(s.ts.label, Equals, "success")
+	c.Assert(err, gc.IsNil)
+	c.Assert(s.ts.label, gc.Equals, "success")
 }
 
-func (s *ServiceSuite) TestHookWithError(c *C) {
+func (s *ServiceSuite) TestHookWithError(c *gc.C) {
 	err := s.ts.foo("success", true)
-	c.Assert(err, Not(IsNil))
-	c.Assert(s.ts.label, Equals, "")
+	c.Assert(err, gc.Not(gc.IsNil))
+	c.Assert(s.ts.label, gc.Equals, "")
 }
 
-func (s *ServiceSuite) TestNamedHook(c *C) {
+func (s *ServiceSuite) TestNamedHook(c *gc.C) {
 	err := s.ts.bar()
-	c.Assert(err, IsNil)
-	c.Assert(s.ts.label, Equals, "foobar")
+	c.Assert(err, gc.IsNil)
+	c.Assert(s.ts.label, gc.Equals, "foobar")
 }
 
-func (s *ServiceSuite) TestHookCleanup(c *C) {
+func (s *ServiceSuite) TestHookCleanup(c *gc.C) {
 	// Manually delete the existing control point.
 	s.ts.RegisterControlPoint("foo", nil)
 	// Register a new hook and ensure it works.
 	cleanup := s.ts.RegisterControlPoint("foo", functionControlHook)
 	err := s.ts.foo("cleanuptest", false)
-	c.Assert(err, IsNil)
-	c.Assert(s.ts.label, Equals, "cleanuptest")
+	c.Assert(err, gc.IsNil)
+	c.Assert(s.ts.label, gc.Equals, "cleanuptest")
 	// Use the cleanup func to remove the hook and check the result.
 	cleanup()
 	err = s.ts.foo("again", false)
-	c.Assert(err, IsNil)
-	c.Assert(s.ts.label, Equals, "cleanuptest")
+	c.Assert(err, gc.IsNil)
+	c.Assert(s.ts.label, gc.Equals, "cleanuptest")
 	// Ensure that only the specified hook was removed and the other remaining one still works.
 	err = s.ts.bar()
-	c.Assert(err, IsNil)
-	c.Assert(s.ts.label, Equals, "foobar")
+	c.Assert(err, gc.IsNil)
+	c.Assert(s.ts.label, gc.Equals, "foobar")
 
 }

@@ -6,13 +6,14 @@ import (
 	"net/url"
 	"strings"
 
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
+
 	"gopkg.in/goose.v1/identity"
 	"gopkg.in/goose.v1/testservices/openstackservice"
 )
 
 func registerLocalTests() {
-	Suite(&localLiveSuite{})
+	gc.Suite(&localLiveSuite{})
 }
 
 // localLiveSuite runs tests from LiveTests using a fake
@@ -25,7 +26,7 @@ type localLiveSuite struct {
 	oldHandler http.Handler
 }
 
-func (s *localLiveSuite) SetUpSuite(c *C) {
+func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 	c.Logf("Using identity and nova service test doubles")
 
 	// Set up the HTTP server.
@@ -48,38 +49,38 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 	s.LiveTests.SetUpSuite(c)
 }
 
-func (s *localLiveSuite) TearDownSuite(c *C) {
+func (s *localLiveSuite) TearDownSuite(c *gc.C) {
 	s.LiveTests.TearDownSuite(c)
 	s.Mux = nil
 	s.Server.Config.Handler = s.oldHandler
 	s.Server.Close()
 }
 
-func (s *localLiveSuite) SetUpTest(c *C) {
+func (s *localLiveSuite) SetUpTest(c *gc.C) {
 	s.LiveTests.SetUpTest(c)
 }
 
-func (s *localLiveSuite) TearDownTest(c *C) {
+func (s *localLiveSuite) TearDownTest(c *gc.C) {
 	s.LiveTests.TearDownTest(c)
 }
 
 // Additional tests to be run against the service double only go here.
 
-func (s *localLiveSuite) TestProductStreamsEndpoint(c *C) {
+func (s *localLiveSuite) TestProductStreamsEndpoint(c *gc.C) {
 	err := s.client.Authenticate()
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	serviceURL, err := s.client.MakeServiceURL("product-streams", nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	_, err = url.Parse(serviceURL)
-	c.Assert(err, IsNil)
-	c.Assert(strings.HasSuffix(serviceURL, "/imagemetadata"), Equals, true)
+	c.Assert(err, gc.IsNil)
+	c.Assert(strings.HasSuffix(serviceURL, "/imagemetadata"), gc.Equals, true)
 }
 
-func (s *localLiveSuite) TestJujuToolsEndpoint(c *C) {
+func (s *localLiveSuite) TestJujuToolsEndpoint(c *gc.C) {
 	err := s.client.Authenticate()
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	serviceURL, err := s.client.MakeServiceURL("juju-tools", nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	_, err = url.Parse(serviceURL)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 }

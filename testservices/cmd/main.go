@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"gopkg.in/goose.v1/testservices/identityservice"
 	"launchpad.net/gnuflag"
+
+	"gopkg.in/goose.v1/testservices/identityservice"
 )
 
 type userInfo struct {

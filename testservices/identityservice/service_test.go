@@ -1,7 +1,8 @@
 package identityservice
 
 import (
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
+
 	"gopkg.in/goose.v1/testing/httpsuite"
 )
 
@@ -13,11 +14,11 @@ type IdentityServiceSuite struct {
 	service IdentityService
 }
 
-var _ = Suite(&IdentityServiceSuite{service: NewUserPass()})
-var _ = Suite(&IdentityServiceSuite{service: NewLegacy()})
+var _ = gc.Suite(&IdentityServiceSuite{service: NewUserPass()})
+var _ = gc.Suite(&IdentityServiceSuite{service: NewLegacy()})
 
-func (s *IdentityServiceSuite) TestAddUserGivesNewToken(c *C) {
+func (s *IdentityServiceSuite) TestAddUserGivesNewToken(c *gc.C) {
 	userInfo1 := s.service.AddUser("user-1", "password-1", "tenant")
 	userInfo2 := s.service.AddUser("user-2", "password-2", "tenant")
-	c.Assert(userInfo1.Token, Not(Equals), userInfo2.Token)
+	c.Assert(userInfo1.Token, gc.Not(gc.Equals), userInfo2.Token)
 }

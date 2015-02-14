@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	gc "gopkg.in/check.v1"
+
 	"gopkg.in/goose.v1/nova"
 )
 

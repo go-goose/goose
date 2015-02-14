@@ -9,7 +9,8 @@ import (
 	"net/http"
 	"net/url"
 
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
+
 	"gopkg.in/goose.v1/swift"
 	"gopkg.in/goose.v1/testing/httpsuite"
 	"gopkg.in/goose.v1/testservices/identityservice"
@@ -21,7 +22,7 @@ type SwiftHTTPSuite struct {
 	token   string
 }
 
-var _ = Suite(&SwiftHTTPSuite{})
+var _ = gc.Suite(&SwiftHTTPSuite{})
 
 type SwiftHTTPSSuite struct {
 	httpsuite.HTTPSuite
@@ -29,9 +30,9 @@ type SwiftHTTPSSuite struct {
 	token   string
 }
 
-var _ = Suite(&SwiftHTTPSSuite{HTTPSuite: httpsuite.HTTPSuite{UseTLS: true}})
+var _ = gc.Suite(&SwiftHTTPSSuite{HTTPSuite: httpsuite.HTTPSuite{UseTLS: true}})
 
-func (s *SwiftHTTPSuite) SetUpSuite(c *C) {
+func (s *SwiftHTTPSuite) SetUpSuite(c *gc.C) {
 	s.HTTPSuite.SetUpSuite(c)
 	identityDouble := identityservice.NewUserPass()
 	s.service = New(s.Server.URL, versionPath, tenantId, region, identityDouble)
@@ -39,25 +40,25 @@ func (s *SwiftHTTPSuite) SetUpSuite(c *C) {
 	s.token = userInfo.Token
 }
 
-func (s *SwiftHTTPSuite) SetUpTest(c *C) {
+func (s *SwiftHTTPSuite) SetUpTest(c *gc.C) {
 	s.HTTPSuite.SetUpTest(c)
 	s.service.SetupHTTP(s.Mux)
 }
 
-func (s *SwiftHTTPSuite) TearDownTest(c *C) {
+func (s *SwiftHTTPSuite) TearDownTest(c *gc.C) {
 	s.HTTPSuite.TearDownTest(c)
 }
 
-func (s *SwiftHTTPSuite) TearDownSuite(c *C) {
+func (s *SwiftHTTPSuite) TearDownSuite(c *gc.C) {
 	s.HTTPSuite.TearDownSuite(c)
 }
 
-func (s *SwiftHTTPSuite) sendRequest(c *C, method, path string, body []byte,
+func (s *SwiftHTTPSuite) sendRequest(c *gc.C, method, path string, body []byte,
 	expectedStatusCode int) (resp *http.Response) {
 	return s.sendRequestWithParams(c, method, path, nil, body, expectedStatusCode)
 }
 
-func (s *SwiftHTTPSuite) sendRequestWithParams(c *C, method, path string, params map[string]string, body []byte,
+func (s *SwiftHTTPSuite) sendRequestWithParams(c *gc.C, method, path string, params map[string]string, body []byte,
 	expectedStatusCode int) (resp *http.Response) {
 	var req *http.Request
 	var err error
@@ -74,59 +75,59 @@ func (s *SwiftHTTPSuite) sendRequestWithParams(c *C, method, path string, params
 	} else {
 		req, err = http.NewRequest(method, URL, nil)
 	}
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	if s.token != "" {
 		req.Header.Add("X-Auth-Token", s.token)
 	}
 	client := &http.DefaultClient
 	resp, err = client.Do(req)
-	c.Assert(err, IsNil)
-	c.Assert(resp.StatusCode, Equals, expectedStatusCode)
+	c.Assert(err, gc.IsNil)
+	c.Assert(resp.StatusCode, gc.Equals, expectedStatusCode)
 	return resp
 }
 
-func (s *SwiftHTTPSuite) ensureNotContainer(name string, c *C) {
+func (s *SwiftHTTPSuite) ensureNotContainer(name string, c *gc.C) {
 	ok := s.service.HasContainer("test")
-	c.Assert(ok, Equals, false)
+	c.Assert(ok, gc.Equals, false)
 }
 
-func (s *SwiftHTTPSuite) ensureContainer(name string, c *C) {
+func (s *SwiftHTTPSuite) ensureContainer(name string, c *gc.C) {
 	s.ensureNotContainer(name, c)
 	err := s.service.AddContainer("test")
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 }
 
-func (s *SwiftHTTPSuite) removeContainer(name string, c *C) {
+func (s *SwiftHTTPSuite) removeContainer(name string, c *gc.C) {
 	ok := s.service.HasContainer("test")
-	c.Assert(ok, Equals, true)
+	c.Assert(ok, gc.Equals, true)
 	err := s.service.RemoveContainer("test")
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 }
 
-func (s *SwiftHTTPSuite) ensureNotObject(container, object string, c *C) {
+func (s *SwiftHTTPSuite) ensureNotObject(container, object string, c *gc.C) {
 	_, err := s.service.GetObject(container, object)
-	c.Assert(err, Not(IsNil))
+	c.Assert(err, gc.Not(gc.IsNil))
 }
 
-func (s *SwiftHTTPSuite) ensureObject(container, object string, data []byte, c *C) {
+func (s *SwiftHTTPSuite) ensureObject(container, object string, data []byte, c *gc.C) {
 	s.ensureNotObject(container, object, c)
 	err := s.service.AddObject(container, object, data)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 }
 
-func (s *SwiftHTTPSuite) ensureObjectData(container, object string, data []byte, c *C) {
+func (s *SwiftHTTPSuite) ensureObjectData(container, object string, data []byte, c *gc.C) {
 	objdata, err := s.service.GetObject(container, object)
-	c.Assert(err, IsNil)
-	c.Assert(objdata, DeepEquals, data)
+	c.Assert(err, gc.IsNil)
+	c.Assert(objdata, gc.DeepEquals, data)
 }
 
-func (s *SwiftHTTPSuite) removeObject(container, object string, c *C) {
+func (s *SwiftHTTPSuite) removeObject(container, object string, c *gc.C) {
 	err := s.service.RemoveObject(container, object)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	s.ensureNotObject(container, object, c)
 }
 
-func (s *SwiftHTTPSuite) TestPUTContainerMissingCreated(c *C) {
+func (s *SwiftHTTPSuite) TestPUTContainerMissingCreated(c *gc.C) {
 	s.ensureNotContainer("test", c)
 
 	s.sendRequest(c, "PUT", "test", nil, http.StatusCreated)
@@ -134,7 +135,7 @@ func (s *SwiftHTTPSuite) TestPUTContainerMissingCreated(c *C) {
 	s.removeContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestPUTContainerExistsAccepted(c *C) {
+func (s *SwiftHTTPSuite) TestPUTContainerExistsAccepted(c *gc.C) {
 	s.ensureContainer("test", c)
 
 	s.sendRequest(c, "PUT", "test", nil, http.StatusAccepted)
@@ -142,7 +143,7 @@ func (s *SwiftHTTPSuite) TestPUTContainerExistsAccepted(c *C) {
 	s.removeContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestGETContainerMissingNotFound(c *C) {
+func (s *SwiftHTTPSuite) TestGETContainerMissingNotFound(c *gc.C) {
 	s.ensureNotContainer("test", c)
 
 	s.sendRequest(c, "GET", "test", nil, http.StatusNotFound)
@@ -150,7 +151,7 @@ func (s *SwiftHTTPSuite) TestGETContainerMissingNotFound(c *C) {
 	s.ensureNotContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestGETContainerExistsOK(c *C) {
+func (s *SwiftHTTPSuite) TestGETContainerExistsOK(c *gc.C) {
 	s.ensureContainer("test", c)
 	data := []byte("test data")
 	s.ensureObject("test", "obj", data, c)
@@ -159,17 +160,17 @@ func (s *SwiftHTTPSuite) TestGETContainerExistsOK(c *C) {
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	var containerData []swift.ContainerContents
 	err = json.Unmarshal(body, &containerData)
-	c.Assert(err, IsNil)
-	c.Assert(len(containerData), Equals, 1)
-	c.Assert(containerData[0].Name, Equals, "obj")
+	c.Assert(err, gc.IsNil)
+	c.Assert(len(containerData), gc.Equals, 1)
+	c.Assert(containerData[0].Name, gc.Equals, "obj")
 
 	s.removeContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestGETContainerWithPrefix(c *C) {
+func (s *SwiftHTTPSuite) TestGETContainerWithPrefix(c *gc.C) {
 	s.ensureContainer("test", c)
 	data := []byte("test data")
 	s.ensureObject("test", "foo", data, c)
@@ -179,23 +180,23 @@ func (s *SwiftHTTPSuite) TestGETContainerWithPrefix(c *C) {
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	var containerData []swift.ContainerContents
 	err = json.Unmarshal(body, &containerData)
-	c.Assert(err, IsNil)
-	c.Assert(len(containerData), Equals, 1)
-	c.Assert(containerData[0].Name, Equals, "foobar")
+	c.Assert(err, gc.IsNil)
+	c.Assert(len(containerData), gc.Equals, 1)
+	c.Assert(containerData[0].Name, gc.Equals, "foobar")
 
 	s.removeContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestDELETEContainerMissingNotFound(c *C) {
+func (s *SwiftHTTPSuite) TestDELETEContainerMissingNotFound(c *gc.C) {
 	s.ensureNotContainer("test", c)
 
 	s.sendRequest(c, "DELETE", "test", nil, http.StatusNotFound)
 }
 
-func (s *SwiftHTTPSuite) TestDELETEContainerExistsNoContent(c *C) {
+func (s *SwiftHTTPSuite) TestDELETEContainerExistsNoContent(c *gc.C) {
 	s.ensureContainer("test", c)
 
 	s.sendRequest(c, "DELETE", "test", nil, http.StatusNoContent)
@@ -203,7 +204,7 @@ func (s *SwiftHTTPSuite) TestDELETEContainerExistsNoContent(c *C) {
 	s.ensureNotContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestPUTObjectMissingCreated(c *C) {
+func (s *SwiftHTTPSuite) TestPUTObjectMissingCreated(c *gc.C) {
 	s.ensureContainer("test", c)
 	s.ensureNotObject("test", "obj", c)
 
@@ -214,7 +215,7 @@ func (s *SwiftHTTPSuite) TestPUTObjectMissingCreated(c *C) {
 	s.removeContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestPUTObjectExistsCreated(c *C) {
+func (s *SwiftHTTPSuite) TestPUTObjectExistsCreated(c *gc.C) {
 	data := []byte("test data")
 	s.ensureContainer("test", c)
 	s.ensureObject("test", "obj", data, c)
@@ -226,7 +227,7 @@ func (s *SwiftHTTPSuite) TestPUTObjectExistsCreated(c *C) {
 	s.removeContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestPUTObjectContainerMissingNotFound(c *C) {
+func (s *SwiftHTTPSuite) TestPUTObjectContainerMissingNotFound(c *gc.C) {
 	s.ensureNotContainer("test", c)
 
 	data := []byte("test data")
@@ -235,7 +236,7 @@ func (s *SwiftHTTPSuite) TestPUTObjectContainerMissingNotFound(c *C) {
 	s.ensureNotContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestGETObjectMissingNotFound(c *C) {
+func (s *SwiftHTTPSuite) TestGETObjectMissingNotFound(c *gc.C) {
 	s.ensureContainer("test", c)
 	s.ensureNotObject("test", "obj", c)
 
@@ -244,7 +245,7 @@ func (s *SwiftHTTPSuite) TestGETObjectMissingNotFound(c *C) {
 	s.removeContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestGETObjectContainerMissingNotFound(c *C) {
+func (s *SwiftHTTPSuite) TestGETObjectContainerMissingNotFound(c *gc.C) {
 	s.ensureNotContainer("test", c)
 
 	s.sendRequest(c, "GET", "test/obj", nil, http.StatusNotFound)
@@ -252,7 +253,7 @@ func (s *SwiftHTTPSuite) TestGETObjectContainerMissingNotFound(c *C) {
 	s.ensureNotContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestGETObjectExistsOK(c *C) {
+func (s *SwiftHTTPSuite) TestGETObjectExistsOK(c *gc.C) {
 	data := []byte("test data")
 	s.ensureContainer("test", c)
 	s.ensureObject("test", "obj", data, c)
@@ -263,13 +264,13 @@ func (s *SwiftHTTPSuite) TestGETObjectExistsOK(c *C) {
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	c.Assert(err, IsNil)
-	c.Assert(body, DeepEquals, data)
+	c.Assert(err, gc.IsNil)
+	c.Assert(body, gc.DeepEquals, data)
 
 	s.removeContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestDELETEObjectMissingNotFound(c *C) {
+func (s *SwiftHTTPSuite) TestDELETEObjectMissingNotFound(c *gc.C) {
 	s.ensureContainer("test", c)
 	s.ensureNotObject("test", "obj", c)
 
@@ -278,7 +279,7 @@ func (s *SwiftHTTPSuite) TestDELETEObjectMissingNotFound(c *C) {
 	s.removeContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestDELETEObjectContainerMissingNotFound(c *C) {
+func (s *SwiftHTTPSuite) TestDELETEObjectContainerMissingNotFound(c *gc.C) {
 	s.ensureNotContainer("test", c)
 
 	s.sendRequest(c, "DELETE", "test/obj", nil, http.StatusNotFound)
@@ -286,7 +287,7 @@ func (s *SwiftHTTPSuite) TestDELETEObjectContainerMissingNotFound(c *C) {
 	s.ensureNotContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestDELETEObjectExistsNoContent(c *C) {
+func (s *SwiftHTTPSuite) TestDELETEObjectExistsNoContent(c *gc.C) {
 	data := []byte("test data")
 	s.ensureContainer("test", c)
 	s.ensureObject("test", "obj", data, c)
@@ -296,22 +297,22 @@ func (s *SwiftHTTPSuite) TestDELETEObjectExistsNoContent(c *C) {
 	s.removeContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestHEADContainerExistsOK(c *C) {
+func (s *SwiftHTTPSuite) TestHEADContainerExistsOK(c *gc.C) {
 	s.ensureContainer("test", c)
 	data := []byte("test data")
 	s.ensureObject("test", "obj", data, c)
 
 	resp := s.sendRequest(c, "HEAD", "test", nil, http.StatusOK)
-	c.Assert(resp.Header.Get("Date"), Not(Equals), "")
+	c.Assert(resp.Header.Get("Date"), gc.Not(gc.Equals), "")
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	c.Assert(err, IsNil)
-	c.Assert(body, DeepEquals, []byte{})
+	c.Assert(err, gc.IsNil)
+	c.Assert(body, gc.DeepEquals, []byte{})
 	s.removeContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestHEADContainerMissingNotFound(c *C) {
+func (s *SwiftHTTPSuite) TestHEADContainerMissingNotFound(c *gc.C) {
 	s.ensureNotContainer("test", c)
 
 	s.sendRequest(c, "HEAD", "test", nil, http.StatusNotFound)
@@ -319,7 +320,7 @@ func (s *SwiftHTTPSuite) TestHEADContainerMissingNotFound(c *C) {
 	s.ensureNotContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestHEADObjectExistsOK(c *C) {
+func (s *SwiftHTTPSuite) TestHEADObjectExistsOK(c *gc.C) {
 	data := []byte("test data")
 	s.ensureContainer("test", c)
 	s.ensureObject("test", "obj", data, c)
@@ -327,17 +328,17 @@ func (s *SwiftHTTPSuite) TestHEADObjectExistsOK(c *C) {
 	resp := s.sendRequest(c, "HEAD", "test/obj", nil, http.StatusOK)
 
 	s.ensureObjectData("test", "obj", data, c)
-	c.Assert(resp.Header.Get("Date"), Not(Equals), "")
+	c.Assert(resp.Header.Get("Date"), gc.Not(gc.Equals), "")
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	c.Assert(err, IsNil)
-	c.Assert(body, DeepEquals, []byte{})
+	c.Assert(err, gc.IsNil)
+	c.Assert(body, gc.DeepEquals, []byte{})
 
 	s.removeContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestHEADObjectMissingNotFound(c *C) {
+func (s *SwiftHTTPSuite) TestHEADObjectMissingNotFound(c *gc.C) {
 	s.ensureContainer("test", c)
 	s.ensureNotObject("test", "obj", c)
 
@@ -346,7 +347,7 @@ func (s *SwiftHTTPSuite) TestHEADObjectMissingNotFound(c *C) {
 	s.removeContainer("test", c)
 }
 
-func (s *SwiftHTTPSuite) TestUnauthorizedFails(c *C) {
+func (s *SwiftHTTPSuite) TestUnauthorizedFails(c *gc.C) {
 	oldtoken := s.token
 	defer func() {
 		s.token = oldtoken
@@ -362,29 +363,29 @@ func (s *SwiftHTTPSuite) TestUnauthorizedFails(c *C) {
 	s.sendRequest(c, "DELETE", "test", nil, http.StatusUnauthorized)
 }
 
-func (s *SwiftHTTPSSuite) SetUpSuite(c *C) {
+func (s *SwiftHTTPSSuite) SetUpSuite(c *gc.C) {
 	s.HTTPSuite.SetUpSuite(c)
 	identityDouble := identityservice.NewUserPass()
 	userInfo := identityDouble.AddUser("fred", "secret", "tenant")
 	s.token = userInfo.Token
-	c.Assert(s.Server.URL[:8], Equals, "https://")
+	c.Assert(s.Server.URL[:8], gc.Equals, "https://")
 	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble)
 }
 
-func (s *SwiftHTTPSSuite) TearDownSuite(c *C) {
+func (s *SwiftHTTPSSuite) TearDownSuite(c *gc.C) {
 	s.HTTPSuite.TearDownSuite(c)
 }
 
-func (s *SwiftHTTPSSuite) SetUpTest(c *C) {
+func (s *SwiftHTTPSSuite) SetUpTest(c *gc.C) {
 	s.HTTPSuite.SetUpTest(c)
 	s.service.SetupHTTP(s.Mux)
 }
 
-func (s *SwiftHTTPSSuite) TearDownTest(c *C) {
+func (s *SwiftHTTPSSuite) TearDownTest(c *gc.C) {
 	s.HTTPSuite.TearDownTest(c)
 }
 
-func (s *SwiftHTTPSSuite) TestHasHTTPSServiceURL(c *C) {
+func (s *SwiftHTTPSSuite) TestHasHTTPSServiceURL(c *gc.C) {
 	endpoints := s.service.Endpoints()
-	c.Assert(endpoints[0].PublicURL[:8], Equals, "https://")
+	c.Assert(endpoints[0].PublicURL[:8], gc.Equals, "https://")
 }

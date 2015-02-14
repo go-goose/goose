@@ -1,7 +1,8 @@
 package identity
 
 import (
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
+
 	"gopkg.in/goose.v1/testing/httpsuite"
 	"gopkg.in/goose.v1/testservices/identityservice"
 )
@@ -10,22 +11,22 @@ type UserPassTestSuite struct {
 	httpsuite.HTTPSuite
 }
 
-var _ = Suite(&UserPassTestSuite{})
+var _ = gc.Suite(&UserPassTestSuite{})
 
-func (s *UserPassTestSuite) TestAuthAgainstServer(c *C) {
+func (s *UserPassTestSuite) TestAuthAgainstServer(c *gc.C) {
 	service := identityservice.NewUserPass()
 	service.SetupHTTP(s.Mux)
 	userInfo := service.AddUser("joe-user", "secrets", "tenant")
 	var l Authenticator = &UserPass{}
 	creds := Credentials{User: "joe-user", URL: s.Server.URL + "/tokens", Secrets: "secrets"}
 	auth, err := l.Auth(&creds)
-	c.Assert(err, IsNil)
-	c.Assert(auth.Token, Equals, userInfo.Token)
-	c.Assert(auth.TenantId, Equals, userInfo.TenantId)
+	c.Assert(err, gc.IsNil)
+	c.Assert(auth.Token, gc.Equals, userInfo.Token)
+	c.Assert(auth.TenantId, gc.Equals, userInfo.TenantId)
 }
 
 // Test that the region -> service endpoint map is correctly populated.
-func (s *UserPassTestSuite) TestRegionMatch(c *C) {
+func (s *UserPassTestSuite) TestRegionMatch(c *gc.C) {
 	service := identityservice.NewUserPass()
 	service.SetupHTTP(s.Mux)
 	userInfo := service.AddUser("joe-user", "secrets", "tenant")
@@ -59,10 +60,10 @@ func (s *UserPassTestSuite) TestRegionMatch(c *C) {
 	}
 	var l Authenticator = &UserPass{}
 	auth, err := l.Auth(&creds)
-	c.Assert(err, IsNil)
-	c.Assert(auth.RegionServiceURLs["RegionOne"]["object-store"], Equals, "http://swift")
-	c.Assert(auth.RegionServiceURLs["zone1.RegionOne"]["compute"], Equals, "http://nova")
-	c.Assert(auth.RegionServiceURLs["zone2.RegionOne"]["compute"], Equals, "http://nova2")
-	c.Assert(auth.Token, Equals, userInfo.Token)
-	c.Assert(auth.TenantId, Equals, userInfo.TenantId)
+	c.Assert(err, gc.IsNil)
+	c.Assert(auth.RegionServiceURLs["RegionOne"]["object-store"], gc.Equals, "http://swift")
+	c.Assert(auth.RegionServiceURLs["zone1.RegionOne"]["compute"], gc.Equals, "http://nova")
+	c.Assert(auth.RegionServiceURLs["zone2.RegionOne"]["compute"], gc.Equals, "http://nova2")
+	c.Assert(auth.Token, gc.Equals, userInfo.Token)
+	c.Assert(auth.TenantId, gc.Equals, userInfo.TenantId)
 }

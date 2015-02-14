@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
 )
 
-var _ = Suite(&HTTPSuite{})
+var _ = gc.Suite(&HTTPSuite{})
 
 type HTTPSuite struct {
 	Server     *httptest.Server
@@ -21,7 +21,7 @@ type HTTPSuite struct {
 	UseTLS     bool
 }
 
-func (s *HTTPSuite) SetUpSuite(c *C) {
+func (s *HTTPSuite) SetUpSuite(c *gc.C) {
 	// fmt.Printf("Starting New Server\n")
 	if s.UseTLS {
 		s.Server = httptest.NewTLSServer(nil)
@@ -30,18 +30,18 @@ func (s *HTTPSuite) SetUpSuite(c *C) {
 	}
 }
 
-func (s *HTTPSuite) SetUpTest(c *C) {
+func (s *HTTPSuite) SetUpTest(c *gc.C) {
 	s.oldHandler = s.Server.Config.Handler
 	s.Mux = http.NewServeMux()
 	s.Server.Config.Handler = s.Mux
 }
 
-func (s *HTTPSuite) TearDownTest(c *C) {
+func (s *HTTPSuite) TearDownTest(c *gc.C) {
 	s.Mux = nil
 	s.Server.Config.Handler = s.oldHandler
 }
 
-func (s *HTTPSuite) TearDownSuite(c *C) {
+func (s *HTTPSuite) TearDownSuite(c *gc.C) {
 	if s.Server != nil {
 		// fmt.Printf("Stopping Server\n")
 		s.Server.Close()

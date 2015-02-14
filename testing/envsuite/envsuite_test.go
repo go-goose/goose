@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
 )
 
 type EnvTestSuite struct {
@@ -12,38 +12,38 @@ type EnvTestSuite struct {
 }
 
 func Test(t *testing.T) {
-	TestingT(t)
+	gc.TestingT(t)
 }
 
-var _ = Suite(&EnvTestSuite{})
+var _ = gc.Suite(&EnvTestSuite{})
 
-func (s *EnvTestSuite) TestGrabsCurrentEnvironment(c *C) {
+func (s *EnvTestSuite) TestGrabsCurrentEnvironment(c *gc.C) {
 	envsuite := &EnvSuite{}
 	// EnvTestSuite is an EnvSuite, so we should have already isolated
 	// ourselves from the world. So we set a single env value, and we
 	// assert that SetUpSuite is able to see that.
 	os.Setenv("TEST_KEY", "test-value")
 	envsuite.SetUpSuite(c)
-	c.Assert(envsuite.environ, DeepEquals, []string{"TEST_KEY=test-value"})
+	c.Assert(envsuite.environ, gc.DeepEquals, []string{"TEST_KEY=test-value"})
 }
 
-func (s *EnvTestSuite) TestClearsEnvironment(c *C) {
+func (s *EnvTestSuite) TestClearsEnvironment(c *gc.C) {
 	envsuite := &EnvSuite{}
 	os.Setenv("TEST_KEY", "test-value")
 	envsuite.SetUpSuite(c)
 	// SetUpTest should reset the current environment back to being
 	// completely empty.
 	envsuite.SetUpTest(c)
-	c.Assert(os.Getenv("TEST_KEY"), Equals, "")
-	c.Assert(os.Environ(), DeepEquals, []string{})
+	c.Assert(os.Getenv("TEST_KEY"), gc.Equals, "")
+	c.Assert(os.Environ(), gc.DeepEquals, []string{})
 }
 
-func (s *EnvTestSuite) TestRestoresEnvironment(c *C) {
+func (s *EnvTestSuite) TestRestoresEnvironment(c *gc.C) {
 	envsuite := &EnvSuite{}
 	os.Setenv("TEST_KEY", "test-value")
 	envsuite.SetUpSuite(c)
 	envsuite.SetUpTest(c)
 	envsuite.TearDownTest(c)
-	c.Assert(os.Getenv("TEST_KEY"), Equals, "test-value")
-	c.Assert(os.Environ(), DeepEquals, []string{"TEST_KEY=test-value"})
+	c.Assert(os.Getenv("TEST_KEY"), gc.Equals, "test-value")
+	c.Assert(os.Environ(), gc.DeepEquals, []string{"TEST_KEY=test-value"})
 }

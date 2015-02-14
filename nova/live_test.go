@@ -7,7 +7,8 @@ import (
 	"strings"
 	"time"
 
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
+
 	"gopkg.in/goose.v1/client"
 	"gopkg.in/goose.v1/errors"
 	"gopkg.in/goose.v1/identity"
@@ -20,7 +21,7 @@ const (
 )
 
 func registerOpenStackTests(cred *identity.Credentials, testImageDetails imageDetails) {
-	Suite(&LiveTests{
+	gc.Suite(&LiveTests{
 		cred:        cred,
 		testImageId: testImageDetails.imageId,
 		testFlavor:  testImageDetails.flavor,
@@ -43,14 +44,14 @@ type LiveTests struct {
 	useNumericIds        bool
 }
 
-func (s *LiveTests) SetUpSuite(c *C) {
+func (s *LiveTests) SetUpSuite(c *gc.C) {
 	s.client = client.NewClient(s.cred, identity.AuthUserPass, nil)
 	s.nova = nova.New(s.client)
 	var err error
 	s.testFlavorId, err = s.findFlavorId(s.testFlavor)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	s.testServer, err = s.createInstance(testImageName)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	s.waitTestServerToStart(c)
 	// These will not be filled in until a client has authorised which will happen creating the instance above.
 	s.userId = s.client.UserId()
@@ -75,18 +76,18 @@ func (s *LiveTests) findFlavorId(flavorName string) (string, error) {
 	return flavorId, nil
 }
 
-func (s *LiveTests) TearDownSuite(c *C) {
+func (s *LiveTests) TearDownSuite(c *gc.C) {
 	if s.testServer != nil {
 		err := s.nova.DeleteServer(s.testServer.Id)
-		c.Check(err, IsNil)
+		c.Check(err, gc.IsNil)
 	}
 }
 
-func (s *LiveTests) SetUpTest(c *C) {
+func (s *LiveTests) SetUpTest(c *gc.C) {
 	// noop, called by local test suite.
 }
 
-func (s *LiveTests) TearDownTest(c *C) {
+func (s *LiveTests) TearDownTest(c *gc.C) {
 	// noop, called by local test suite.
 }
 
@@ -106,61 +107,61 @@ func (s *LiveTests) createInstance(name string) (instance *nova.Entity, err erro
 }
 
 // Assert that the server record matches the details of the test server image.
-func (s *LiveTests) assertServerDetails(c *C, sr *nova.ServerDetail) {
-	c.Check(sr.Id, Equals, s.testServer.Id)
-	c.Check(sr.Name, Equals, testImageName)
-	c.Check(sr.Flavor.Id, Equals, s.testFlavorId)
-	c.Check(sr.Image.Id, Equals, s.testImageId)
+func (s *LiveTests) assertServerDetails(c *gc.C, sr *nova.ServerDetail) {
+	c.Check(sr.Id, gc.Equals, s.testServer.Id)
+	c.Check(sr.Name, gc.Equals, testImageName)
+	c.Check(sr.Flavor.Id, gc.Equals, s.testFlavorId)
+	c.Check(sr.Image.Id, gc.Equals, s.testImageId)
 	if s.testAvailabilityZone != "" {
-		c.Check(sr.AvailabilityZone, Equals, s.testAvailabilityZone)
+		c.Check(sr.AvailabilityZone, gc.Equals, s.testAvailabilityZone)
 	}
 }
 
-func (s *LiveTests) TestListFlavors(c *C) {
+func (s *LiveTests) TestListFlavors(c *gc.C) {
 	flavors, err := s.nova.ListFlavors()
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	if len(flavors) < 1 {
 		c.Fatalf("no flavors to list")
 	}
 	for _, f := range flavors {
-		c.Check(f.Id, Not(Equals), "")
-		c.Check(f.Name, Not(Equals), "")
+		c.Check(f.Id, gc.Not(gc.Equals), "")
+		c.Check(f.Name, gc.Not(gc.Equals), "")
 		for _, l := range f.Links {
-			c.Check(l.Href, Matches, "https?://.*")
-			c.Check(l.Rel, Matches, "self|bookmark")
+			c.Check(l.Href, gc.Matches, "https?://.*")
+			c.Check(l.Rel, gc.Matches, "self|bookmark")
 		}
 	}
 }
 
-func (s *LiveTests) TestListFlavorsDetail(c *C) {
+func (s *LiveTests) TestListFlavorsDetail(c *gc.C) {
 	flavors, err := s.nova.ListFlavorsDetail()
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	if len(flavors) < 1 {
 		c.Fatalf("no flavors (details) to list")
 	}
 	for _, f := range flavors {
-		c.Check(f.Name, Not(Equals), "")
-		c.Check(f.Id, Not(Equals), "")
+		c.Check(f.Name, gc.Not(gc.Equals), "")
+		c.Check(f.Id, gc.Not(gc.Equals), "")
 		if f.RAM < 0 || f.VCPUs < 0 || f.Disk < 0 {
 			c.Fatalf("invalid flavor found: %#v", f)
 		}
 	}
 }
 
-func (s *LiveTests) TestListServers(c *C) {
+func (s *LiveTests) TestListServers(c *gc.C) {
 	servers, err := s.nova.ListServers(nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	foundTest := false
 	for _, sr := range servers {
-		c.Check(sr.Id, Not(Equals), "")
-		c.Check(sr.Name, Not(Equals), "")
+		c.Check(sr.Id, gc.Not(gc.Equals), "")
+		c.Check(sr.Name, gc.Not(gc.Equals), "")
 		if sr.Id == s.testServer.Id {
-			c.Check(sr.Name, Equals, testImageName)
+			c.Check(sr.Name, gc.Equals, testImageName)
 			foundTest = true
 		}
 		for _, l := range sr.Links {
-			c.Check(l.Href, Matches, "https?://.*")
-			c.Check(l.Rel, Matches, "self|bookmark")
+			c.Check(l.Href, gc.Matches, "https?://.*")
+			c.Check(l.Rel, gc.Matches, "self|bookmark")
 		}
 	}
 	if !foundTest {
@@ -168,18 +169,18 @@ func (s *LiveTests) TestListServers(c *C) {
 	}
 }
 
-func (s *LiveTests) TestListServersWithFilter(c *C) {
+func (s *LiveTests) TestListServersWithFilter(c *gc.C) {
 	inst, err := s.createInstance("filtered_server")
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	defer s.nova.DeleteServer(inst.Id)
 	filter := nova.NewFilter()
 	filter.Set(nova.FilterServer, "filtered_server")
 	servers, err := s.nova.ListServers(filter)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	found := false
 	for _, sr := range servers {
 		if sr.Id == inst.Id {
-			c.Assert(sr.Name, Equals, "filtered_server")
+			c.Assert(sr.Name, gc.Equals, "filtered_server")
 			found = true
 		}
 	}
@@ -188,40 +189,40 @@ func (s *LiveTests) TestListServersWithFilter(c *C) {
 	}
 }
 
-func (s *LiveTests) TestListServersDetail(c *C) {
+func (s *LiveTests) TestListServersDetail(c *gc.C) {
 	servers, err := s.nova.ListServersDetail(nil)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	if len(servers) < 1 {
 		c.Fatalf("no servers to list (expected at least 1)")
 	}
 	foundTest := false
 	for _, sr := range servers {
 		// not checking for Addresses, because it could be missing
-		c.Check(sr.Created, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
-		c.Check(sr.Updated, Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
-		c.Check(sr.Id, Not(Equals), "")
-		c.Check(sr.HostId, Not(Equals), "")
-		c.Check(sr.TenantId, Equals, s.tenantId)
-		c.Check(sr.UserId, Equals, s.userId)
-		c.Check(sr.Status, Not(Equals), "")
-		c.Check(sr.Name, Not(Equals), "")
+		c.Check(sr.Created, gc.Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
+		c.Check(sr.Updated, gc.Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
+		c.Check(sr.Id, gc.Not(gc.Equals), "")
+		c.Check(sr.HostId, gc.Not(gc.Equals), "")
+		c.Check(sr.TenantId, gc.Equals, s.tenantId)
+		c.Check(sr.UserId, gc.Equals, s.userId)
+		c.Check(sr.Status, gc.Not(gc.Equals), "")
+		c.Check(sr.Name, gc.Not(gc.Equals), "")
 		if sr.Id == s.testServer.Id {
 			s.assertServerDetails(c, &sr)
 			foundTest = true
 		}
 		for _, l := range sr.Links {
-			c.Check(l.Href, Matches, "https?://.*")
-			c.Check(l.Rel, Matches, "self|bookmark")
+			c.Check(l.Href, gc.Matches, "https?://.*")
+			c.Check(l.Rel, gc.Matches, "self|bookmark")
 		}
-		c.Check(sr.Flavor.Id, Not(Equals), "")
+		c.Check(sr.Flavor.Id, gc.Not(gc.Equals), "")
 		for _, f := range sr.Flavor.Links {
-			c.Check(f.Href, Matches, "https?://.*")
-			c.Check(f.Rel, Matches, "self|bookmark")
+			c.Check(f.Href, gc.Matches, "https?://.*")
+			c.Check(f.Rel, gc.Matches, "self|bookmark")
 		}
-		c.Check(sr.Image.Id, Not(Equals), "")
+		c.Check(sr.Image.Id, gc.Not(gc.Equals), "")
 		for _, i := range sr.Image.Links {
-			c.Check(i.Href, Matches, "https?://.*")
-			c.Check(i.Rel, Matches, "self|bookmark")
+			c.Check(i.Href, gc.Matches, "https?://.*")
+			c.Check(i.Rel, gc.Matches, "self|bookmark")
 		}
 	}
 	if !foundTest {
@@ -229,18 +230,18 @@ func (s *LiveTests) TestListServersDetail(c *C) {
 	}
 }
 
-func (s *LiveTests) TestListServersDetailWithFilter(c *C) {
+func (s *LiveTests) TestListServersDetailWithFilter(c *gc.C) {
 	inst, err := s.createInstance("filtered_server")
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	defer s.nova.DeleteServer(inst.Id)
 	filter := nova.NewFilter()
 	filter.Set(nova.FilterServer, "filtered_server")
 	servers, err := s.nova.ListServersDetail(filter)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	found := false
 	for _, sr := range servers {
 		if sr.Id == inst.Id {
-			c.Assert(sr.Name, Equals, "filtered_server")
+			c.Assert(sr.Name, gc.Equals, "filtered_server")
 			found = true
 		}
 	}
@@ -249,25 +250,25 @@ func (s *LiveTests) TestListServersDetailWithFilter(c *C) {
 	}
 }
 
-func (s *LiveTests) TestListSecurityGroups(c *C) {
+func (s *LiveTests) TestListSecurityGroups(c *gc.C) {
 	groups, err := s.nova.ListSecurityGroups()
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	if len(groups) < 1 {
 		c.Fatalf("no security groups found (expected at least 1)")
 	}
 	for _, g := range groups {
-		c.Check(g.TenantId, Equals, s.tenantId)
-		c.Check(g.Name, Not(Equals), "")
-		c.Check(g.Description, Not(Equals), "")
-		c.Check(g.Rules, NotNil)
+		c.Check(g.TenantId, gc.Equals, s.tenantId)
+		c.Check(g.Name, gc.Not(gc.Equals), "")
+		c.Check(g.Description, gc.Not(gc.Equals), "")
+		c.Check(g.Rules, gc.NotNil)
 	}
 }
 
-func (s *LiveTests) TestCreateAndDeleteSecurityGroup(c *C) {
+func (s *LiveTests) TestCreateAndDeleteSecurityGroup(c *gc.C) {
 	group, err := s.nova.CreateSecurityGroup("test_secgroup", "test_desc")
-	c.Assert(err, IsNil)
-	c.Check(group.Name, Equals, "test_secgroup")
-	c.Check(group.Description, Equals, "test_desc")
+	c.Assert(err, gc.IsNil)
+	c.Check(group.Name, gc.Equals, "test_secgroup")
+	c.Check(group.Description, gc.Equals, "test_desc")
 
 	groups, err := s.nova.ListSecurityGroups()
 	found := false
@@ -279,25 +280,25 @@ func (s *LiveTests) TestCreateAndDeleteSecurityGroup(c *C) {
 	}
 	if found {
 		err = s.nova.DeleteSecurityGroup(group.Id)
-		c.Check(err, IsNil)
+		c.Check(err, gc.IsNil)
 	} else {
 		c.Fatalf("test security group (%d) not found", group.Id)
 	}
 }
 
-func (s *LiveTests) TestDuplicateSecurityGroupError(c *C) {
+func (s *LiveTests) TestDuplicateSecurityGroupError(c *gc.C) {
 	group, err := s.nova.CreateSecurityGroup("test_dupgroup", "test_desc")
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	defer s.nova.DeleteSecurityGroup(group.Id)
 	group, err = s.nova.CreateSecurityGroup("test_dupgroup", "test_desc")
-	c.Assert(errors.IsDuplicateValue(err), Equals, true)
+	c.Assert(errors.IsDuplicateValue(err), gc.Equals, true)
 }
 
-func (s *LiveTests) TestCreateAndDeleteSecurityGroupRules(c *C) {
+func (s *LiveTests) TestCreateAndDeleteSecurityGroupRules(c *gc.C) {
 	group1, err := s.nova.CreateSecurityGroup("test_secgroup1", "test_desc")
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	group2, err := s.nova.CreateSecurityGroup("test_secgroup2", "test_desc")
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 
 	// First type of rule - port range + protocol
 	ri := nova.RuleInfo{
@@ -308,14 +309,14 @@ func (s *LiveTests) TestCreateAndDeleteSecurityGroupRules(c *C) {
 		ParentGroupId: group1.Id,
 	}
 	rule, err := s.nova.CreateSecurityGroupRule(ri)
-	c.Assert(err, IsNil)
-	c.Check(*rule.FromPort, Equals, 1234)
-	c.Check(*rule.ToPort, Equals, 4321)
-	c.Check(rule.ParentGroupId, Equals, group1.Id)
-	c.Check(*rule.IPProtocol, Equals, "tcp")
-	c.Check(rule.Group, Equals, nova.SecurityGroupRef{})
+	c.Assert(err, gc.IsNil)
+	c.Check(*rule.FromPort, gc.Equals, 1234)
+	c.Check(*rule.ToPort, gc.Equals, 4321)
+	c.Check(rule.ParentGroupId, gc.Equals, group1.Id)
+	c.Check(*rule.IPProtocol, gc.Equals, "tcp")
+	c.Check(rule.Group, gc.Equals, nova.SecurityGroupRef{})
 	err = s.nova.DeleteSecurityGroupRule(rule.Id)
-	c.Check(err, IsNil)
+	c.Check(err, gc.IsNil)
 
 	// Second type of rule - inherited from another group
 	ri = nova.RuleInfo{
@@ -323,32 +324,32 @@ func (s *LiveTests) TestCreateAndDeleteSecurityGroupRules(c *C) {
 		ParentGroupId: group1.Id,
 	}
 	rule, err = s.nova.CreateSecurityGroupRule(ri)
-	c.Assert(err, IsNil)
-	c.Check(rule.ParentGroupId, Equals, group1.Id)
-	c.Check(rule.Group, NotNil)
-	c.Check(rule.Group.TenantId, Equals, s.tenantId)
-	c.Check(rule.Group.Name, Equals, "test_secgroup2")
+	c.Assert(err, gc.IsNil)
+	c.Check(rule.ParentGroupId, gc.Equals, group1.Id)
+	c.Check(rule.Group, gc.NotNil)
+	c.Check(rule.Group.TenantId, gc.Equals, s.tenantId)
+	c.Check(rule.Group.Name, gc.Equals, "test_secgroup2")
 	err = s.nova.DeleteSecurityGroupRule(rule.Id)
-	c.Check(err, IsNil)
+	c.Check(err, gc.IsNil)
 
 	err = s.nova.DeleteSecurityGroup(group1.Id)
-	c.Check(err, IsNil)
+	c.Check(err, gc.IsNil)
 	err = s.nova.DeleteSecurityGroup(group2.Id)
-	c.Check(err, IsNil)
+	c.Check(err, gc.IsNil)
 }
 
-func (s *LiveTests) TestGetServer(c *C) {
+func (s *LiveTests) TestGetServer(c *gc.C) {
 	server, err := s.nova.GetServer(s.testServer.Id)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	s.assertServerDetails(c, server)
 }
 
-func (s *LiveTests) waitTestServerToStart(c *C) {
+func (s *LiveTests) waitTestServerToStart(c *gc.C) {
 	// Wait until the test server is actually running
 	c.Logf("waiting the test server %s to start...", s.testServer.Id)
 	for {
 		server, err := s.nova.GetServer(s.testServer.Id)
-		c.Assert(err, IsNil)
+		c.Assert(err, gc.IsNil)
 		if server.Status == nova.StatusActive {
 			break
 		}
@@ -359,19 +360,19 @@ func (s *LiveTests) waitTestServerToStart(c *C) {
 	c.Logf("started")
 }
 
-func (s *LiveTests) TestServerAddGetRemoveSecurityGroup(c *C) {
+func (s *LiveTests) TestServerAddGetRemoveSecurityGroup(c *gc.C) {
 	group, err := s.nova.CreateSecurityGroup("test_server_secgroup", "test desc")
 	if err != nil {
-		c.Assert(errors.IsDuplicateValue(err), Equals, true)
+		c.Assert(errors.IsDuplicateValue(err), gc.Equals, true)
 		group, err = s.nova.SecurityGroupByName("test_server_secgroup")
-		c.Assert(err, IsNil)
+		c.Assert(err, gc.IsNil)
 	}
 
 	s.waitTestServerToStart(c)
 	err = s.nova.AddServerSecurityGroup(s.testServer.Id, group.Name)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	groups, err := s.nova.GetServerSecurityGroups(s.testServer.Id)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	found := false
 	for _, g := range groups {
 		if g.Id == group.Id || g.Name == group.Name {
@@ -380,35 +381,35 @@ func (s *LiveTests) TestServerAddGetRemoveSecurityGroup(c *C) {
 		}
 	}
 	err = s.nova.RemoveServerSecurityGroup(s.testServer.Id, group.Name)
-	c.Check(err, IsNil)
+	c.Check(err, gc.IsNil)
 
 	err = s.nova.DeleteSecurityGroup(group.Id)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 
 	if !found {
 		c.Fail()
 	}
 }
 
-func (s *LiveTests) TestFloatingIPs(c *C) {
+func (s *LiveTests) TestFloatingIPs(c *gc.C) {
 	ip, err := s.nova.AllocateFloatingIP()
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	defer s.nova.DeleteFloatingIP(ip.Id)
-	c.Check(ip.IP, Not(Equals), "")
-	c.Check(ip.FixedIP, IsNil)
-	c.Check(ip.InstanceId, IsNil)
+	c.Check(ip.IP, gc.Not(gc.Equals), "")
+	c.Check(ip.FixedIP, gc.IsNil)
+	c.Check(ip.InstanceId, gc.IsNil)
 
 	ips, err := s.nova.ListFloatingIPs()
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	if len(ips) < 1 {
 		c.Errorf("no floating IPs found (expected at least 1)")
 	} else {
 		found := false
 		for _, i := range ips {
-			c.Check(i.IP, Not(Equals), "")
+			c.Check(i.IP, gc.Not(gc.Equals), "")
 			if i.Id == ip.Id {
-				c.Check(i.IP, Equals, ip.IP)
-				c.Check(i.Pool, Equals, ip.Pool)
+				c.Check(i.IP, gc.Equals, ip.IP)
+				c.Check(i.Pool, gc.Equals, ip.Pool)
 				found = true
 			}
 		}
@@ -417,43 +418,43 @@ func (s *LiveTests) TestFloatingIPs(c *C) {
 		}
 
 		fip, err := s.nova.GetFloatingIP(ip.Id)
-		c.Assert(err, IsNil)
-		c.Check(fip.Id, Equals, ip.Id)
-		c.Check(fip.IP, Equals, ip.IP)
-		c.Check(fip.Pool, Equals, ip.Pool)
+		c.Assert(err, gc.IsNil)
+		c.Check(fip.Id, gc.Equals, ip.Id)
+		c.Check(fip.IP, gc.Equals, ip.IP)
+		c.Check(fip.Pool, gc.Equals, ip.Pool)
 	}
 }
 
-func (s *LiveTests) TestServerFloatingIPs(c *C) {
+func (s *LiveTests) TestServerFloatingIPs(c *gc.C) {
 	ip, err := s.nova.AllocateFloatingIP()
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	defer s.nova.DeleteFloatingIP(ip.Id)
-	c.Check(ip.IP, Matches, `\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`)
+	c.Check(ip.IP, gc.Matches, `\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`)
 
 	s.waitTestServerToStart(c)
 	err = s.nova.AddServerFloatingIP(s.testServer.Id, ip.IP)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	// TODO (wallyworld) - 2013-02-11 bug=1121666
 	// where we are creating a real server, test that the IP address created above
 	// can be used to connect to the server
 	defer s.nova.RemoveServerFloatingIP(s.testServer.Id, ip.IP)
 
 	fip, err := s.nova.GetFloatingIP(ip.Id)
-	c.Assert(err, IsNil)
-	c.Check(*fip.FixedIP, Matches, `\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`)
-	c.Check(*fip.InstanceId, Equals, s.testServer.Id)
+	c.Assert(err, gc.IsNil)
+	c.Check(*fip.FixedIP, gc.Matches, `\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`)
+	c.Check(*fip.InstanceId, gc.Equals, s.testServer.Id)
 
 	err = s.nova.RemoveServerFloatingIP(s.testServer.Id, ip.IP)
-	c.Check(err, IsNil)
+	c.Check(err, gc.IsNil)
 	fip, err = s.nova.GetFloatingIP(ip.Id)
-	c.Assert(err, IsNil)
-	c.Check(fip.FixedIP, IsNil)
-	c.Check(fip.InstanceId, IsNil)
+	c.Assert(err, gc.IsNil)
+	c.Check(fip.FixedIP, gc.IsNil)
+	c.Check(fip.InstanceId, gc.IsNil)
 }
 
 // TestRateLimitRetry checks that when we make too many requests and receive a Retry-After response, the retry
 // occurs and the request ultimately succeeds.
-func (s *LiveTests) TestRateLimitRetry(c *C) {
+func (s *LiveTests) TestRateLimitRetry(c *gc.C) {
 	if s.vendor != "canonistack" {
 		c.Skip("TestRateLimitRetry is only run for Canonistack")
 	}
@@ -465,19 +466,19 @@ func (s *LiveTests) TestRateLimitRetry(c *C) {
 	// Delete the artifact if it already exists.
 	testGroup, err := novaClient.SecurityGroupByName("test_group")
 	if err != nil {
-		c.Assert(errors.IsNotFound(err), Equals, true)
+		c.Assert(errors.IsNotFound(err), gc.Equals, true)
 	} else {
 		novaClient.DeleteSecurityGroup(testGroup.Id)
-		c.Assert(err, IsNil)
+		c.Assert(err, gc.IsNil)
 	}
 	// Create some artifacts a number of times in succession and ensure each time is successful,
 	// even with retries being required. As soon as we see a retry message, the test has passed
 	// and we exit.
 	for i := 0; i < 50; i++ {
 		testGroup, err = novaClient.CreateSecurityGroup("test_group", "test")
-		c.Assert(err, IsNil)
+		c.Assert(err, gc.IsNil)
 		novaClient.DeleteSecurityGroup(testGroup.Id)
-		c.Assert(err, IsNil)
+		c.Assert(err, gc.IsNil)
 		output := logout.String()
 		if strings.Contains(output, "Too many requests, retrying in") == true {
 			return
@@ -487,7 +488,7 @@ func (s *LiveTests) TestRateLimitRetry(c *C) {
 	c.Fail()
 }
 
-func (s *LiveTests) TestRegexpInstanceFilters(c *C) {
+func (s *LiveTests) TestRegexpInstanceFilters(c *gc.C) {
 	serverNames := []string{
 		"foobar123",
 		"foo123baz",
@@ -495,33 +496,33 @@ func (s *LiveTests) TestRegexpInstanceFilters(c *C) {
 	}
 	for _, name := range serverNames {
 		inst, err := s.createInstance(name)
-		c.Assert(err, IsNil)
+		c.Assert(err, gc.IsNil)
 		defer s.nova.DeleteServer(inst.Id)
 	}
 	filter := nova.NewFilter()
 	filter.Set(nova.FilterServer, `foo.*baz`)
 	servers, err := s.nova.ListServersDetail(filter)
-	c.Assert(err, IsNil)
-	c.Assert(servers, HasLen, 1)
-	c.Assert(servers[0].Name, Equals, serverNames[1])
+	c.Assert(err, gc.IsNil)
+	c.Assert(servers, gc.HasLen, 1)
+	c.Assert(servers[0].Name, gc.Equals, serverNames[1])
 	filter.Set(nova.FilterServer, `[0-9]+[a-z]+`)
 	servers, err = s.nova.ListServersDetail(filter)
-	c.Assert(err, IsNil)
-	c.Assert(servers, HasLen, 2)
+	c.Assert(err, gc.IsNil)
+	c.Assert(servers, gc.HasLen, 2)
 	if servers[0].Name != serverNames[1] {
 		servers[0], servers[1] = servers[1], servers[0]
 	}
-	c.Assert(servers[0].Name, Equals, serverNames[1])
-	c.Assert(servers[1].Name, Equals, serverNames[2])
+	c.Assert(servers[0].Name, gc.Equals, serverNames[1])
+	c.Assert(servers[1].Name, gc.Equals, serverNames[2])
 }
 
-func (s *LiveTests) TestListNetworks(c *C) {
+func (s *LiveTests) TestListNetworks(c *gc.C) {
 	networks, err := s.nova.ListNetworks()
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	for _, network := range networks {
-		c.Check(network.Id, Not(Equals), "")
-		c.Check(network.Label, Not(Equals), "")
-		c.Assert(network.Cidr, Matches, `\d{1,3}(\.+\d{1,3}){3}\/\d+`)
+		c.Check(network.Id, gc.Not(gc.Equals), "")
+		c.Check(network.Label, gc.Not(gc.Equals), "")
+		c.Assert(network.Cidr, gc.Matches, `\d{1,3}(\.+\d{1,3}){3}\/\d+`)
 	}
 }
 
@@ -532,7 +533,7 @@ func (s *LiveTests) runServerAvailabilityZone(zone string) (*nova.Entity, error)
 	return s.createInstance(testImageName)
 }
 
-func (s *LiveTests) TestRunServerUnknownAvailabilityZone(c *C) {
+func (s *LiveTests) TestRunServerUnknownAvailabilityZone(c *gc.C) {
 	_, err := s.runServerAvailabilityZone("something_that_will_never_exist")
-	c.Assert(err, ErrorMatches, "(.|\n)*The requested availability zone is not available(.|\n)*")
+	c.Assert(err, gc.ErrorMatches, "(.|\n)*The requested availability zone is not available(.|\n)*")
 }

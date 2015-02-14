@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
+
 	"gopkg.in/goose.v1/client"
 	"gopkg.in/goose.v1/identity"
 	"gopkg.in/goose.v1/nova"
@@ -15,7 +16,7 @@ import (
 )
 
 func Test(t *testing.T) {
-	TestingT(t)
+	gc.TestingT(t)
 }
 
 const (
@@ -30,7 +31,7 @@ type ToolSuite struct {
 	creds *identity.Credentials
 }
 
-var _ = Suite(&ToolSuite{})
+var _ = gc.Suite(&ToolSuite{})
 
 // GZ 2013-01-21: Should require EnvSuite for this, but clashes with HTTPSuite
 func createNovaClientFromCreds(creds *identity.Credentials) *nova.Client {
@@ -38,7 +39,7 @@ func createNovaClientFromCreds(creds *identity.Credentials) *nova.Client {
 	return nova.New(osc)
 }
 
-func (s *ToolSuite) makeServices(c *C) (*openstackservice.Openstack, *nova.Client) {
+func (s *ToolSuite) makeServices(c *gc.C) (*openstackservice.Openstack, *nova.Client) {
 	creds := &identity.Credentials{
 		URL:        s.Server.URL,
 		User:       username,
@@ -51,22 +52,22 @@ func (s *ToolSuite) makeServices(c *C) (*openstackservice.Openstack, *nova.Clien
 	return openstack, createNovaClientFromCreds(creds)
 }
 
-func (s *ToolSuite) TestNoGroups(c *C) {
+func (s *ToolSuite) TestNoGroups(c *gc.C) {
 	_, nova := s.makeServices(c)
 	var buf bytes.Buffer
 	err := DeleteAll(&buf, nova)
-	c.Assert(err, IsNil)
-	c.Assert(string(buf.Bytes()), Equals, "No security groups to delete.\n")
+	c.Assert(err, gc.IsNil)
+	c.Assert(string(buf.Bytes()), gc.Equals, "No security groups to delete.\n")
 }
 
-func (s *ToolSuite) TestTwoGroups(c *C) {
+func (s *ToolSuite) TestTwoGroups(c *gc.C) {
 	_, novaClient := s.makeServices(c)
 	novaClient.CreateSecurityGroup("group-a", "A group")
 	novaClient.CreateSecurityGroup("group-b", "Another group")
 	var buf bytes.Buffer
 	err := DeleteAll(&buf, novaClient)
-	c.Assert(err, IsNil)
-	c.Assert(string(buf.Bytes()), Equals, "2 security groups deleted.\n")
+	c.Assert(err, gc.IsNil)
+	c.Assert(string(buf.Bytes()), gc.Equals, "2 security groups deleted.\n")
 }
 
 // This group is one for which we will simulate a deletion error in the following test.
@@ -81,7 +82,7 @@ func deleteGroupError(s hook.ServiceControl, args ...interface{}) error {
 	return nil
 }
 
-func (s *ToolSuite) TestUndeleteableGroup(c *C) {
+func (s *ToolSuite) TestUndeleteableGroup(c *gc.C) {
 	os, novaClient := s.makeServices(c)
 	novaClient.CreateSecurityGroup("group-a", "A group")
 	doNotDelete, _ = novaClient.CreateSecurityGroup("group-b", "Another group")
@@ -90,6 +91,6 @@ func (s *ToolSuite) TestUndeleteableGroup(c *C) {
 	defer cleanup()
 	var buf bytes.Buffer
 	err := DeleteAll(&buf, novaClient)
-	c.Assert(err, IsNil)
-	c.Assert(string(buf.Bytes()), Equals, "2 security groups deleted.\n1 security groups could not be deleted.\n")
+	c.Assert(err, gc.IsNil)
+	c.Assert(string(buf.Bytes()), gc.Equals, "2 security groups deleted.\n1 security groups could not be deleted.\n")
 }

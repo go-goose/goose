@@ -1,14 +1,15 @@
 package swift_test
 
 import (
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
+
 	"gopkg.in/goose.v1/identity"
 	"gopkg.in/goose.v1/testing/httpsuite"
 	"gopkg.in/goose.v1/testservices/openstackservice"
 )
 
 func registerLocalTests() {
-	Suite(&localLiveSuite{})
+	gc.Suite(&localLiveSuite{})
 }
 
 // localLiveSuite runs tests from LiveTests using a fake
@@ -21,7 +22,7 @@ type localLiveSuite struct {
 	openstack *openstackservice.Openstack
 }
 
-func (s *localLiveSuite) SetUpSuite(c *C) {
+func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 	c.Logf("Using identity and swift service test doubles")
 	s.HTTPSuite.SetUpSuite(c)
 	// Set up an Openstack service.
@@ -40,20 +41,20 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 	s.LiveTestsPublicContainer.SetUpSuite(c)
 }
 
-func (s *localLiveSuite) TearDownSuite(c *C) {
+func (s *localLiveSuite) TearDownSuite(c *gc.C) {
 	s.LiveTests.TearDownSuite(c)
 	s.LiveTestsPublicContainer.TearDownSuite(c)
 	s.HTTPSuite.TearDownSuite(c)
 }
 
-func (s *localLiveSuite) SetUpTest(c *C) {
+func (s *localLiveSuite) SetUpTest(c *gc.C) {
 	s.HTTPSuite.SetUpTest(c)
 	s.openstack.SetupHTTP(s.Mux)
 	s.LiveTests.SetUpTest(c)
 	s.LiveTestsPublicContainer.SetUpTest(c)
 }
 
-func (s *localLiveSuite) TearDownTest(c *C) {
+func (s *localLiveSuite) TearDownTest(c *gc.C) {
 	s.LiveTests.TearDownTest(c)
 	s.LiveTestsPublicContainer.TearDownTest(c)
 	s.HTTPSuite.TearDownTest(c)

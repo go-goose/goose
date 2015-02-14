@@ -7,7 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
+
 	"gopkg.in/goose.v1/testing/httpsuite"
 )
 
@@ -15,7 +16,7 @@ type KeyPairSuite struct {
 	httpsuite.HTTPSuite
 }
 
-var _ = Suite(&KeyPairSuite{})
+var _ = gc.Suite(&KeyPairSuite{})
 
 func makeKeyPair(user, secret string) (identity *KeyPair) {
 	identity = NewKeyPair()
@@ -65,45 +66,45 @@ func keyPairAuthRequest(URL, access, secret string) (*http.Response, error) {
 	return client.Do(request)
 }
 
-func (s *KeyPairSuite) TestNotJSON(c *C) {
+func (s *KeyPairSuite) TestNotJSON(c *gc.C) {
 	// We do everything in keyPairAuthRequest, except set the Content-Type
 	s.setupKeyPair("user", "secret")
 	client := &http.DefaultClient
 	body := strings.NewReader(fmt.Sprintf(authTemplate, "user", "secret"))
 	request, err := http.NewRequest("POST", s.Server.URL+"/tokens", body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	res, err := client.Do(request)
 	defer res.Body.Close()
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	CheckErrorResponse(c, res, http.StatusBadRequest, notJSON)
 }
 
-func (s *KeyPairSuite) TestBadJSON(c *C) {
+func (s *KeyPairSuite) TestBadJSON(c *gc.C) {
 	// We do everything in keyPairAuthRequest, except set the Content-Type
 	s.setupKeyPair("user", "secret")
 	res, err := keyPairAuthRequest(s.Server.URL, `garbage"in`, "secret")
 	defer res.Body.Close()
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	CheckErrorResponse(c, res, http.StatusBadRequest, notJSON)
 }
 
-func (s *KeyPairSuite) TestNoSuchUser(c *C) {
+func (s *KeyPairSuite) TestNoSuchUser(c *gc.C) {
 	s.setupKeyPair("user", "secret")
 	res, err := keyPairAuthRequest(s.Server.URL, "not-user", "secret")
 	defer res.Body.Close()
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	CheckErrorResponse(c, res, http.StatusUnauthorized, notAuthorized)
 }
 
-func (s *KeyPairSuite) TestBadPassword(c *C) {
+func (s *KeyPairSuite) TestBadPassword(c *gc.C) {
 	s.setupKeyPair("user", "secret")
 	res, err := keyPairAuthRequest(s.Server.URL, "user", "not-secret")
 	defer res.Body.Close()
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	CheckErrorResponse(c, res, http.StatusUnauthorized, invalidUser)
 }
 
-func (s *KeyPairSuite) TestValidAuthorization(c *C) {
+func (s *KeyPairSuite) TestValidAuthorization(c *gc.C) {
 	compute_url := "http://testing.invalid/compute"
 	s.setupKeyPairWithServices("user", "secret", []Service{
 		{"nova", "compute", []Endpoint{
@@ -111,15 +112,15 @@ func (s *KeyPairSuite) TestValidAuthorization(c *C) {
 		}}})
 	res, err := keyPairAuthRequest(s.Server.URL, "user", "secret")
 	defer res.Body.Close()
-	c.Assert(err, IsNil)
-	c.Check(res.StatusCode, Equals, http.StatusOK)
-	c.Check(res.Header.Get("Content-Type"), Equals, "application/json")
+	c.Assert(err, gc.IsNil)
+	c.Check(res.StatusCode, gc.Equals, http.StatusOK)
+	c.Check(res.Header.Get("Content-Type"), gc.Equals, "application/json")
 	content, err := ioutil.ReadAll(res.Body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	var response AccessResponse
 	err = json.Unmarshal(content, &response)
-	c.Assert(err, IsNil)
-	c.Check(response.Access.Token.Id, NotNil)
+	c.Assert(err, gc.IsNil)
+	c.Check(response.Access.Token.Id, gc.NotNil)
 	novaURL := ""
 	for _, service := range response.Access.ServiceCatalog {
 		if service.Type == "compute" {
@@ -127,5 +128,5 @@ func (s *KeyPairSuite) TestValidAuthorization(c *C) {
 			break
 		}
 	}
-	c.Assert(novaURL, Equals, compute_url)
+	c.Assert(novaURL, gc.Equals, compute_url)
 }

@@ -8,27 +8,27 @@ import (
 	"os"
 	"strings"
 
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
 )
 
 type EnvSuite struct {
 	environ []string
 }
 
-func (s *EnvSuite) SetUpSuite(c *C) {
+func (s *EnvSuite) SetUpSuite(c *gc.C) {
 	s.environ = os.Environ()
 }
 
-func (s *EnvSuite) SetUpTest(c *C) {
+func (s *EnvSuite) SetUpTest(c *gc.C) {
 	os.Clearenv()
 }
 
-func (s *EnvSuite) TearDownTest(c *C) {
+func (s *EnvSuite) TearDownTest(c *gc.C) {
 	for _, envstring := range s.environ {
 		kv := strings.SplitN(envstring, "=", 2)
 		os.Setenv(kv[0], kv[1])
 	}
 }
 
-func (s *EnvSuite) TearDownSuite(c *C) {
+func (s *EnvSuite) TearDownSuite(c *gc.C) {
 }

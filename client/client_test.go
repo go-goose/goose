@@ -4,7 +4,8 @@ import (
 	"flag"
 	"testing"
 
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
+
 	"gopkg.in/goose.v1/identity"
 )
 
@@ -37,5 +38,5 @@ func Test(t *testing.T) {
 		registerOpenStackTests(cred, liveAuthModes)
 	}
 	registerLocalTests(allAuthModes)
-	TestingT(t)
+	gc.TestingT(t)
 }

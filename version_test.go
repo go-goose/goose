@@ -4,14 +4,14 @@
 package goose
 
 import (
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
 )
 
 type VersionTestSuite struct {
 }
 
-var _ = Suite(&VersionTestSuite{})
+var _ = gc.Suite(&VersionTestSuite{})
 
-func (s *VersionTestSuite) TestStringMatches(c *C) {
-	c.Assert(Version, Equals, VersionNumber.String())
+func (s *VersionTestSuite) TestStringMatches(c *gc.C) {
+	c.Assert(Version, gc.Equals, VersionNumber.String())
 }

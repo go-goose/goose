@@ -3,9 +3,9 @@ package identityservice
 import (
 	"testing"
 
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {
-	TestingT(t)
+	gc.TestingT(t)
 }

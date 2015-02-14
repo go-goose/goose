@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
 )
 
 type HTTPTestSuite struct {
@@ -21,11 +21,11 @@ type HTTPSTestSuite struct {
 }
 
 func Test(t *testing.T) {
-	TestingT(t)
+	gc.TestingT(t)
 }
 
-var _ = Suite(&HTTPTestSuite{})
-var _ = Suite(&HTTPSTestSuite{HTTPSuite{UseTLS: true}})
+var _ = gc.Suite(&HTTPTestSuite{})
+var _ = gc.Suite(&HTTPSTestSuite{HTTPSuite{UseTLS: true}})
 
 type HelloHandler struct{}
 
@@ -35,35 +35,35 @@ func (h *HelloHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello World\n"))
 }
 
-func (s *HTTPTestSuite) TestHelloWorld(c *C) {
+func (s *HTTPTestSuite) TestHelloWorld(c *gc.C) {
 	s.Mux.Handle("/", &HelloHandler{})
 	// fmt.Printf("Running HelloWorld\n")
 	response, err := http.Get(s.Server.URL)
-	c.Check(err, IsNil)
+	c.Check(err, gc.IsNil)
 	content, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
-	c.Check(err, IsNil)
-	c.Check(response.Status, Equals, "200 OK")
-	c.Check(response.StatusCode, Equals, 200)
-	c.Check(string(content), Equals, "Hello World\n")
+	c.Check(err, gc.IsNil)
+	c.Check(response.Status, gc.Equals, "200 OK")
+	c.Check(response.StatusCode, gc.Equals, 200)
+	c.Check(string(content), gc.Equals, "Hello World\n")
 }
 
-func (s *HTTPSTestSuite) TestHelloWorldWithTLS(c *C) {
+func (s *HTTPSTestSuite) TestHelloWorldWithTLS(c *gc.C) {
 	s.Mux.Handle("/", &HelloHandler{})
-	c.Check(s.Server.URL[:8], Equals, "https://")
+	c.Check(s.Server.URL[:8], gc.Equals, "https://")
 	response, err := http.Get(s.Server.URL)
 	// Default http.Get fails because the cert is self-signed
-	c.Assert(err, NotNil)
-	c.Assert(reflect.TypeOf(err.(*url.Error).Err), Equals, reflect.TypeOf(x509.UnknownAuthorityError{}))
+	c.Assert(err, gc.NotNil)
+	c.Assert(reflect.TypeOf(err.(*url.Error).Err), gc.Equals, reflect.TypeOf(x509.UnknownAuthorityError{}))
 	// Connect again with a Client that doesn't validate the cert
 	insecureClient := &http.Client{Transport: &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
 	response, err = insecureClient.Get(s.Server.URL)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	content, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
-	c.Check(err, IsNil)
-	c.Check(response.Status, Equals, "200 OK")
-	c.Check(response.StatusCode, Equals, 200)
-	c.Check(string(content), Equals, "Hello World\n")
+	c.Check(err, gc.IsNil)
+	c.Check(response.Status, gc.Equals, "200 OK")
+	c.Check(response.StatusCode, gc.Equals, 200)
+	c.Check(string(content), gc.Equals, "Hello World\n")
 }

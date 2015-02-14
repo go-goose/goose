@@ -4,7 +4,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	. "gopkg.in/check.v1"
+	gc "gopkg.in/check.v1"
+
 	"gopkg.in/goose.v1/testing/httpsuite"
 )
 
@@ -12,7 +13,7 @@ type LegacySuite struct {
 	httpsuite.HTTPSuite
 }
 
-var _ = Suite(&LegacySuite{})
+var _ = gc.Suite(&LegacySuite{})
 
 func (s *LegacySuite) setupLegacy(user, secret string) (token, managementURL string) {
 	managementURL = s.Server.URL
@@ -43,57 +44,57 @@ func LegacyAuthRequest(URL, user, key string) (*http.Response, error) {
 	return client.Do(request)
 }
 
-func AssertUnauthorized(c *C, response *http.Response) {
+func AssertUnauthorized(c *gc.C, response *http.Response) {
 	content, err := ioutil.ReadAll(response.Body)
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	response.Body.Close()
-	c.Check(response.Header.Get("X-Auth-Token"), Equals, "")
-	c.Check(response.Header.Get("X-Server-Management-Url"), Equals, "")
-	c.Check(string(content), Equals, "")
-	c.Check(response.StatusCode, Equals, http.StatusUnauthorized)
+	c.Check(response.Header.Get("X-Auth-Token"), gc.Equals, "")
+	c.Check(response.Header.Get("X-Server-Management-Url"), gc.Equals, "")
+	c.Check(string(content), gc.Equals, "")
+	c.Check(response.StatusCode, gc.Equals, http.StatusUnauthorized)
 }
 
-func (s *LegacySuite) TestLegacyFailedAuth(c *C) {
+func (s *LegacySuite) TestLegacyFailedAuth(c *gc.C) {
 	s.setupLegacy("", "")
 	// No headers set for Authentication
 	response, err := LegacyAuthRequest(s.Server.URL, "", "")
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	AssertUnauthorized(c, response)
 }
 
-func (s *LegacySuite) TestLegacyFailedOnlyUser(c *C) {
+func (s *LegacySuite) TestLegacyFailedOnlyUser(c *gc.C) {
 	s.setupLegacy("", "")
 	// Missing secret key
 	response, err := LegacyAuthRequest(s.Server.URL, "user", "")
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	AssertUnauthorized(c, response)
 }
 
-func (s *LegacySuite) TestLegacyNoSuchUser(c *C) {
+func (s *LegacySuite) TestLegacyNoSuchUser(c *gc.C) {
 	s.setupLegacy("user", "key")
 	// No user matching the username
 	response, err := LegacyAuthRequest(s.Server.URL, "notuser", "key")
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	AssertUnauthorized(c, response)
 }
 
-func (s *LegacySuite) TestLegacyInvalidAuth(c *C) {
+func (s *LegacySuite) TestLegacyInvalidAuth(c *gc.C) {
 	s.setupLegacy("user", "secret-key")
 	// Wrong key
 	response, err := LegacyAuthRequest(s.Server.URL, "user", "bad-key")
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	AssertUnauthorized(c, response)
 }
 
-func (s *LegacySuite) TestLegacyAuth(c *C) {
+func (s *LegacySuite) TestLegacyAuth(c *gc.C) {
 	token, serverURL := s.setupLegacy("user", "secret-key")
 	response, err := LegacyAuthRequest(s.Server.URL, "user", "secret-key")
-	c.Assert(err, IsNil)
+	c.Assert(err, gc.IsNil)
 	content, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
-	c.Check(response.Header.Get("X-Auth-Token"), Equals, token)
-	c.Check(response.Header.Get("X-Server-Management-Url"), Equals, serverURL+"/compute")
-	c.Check(response.Header.Get("X-Storage-Url"), Equals, serverURL+"/object-store")
-	c.Check(string(content), Equals, "")
-	c.Check(response.StatusCode, Equals, http.StatusNoContent)
+	c.Check(response.Header.Get("X-Auth-Token"), gc.Equals, token)
+	c.Check(response.Header.Get("X-Server-Management-Url"), gc.Equals, serverURL+"/compute")
+	c.Check(response.Header.Get("X-Storage-Url"), gc.Equals, serverURL+"/object-store")
+	c.Check(string(content), gc.Equals, "")
+	c.Check(response.StatusCode, gc.Equals, http.StatusNoContent)
 }
