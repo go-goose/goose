@@ -53,7 +53,7 @@ func (s *HTTPClientTestSuite) assertHeaderValues(c *C, token string) {
 	headers := createHeaders(emptyHeaders, "content-type", token)
 	contentTypes := []string{"content-type"}
 	headerData := map[string][]string{
-		"Content-Type": contentTypes, "Accept": contentTypes, "User-Agent": []string{gooseAgent()}}
+		"Content-Type": contentTypes, "Accept": contentTypes, "User-Agent": {gooseAgent()}}
 	if token != "" {
 		headerData["X-Auth-Token"] = []string{token}
 	}

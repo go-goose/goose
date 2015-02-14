@@ -216,7 +216,7 @@ func (c *authenticatingClient) createServiceURLs() error {
 		errorPrefix = fmt.Sprintf("invalid region %q", c.creds.Region)
 	} else {
 		existingServiceTypes := []string{}
-		for serviceType, _ := range serviceURLs {
+		for serviceType := range serviceURLs {
 			if containsString(c.requiredServiceTypes, serviceType) {
 				existingServiceTypes = append(existingServiceTypes, serviceType)
 			}

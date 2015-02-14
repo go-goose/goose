@@ -1182,8 +1182,8 @@ func (s *NovaHTTPSuite) TestListAvailabilityZones(c *C) {
 	assertBody(c, resp, errNotFoundJSON)
 
 	zones := []nova.AvailabilityZone{
-		nova.AvailabilityZone{Name: "az1"},
-		nova.AvailabilityZone{
+		{Name: "az1"},
+		{
 			Name: "az2", State: nova.AvailabilityZoneState{Available: true},
 		},
 	}

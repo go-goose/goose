@@ -119,8 +119,8 @@ func (s *NovaSuite) TestBuildLinksAndAddFlavor(c *C) {
 	fl, _ := s.service.flavor(flavor.Id)
 	url := "/flavors/" + flavor.Id
 	links := []nova.Link{
-		nova.Link{Href: s.service.endpointURL(true, url), Rel: "self"},
-		nova.Link{Href: s.service.endpointURL(false, url), Rel: "bookmark"},
+		{Href: s.service.endpointURL(true, url), Rel: "self"},
+		{Href: s.service.endpointURL(false, url), Rel: "bookmark"},
 	}
 	c.Assert(fl.Links, DeepEquals, links)
 }

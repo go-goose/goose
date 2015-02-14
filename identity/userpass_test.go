@@ -30,15 +30,15 @@ func (s *UserPassTestSuite) TestRegionMatch(c *C) {
 	service.SetupHTTP(s.Mux)
 	userInfo := service.AddUser("joe-user", "secrets", "tenant")
 	serviceDef := identityservice.Service{"swift", "object-store", []identityservice.Endpoint{
-		identityservice.Endpoint{PublicURL: "http://swift", Region: "RegionOne"},
+		{PublicURL: "http://swift", Region: "RegionOne"},
 	}}
 	service.AddService(serviceDef)
 	serviceDef = identityservice.Service{"nova", "compute", []identityservice.Endpoint{
-		identityservice.Endpoint{PublicURL: "http://nova", Region: "zone1.RegionOne"},
+		{PublicURL: "http://nova", Region: "zone1.RegionOne"},
 	}}
 	service.AddService(serviceDef)
 	serviceDef = identityservice.Service{"nova", "compute", []identityservice.Endpoint{
-		identityservice.Endpoint{PublicURL: "http://nova2", Region: "zone2.RegionOne"},
+		{PublicURL: "http://nova2", Region: "zone2.RegionOne"},
 	}}
 	service.AddService(serviceDef)
 

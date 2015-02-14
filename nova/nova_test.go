@@ -18,9 +18,9 @@ type imageDetails struct {
 
 // Out-of-the-box, we support live testing using Canonistack or HP Cloud.
 var testConstraints = map[string]imageDetails{
-	"canonistack": imageDetails{
+	"canonistack": {
 		flavor: "m1.tiny", imageId: "f2ca48ce-30d5-4f1f-9075-12e64510368d"},
-	"hpcloud": imageDetails{
+	"hpcloud": {
 		flavor: "standard.xsmall", imageId: "81078"},
 }
 

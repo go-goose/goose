@@ -237,8 +237,8 @@ func (s *localLiveSuite) TestListAvailabilityZonesUnimplemented(c *C) {
 
 func (s *localLiveSuite) setAvailabilityZones() []nova.AvailabilityZone {
 	zones := []nova.AvailabilityZone{
-		nova.AvailabilityZone{Name: "az1"},
-		nova.AvailabilityZone{
+		{Name: "az1"},
+		{
 			Name: "az2", State: nova.AvailabilityZoneState{Available: true},
 		},
 	}

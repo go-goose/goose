@@ -155,8 +155,8 @@ func (n *Nova) SetAvailabilityZones(zones ...nova.AvailabilityZone) {
 func (n *Nova) buildFlavorLinks(flavor *nova.FlavorDetail) {
 	url := "/flavors/" + flavor.Id
 	flavor.Links = []nova.Link{
-		nova.Link{Href: n.endpointURL(true, url), Rel: "self"},
-		nova.Link{Href: n.endpointURL(false, url), Rel: "bookmark"},
+		{Href: n.endpointURL(true, url), Rel: "self"},
+		{Href: n.endpointURL(false, url), Rel: "bookmark"},
 	}
 }
 
@@ -240,8 +240,8 @@ func (n *Nova) removeFlavor(flavorId string) error {
 func (n *Nova) buildServerLinks(server *nova.ServerDetail) {
 	url := "/servers/" + server.Id
 	server.Links = []nova.Link{
-		nova.Link{Href: n.endpointURL(true, url), Rel: "self"},
-		nova.Link{Href: n.endpointURL(false, url), Rel: "bookmark"},
+		{Href: n.endpointURL(true, url), Rel: "self"},
+		{Href: n.endpointURL(false, url), Rel: "bookmark"},
 	}
 }
 
