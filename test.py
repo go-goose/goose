@@ -142,7 +142,7 @@ def run_go_build(opts):
 
 
 def run_go_test(opts):
-    # Note: I wish we could run this with '-gocheck.v'
+    # Note: I wish we could run this with '-check.v'
     return run_cmd(['go', 'test', './...'])
 
 
@@ -166,7 +166,7 @@ def run_live_tests(opts):
     final_retcode = 0
     for d in KNOWN_LIVE_SUITES:
         try:
-            cmd = ['go', 'test', '-live', '-gocheck.v']
+            cmd = ['go', 'test', '-live', '-check.v']
             sys.stderr.write('Running: %s in %s\n' % (' '.join(cmd), d))
             os.chdir(d)
             retcode = subprocess.call(cmd)
