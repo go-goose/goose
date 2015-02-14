@@ -47,14 +47,20 @@ func New(cred *identity.Credentials, authMode identity.AuthMode) *Openstack {
 		panic(fmt.Errorf("setting up image metadata container: %v", err))
 	}
 	url := openstack.Swift.Endpoints()[0].PublicURL
-	serviceDef := identityservice.Service{"simplestreams", "product-streams", []identityservice.Endpoint{
-		{PublicURL: url + "/imagemetadata", Region: cred.Region},
-	}}
+	serviceDef := identityservice.Service{
+		Name: "simplestreams",
+		Type: "product-streams",
+		Endpoints: []identityservice.Endpoint{
+			{PublicURL: url + "/imagemetadata", Region: cred.Region},
+		}}
 	openstack.Identity.AddService(serviceDef)
 	// Add public bucket endpoint so that juju-tools URLs are included in the keystone catalog.
-	serviceDef = identityservice.Service{"juju", "juju-tools", []identityservice.Endpoint{
-		{PublicURL: url, Region: cred.Region},
-	}}
+	serviceDef = identityservice.Service{
+		Name: "juju",
+		Type: "juju-tools",
+		Endpoints: []identityservice.Endpoint{
+			{PublicURL: url, Region: cred.Region},
+		}}
 	openstack.Identity.AddService(serviceDef)
 	return &openstack
 }

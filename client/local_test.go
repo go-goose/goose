@@ -56,17 +56,23 @@ func (s *localLiveSuite) SetUpSuite(c *C) {
 		// The openstack test service sets up keypair authentication.
 		s.service = openstackservice.New(s.cred, identity.AuthKeyPair)
 		// Add an additional endpoint so region filtering can be properly tested.
-		serviceDef := identityservice.Service{"nova", "compute", []identityservice.Endpoint{
-			{PublicURL: "http://nova2", Region: "zone2.RegionOne"},
-		}}
+		serviceDef := identityservice.Service{
+			Name: "nova",
+			Type: "compute",
+			Endpoints: []identityservice.Endpoint{
+				{PublicURL: "http://nova2", Region: "zone2.RegionOne"},
+			}}
 		s.service.(*openstackservice.Openstack).Identity.AddService(serviceDef)
 	case identity.AuthUserPass:
 		// The openstack test service sets up userpass authentication.
 		s.service = openstackservice.New(s.cred, identity.AuthUserPass)
 		// Add an additional endpoint so region filtering can be properly tested.
-		serviceDef := identityservice.Service{"nova", "compute", []identityservice.Endpoint{
-			{PublicURL: "http://nova2", Region: "zone2.RegionOne"},
-		}}
+		serviceDef := identityservice.Service{
+			Name: "nova",
+			Type: "compute",
+			Endpoints: []identityservice.Endpoint{
+				{PublicURL: "http://nova2", Region: "zone2.RegionOne"},
+			}}
 		s.service.(*openstackservice.Openstack).Identity.AddService(serviceDef)
 
 	case identity.AuthLegacy:
@@ -354,9 +360,12 @@ func (s *localHTTPSSuite) SetUpSuite(c *C) {
 	// The openstack test service sets up userpass authentication.
 	s.service = openstackservice.New(s.cred, identity.AuthUserPass)
 	// Add an additional endpoint so region filtering can be properly tested.
-	serviceDef := identityservice.Service{"nova", "compute", []identityservice.Endpoint{
-		{PublicURL: "https://nova2", Region: "zone2.RegionOne"},
-	}}
+	serviceDef := identityservice.Service{
+		Name: "nova",
+		Type: "compute",
+		Endpoints: []identityservice.Endpoint{
+			{PublicURL: "https://nova2", Region: "zone2.RegionOne"},
+		}}
 	s.service.(*openstackservice.Openstack).Identity.AddService(serviceDef)
 }
 

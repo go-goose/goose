@@ -479,8 +479,8 @@ func (s *NovaHTTPSuite) TestGetFlavors(c *C) {
 	c.Assert(expected.Flavors, HasLen, 3)
 	entities := s.service.allFlavorsAsEntities()
 	c.Assert(entities, HasLen, 3)
-	sort.Sort(nova.EntitySortBy{"Id", expected.Flavors})
-	sort.Sort(nova.EntitySortBy{"Id", entities})
+	sort.Sort(nova.EntitySortBy{Attr: "Id", Entities: expected.Flavors})
+	sort.Sort(nova.EntitySortBy{Attr: "Id", Entities: entities})
 	c.Assert(expected.Flavors, DeepEquals, entities)
 	var expectedFlavor struct {
 		Flavor nova.FlavorDetail
@@ -504,8 +504,8 @@ func (s *NovaHTTPSuite) TestGetFlavorsDetail(c *C) {
 	c.Assert(resp.StatusCode, Equals, http.StatusOK)
 	assertJSON(c, resp, &expected)
 	c.Assert(expected.Flavors, HasLen, 3)
-	sort.Sort(nova.FlavorDetailSortBy{"Id", expected.Flavors})
-	sort.Sort(nova.FlavorDetailSortBy{"Id", flavors})
+	sort.Sort(nova.FlavorDetailSortBy{Attr: "Id", FlavorDetails: expected.Flavors})
+	sort.Sort(nova.FlavorDetailSortBy{Attr: "Id", FlavorDetails: flavors})
 	c.Assert(expected.Flavors, DeepEquals, flavors)
 	resp, err = s.authRequest("GET", "/flavors/detail/1", nil, nil)
 	c.Assert(err, IsNil)
