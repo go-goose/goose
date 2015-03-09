@@ -152,11 +152,6 @@ func (c *client) MakeServiceURL(serviceType string, parts []string) (string, err
 	return makeURL(c.baseURL, parts), nil
 }
 
-func (c *authenticatingClient) HostForRegion(region string) string {
-	return ""
-	//return c.regionServiceURLs[region]
-}
-
 func (c *authenticatingClient) SetRequiredServiceTypes(requiredServiceTypes []string) {
 	c.requiredServiceTypes = requiredServiceTypes
 }

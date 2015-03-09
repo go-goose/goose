@@ -1,3 +1,6 @@
+// Copyright 2015 Canonical Ltd.
+// Licensed under the AGPLv3, see LICENCE file for details.
+
 package cinder
 
 import (
@@ -7,8 +10,20 @@ import (
 	"time"
 )
 
+// Basic returns a basic Cinder client which will handle authorization
+// of requests, and routing to the correct endpoint.
+func Basic(endpoint *url.URL, tenantId string, token TokenFn) *Client {
+	return NewClient(tenantId, SetEndpointFn(endpoint,
+		SetAuthHeaderFn(token, http.DefaultClient.Do),
+	))
+}
+
+// TokenFn represents a function signature which returns the user's
+// authorization token when called.
 type TokenFn func() string
 
+// SetEndpointFn returns a RequestHandlerFn which modifies the request
+// to route it to the given host.
 func SetEndpointFn(endpoint *url.URL, wrappedHandler RequestHandlerFn) RequestHandlerFn {
 	return func(req *http.Request) (*http.Response, error) {
 		req.URL.Host = endpoint.Host
@@ -17,6 +32,8 @@ func SetEndpointFn(endpoint *url.URL, wrappedHandler RequestHandlerFn) RequestHa
 	}
 }
 
+// SetAuthHeaderFn returns a RequestHandlerFn which sets the
+// authentication headers for a given request.
 func SetAuthHeaderFn(token TokenFn, wrappedHandler RequestHandlerFn) RequestHandlerFn {
 	return func(req *http.Request) (*http.Response, error) {
 		req.Header.Set("X-Auth-Token", token())
@@ -24,16 +41,21 @@ func SetAuthHeaderFn(token TokenFn, wrappedHandler RequestHandlerFn) RequestHand
 	}
 }
 
+// NewClient is the most flexible way to instantiate a Cinder
+// Client. The handleRequest function will be responsible for
+// modifying requests and dispatching them as needed. For an example
+// of how to utilize this method, see the Basic function.
 func NewClient(tenantId string, handleRequest RequestHandlerFn) *Client {
 	return &Client{tenantId, handleRequest}
 }
 
+// Client is a Cinder client.
 type Client struct {
 	tenantId      string
 	handleRequest RequestHandlerFn
 }
 
-// Shows information for a specified snapshot.
+// GetSnapshot shows information for a specified snapshot.
 func (c *Client) GetSnapshot(snapshotId string) (*GetSnapshotResults, error) {
 	return getSnapshot(
 		c.handleRequest,
@@ -41,7 +63,7 @@ func (c *Client) GetSnapshot(snapshotId string) (*GetSnapshotResults, error) {
 	)
 }
 
-// Updates a specified snapshot.
+// UpdateSnapshot updates a specified snapshot.
 func (c *Client) UpdateSnapshot(snapshotId string, args UpdateSnapshotSnapshotParams) (*UpdateSnapshotResults, error) {
 	return updateSnapshot(c.handleRequest, UpdateSnapshotParams{
 		TenantId:   c.tenantId,
@@ -50,7 +72,7 @@ func (c *Client) UpdateSnapshot(snapshotId string, args UpdateSnapshotSnapshotPa
 	})
 }
 
-// Deletes a specified snapshot.
+// DeleteSnapshot deletes a specified snapshot.
 func (c *Client) DeleteSnapshot(snapshotId string) error {
 	_, err := deleteSnapshot(
 		c.handleRequest,
@@ -59,23 +81,23 @@ func (c *Client) DeleteSnapshot(snapshotId string) error {
 	return err
 }
 
-// Shows details for Block Storage API v2.
+// VersionDetails shows details for Block Storage API v2.
 func (c *Client) VersionDetails() (*VersionDetailsResults, error) {
 	return versionDetails(c.handleRequest, VersionDetailsParams{})
 }
 
-// Lists Block Storage API extensions.
+// ListExtensionsCinderV2 lists Block Storage API extensions.
 func (c *Client) ListExtensionsCinderV2() (*ListExtensionsCinderV2Results, error) {
 	return listExtensionsCinderV2(c.handleRequest, ListExtensionsCinderV2Params{})
 }
 
-// Lists summary information for all Block Storage volumes that the
-// tenant who submits the request can access.
+// GetVolumesSimple lists summary information for all Block Storage
+// volumes that the tenant who submits the request can access.
 func (c *Client) GetVolumesSimple() (*GetVolumesSimpleResults, error) {
 	return getVolumesSimple(c.handleRequest, GetVolumesSimpleParams{TenantId: c.tenantId})
 }
 
-// Updates a volume type.
+// UpdateVolumeType updates a volume type.
 func (c *Client) UpdateVolumeType(volumeTypeId, volumeType string) (*UpdateVolumeTypeResults, error) {
 	return updateVolumeType(c.handleRequest, UpdateVolumeTypeParams{
 		TenantId:     c.tenantId,
@@ -84,7 +106,7 @@ func (c *Client) UpdateVolumeType(volumeTypeId, volumeType string) (*UpdateVolum
 	})
 }
 
-// Deletes a specified volume type.
+// DeleteVolumeType deletes a specified volume type.
 func (c *Client) DeleteVolumeType(volumeTypeId string) error {
 	_, err := deleteVolumeType(
 		c.handleRequest,
@@ -93,17 +115,19 @@ func (c *Client) DeleteVolumeType(volumeTypeId string) error {
 	return err
 }
 
-// Lists detailed information for all Block Storage volumes that the tenant who submits the request can access.
+// GetVolumesDetail lists detailed information for all Block Storage
+// volumes that the tenant who submits the request can access.
 func (c *Client) GetVolumesDetail() (*GetVolumesDetailResults, error) {
 	return getVolumesDetail(c.handleRequest, GetVolumesDetailParams{TenantId: c.tenantId})
 }
 
-// The specified volume must exist. :
+// GetVolume lists information about the volume with the given
+// volumeId.
 func (c *Client) GetVolume(volumeId string) (*GetVolumeResults, error) {
 	return getVolume(c.handleRequest, GetVolumeParams{TenantId: c.tenantId, VolumeId: volumeId})
 }
 
-// Creates a volume type.
+// CreateVolumeType creates a volume type.
 func (c *Client) CreateVolumeType(args CreateVolumeTypeVolumeTypeParams) (*CreateVolumeTypeResults, error) {
 	return createVolumeType(
 		c.handleRequest,
@@ -111,7 +135,7 @@ func (c *Client) CreateVolumeType(args CreateVolumeTypeVolumeTypeParams) (*Creat
 	)
 }
 
-// Shows information about a specified volume type.
+// GetVolumeType shows information about a specified volume type.
 func (c *Client) GetVolumeType(volumeTypeId string) (*GetVolumeTypeResults, error) {
 	return getVolumeType(
 		c.handleRequest,
@@ -119,12 +143,13 @@ func (c *Client) GetVolumeType(volumeTypeId string) (*GetVolumeTypeResults, erro
 	)
 }
 
-// Lists information about all Block Storage API versions.
+// ListVersion lists information about all Block Storage API versions.
 func (c *Client) ListVersions() (*ListVersionsResults, error) {
 	return listVersions(c.handleRequest, ListVersionsParams{})
 }
 
-// Updates the extra specifications assigned to a volume type.
+// UpdateVolumeTypeExtraSpecs updates the extra specifications
+// assigned to a volume type.
 func (c *Client) UpdateVolumeTypeExtraSpecs(volumeTypeId, volumeType, extraSpecs string) (*UpdateVolumeTypeExtraSpecsResults, error) {
 	return updateVolumeTypeExtraSpecs(c.handleRequest, UpdateVolumeTypeExtraSpecsParams{
 		TenantId:     c.tenantId,
@@ -134,13 +159,13 @@ func (c *Client) UpdateVolumeTypeExtraSpecs(volumeTypeId, volumeType, extraSpecs
 	})
 }
 
-// Lists summary information for all Block Storage snapshots that the
-// tenant who submits the request can access.
+// GetSnapshotsSimple lists summary information for all Block Storage
+// snapshots that the tenant who submits the request can access.
 func (c *Client) GetSnapshotsSimple() (*GetSnapshotsSimpleResults, error) {
 	return getSnapshotsSimple(c.handleRequest, GetSnapshotsSimpleParams{TenantId: c.tenantId})
 }
 
-// Shows the metadata for a specified snapshot.
+// ShowSnapshotMetadata shows the metadata for a specified snapshot.
 func (c *Client) ShowSnapshotMetadata(snapshotId string) (*ShowSnapshotMetadataResults, error) {
 	return showSnapshotMetadata(
 		c.handleRequest,
@@ -148,19 +173,21 @@ func (c *Client) ShowSnapshotMetadata(snapshotId string) (*ShowSnapshotMetadataR
 	)
 }
 
-// Creates a snapshot, which is a point-in-time complete copy of a
-// volume. You can create a volume from the snapshot.
+// CreateSnapshot creates a snapshot, which is a point-in-time
+// complete copy of a volume. You can create a volume from the
+// snapshot.
 func (c *Client) CreateSnapshot(args CreateSnapshotSnapshotParams) (*CreateSnapshotResults, error) {
 	return createSnapshot(c.handleRequest, CreateSnapshotParams{TenantId: c.tenantId, Snapshot: args})
 }
 
-// Lists detailed information for all Block Storage snapshots that the
-// tenant who submits the request can access.
+// GetSnapshotsDetail lists detailed information for all Block Storage
+// snapshots that the tenant who submits the request can access.
 func (c *Client) GetSnapshotsDetail() (*GetSnapshotsDetailResults, error) {
 	return getSnapshotsDetail(c.handleRequest, GetSnapshotsDetailParams{TenantId: c.tenantId})
 }
 
-// Updates the metadata for a specified snapshot.
+// UpdateSnapshotMetadata updates the metadata for a specified
+// snapshot.
 func (c *Client) UpdateSnapshotMetadata(snapshotId, key string) (*UpdateSnapshotMetadataResults, error) {
 	return updateSnapshotMetadata(c.handleRequest, UpdateSnapshotMetadataParams{
 		TenantId:   c.tenantId,
@@ -171,8 +198,8 @@ func (c *Client) UpdateSnapshotMetadata(snapshotId, key string) (*UpdateSnapshot
 	})
 }
 
-// Creates a volume. To create a bootable volume, include the image
-// ID and set the bootable flag to true in the request body.
+// CreateVolume creates a volume. To create a bootable volume, include
+// the image ID and set the bootable flag to true in the request body.
 //
 // Preconditions:
 //
@@ -198,12 +225,13 @@ func (c *Client) CreateVolume(args CreateVolumeVolumeParams) (*CreateVolumeResul
 	return createVolume(c.handleRequest, CreateVolumeParams{TenantId: c.tenantId, Volume: args})
 }
 
-// Updates a volume.
+// UpdateVolume updates a volume.
 func (c *Client) UpdateVolume(volumeId string, args UpdateVolumeVolumeParams) (*UpdateVolumeResults, error) {
 	return updateVolume(c.handleRequest, UpdateVolumeParams{TenantId: c.tenantId, VolumeId: volumeId, Volume: args})
 }
 
-// The volume managed by OpenStack Block Storage is not deleted from the storage system. :
+// DeleteVolume flags a volume for deletion. The volume managed by
+// OpenStack Block Storage is not deleted from the storage system.
 func (c *Client) DeleteVolume(volumeId string) error {
 	_, err := deleteVolume(
 		c.handleRequest,
@@ -212,31 +240,22 @@ func (c *Client) DeleteVolume(volumeId string) error {
 	return err
 }
 
-// Lists volume types.
+// GetVolumeTypes lists volume types.
 func (c *Client) GetVolumeTypes() (*GetVolumeTypesResults, error) {
 	return getVolumeTypes(c.handleRequest, GetVolumeTypesParams{TenantId: c.tenantId})
 }
 
-type StatusResultFn func() (string, error)
+type predicateFn func() (bool, error)
 
-// VolumeStatusNotifier will check a volume's status to determine
-// whether it matches the given status. After a check, it waits for
-// "waitDur" before attempting again. If the status does not match
-// after "numAttempts", an error is returned.
-func (c *Client) StatusNotifier(
-	getStatus StatusResultFn,
-	desiredStatus string,
-	numAttempts int,
-	waitDur time.Duration,
-) <-chan error {
+func notifier(predicate predicateFn, numAttempts int, waitDur time.Duration) <-chan error {
 	notifierChan := make(chan error)
 	go func() {
+		defer close(notifierChan)
 		for attemptNum := 0; attemptNum < numAttempts; attemptNum++ {
-			if retrievedStatus, err := getStatus(); err != nil {
+			if ok, err := predicate(); err != nil {
 				notifierChan <- err
 				return
-			} else if retrievedStatus == desiredStatus {
-				notifierChan <- nil
+			} else if ok {
 				return
 			}
 
@@ -247,18 +266,26 @@ func (c *Client) StatusNotifier(
 	return notifierChan
 }
 
+// VolumeStatusNotifier will check a volume's status to determine
+// whether it matches the given status. After a check, it waits for
+// "waitDur" before attempting again. If the status does not match
+// after "numAttempts", an error is returned.
 func (c *Client) VolumeStatusNotifier(volId, status string, numAttempts int, waitDur time.Duration) <-chan error {
-	getStatus := func() (string, error) {
+	statusMatches := func() (bool, error) {
 		volInfo, err := c.GetVolume(volId)
-		return volInfo.Volume.Status, err
+		return volInfo.Volume.Status == status, err
 	}
-	return c.StatusNotifier(getStatus, status, numAttempts, waitDur)
+	return notifier(statusMatches, numAttempts, waitDur)
 }
 
+// SnapshotStatusNotifier will check a volume's status to determine
+// whether it matches the given status. After a check, it waits for
+// "waitDur" before attempting again. If the status does not match
+// after "numAttempts", an error is returned.
 func (c *Client) SnapshotStatusNotifier(snapId, status string, numAttempts int, waitDur time.Duration) <-chan error {
-	getStatus := func() (string, error) {
+	statusMatches := func() (bool, error) {
 		snapInfo, err := c.GetSnapshot(snapId)
-		return snapInfo.Snapshot.Status, err
+		return snapInfo.Snapshot.Status == status, err
 	}
-	return c.StatusNotifier(getStatus, status, numAttempts, waitDur)
+	return notifier(statusMatches, numAttempts, waitDur)
 }
