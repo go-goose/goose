@@ -1,5 +1,5 @@
 // Copyright 2015 Canonical Ltd.
-// Licensed under the AGPLv3, see LICENCE file for details.
+// Licensed under the LGPLv3, see LICENCE file for details.
 
 package cinder
 
@@ -78,16 +78,7 @@ func (s *CinderTestSuite) TestCreateSnapshot(c *gc.C) {
 
 		c.Check(receivedReq, gc.DeepEquals, CreateSnapshotParams{Snapshot: snapReq})
 
-		resp := struct {
-			CreatedAt   string   `json:"created_at"`
-			Description string   `json:"description"`
-			ID          string   `json:"id"`
-			Metadata    struct{} `json:"metadata"`
-			Name        string   `json:"name"`
-			Size        int      `json:"size"`
-			Status      string   `json:"status"`
-			VolumeID    string   `json:"volume_id"`
-		}{
+		resp := Snapshot{
 			CreatedAt:   "test-time",
 			Description: receivedReq.Snapshot.Description,
 			ID:          "test-id",
@@ -139,18 +130,7 @@ func (s *CinderTestSuite) TestGetSnapshot(c *gc.C) {
 
 		c.Check(req.Header["X-Auth-Token"], gc.DeepEquals, []string{testToken})
 
-		resp := struct {
-			CreatedAt                                 string   `json:"created_at"`
-			Description                               string   `json:"description"`
-			ID                                        string   `json:"id"`
-			Metadata                                  struct{} `json:"metadata"`
-			Name                                      string   `json:"name"`
-			Os_Extended_Snapshot_Attributes_Progress  string   `json:"os-extended-snapshot-attributes:progress"`
-			Os_Extended_Snapshot_Attributes_ProjectID string   `json:"os-extended-snapshot-attributes:project_id"`
-			Size                                      int      `json:"size"`
-			Status                                    string   `json:"status"`
-			VolumeID                                  string   `json:"volume_id"`
-		}{
+		resp := Snapshot{
 			CreatedAt:   testTime,
 			Description: testDescr,
 			ID:          testId,
@@ -191,18 +171,7 @@ func (s *CinderTestSuite) TestGetSnapshotDetail(c *gc.C) {
 
 		c.Check(req.Header["X-Auth-Token"], gc.DeepEquals, []string{testToken})
 
-		resp := []struct {
-			CreatedAt                                 string   `json:"created_at"`
-			Description                               string   `json:"description"`
-			ID                                        string   `json:"id"`
-			Metadata                                  struct{} `json:"metadata"`
-			Name                                      string   `json:"name"`
-			Os_Extended_Snapshot_Attributes_Progress  string   `json:"os-extended-snapshot-attributes:progress"`
-			Os_Extended_Snapshot_Attributes_ProjectID string   `json:"os-extended-snapshot-attributes:project_id"`
-			Size                                      int      `json:"size"`
-			Status                                    string   `json:"status"`
-			VolumeID                                  string   `json:"volume_id"`
-		}{{
+		resp := []Snapshot{{
 			CreatedAt:   testTime,
 			Description: testDescr,
 			ID:          testId,
@@ -247,18 +216,7 @@ func (s *CinderTestSuite) TestGetSnapshotSimple(c *gc.C) {
 
 		c.Check(req.Header["X-Auth-Token"], gc.DeepEquals, []string{testToken})
 
-		resp := []struct {
-			CreatedAt                                 string   `json:"created_at"`
-			Description                               string   `json:"description"`
-			ID                                        string   `json:"id"`
-			Metadata                                  struct{} `json:"metadata"`
-			Name                                      string   `json:"name"`
-			Os_Extended_Snapshot_Attributes_Progress  string   `json:"os-extended-snapshot-attributes:progress"`
-			Os_Extended_Snapshot_Attributes_ProjectID string   `json:"os-extended-snapshot-attributes:project_id"`
-			Size                                      int      `json:"size"`
-			Status                                    string   `json:"status"`
-			VolumeID                                  string   `json:"volume_id"`
-		}{{
+		resp := []Snapshot{{
 			CreatedAt:   testTime,
 			Description: testDescr,
 			ID:          testId,
@@ -301,20 +259,7 @@ func (s *CinderTestSuite) TestShowSnapshotMetadata(c *gc.C) {
 
 		c.Check(req.Header["X-Auth-Token"], gc.DeepEquals, []string{testToken})
 
-		resp := struct {
-			CreatedAt   string      `json:"created_at"`
-			Description interface{} `json:"description"`
-			ID          string      `json:"id"`
-			Metadata    struct {
-				Key string `json:"key"`
-			} `json:"metadata"`
-			Name                                      string `json:"name"`
-			Os_Extended_Snapshot_Attributes_Progress  string `json:"os-extended-snapshot-attributes:progress"`
-			Os_Extended_Snapshot_Attributes_ProjectID string `json:"os-extended-snapshot-attributes:project_id"`
-			Size                                      int    `json:"size"`
-			Status                                    string `json:"status"`
-			VolumeID                                  string `json:"volume_id"`
-		}{
+		resp := Snapshot{
 			CreatedAt:   testTime,
 			Description: testDescr,
 			ID:          testId,
@@ -364,15 +309,7 @@ func (s *CinderTestSuite) TestUpdateSnapshot(c *gc.C) {
 
 		c.Check(receivedReq, gc.DeepEquals, UpdateSnapshotParams{Snapshot: updateReq})
 
-		resp := struct {
-			CreatedAt   string `json:"created_at"`
-			Description string `json:"description"`
-			ID          string `json:"id"`
-			Name        string `json:"name"`
-			Size        int    `json:"size"`
-			Status      string `json:"status"`
-			VolumeID    string `json:"volume_id"`
-		}{
+		resp := Snapshot{
 			CreatedAt:   testTime,
 			Description: updateReq.Description,
 			ID:          testId,
@@ -457,21 +394,7 @@ func (s *CinderTestSuite) TestCreateVolume(c *gc.C) {
 		err = json.Unmarshal(reqBody, &receivedReq)
 		c.Assert(err, gc.IsNil)
 
-		resp := struct {
-			Attachments      []interface{} `json:"attachments"`
-			AvailabilityZone string        `json:"availability_zone"`
-			Bootable         string        `json:"bootable"`
-			CreatedAt        string        `json:"created_at"`
-			Description      interface{}   `json:"description"`
-			ID               string        `json:"id"`
-			Metadata         struct{}      `json:"metadata"`
-			Name             string        `json:"name"`
-			Size             int           `json:"size"`
-			SnapshotID       interface{}   `json:"snapshot_id"`
-			SourceVolid      interface{}   `json:"source_volid"`
-			Status           string        `json:"status"`
-			VolumeType       string        `json:"volume_type"`
-		}{
+		resp := Volume{
 			AvailabilityZone: receivedReq.Volume.AvailabilityZone,
 			Bootable:         fmt.Sprintf("%v", receivedReq.Volume.Bootable),
 			CreatedAt:        "test-time",
@@ -537,21 +460,7 @@ func (s *CinderTestSuite) TestUpdateVolume(c *gc.C) {
 		err = json.Unmarshal(reqBody, &receivedReq)
 		c.Assert(err, gc.IsNil)
 
-		resp := struct {
-			Attachments      []interface{} `json:"attachments"`
-			AvailabilityZone string        `json:"availability_zone"`
-			Bootable         string        `json:"bootable"`
-			CreatedAt        string        `json:"created_at"`
-			Description      interface{}   `json:"description"`
-			ID               string        `json:"id"`
-			Metadata         struct{}      `json:"metadata"`
-			Name             string        `json:"name"`
-			Size             int           `json:"size"`
-			SnapshotID       interface{}   `json:"snapshot_id"`
-			SourceVolid      interface{}   `json:"source_volid"`
-			Status           string        `json:"status"`
-			VolumeType       string        `json:"volume_type"`
-		}{
+		resp := Volume{
 			AvailabilityZone: "test-avail-zone",
 			Bootable:         "false",
 			CreatedAt:        "test-time",
@@ -676,28 +585,7 @@ func (s *CinderTestSuite) TestGetVolumesDetail(c *gc.C) {
 	s.HandleFunc("/v2/"+testId+"/volumes/", func(w http.ResponseWriter, req *http.Request) {
 		numCalls++
 
-		resp := []struct {
-			Attachments      []interface{} `json:"attachments"`
-			AvailabilityZone string        `json:"availability_zone"`
-			CreatedAt        string        `json:"created_at"`
-			Description      string        `json:"description"`
-			ID               string        `json:"id"`
-			Links            []struct {
-				Href string `json:"href"`
-				Rel  string `json:"rel"`
-			} `json:"links"`
-			Metadata struct {
-				Contents string `json:"contents"`
-			} `json:"metadata"`
-			Name                        string      `json:"name"`
-			Os_Vol_Host_Attr_Host       string      `json:"os-vol-host-attr:host"`
-			Os_Vol_Tenant_Attr_TenantID string      `json:"os-vol-tenant-attr:tenant_id"`
-			Size                        int         `json:"size"`
-			SnapshotID                  interface{} `json:"snapshot_id"`
-			SourceVolid                 interface{} `json:"source_volid"`
-			Status                      string      `json:"status"`
-			VolumeType                  string      `json:"volume_type"`
-		}{{
+		resp := []Volume{{
 			AvailabilityZone: "test-availability-zone",
 			CreatedAt:        testTime,
 			Description:      testDescr,
@@ -746,14 +634,7 @@ func (s *CinderTestSuite) TestGetVolumesSimple(c *gc.C) {
 	s.HandleFunc("/v2/"+testId+"/volumes", func(w http.ResponseWriter, req *http.Request) {
 		numCalls++
 
-		resp := []struct {
-			ID    string `json:"id"`
-			Links []struct {
-				Href string `json:"href"`
-				Rel  string `json:"rel"`
-			} `json:"links"`
-			Name string `json:"name"`
-		}{{
+		resp := []Volume{{
 			ID:   testId,
 			Name: testName,
 		}}
@@ -887,13 +768,7 @@ func (s *CinderTestSuite) TestGetVolumeTypes(c *gc.C) {
 	s.HandleFunc("/v2/"+testId+"/types", func(w http.ResponseWriter, req *http.Request) {
 		numCalls++
 
-		resp := []struct {
-			ExtraSpecs struct {
-				Capabilities string `json:"capabilities"`
-			} `json:"extra_specs"`
-			ID   string `json:"id"`
-			Name string `json:"name"`
-		}{{
+		resp := []VolumeType{{
 			ID: testId,
 			ExtraSpecs: struct {
 				Capabilities string `json:"capabilities"`

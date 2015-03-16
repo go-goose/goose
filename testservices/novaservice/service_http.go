@@ -673,6 +673,7 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 				}{srvGroups}
 				return sendJSON(http.StatusOK, resp, w, r)
 			}
+
 			resp := struct {
 				Server nova.ServerDetail `json:"server"`
 			}{*server}
@@ -702,6 +703,8 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 				serverId = path.Base(strings.Replace(r.URL.Path, "/action", "", 1))
 				server, _ := n.server(serverId)
 				return n.handleServerActions(server, w, r)
+			} else if suffix == "os-volume_attachments" {
+				return n.handleAttachVolumes(w, r)
 			} else {
 				serverId = suffix
 			}
@@ -1046,6 +1049,28 @@ func (n *Nova) handleAvailabilityZones(w http.ResponseWriter, r *http.Request) e
 		return sendJSON(http.StatusOK, resp, w, r)
 	}
 	return fmt.Errorf("unknown request method %q for %s", r.Method, r.URL.Path)
+}
+
+func (n *Nova) handleAttachVolumes(w http.ResponseWriter, r *http.Request) error {
+	serverId := path.Base(strings.Replace(r.URL.Path, "/os-volume_attachments", "", 1))
+
+	bodyBytes, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+
+	var attachment nova.VolumeAttachment
+	if err := json.Unmarshal(bodyBytes, &attachment); err != nil {
+		return err
+	}
+
+	serverVols := n.serverIdToAttachedVolumes[serverId]
+	serverVols = append(serverVols, attachment)
+
+	// Echo the request back.
+	w.Write(bodyBytes)
+
+	return nil
 }
 
 // setupHTTP attaches all the needed handlers to provide the HTTP API.

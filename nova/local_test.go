@@ -270,3 +270,15 @@ func (s *localLiveSuite) TestRunServerAvailabilityZoneNotAvailable(c *gc.C) {
 	_, err := s.runServerAvailabilityZone("az1")
 	c.Assert(err, gc.ErrorMatches, "(.|\n)*The requested availability zone is not available(.|\n)*")
 }
+
+func (s *localLiveSuite) TestAttachVolume(c *gc.C) {
+
+	instance, err := s.createInstance("test-instance")
+	c.Assert(err, gc.IsNil)
+
+	volAttachment, err := s.nova.AttachVolume(instance.Id, "volume-id", "/dev/sda1")
+	c.Assert(err, gc.IsNil)
+
+	c.Check(volAttachment.ServerId, gc.Equals, instance.Id)
+	c.Check(volAttachment.VolumeId, gc.Equals, "volume-id")
+}
