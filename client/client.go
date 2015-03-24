@@ -45,6 +45,8 @@ type AuthenticatingClient interface {
 	Token() string
 	UserId() string
 	TenantId() string
+
+	EndpointsForRegion(string) identity.ServiceURLs
 }
 
 // A single http client is shared between all Goose clients.
@@ -81,6 +83,10 @@ type authenticatingClient struct {
 	tokenId              string
 	tenantId             string
 	userId               string
+}
+
+func (c *authenticatingClient) EndpointsForRegion(region string) identity.ServiceURLs {
+	return c.regionServiceURLs[region]
 }
 
 var _ AuthenticatingClient = (*authenticatingClient)(nil)

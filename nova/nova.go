@@ -24,6 +24,7 @@ const (
 	apiSecurityGroupRules = "os-security-group-rules"
 	apiFloatingIPs        = "os-floating-ips"
 	apiAvailabilityZone   = "os-availability-zone"
+	apiVolumeAttachments  = "os-volume_attachments"
 )
 
 // Server status values.
@@ -705,4 +706,41 @@ func (c *Client) ListAvailabilityZones() ([]AvailabilityZone, error) {
 		return nil, errors.Newf(err, "failed to get list of availability zones")
 	}
 	return resp.AvailabilityZoneInfo, nil
+}
+
+// VolumeAttachment represents both the request and response for
+// attaching volumes.
+type VolumeAttachment struct {
+	Device   string `json:"device"`
+	Id       string `json:"id"`
+	ServerId string `json:"serverId"`
+	VolumeId string `json:"volumeId"`
+}
+
+// AttachVolume attaches the given volumeId to the given serverId at
+// mount point specified in device. Note that the server must support
+// the os-volume_attachments attachment; if it does not, an error will
+// be returned stating such.
+func (c *Client) AttachVolume(serverId, volumeId, device string) (*VolumeAttachment, error) {
+
+	var resp VolumeAttachment
+	requestData := goosehttp.RequestData{
+		ReqValue: &VolumeAttachment{
+			ServerId: serverId,
+			VolumeId: volumeId,
+			Device:   device,
+		},
+		RespValue: &resp,
+	}
+	url := fmt.Sprintf("%s/%s/%s", apiServers, serverId, apiVolumeAttachments)
+	err := c.client.SendRequest(client.POST, "compute", url, &requestData)
+	if errors.IsNotFound(err) {
+		return nil, errors.NewNotImplementedf(
+			err, nil, "the server does not support attaching volumes",
+		)
+	}
+	if err != nil {
+		return nil, errors.Newf(err, "failed to attach volume")
+	}
+	return &resp, nil
 }

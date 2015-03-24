@@ -21,19 +21,20 @@ var _ identityservice.ServiceProvider = (*Nova)(nil)
 // contains the service double's internal state.
 type Nova struct {
 	testservices.ServiceInstance
-	flavors           map[string]nova.FlavorDetail
-	servers           map[string]nova.ServerDetail
-	groups            map[string]nova.SecurityGroup
-	rules             map[string]nova.SecurityGroupRule
-	floatingIPs       map[string]nova.FloatingIP
-	networks          map[string]nova.Network
-	serverGroups      map[string][]string
-	serverIPs         map[string][]string
-	availabilityZones map[string]nova.AvailabilityZone
-	nextServerId      int
-	nextGroupId       int
-	nextRuleId        int
-	nextIPId          int
+	flavors                   map[string]nova.FlavorDetail
+	servers                   map[string]nova.ServerDetail
+	groups                    map[string]nova.SecurityGroup
+	rules                     map[string]nova.SecurityGroupRule
+	floatingIPs               map[string]nova.FloatingIP
+	networks                  map[string]nova.Network
+	serverGroups              map[string][]string
+	serverIPs                 map[string][]string
+	availabilityZones         map[string]nova.AvailabilityZone
+	serverIdToAttachedVolumes map[string][]nova.VolumeAttachment
+	nextServerId              int
+	nextGroupId               int
+	nextRuleId                int
+	nextIPId                  int
 }
 
 func errorJSONEncode(err error) (int, string) {
