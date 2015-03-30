@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/goose.v1/errors"
 	"gopkg.in/goose.v1/nova"
 	"gopkg.in/goose.v1/testservices"
 	"gopkg.in/goose.v1/testservices/identityservice"
@@ -647,6 +648,18 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 
 // handleServers handles the servers HTTP API.
 func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
+
+	if strings.Contains(r.URL.Path, "os-volume_attachments") {
+		switch r.Method {
+		case "GET":
+			return n.handleListVolumes(w, r)
+		case "POST":
+			return n.handleAttachVolumes(w, r)
+		case "DELETE":
+			return n.handleDetachVolumes(w, r)
+		}
+	}
+
 	switch r.Method {
 	case "GET":
 		if suffix := path.Base(r.URL.Path); suffix != "servers" {
@@ -703,8 +716,6 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 				serverId = path.Base(strings.Replace(r.URL.Path, "/action", "", 1))
 				server, _ := n.server(serverId)
 				return n.handleServerActions(server, w, r)
-			} else if suffix == "os-volume_attachments" {
-				return n.handleAttachVolumes(w, r)
 			} else {
 				serverId = suffix
 			}
@@ -1063,14 +1074,49 @@ func (n *Nova) handleAttachVolumes(w http.ResponseWriter, r *http.Request) error
 	if err := json.Unmarshal(bodyBytes, &attachment); err != nil {
 		return err
 	}
+	n.nextAttachmentId++
+	attachment.Id = fmt.Sprintf("%d", n.nextAttachmentId)
 
 	serverVols := n.serverIdToAttachedVolumes[serverId]
 	serverVols = append(serverVols, attachment)
+	n.serverIdToAttachedVolumes[serverId] = serverVols
 
-	// Echo the request back.
-	w.Write(bodyBytes)
+	// Echo the request back with an attachment ID.
+	resp, err := json.Marshal(attachment)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write(resp)
+	return err
+}
 
-	return nil
+func (n *Nova) handleDetachVolumes(w http.ResponseWriter, r *http.Request) error {
+	attachId := path.Base(r.URL.Path)
+	serverId := path.Base(strings.Replace(r.URL.Path, "/os-volume_attachments/"+attachId, "", 1))
+	serverVols := n.serverIdToAttachedVolumes[serverId]
+
+	for volIdx, vol := range serverVols {
+		if vol.Id == attachId {
+			serverVols = append(serverVols[:volIdx], serverVols[volIdx+1:]...)
+			n.serverIdToAttachedVolumes[serverId] = serverVols
+			return nil
+		}
+	}
+
+	return errors.NewNotFoundf(nil, nil, "no such attachment id: %v", attachId)
+}
+
+func (n *Nova) handleListVolumes(w http.ResponseWriter, r *http.Request) error {
+	serverId := path.Base(strings.Replace(r.URL.Path, "/os-volume_attachments", "", 1))
+	serverVols := n.serverIdToAttachedVolumes[serverId]
+
+	resp, err := json.Marshal(serverVols)
+	if err != nil {
+		return err
+	}
+
+	_, err = w.Write(resp)
+	return err
 }
 
 // setupHTTP attaches all the needed handlers to provide the HTTP API.

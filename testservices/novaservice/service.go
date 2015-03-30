@@ -35,6 +35,7 @@ type Nova struct {
 	nextGroupId               int
 	nextRuleId                int
 	nextIPId                  int
+	nextAttachmentId          int
 }
 
 func errorJSONEncode(err error) (int, string) {
@@ -90,15 +91,16 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 		{Id: "999", Name: "default", Description: "default group"},
 	}
 	novaService := &Nova{
-		flavors:           make(map[string]nova.FlavorDetail),
-		servers:           make(map[string]nova.ServerDetail),
-		groups:            make(map[string]nova.SecurityGroup),
-		rules:             make(map[string]nova.SecurityGroupRule),
-		floatingIPs:       make(map[string]nova.FloatingIP),
-		networks:          make(map[string]nova.Network),
-		serverGroups:      make(map[string][]string),
-		serverIPs:         make(map[string][]string),
-		availabilityZones: make(map[string]nova.AvailabilityZone),
+		flavors:                   make(map[string]nova.FlavorDetail),
+		servers:                   make(map[string]nova.ServerDetail),
+		groups:                    make(map[string]nova.SecurityGroup),
+		rules:                     make(map[string]nova.SecurityGroupRule),
+		floatingIPs:               make(map[string]nova.FloatingIP),
+		networks:                  make(map[string]nova.Network),
+		serverGroups:              make(map[string][]string),
+		serverIPs:                 make(map[string][]string),
+		availabilityZones:         make(map[string]nova.AvailabilityZone),
+		serverIdToAttachedVolumes: make(map[string][]nova.VolumeAttachment),
 		ServiceInstance: testservices.ServiceInstance{
 			IdentityService: identityService,
 			Scheme:          URL.Scheme,
