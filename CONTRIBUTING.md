@@ -48,7 +48,7 @@ Great! Here are the steps anyone can follow to propose a bug fix or patch.
 ```
 $ git clone https://github.com/<your-github-username>/goose
 ```
- * For the unit tests, you will need [gocheck](https://github.com/go-check/check):
+ * For the unit tests, you will need [gocheck.v1](https://github.com/go-check/check):
 ```
 $ go get gopkg.in/check.v1
 ```
