@@ -1070,19 +1070,21 @@ func (n *Nova) handleAttachVolumes(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 
-	var attachment nova.VolumeAttachment
+	var attachment struct {
+		VolumeAttachment nova.VolumeAttachment `json:"volumeAttachment"`
+	}
 	if err := json.Unmarshal(bodyBytes, &attachment); err != nil {
 		return err
 	}
 	n.nextAttachmentId++
-	attachment.Id = fmt.Sprintf("%d", n.nextAttachmentId)
+	attachment.VolumeAttachment.Id = fmt.Sprintf("%d", n.nextAttachmentId)
 
 	serverVols := n.serverIdToAttachedVolumes[serverId]
-	serverVols = append(serverVols, attachment)
+	serverVols = append(serverVols, attachment.VolumeAttachment)
 	n.serverIdToAttachedVolumes[serverId] = serverVols
 
 	// Echo the request back with an attachment ID.
-	resp, err := json.Marshal(attachment)
+	resp, err := json.Marshal(&attachment)
 	if err != nil {
 		return err
 	}
@@ -1110,7 +1112,9 @@ func (n *Nova) handleListVolumes(w http.ResponseWriter, r *http.Request) error {
 	serverId := path.Base(strings.Replace(r.URL.Path, "/os-volume_attachments", "", 1))
 	serverVols := n.serverIdToAttachedVolumes[serverId]
 
-	resp, err := json.Marshal(serverVols)
+	resp, err := json.Marshal(struct {
+		VolumeAttachments []nova.VolumeAttachment `json:"volumeAttachments"`
+	}{serverVols})
 	if err != nil {
 		return err
 	}
