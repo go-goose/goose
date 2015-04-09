@@ -744,3 +744,41 @@ func (c *Client) AttachVolume(serverId, volumeId, device string) (*VolumeAttachm
 	}
 	return &resp, nil
 }
+
+// DetachVolume detaches the volume with the given attachmentId from
+// the server with the given serverId.
+func (c *Client) DetachVolume(serverId, attachmentId string) error {
+	requestData := goosehttp.RequestData{}
+	url := fmt.Sprintf("%s/%s/%s/%s", apiServers, serverId, apiVolumeAttachments, attachmentId)
+	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData)
+	if errors.IsNotFound(err) {
+		return errors.NewNotImplementedf(
+			err, nil, "the server does not support deleting attached volumes",
+		)
+	}
+	if err != nil {
+		return errors.Newf(err, "failed to delete volume attachment")
+	}
+	return nil
+}
+
+// ListVolumeAttachments lists the volumes currently attached to the
+// server with the given serverId.
+func (c *Client) ListVolumeAttachments(serverId string) ([]VolumeAttachment, error) {
+
+	var resp []VolumeAttachment
+	requestData := goosehttp.RequestData{
+		RespValue: &resp,
+	}
+	url := fmt.Sprintf("%s/%s/%s", apiServers, serverId, apiVolumeAttachments)
+	err := c.client.SendRequest(client.GET, "compute", url, &requestData)
+	if errors.IsNotFound(err) {
+		return nil, errors.NewNotImplementedf(
+			err, nil, "the server does not support listing attached volumes",
+		)
+	}
+	if err != nil {
+		return nil, errors.Newf(err, "failed to list volume attachments")
+	}
+	return resp, nil
+}
