@@ -723,13 +723,17 @@ type VolumeAttachment struct {
 // be returned stating such.
 func (c *Client) AttachVolume(serverId, volumeId, device string) (*VolumeAttachment, error) {
 
-	var resp VolumeAttachment
+	type volumeAttachment struct {
+		VolumeAttachment VolumeAttachment `json:"volumeAttachment"`
+	}
+
+	var resp volumeAttachment
 	requestData := goosehttp.RequestData{
-		ReqValue: &VolumeAttachment{
+		ReqValue: &volumeAttachment{VolumeAttachment{
 			ServerId: serverId,
 			VolumeId: volumeId,
 			Device:   device,
-		},
+		}},
 		RespValue: &resp,
 	}
 	url := fmt.Sprintf("%s/%s/%s", apiServers, serverId, apiVolumeAttachments)
@@ -742,7 +746,7 @@ func (c *Client) AttachVolume(serverId, volumeId, device string) (*VolumeAttachm
 	if err != nil {
 		return nil, errors.Newf(err, "failed to attach volume")
 	}
-	return &resp, nil
+	return &resp.VolumeAttachment, nil
 }
 
 // DetachVolume detaches the volume with the given attachmentId from
@@ -766,7 +770,9 @@ func (c *Client) DetachVolume(serverId, attachmentId string) error {
 // server with the given serverId.
 func (c *Client) ListVolumeAttachments(serverId string) ([]VolumeAttachment, error) {
 
-	var resp []VolumeAttachment
+	var resp struct {
+		VolumeAttachments []VolumeAttachment `json:"volumeAttachments"`
+	}
 	requestData := goosehttp.RequestData{
 		RespValue: &resp,
 	}
@@ -780,5 +786,5 @@ func (c *Client) ListVolumeAttachments(serverId string) ([]VolumeAttachment, err
 	if err != nil {
 		return nil, errors.Newf(err, "failed to list volume attachments")
 	}
-	return resp, nil
+	return resp.VolumeAttachments, nil
 }
