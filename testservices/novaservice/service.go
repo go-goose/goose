@@ -323,13 +323,16 @@ type filter map[string]string
 //
 // This will match all servers with status "ACTIVE", and names starting
 // with "foo".
-func (n *Nova) matchServers(f filter) []nova.ServerDetail {
+func (n *Nova) matchServers(f filter) ([]nova.ServerDetail, error) {
+	if err := n.ProcessFunctionHook(n, f); err != nil {
+		return nil, err
+	}
 	var servers []nova.ServerDetail
 	for _, server := range n.servers {
 		servers = append(servers, server)
 	}
 	if len(f) == 0 {
-		return servers // empty filter matches everything
+		return servers, nil // empty filter matches everything
 	}
 	if status := f[nova.FilterStatus]; status != "" {
 		matched := []nova.ServerDetail{}
@@ -340,7 +343,7 @@ func (n *Nova) matchServers(f filter) []nova.ServerDetail {
 		}
 		if len(matched) == 0 {
 			// no match, so no need to look further
-			return nil
+			return nil, nil
 		}
 		servers = matched
 	}
@@ -348,9 +351,7 @@ func (n *Nova) matchServers(f filter) []nova.ServerDetail {
 		matched := []nova.ServerDetail{}
 		rex, err := regexp.Compile(nameRex)
 		if err != nil {
-			fmt.Printf("cannot compile regexp filter %q: %v\n", nameRex, err)
-			// effectively nothing matches
-			return nil
+			return nil, err
 		}
 		for _, server := range servers {
 			if rex.MatchString(server.Name) {
@@ -359,26 +360,29 @@ func (n *Nova) matchServers(f filter) []nova.ServerDetail {
 		}
 		if len(matched) == 0 {
 			// no match, here so ignore other results
-			return nil
+			return nil, nil
 		}
 		servers = matched
 	}
-	return servers
+	return servers, nil
 	// TODO(dimitern) - 2013-02-11 bug=1121690
 	// implement FilterFlavor, FilterImage, FilterMarker, FilterLimit and FilterChangesSince
 }
 
 // allServers returns a list of all existing servers.
 // Filtering is supported, see filter type for more info.
-func (n *Nova) allServers(f filter) []nova.ServerDetail {
+func (n *Nova) allServers(f filter) ([]nova.ServerDetail, error) {
 	return n.matchServers(f)
 }
 
 // allServersAsEntities returns all servers as Entity structs.
 // Filtering is supported, see filter type for more info.
-func (n *Nova) allServersAsEntities(f filter) []nova.Entity {
+func (n *Nova) allServersAsEntities(f filter) ([]nova.Entity, error) {
 	var entities []nova.Entity
-	servers := n.matchServers(f)
+	servers, err := n.matchServers(f)
+	if err != nil {
+		return nil, err
+	}
 	for _, server := range servers {
 		entities = append(entities, nova.Entity{
 			Id:    server.Id,
@@ -387,7 +391,7 @@ func (n *Nova) allServersAsEntities(f filter) []nova.Entity {
 			Links: server.Links,
 		})
 	}
-	return entities
+	return entities, nil
 }
 
 // removeServer deletes an existing server.

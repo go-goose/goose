@@ -612,7 +612,11 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 		Addresses:        make(map[string][]nova.IPAddress),
 		AvailabilityZone: req.Server.AvailabilityZone,
 	}
-	nextServer := len(n.allServers(nil)) + 1
+	servers, err := n.allServers(nil)
+	if err != nil {
+		return err
+	}
+	nextServer := len(servers) + 1
 	n.buildServerLinks(&server)
 	// set some IP addresses
 	addr := fmt.Sprintf("127.10.0.%d", nextServer)
@@ -700,7 +704,10 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 				}
 			}
 		}
-		entities := n.allServersAsEntities(f)
+		entities, err := n.allServersAsEntities(f)
+		if err != nil {
+			return err
+		}
 		if len(entities) == 0 {
 			entities = []nova.Entity{}
 		}
@@ -765,7 +772,10 @@ func (n *Nova) handleServersDetail(w http.ResponseWriter, r *http.Request) error
 				}
 			}
 		}
-		servers := n.allServers(f)
+		servers, err := n.allServers(f)
+		if err != nil {
+			return err
+		}
 		if len(servers) == 0 {
 			servers = []nova.ServerDetail{}
 		}
