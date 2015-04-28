@@ -16,6 +16,7 @@ import (
 
 	"gopkg.in/goose.v1/nova"
 	"gopkg.in/goose.v1/testing/httpsuite"
+	"gopkg.in/goose.v1/testservices/hook"
 	"gopkg.in/goose.v1/testservices/identityservice"
 )
 
@@ -514,7 +515,8 @@ func (s *NovaHTTPSuite) TestGetFlavorsDetail(c *gc.C) {
 }
 
 func (s *NovaHTTPSuite) TestGetServers(c *gc.C) {
-	entities := s.service.allServersAsEntities(nil)
+	entities, err := s.service.allServersAsEntities(nil)
+	c.Assert(err, gc.IsNil)
 	c.Assert(entities, gc.HasLen, 0)
 	var expected struct {
 		Servers []nova.Entity
@@ -535,7 +537,8 @@ func (s *NovaHTTPSuite) TestGetServers(c *gc.C) {
 		c.Assert(err, gc.IsNil)
 		defer s.service.removeServer(server.Id)
 	}
-	entities = s.service.allServersAsEntities(nil)
+	entities, err = s.service.allServersAsEntities(nil)
+	c.Assert(err, gc.IsNil)
 	resp, err = s.authRequest("GET", "/servers", nil, nil)
 	c.Assert(err, gc.IsNil)
 	c.Assert(resp.StatusCode, gc.Equals, http.StatusOK)
@@ -556,7 +559,8 @@ func (s *NovaHTTPSuite) TestGetServers(c *gc.C) {
 }
 
 func (s *NovaHTTPSuite) TestGetServersWithFilters(c *gc.C) {
-	entities := s.service.allServersAsEntities(nil)
+	entities, err := s.service.allServersAsEntities(nil)
+	c.Assert(err, gc.IsNil)
 	c.Assert(entities, gc.HasLen, 0)
 	var expected struct {
 		Servers []nova.Entity
@@ -586,6 +590,46 @@ func (s *NovaHTTPSuite) TestGetServersWithFilters(c *gc.C) {
 	c.Assert(expected.Servers, gc.HasLen, 1)
 	c.Assert(expected.Servers[0].Id, gc.Equals, servers[0].Id)
 	c.Assert(expected.Servers[0].Name, gc.Equals, servers[0].Name)
+}
+
+func (s *NovaHTTPSuite) TestGetServersWithBadFilter(c *gc.C) {
+	url := "/servers?name=(server"
+	resp, err := s.authRequest("GET", url, nil, nil)
+	c.Assert(err, gc.IsNil)
+	c.Assert(resp.StatusCode, gc.Equals, http.StatusInternalServerError)
+	type novaError struct {
+		Code    int
+		Message string
+	}
+	var expected struct {
+		novaError `json:"computeFault"`
+	}
+	assertJSON(c, resp, &expected)
+	c.Check(expected.Code, gc.Equals, 500)
+	c.Check(expected.Message, gc.Matches, `error parsing.*\(server.*`)
+}
+
+func (s *NovaHTTPSuite) TestGetServersPatchMatch(c *gc.C) {
+	cleanup := s.service.RegisterControlPoint(
+		"matchServers",
+		func(sc hook.ServiceControl, args ...interface{}) error {
+			return fmt.Errorf("Unexpected error")
+		},
+	)
+	defer cleanup()
+	resp, err := s.authRequest("GET", "/servers", nil, nil)
+	c.Assert(err, gc.IsNil)
+	c.Assert(resp.StatusCode, gc.Equals, http.StatusInternalServerError)
+	type novaError struct {
+		Code    int
+		Message string
+	}
+	var expected struct {
+		novaError `json:"computeFault"`
+	}
+	assertJSON(c, resp, &expected)
+	c.Check(expected.Code, gc.Equals, 500)
+	c.Check(expected.Message, gc.Equals, "Unexpected error")
 }
 
 func (s *NovaHTTPSuite) TestNewUUID(c *gc.C) {
@@ -619,7 +663,8 @@ func (s *NovaHTTPSuite) assertAddresses(c *gc.C, serverId string) {
 }
 
 func (s *NovaHTTPSuite) TestRunServer(c *gc.C) {
-	entities := s.service.allServersAsEntities(nil)
+	entities, err := s.service.allServersAsEntities(nil)
+	c.Assert(err, gc.IsNil)
 	c.Assert(entities, gc.HasLen, 0)
 	var req struct {
 		Server struct {
@@ -712,7 +757,8 @@ func (s *NovaHTTPSuite) TestDeleteServer(c *gc.C) {
 }
 
 func (s *NovaHTTPSuite) TestGetServersDetail(c *gc.C) {
-	servers := s.service.allServers(nil)
+	servers, err := s.service.allServers(nil)
+	c.Assert(err, gc.IsNil)
 	c.Assert(servers, gc.HasLen, 0)
 	var expected struct {
 		Servers []nova.ServerDetail `json:"servers"`
@@ -748,7 +794,8 @@ func (s *NovaHTTPSuite) TestGetServersDetail(c *gc.C) {
 }
 
 func (s *NovaHTTPSuite) TestGetServersDetailWithFilters(c *gc.C) {
-	servers := s.service.allServers(nil)
+	servers, err := s.service.allServers(nil)
+	c.Assert(err, gc.IsNil)
 	c.Assert(servers, gc.HasLen, 0)
 	var expected struct {
 		Servers []nova.ServerDetail `json:"servers"`
