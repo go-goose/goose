@@ -537,3 +537,28 @@ func (s *LiveTests) TestRunServerUnknownAvailabilityZone(c *gc.C) {
 	_, err := s.runServerAvailabilityZone("something_that_will_never_exist")
 	c.Assert(err, gc.ErrorMatches, "(.|\n)*The requested availability zone is not available(.|\n)*")
 }
+
+func (s *LiveTests) TestInstanceMetadata(c *gc.C) {
+	metadata := map[string]string{"my-key": "my-value"}
+	entity, err := s.nova.RunServer(nova.RunServerOpts{
+		Name:             "inst-metadata",
+		FlavorId:         s.testFlavorId,
+		ImageId:          s.testImageId,
+		AvailabilityZone: s.testAvailabilityZone,
+		Metadata:         metadata,
+	})
+	c.Assert(err, gc.IsNil)
+	defer s.nova.DeleteServer(entity.Id)
+
+	server, err := s.nova.GetServer(entity.Id)
+	c.Assert(err, gc.IsNil)
+
+	// nova may have added metadata as well;
+	// delete it before comparing.
+	for k := range server.Metadata {
+		if _, ok := metadata[k]; !ok {
+			delete(server.Metadata, k)
+		}
+	}
+	c.Assert(server.Metadata, gc.DeepEquals, metadata)
+}
