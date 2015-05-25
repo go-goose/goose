@@ -222,13 +222,14 @@ type ServerDetail struct {
 	// in RFC3339 format.
 	Created string
 
-	Flavor Entity
-	HostId string
-	Id     string `json:"-"`
-	UUID   string
-	Image  Entity
-	Links  []Link
-	Name   string
+	Flavor   Entity
+	HostId   string
+	Id       string `json:"-"`
+	UUID     string
+	Image    Entity
+	Links    []Link
+	Name     string
+	Metadata map[string]string
 
 	// HP Cloud returns security groups in server details.
 	Groups []Entity `json:"security_groups"`
@@ -319,6 +320,7 @@ type RunServerOpts struct {
 	SecurityGroupNames []SecurityGroupName `json:"security_groups"`             // Optional
 	Networks           []ServerNetworks    `json:"networks"`                    // Optional
 	AvailabilityZone   string              `json:"availability_zone,omitempty"` // Optional
+	Metadata           map[string]string   `json:"metadata,omitempty"`          // Optional
 }
 
 // RunServer creates a new server, based on the given RunServerOpts.

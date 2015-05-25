@@ -611,6 +611,7 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 		Updated:          timestr,
 		Addresses:        make(map[string][]nova.IPAddress),
 		AvailabilityZone: req.Server.AvailabilityZone,
+		Metadata:         req.Server.Metadata,
 	}
 	servers, err := n.allServers(nil)
 	if err != nil {
