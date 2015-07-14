@@ -790,3 +790,20 @@ func (c *Client) ListVolumeAttachments(serverId string) ([]VolumeAttachment, err
 	}
 	return resp.VolumeAttachments, nil
 }
+
+// SetServerMetadata sets metadata on a server.
+func (c *Client) SetServerMetadata(serverId string, metadata map[string]string) error {
+	req := struct {
+		Metadata map[string]string `json:"metadata"`
+	}{metadata}
+
+	url := fmt.Sprintf("%s/%s/metadata", apiServers, serverId)
+	requestData := goosehttp.RequestData{
+		ReqValue: req, ExpectedStatus: []int{http.StatusOK},
+	}
+	err := c.client.SendRequest(client.POST, "compute", url, &requestData)
+	if err != nil {
+		err = errors.Newf(err, "failed to set metadata %v on server with id: %s", metadata, serverId)
+	}
+	return err
+}

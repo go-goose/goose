@@ -849,3 +849,22 @@ func (a azByName) Less(i, j int) bool {
 func (a azByName) Swap(i, j int) {
 	a[i], a[j] = a[j], a[i]
 }
+
+// setServerMetadata sets metadata on a server.
+func (n *Nova) setServerMetadata(serverId string, metadata map[string]string) error {
+	if err := n.ProcessFunctionHook(n, serverId, metadata); err != nil {
+		return err
+	}
+	server, err := n.server(serverId)
+	if err != nil {
+		return err
+	}
+	if server.Metadata == nil {
+		server.Metadata = make(map[string]string)
+	}
+	for k, v := range metadata {
+		server.Metadata[k] = v
+	}
+	n.servers[serverId] = *server
+	return nil
+}

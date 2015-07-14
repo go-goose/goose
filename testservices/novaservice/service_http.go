@@ -511,6 +511,28 @@ func (n *Nova) handleServerActions(server *nova.ServerDetail, w http.ResponseWri
 	return fmt.Errorf("unknown server action: %q", string(body))
 }
 
+// handleServerMetadata handles the servers/<id>/action HTTP API.
+func (n *Nova) handleServerMetadata(server *nova.ServerDetail, w http.ResponseWriter, r *http.Request) error {
+	if server == nil {
+		return errNotFound
+	}
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil || len(body) == 0 {
+		return errNotFound
+	}
+	var req struct {
+		Metadata map[string]string `json:"metadata"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		return err
+	}
+	if err := n.setServerMetadata(server.Id, req.Metadata); err != nil {
+		return err
+	}
+	writeResponse(w, http.StatusOK, nil)
+	return nil
+}
+
 // newUUID generates a random UUID conforming to RFC 4122.
 func newUUID() (string, error) {
 	uuid := make([]byte, 16)
@@ -724,6 +746,11 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 				serverId = path.Base(strings.Replace(r.URL.Path, "/action", "", 1))
 				server, _ := n.server(serverId)
 				return n.handleServerActions(server, w, r)
+			} else if suffix == "metadata" {
+				// handle POST /servers/<id>/metadata
+				serverId = path.Base(strings.Replace(r.URL.Path, "/metadata", "", 1))
+				server, _ := n.server(serverId)
+				return n.handleServerMetadata(server, w, r)
 			} else {
 				serverId = suffix
 			}
