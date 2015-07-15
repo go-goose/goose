@@ -562,3 +562,29 @@ func (s *LiveTests) TestInstanceMetadata(c *gc.C) {
 	}
 	c.Assert(server.Metadata, gc.DeepEquals, metadata)
 }
+
+func (s *LiveTests) TestSetServerMetadata(c *gc.C) {
+	entity, err := s.nova.RunServer(nova.RunServerOpts{
+		Name:             "inst-metadata",
+		FlavorId:         s.testFlavorId,
+		ImageId:          s.testImageId,
+		AvailabilityZone: s.testAvailabilityZone,
+	})
+	c.Assert(err, gc.IsNil)
+	defer s.nova.DeleteServer(entity.Id)
+
+	for _, metadata := range []map[string]string{{
+		"k1": "v1",
+	}, {
+		"k1": "v1.replacement",
+		"k2": "v2",
+	}} {
+		err = s.nova.SetServerMetadata(entity.Id, metadata)
+		c.Assert(err, gc.IsNil)
+	}
+
+	server, err := s.nova.GetServer(entity.Id)
+	c.Assert(err, gc.IsNil)
+	c.Assert(server.Metadata["k1"], gc.Equals, "v1.replacement")
+	c.Assert(server.Metadata["k2"], gc.Equals, "v2")
+}

@@ -1271,3 +1271,25 @@ func (s *NovaHTTPSSuite) TestHasHTTPSServiceURL(c *gc.C) {
 	endpoints := s.service.Endpoints()
 	c.Assert(endpoints[0].PublicURL[:8], gc.Equals, "https://")
 }
+
+func (s *NovaHTTPSuite) TestSetServerMetadata(c *gc.C) {
+	const serverId = "sr1"
+
+	err := s.service.addServer(nova.ServerDetail{Id: serverId})
+	c.Assert(err, gc.IsNil)
+	defer s.service.removeServer(serverId)
+	var req struct {
+		Metadata map[string]string `json:"metadata"`
+	}
+	req.Metadata = map[string]string{
+		"k1": "v1",
+		"k2": "v2",
+	}
+	resp, err := s.jsonRequest("POST", "/servers/"+serverId+"/metadata", req, nil)
+	c.Assert(err, gc.IsNil)
+	c.Assert(resp.StatusCode, gc.Equals, http.StatusOK)
+
+	server, err := s.service.server(serverId)
+	c.Assert(err, gc.IsNil)
+	c.Assert(server.Metadata, gc.DeepEquals, req.Metadata)
+}
