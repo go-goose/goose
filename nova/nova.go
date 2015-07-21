@@ -321,6 +321,7 @@ type RunServerOpts struct {
 	Networks           []ServerNetworks    `json:"networks"`                    // Optional
 	AvailabilityZone   string              `json:"availability_zone,omitempty"` // Optional
 	Metadata           map[string]string   `json:"metadata,omitempty"`          // Optional
+	ConfigDrive        bool                `json:"config_drive,omitempty"`      // Optional
 }
 
 // RunServer creates a new server, based on the given RunServerOpts.
