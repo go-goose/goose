@@ -412,13 +412,20 @@ type GetVolumesDetailParams struct {
 	TenantId string `json:"-"`
 }
 
+type VolumeAttachment struct {
+	Device   string `json:"device"`
+	Id       string `json:"id"`
+	ServerId string `json:"server_id"`
+	VolumeId string `json:"volume_id"`
+}
+
 type Volume struct {
-	Attachments      []interface{} `json:"attachments"`
-	AvailabilityZone string        `json:"availability_zone"`
-	Bootable         string        `json:"bootable"`
-	CreatedAt        string        `json:"created_at"`
-	Description      string        `json:"description"`
-	ID               string        `json:"id"`
+	Attachments      []VolumeAttachment `json:"attachments"`
+	AvailabilityZone string             `json:"availability_zone"`
+	Bootable         string             `json:"bootable"`
+	CreatedAt        string             `json:"created_at"`
+	Description      string             `json:"description"`
+	ID               string             `json:"id"`
 	Links            []struct {
 		Href string `json:"href"`
 		Rel  string `json:"rel"`
