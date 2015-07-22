@@ -273,7 +273,10 @@ func notifier(predicate predicateFn, numAttempts int, waitDur time.Duration) <-c
 func (c *Client) VolumeStatusNotifier(volId, status string, numAttempts int, waitDur time.Duration) <-chan error {
 	statusMatches := func() (bool, error) {
 		volInfo, err := c.GetVolume(volId)
-		return volInfo.Volume.Status == status, err
+		if err != nil {
+			return false, err
+		}
+		return volInfo.Volume.Status == status, nil
 	}
 	return notifier(statusMatches, numAttempts, waitDur)
 }
@@ -285,7 +288,10 @@ func (c *Client) VolumeStatusNotifier(volId, status string, numAttempts int, wai
 func (c *Client) SnapshotStatusNotifier(snapId, status string, numAttempts int, waitDur time.Duration) <-chan error {
 	statusMatches := func() (bool, error) {
 		snapInfo, err := c.GetSnapshot(snapId)
-		return snapInfo.Snapshot.Status == status, err
+		if err != nil {
+			return false, err
+		}
+		return snapInfo.Snapshot.Status == status, nil
 	}
 	return notifier(statusMatches, numAttempts, waitDur)
 }

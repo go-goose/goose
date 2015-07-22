@@ -423,17 +423,15 @@ type Volume struct {
 		Href string `json:"href"`
 		Rel  string `json:"rel"`
 	} `json:"links"`
-	Metadata struct {
-		Contents string `json:"contents"`
-	} `json:"metadata"`
-	Name                        string      `json:"name"`
-	Os_Vol_Host_Attr_Host       string      `json:"os-vol-host-attr:host"`
-	Os_Vol_Tenant_Attr_TenantID string      `json:"os-vol-tenant-attr:tenant_id"`
-	Size                        int         `json:"size"`
-	SnapshotID                  interface{} `json:"snapshot_id"`
-	SourceVolid                 interface{} `json:"source_volid"`
-	Status                      string      `json:"status"`
-	VolumeType                  string      `json:"volume_type"`
+	Metadata                    map[string]string `json:"metadata"`
+	Name                        string            `json:"name"`
+	Os_Vol_Host_Attr_Host       string            `json:"os-vol-host-attr:host"`
+	Os_Vol_Tenant_Attr_TenantID string            `json:"os-vol-tenant-attr:tenant_id"`
+	Size                        int               `json:"size"`
+	SnapshotID                  interface{}       `json:"snapshot_id"`
+	SourceVolid                 interface{}       `json:"source_volid"`
+	Status                      string            `json:"status"`
+	VolumeType                  string            `json:"volume_type"`
 }
 
 type GetVolumesDetailResults struct {
