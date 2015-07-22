@@ -107,3 +107,25 @@ func (s *liveCinderSuite) TestVolumeTypeOperations(c *gc.C) {
 	err = s.client.DeleteVolumeType(typeInfo.VolumeType.ID)
 	c.Assert(err, gc.IsNil)
 }
+
+func (s *liveCinderSuite) TestVolumeMetadata(c *gc.C) {
+
+	metadata := map[string]string{
+		"a": "b",
+		"c": "d",
+	}
+	volInfo, err := s.client.CreateVolume(CreateVolumeVolumeParams{
+		Size:     1,
+		Metadata: metadata,
+	})
+	c.Assert(err, gc.IsNil)
+	defer func() {
+		err := s.client.DeleteVolume(volInfo.Volume.ID)
+		c.Assert(err, gc.IsNil)
+	}()
+
+	result, err := s.client.GetVolume(volInfo.Volume.ID)
+	c.Assert(err, gc.IsNil)
+	c.Assert(result, gc.NotNil)
+	c.Assert(result.Volume.Metadata, gc.DeepEquals, metadata)
+}
