@@ -755,7 +755,9 @@ func (c *Client) AttachVolume(serverId, volumeId, device string) (*VolumeAttachm
 // DetachVolume detaches the volume with the given attachmentId from
 // the server with the given serverId.
 func (c *Client) DetachVolume(serverId, attachmentId string) error {
-	requestData := goosehttp.RequestData{}
+	requestData := goosehttp.RequestData{
+		ExpectedStatus: []int{http.StatusAccepted},
+	}
 	url := fmt.Sprintf("%s/%s/%s/%s", apiServers, serverId, apiVolumeAttachments, attachmentId)
 	err := c.client.SendRequest(client.DELETE, "compute", url, &requestData)
 	if errors.IsNotFound(err) {

@@ -1139,6 +1139,7 @@ func (n *Nova) handleDetachVolumes(w http.ResponseWriter, r *http.Request) error
 		if vol.Id == attachId {
 			serverVols = append(serverVols[:volIdx], serverVols[volIdx+1:]...)
 			n.serverIdToAttachedVolumes[serverId] = serverVols
+			writeResponse(w, http.StatusAccepted, nil)
 			return nil
 		}
 	}
