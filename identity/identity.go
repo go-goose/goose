@@ -59,7 +59,7 @@ type Authenticator interface {
 
 // getConfig returns the value of the first available environment
 // variable, among the given ones.
-func getConfig(envVars ...string) (value string) {
+func getConfig(envVars []string) (value string) {
 	value = ""
 	for _, v := range envVars {
 		value = os.Getenv(v)
@@ -70,18 +70,53 @@ func getConfig(envVars ...string) (value string) {
 	return
 }
 
+// The following variables hold the names of environment variables
+// that are used by CredentialsFromEnv to populate a Credentials
+// value. The most preferred names are at the start of the slices.
+var (
+	// CredEnvAuthURL is used for Credentials.URL.
+	CredEnvAuthURL = []string{
+		"OS_AUTH_URL",
+	}
+	// CredEnvUser is used for Credentials.User.
+	CredEnvUser = []string{
+		"OS_USERNAME",
+		"NOVA_USERNAME",
+		"OS_ACCESS_KEY",
+		"NOVA_API_KEY",
+	}
+	// CredEnvSecrets is used for Credentials.Secrets.
+	CredEnvSecrets = []string{
+		"OS_PASSWORD",
+		"NOVA_PASSWORD",
+		"OS_SECRET_KEY",
+		// Apparently some clients did use this.
+		"AWS_SECRET_ACCESS_KEY",
+		// This is manifestly a misspelling but we leave
+		// it here just in case anyone did actually use it.
+		"EC2_SECRET_KEYS",
+	}
+	// CredEnvRegion is used for Credentials.Region.
+	CredEnvRegion = []string{
+		"OS_REGION_NAME",
+		"NOVA_REGION",
+	}
+	// CredEnvTenantName is used for Credentials.TenantName.
+	CredEnvTenantName = []string{
+		"OS_TENANT_NAME",
+		"NOVA_PROJECT_ID",
+	}
+)
+
 // CredentialsFromEnv creates and initializes the credentials from the
 // environment variables.
 func CredentialsFromEnv() *Credentials {
 	return &Credentials{
-		URL: getConfig("OS_AUTH_URL"),
-		User: getConfig("OS_USERNAME", "NOVA_USERNAME",
-			"OS_ACCESS_KEY", "NOVA_API_KEY"),
-		Secrets: getConfig("OS_PASSWORD", "NOVA_PASSWORD",
-			"OS_SECRET_KEY", "EC2_SECRET_KEYS",
-			"AWS_SECRET_ACCESS_KEY"),
-		Region:     getConfig("OS_REGION_NAME", "NOVA_REGION"),
-		TenantName: getConfig("OS_TENANT_NAME", "NOVA_PROJECT_ID"),
+		URL:        getConfig(CredEnvAuthURL),
+		User:       getConfig(CredEnvUser),
+		Secrets:    getConfig(CredEnvSecrets),
+		Region:     getConfig(CredEnvRegion),
+		TenantName: getConfig(CredEnvTenantName),
 	}
 }
 
