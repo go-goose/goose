@@ -30,7 +30,7 @@ func (s *LegacySuite) setupLegacy(user, secret string) (token, managementURL str
 }
 
 func LegacyAuthRequest(URL, user, key string) (*http.Response, error) {
-	client := &http.DefaultClient
+	client := http.DefaultClient
 	request, err := http.NewRequest("GET", URL, nil)
 	if err != nil {
 		return nil, err
