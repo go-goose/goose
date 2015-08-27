@@ -15,9 +15,10 @@ import (
 type AuthMode int
 
 const (
-	AuthLegacy   = AuthMode(iota) // Legacy authentication
-	AuthUserPass                  // Username + password authentication
-	AuthKeyPair                   // Access/secret key pair authentication
+	AuthLegacy     = AuthMode(iota) // Legacy authentication
+	AuthUserPass                    // Username + password authentication
+	AuthKeyPair                     // Access/secret key pair authentication
+	AuthV3UserPass                  //Username + password authentication (v3 API)
 )
 
 func (a AuthMode) String() string {
@@ -28,6 +29,8 @@ func (a AuthMode) String() string {
 		return "Legacy Authentication"
 	case AuthUserPass:
 		return "Username/password Authentication"
+	case AuthV3UserPass:
+		return "Username/password (Version 3) Authentication"
 	}
 	panic(fmt.Errorf("Unknown athentication type: %d", a))
 }
@@ -116,5 +119,7 @@ func NewAuthenticator(authMode AuthMode, httpClient *goosehttp.Client) Authentic
 		return &UserPass{client: httpClient}
 	case AuthKeyPair:
 		return &KeyPair{client: httpClient}
+	case AuthV3UserPass:
+		return &V3UserPass{client: httpClient}
 	}
 }

@@ -56,7 +56,7 @@ const authKeyPairTemplate = `{
 }`
 
 func keyPairAuthRequest(URL, access, secret string) (*http.Response, error) {
-	client := &http.DefaultClient
+	client := http.DefaultClient
 	body := strings.NewReader(fmt.Sprintf(authKeyPairTemplate, access, secret))
 	request, err := http.NewRequest("POST", URL+"/tokens", body)
 	request.Header.Set("Content-Type", "application/json")
@@ -69,7 +69,7 @@ func keyPairAuthRequest(URL, access, secret string) (*http.Response, error) {
 func (s *KeyPairSuite) TestNotJSON(c *gc.C) {
 	// We do everything in keyPairAuthRequest, except set the Content-Type
 	s.setupKeyPair("user", "secret")
-	client := &http.DefaultClient
+	client := http.DefaultClient
 	body := strings.NewReader(fmt.Sprintf(authTemplate, "user", "secret"))
 	request, err := http.NewRequest("POST", s.Server.URL+"/tokens", body)
 	c.Assert(err, gc.IsNil)
