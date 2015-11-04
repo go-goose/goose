@@ -40,18 +40,16 @@ func (s *liveCinderSuite) SetUpSuite(c *gc.C) {
 		log.Fatalf("error parsing endpoint: %v", err)
 	}
 
-	handleRequest := SetEndpointFn(endpointUrl,
-		SetAuthHeaderFn(authClient.Token,
-			func(req *http.Request) (*http.Response, error) {
-				log.Printf("Method: %v", req.Method)
-				log.Printf("URL: %v", req.URL)
-				log.Printf("req.Headers: %v", req.Header)
-				log.Printf("req.Body: %d", req.ContentLength)
-				return http.DefaultClient.Do(req)
-			}),
-	)
+	handleRequest := SetAuthHeaderFn(authClient.Token,
+		func(req *http.Request) (*http.Response, error) {
+			log.Printf("Method: %v", req.Method)
+			log.Printf("URL: %v", req.URL)
+			log.Printf("req.Headers: %v", req.Header)
+			log.Printf("req.Body: %d", req.ContentLength)
+			return http.DefaultClient.Do(req)
+		})
 
-	s.client = NewClient(authClient.TenantId(), handleRequest)
+	s.client = NewClient(authClient.TenantId(), endpointUrl, handleRequest)
 }
 
 func (s *liveCinderSuite) SetUpTest(c *gc.C) {
@@ -82,6 +80,10 @@ func (s *liveCinderSuite) TestVolumesAndSnapshots(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	c.Check(knownSnapInfo.Snapshot.ID, gc.Equals, snapInfo.Snapshot.ID)
+
+	// Wait for snapshot to be available (or error?) before deleting.
+	err = <-s.client.SnapshotStatusNotifier(snapInfo.Snapshot.ID, "available", 10, 1*time.Second)
+	c.Check(err, gc.IsNil)
 
 	err = s.client.DeleteSnapshot(snapInfo.Snapshot.ID)
 	c.Assert(err, gc.IsNil)
@@ -124,8 +126,20 @@ func (s *liveCinderSuite) TestVolumeMetadata(c *gc.C) {
 		c.Assert(err, gc.IsNil)
 	}()
 
+	err = <-s.client.VolumeStatusNotifier(volInfo.Volume.ID, "available", 10, 1*time.Second)
+	c.Assert(err, gc.IsNil)
+
 	result, err := s.client.GetVolume(volInfo.Volume.ID)
 	c.Assert(err, gc.IsNil)
 	c.Assert(result, gc.NotNil)
 	c.Assert(result.Volume.Metadata, gc.DeepEquals, metadata)
+}
+
+func (s *liveCinderSuite) TestListVersions(c *gc.C) {
+	result, err := s.client.ListVersions()
+	c.Assert(err, gc.IsNil)
+	c.Assert(result, gc.NotNil)
+
+	c.Logf("versions: %#v", result.Versions)
+	c.Assert(len(result.Versions), gc.Not(gc.Equals), 0)
 }
