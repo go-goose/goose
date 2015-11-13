@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	gc "gopkg.in/check.v1"
 )
@@ -37,8 +38,12 @@ func (s *CinderTestSuite) SetUpSuite(c *gc.C) {
 		return
 	}
 
+	endpoint, err := url.Parse("http://volume.testing/v2/" + testId)
+	c.Assert(err, gc.IsNil)
+
 	cinderClient := NewClient(
 		testId,
+		endpoint,
 		SetAuthHeaderFn(func() string { return testToken }, s.localDo),
 	)
 	s.client = cinderClient
