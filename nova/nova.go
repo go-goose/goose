@@ -462,6 +462,28 @@ func (c *Client) DeleteSecurityGroup(groupId string) error {
 	return err
 }
 
+// UpdateSecurityGroup updates the name and description of the given group.
+func (c *Client) UpdateSecurityGroup(groupId, name, description string) (*SecurityGroup, error) {
+	var req struct {
+		SecurityGroup struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+		} `json:"security_group"`
+	}
+	req.SecurityGroup.Name = name
+	req.SecurityGroup.Description = description
+	var resp struct {
+		SecurityGroup SecurityGroup `json:"security_group"`
+	}
+	url := fmt.Sprintf("%s/%s", apiSecurityGroups, groupId)
+	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
+	err := c.client.SendRequest(client.PUT, "compute", url, &requestData)
+	if err != nil {
+		return nil, errors.Newf(err, "failed to update security group with Id %s to name: %s", groupId, name)
+	}
+	return &resp.SecurityGroup, nil
+}
+
 // RuleInfo allows the callers of CreateSecurityGroupRule() to
 // create 2 types of security group rules: ingress rules and group
 // rules. The difference stems from how the "source" is defined.

@@ -354,7 +354,7 @@ func (s *NovaHTTPSuite) simpleTests() []SimpleTest {
 		{
 			method: "PUT",
 			url:    "/os-security-groups/invalid",
-			expect: errNotFoundJSON,
+			expect: errNotFoundJSONSG,
 		},
 		{
 			method: "DELETE",

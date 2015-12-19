@@ -905,10 +905,47 @@ func (n *Nova) handleSecurityGroups(w http.ResponseWriter, r *http.Request) erro
 			return sendJSON(http.StatusOK, resp, w, r)
 		}
 	case "PUT":
-		if groupId := path.Base(r.URL.Path); groupId != "os-security-groups" {
-			return errNotFoundJSON
+		if groupId := path.Base(r.URL.Path); groupId == "os-security-groups" {
+			return errNotFound
 		}
-		return errNotFound
+		group, err := n.processGroupId(w, r)
+		if err != nil {
+			return err
+		}
+
+		var req struct {
+			Group struct {
+				Name        string
+				Description string
+			} `json:"security_group"`
+		}
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil || len(body) == 0 {
+			return errBadRequest2
+		}
+		if err := json.Unmarshal(body, &req); err != nil {
+			return err
+		}
+
+		err = n.updateSecurityGroup(nova.SecurityGroup{
+			Id:          group.Id,
+			Name:        req.Group.Name,
+			Description: req.Group.Description,
+			TenantId:    group.TenantId,
+		})
+		if err != nil {
+			return err
+		}
+		group, err = n.securityGroup(group.Id)
+		if err != nil {
+			return err
+		}
+		var resp struct {
+			Group nova.SecurityGroup `json:"security_group"`
+		}
+		resp.Group = *group
+		return sendJSON(http.StatusOK, resp, w, r)
+
 	case "DELETE":
 		if group, err := n.processGroupId(w, r); group != nil {
 			if err := n.removeSecurityGroup(group.Id); err != nil {

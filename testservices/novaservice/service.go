@@ -406,6 +406,20 @@ func (n *Nova) removeServer(serverId string) error {
 	return nil
 }
 
+func (n *Nova) updateSecurityGroup(group nova.SecurityGroup) error {
+	if err := n.ProcessFunctionHook(n, group); err != nil {
+		return err
+	}
+	existingGroup, err := n.securityGroup(group.Id)
+	if err != nil {
+		return testservices.NewSecurityGroupByIDNotFoundError(group.Id)
+	}
+	existingGroup.Name = group.Name
+	existingGroup.Description = group.Description
+	n.groups[group.Id] = *existingGroup
+	return nil
+}
+
 // addSecurityGroup creates a new security group.
 func (n *Nova) addSecurityGroup(group nova.SecurityGroup) error {
 	if err := n.ProcessFunctionHook(n, group); err != nil {
