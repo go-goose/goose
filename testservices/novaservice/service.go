@@ -260,6 +260,20 @@ func (n *Nova) addServer(server nova.ServerDetail) error {
 	return nil
 }
 
+// updateServerName creates a new server.
+func (n *Nova) updateServerName(serverId, name string) error {
+	if err := n.ProcessFunctionHook(n, serverId); err != nil {
+		return err
+	}
+	server, err := n.server(serverId)
+	if err != nil {
+		return testservices.NewServerByIDNotFoundError(serverId)
+	}
+	server.Name = name
+	n.servers[serverId] = *server
+	return nil
+}
+
 // server retrieves an existing server by ID.
 func (n *Nova) server(serverId string) (*nova.ServerDetail, error) {
 	if err := n.ProcessFunctionHook(n, serverId); err != nil {
@@ -403,6 +417,20 @@ func (n *Nova) removeServer(serverId string) error {
 		return err
 	}
 	delete(n.servers, serverId)
+	return nil
+}
+
+func (n *Nova) updateSecurityGroup(group nova.SecurityGroup) error {
+	if err := n.ProcessFunctionHook(n, group); err != nil {
+		return err
+	}
+	existingGroup, err := n.securityGroup(group.Id)
+	if err != nil {
+		return testservices.NewSecurityGroupByIDNotFoundError(group.Id)
+	}
+	existingGroup.Name = group.Name
+	existingGroup.Description = group.Description
+	n.groups[group.Id] = *existingGroup
 	return nil
 }
 

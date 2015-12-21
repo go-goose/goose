@@ -286,6 +286,35 @@ func (s *LiveTests) TestCreateAndDeleteSecurityGroup(c *gc.C) {
 	}
 }
 
+func (s *LiveTests) TestUpdateSecurityGroup(c *gc.C) {
+	group, err := s.nova.CreateSecurityGroup("test_secgroup", "test_desc")
+	c.Assert(err, gc.IsNil)
+	c.Check(group.Name, gc.Equals, "test_secgroup")
+	c.Check(group.Description, gc.Equals, "test_desc")
+
+	groupUpdated, err := s.nova.UpdateSecurityGroup(group.Id, "test_secgroup_new", "test_desc_new")
+	c.Assert(err, gc.IsNil)
+	c.Check(groupUpdated.Name, gc.Equals, "test_secgroup_new")
+	c.Check(groupUpdated.Description, gc.Equals, "test_desc_new")
+
+	groups, err := s.nova.ListSecurityGroups()
+	found := false
+	for _, g := range groups {
+		if g.Id == group.Id {
+			found = true
+			c.Assert(g.Name, gc.Equals, "test_secgroup_new")
+			c.Assert(g.Description, gc.Equals, "test_desc_new")
+			break
+		}
+	}
+	if found {
+		err = s.nova.DeleteSecurityGroup(group.Id)
+		c.Check(err, gc.IsNil)
+	} else {
+		c.Fatalf("test security group (%d) not found", group.Id)
+	}
+}
+
 func (s *LiveTests) TestDuplicateSecurityGroupError(c *gc.C) {
 	group, err := s.nova.CreateSecurityGroup("test_dupgroup", "test_desc")
 	c.Assert(err, gc.IsNil)
@@ -536,6 +565,26 @@ func (s *LiveTests) runServerAvailabilityZone(zone string) (*nova.Entity, error)
 func (s *LiveTests) TestRunServerUnknownAvailabilityZone(c *gc.C) {
 	_, err := s.runServerAvailabilityZone("something_that_will_never_exist")
 	c.Assert(err, gc.ErrorMatches, "(.|\n)*The requested availability zone is not available(.|\n)*")
+}
+
+func (s *LiveTests) TestUpdateServerName(c *gc.C) {
+	entity, err := s.nova.RunServer(nova.RunServerOpts{
+		Name:             "oldName",
+		FlavorId:         s.testFlavorId,
+		ImageId:          s.testImageId,
+		AvailabilityZone: s.testAvailabilityZone,
+		Metadata:         map[string]string{},
+	})
+	c.Assert(err, gc.IsNil)
+	defer s.nova.DeleteServer(entity.Id)
+
+	newEntity, err := s.nova.UpdateServerName(entity.Id, "newName")
+	c.Assert(err, gc.IsNil)
+	c.Assert(newEntity.Name, gc.Equals, "newName")
+
+	server, err := s.nova.GetServer(entity.Id)
+	c.Assert(err, gc.IsNil)
+	c.Assert(server.Name, gc.Equals, "newName")
 }
 
 func (s *LiveTests) TestInstanceMetadata(c *gc.C) {

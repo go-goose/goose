@@ -342,6 +342,28 @@ func (c *Client) RunServer(opts RunServerOpts) (*Entity, error) {
 	return &resp.Server, nil
 }
 
+type serverUpdateNameOpts struct {
+	Name string `json:"name"`
+}
+
+// UpdateServerName updates the name of the given server.
+func (c *Client) UpdateServerName(serverID, name string) (*Entity, error) {
+	var req struct {
+		Server serverUpdateNameOpts `json:"server"`
+	}
+	var resp struct {
+		Server Entity `json:"server"`
+	}
+	req.Server = serverUpdateNameOpts{Name: name}
+	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
+	url := fmt.Sprintf("%s/%s", apiServers, serverID)
+	err := c.client.SendRequest(client.PUT, "compute", url, &requestData)
+	if err != nil {
+		return nil, errors.Newf(err, "failed to update server name to %q", name)
+	}
+	return &resp.Server, nil
+}
+
 // SecurityGroupRef refers to an existing named security group
 type SecurityGroupRef struct {
 	TenantId string `json:"tenant_id"`
@@ -460,6 +482,28 @@ func (c *Client) DeleteSecurityGroup(groupId string) error {
 		err = errors.Newf(err, "failed to delete security group with id: %s", groupId)
 	}
 	return err
+}
+
+// UpdateSecurityGroup updates the name and description of the given group.
+func (c *Client) UpdateSecurityGroup(groupId, name, description string) (*SecurityGroup, error) {
+	var req struct {
+		SecurityGroup struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+		} `json:"security_group"`
+	}
+	req.SecurityGroup.Name = name
+	req.SecurityGroup.Description = description
+	var resp struct {
+		SecurityGroup SecurityGroup `json:"security_group"`
+	}
+	url := fmt.Sprintf("%s/%s", apiSecurityGroups, groupId)
+	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
+	err := c.client.SendRequest(client.PUT, "compute", url, &requestData)
+	if err != nil {
+		return nil, errors.Newf(err, "failed to update security group with Id %s to name: %s", groupId, name)
+	}
+	return &resp.SecurityGroup, nil
 }
 
 // RuleInfo allows the callers of CreateSecurityGroupRule() to
