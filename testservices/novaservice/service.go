@@ -260,6 +260,20 @@ func (n *Nova) addServer(server nova.ServerDetail) error {
 	return nil
 }
 
+// updateServerName creates a new server.
+func (n *Nova) updateServerName(serverId, name string) error {
+	if err := n.ProcessFunctionHook(n, serverId); err != nil {
+		return err
+	}
+	server, err := n.server(serverId)
+	if err != nil {
+		return testservices.NewServerByIDNotFoundError(serverId)
+	}
+	server.Name = name
+	n.servers[serverId] = *server
+	return nil
+}
+
 // server retrieves an existing server by ID.
 func (n *Nova) server(serverId string) (*nova.ServerDetail, error) {
 	if err := n.ProcessFunctionHook(n, serverId); err != nil {

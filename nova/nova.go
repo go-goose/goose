@@ -342,6 +342,28 @@ func (c *Client) RunServer(opts RunServerOpts) (*Entity, error) {
 	return &resp.Server, nil
 }
 
+type serverUpdateNameOpts struct {
+	Name string `json:"name"`
+}
+
+// UpdateServerName updates the name of the given server.
+func (c *Client) UpdateServerName(serverID, name string) (*Entity, error) {
+	var req struct {
+		Server serverUpdateNameOpts `json:"server"`
+	}
+	var resp struct {
+		Server Entity `json:"server"`
+	}
+	req.Server = serverUpdateNameOpts{Name: name}
+	requestData := goosehttp.RequestData{ReqValue: req, RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
+	url := fmt.Sprintf("%s/%s", apiServers, serverID)
+	err := c.client.SendRequest(client.PUT, "compute", url, &requestData)
+	if err != nil {
+		return nil, errors.Newf(err, "failed to update server name to %q", name)
+	}
+	return &resp.Server, nil
+}
+
 // SecurityGroupRef refers to an existing named security group
 type SecurityGroupRef struct {
 	TenantId string `json:"tenant_id"`
