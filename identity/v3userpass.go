@@ -67,7 +67,7 @@ type v3AuthProject struct {
 	Name   string        `json:"name,omitempty"`
 }
 
-/// / V3UserPass is an Authenticator that will perform username + password
+// V3UserPass is an Authenticator that will perform username + password
 // authentication using the v3 protocol.
 type V3UserPass struct {
 	client *goosehttp.Client
@@ -79,6 +79,10 @@ func (u *V3UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 	if u.client == nil {
 		u.client = goosehttp.New()
 	}
+	domain := creds.DomainName
+	if domain == "" {
+		domain = "default"
+	}
 	auth := v3AuthWrapper{
 		Auth: v3AuthRequest{
 			Identity: v3AuthIdentity{
@@ -86,7 +90,7 @@ func (u *V3UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 				Password: &v3AuthPassword{
 					User: v3AuthUser{
 						Domain: &v3AuthDomain{
-							ID: "default",
+							Name: domain,
 						},
 						Name:     creds.User,
 						Password: creds.Secrets,
@@ -99,12 +103,16 @@ func (u *V3UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 		auth.Auth.Scope = &v3AuthScope{
 			Project: &v3AuthProject{
 				Domain: &v3AuthDomain{
-					ID: "default",
+					Name: domain,
 				},
 				Name: creds.TenantName,
 			},
 		}
 	}
+	// TODO(perrito666) it is possible to scope by domain too
+	// but we don't have yet a clear way to add this into the
+	// credentials.
+
 	return v3KeystoneAuth(u.client, &auth, creds.URL)
 }
 
@@ -112,6 +120,8 @@ type v3TokenWrapper struct {
 	Token v3Token `json:"token"`
 }
 
+// v3Token represents the reponse token as described in:
+// http://developer.openstack.org/api-ref-identity-v3.html#authenticatePasswordScoped
 type v3Token struct {
 	Expires time.Time        `json:"expires_at"`
 	Issued  time.Time        `json:"issued_at"`
@@ -124,22 +134,32 @@ type v3Token struct {
 type v3TokenCatalog struct {
 	ID        string            `json:"id"`
 	Type      string            `json:"type"`
+	Name      string            `json:"name"`
 	Endpoints []v3TokenEndpoint `json:"endpoints"`
 }
 
 type v3TokenEndpoint struct {
 	ID        string `json:"id"`
-	Region    string `json:"region"`
+	RegionID  string `json:"region_id"`
 	URL       string `json:"url"`
 	Interface string `json:"interface"`
 }
 
 type v3TokenProject struct {
-	ID string `json:"id"`
+	ID     string        `json:"id"`
+	Name   string        `json:"name"`
+	Domain v3TokenDomain `json:"domain"`
 }
 
 type v3TokenUser struct {
-	ID string `json:"id"`
+	ID     string        `json:"id"`
+	Name   string        `json:"name"`
+	Domain v3TokenDomain `json:"domain"`
+}
+
+type v3TokenDomain struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // v3KeystoneAuth performs a v3 authentication request.
@@ -153,7 +173,7 @@ func v3KeystoneAuth(c *goosehttp.Client, v interface{}, url string) (*AuthDetail
 		},
 	}
 	if err := c.JsonRequest("POST", url, "", &req, nil); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("requesting token: %v", err)
 	}
 	tok := req.RespHeaders.Get("X-Subject-Token")
 	if tok == "" {
@@ -165,10 +185,10 @@ func v3KeystoneAuth(c *goosehttp.Client, v interface{}, url string) (*AuthDetail
 			if ep.Interface != "public" {
 				continue
 			}
-			su, ok := rsu[ep.Region]
+			su, ok := rsu[ep.RegionID]
 			if !ok {
 				su = make(ServiceURLs)
-				rsu[ep.Region] = su
+				rsu[ep.RegionID] = su
 			}
 			su[s.Type] = ep.URL
 		}

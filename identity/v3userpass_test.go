@@ -49,27 +49,24 @@ func (s *V3UserPassTestSuite) TestAuthWithCatalog(c *gc.C) {
 	service := identityservice.NewV3UserPass()
 	service.SetupHTTP(s.Mux)
 	userInfo := service.AddUser("joe-user", "secrets", "tenant")
-	serviceDef := identityservice.Service{
-		Name: "swift",
-		Type: "object-store",
-		Endpoints: []identityservice.Endpoint{
-			{PublicURL: "http://swift", Region: "RegionOne"},
-		}}
-	service.AddService(serviceDef)
-	serviceDef = identityservice.Service{
-		Name: "nova",
-		Type: "compute",
-		Endpoints: []identityservice.Endpoint{
-			{PublicURL: "http://nova", Region: "zone1.RegionOne"},
-		}}
-	service.AddService(serviceDef)
-	serviceDef = identityservice.Service{
-		Name: "nova",
-		Type: "compute",
-		Endpoints: []identityservice.Endpoint{
-			{PublicURL: "http://nova2", InternalURL: "http://int.nova2", Region: "zone2.RegionOne"},
-		}}
-	service.AddService(serviceDef)
+	serviceDef := identityservice.V3Service{
+		Name:      "swift",
+		Type:      "object-store",
+		Endpoints: identityservice.NewV3Endpoints("", "", "http://swift", "RegionOne"),
+	}
+	service.AddService(identityservice.Service{V3: serviceDef})
+	serviceDef = identityservice.V3Service{
+		Name:      "nova",
+		Type:      "compute",
+		Endpoints: identityservice.NewV3Endpoints("", "", "http://nova", "zone1.RegionOne"),
+	}
+	service.AddService(identityservice.Service{V3: serviceDef})
+	serviceDef = identityservice.V3Service{
+		Name:      "nova",
+		Type:      "compute",
+		Endpoints: identityservice.NewV3Endpoints("", "http://int.nova2", "http://nova2", "zone2.RegionOne"),
+	}
+	service.AddService(identityservice.Service{V3: serviceDef})
 
 	creds := Credentials{
 		User:       "joe-user",

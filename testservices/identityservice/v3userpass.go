@@ -10,8 +10,7 @@ import (
 	"gopkg.in/goose.v1/testservices/hook"
 )
 
-// Implement the v3 User Pass form of identity (Keystone)
-
+// V3UserPassRequest Implement the v3 User Pass form of identity (Keystone)
 type V3UserPassRequest struct {
 	Auth struct {
 		Identity struct {
@@ -33,12 +32,40 @@ type V3UserPassRequest struct {
 
 type V3Endpoint struct {
 	Interface string `json:"interface"`
-	Region    string `json:"region"`
+	RegionID  string `json:"region_id"`
 	URL       string `json:"url"`
+}
+
+func NewV3Endpoints(adminURL, internalURL, publicURL, regionID string) []V3Endpoint {
+	var eps []V3Endpoint
+	if adminURL != "" {
+		eps = append(eps, V3Endpoint{
+			RegionID:  regionID,
+			Interface: "admin",
+			URL:       adminURL,
+		})
+	}
+	if internalURL != "" {
+		eps = append(eps, V3Endpoint{
+			RegionID:  regionID,
+			Interface: "internal",
+			URL:       internalURL,
+		})
+	}
+	if publicURL != "" {
+		eps = append(eps, V3Endpoint{
+			RegionID:  regionID,
+			Interface: "public",
+			URL:       publicURL,
+		})
+	}
+	return eps
+
 }
 
 type V3Service struct {
 	ID        string       `json:"id"`
+	Name      string       `json:"name"`
 	Type      string       `json:"type"`
 	Endpoints []V3Endpoint `json:"endpoints"`
 }
@@ -75,41 +102,17 @@ func NewV3UserPass() *V3UserPass {
 }
 
 func (u *V3UserPass) RegisterServiceProvider(name, serviceType string, serviceProvider ServiceProvider) {
-	service := Service{name, serviceType, serviceProvider.Endpoints()}
-	u.AddService(service)
+	service := V3Service{
+		ID:        name,
+		Name:      name,
+		Type:      serviceType,
+		Endpoints: serviceProvider.V3Endpoints(),
+	}
+	u.AddService(Service{V3: service})
 }
 
 func (u *V3UserPass) AddService(service Service) {
-	s := V3Service{
-		ID:   service.Name,
-		Type: service.Type,
-	}
-	var eps []V3Endpoint
-	for _, ep := range service.Endpoints {
-		if ep.AdminURL != "" {
-			eps = append(eps, V3Endpoint{
-				Region:    ep.Region,
-				Interface: "admin",
-				URL:       ep.AdminURL,
-			})
-		}
-		if ep.InternalURL != "" {
-			eps = append(eps, V3Endpoint{
-				Region:    ep.Region,
-				Interface: "internal",
-				URL:       ep.InternalURL,
-			})
-		}
-		if ep.PublicURL != "" {
-			eps = append(eps, V3Endpoint{
-				Region:    ep.Region,
-				Interface: "public",
-				URL:       ep.PublicURL,
-			})
-		}
-	}
-	s.Endpoints = eps
-	u.services = append(u.services, s)
+	u.services = append(u.services, service.V3)
 }
 
 func (u *V3UserPass) ReturnFailure(w http.ResponseWriter, status int, message string) {
@@ -156,6 +159,7 @@ func (u *V3UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		u.ReturnFailure(w, http.StatusUnauthorized, errmsg)
 		return
 	}
+
 	res, err := u.generateV3TokenResponse(userInfo)
 	if err != nil {
 		u.ReturnFailure(w, http.StatusInternalServerError, err.Error())

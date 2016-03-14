@@ -70,6 +70,11 @@ func (n *Nova) Endpoints() []identityservice.Endpoint {
 	return []identityservice.Endpoint{ep}
 }
 
+func (n *Nova) V3Endpoints() []identityservice.V3Endpoint {
+	url := n.endpointURL(true, "")
+	return identityservice.NewV3Endpoints(url, url, url, n.RegionID)
+}
+
 // New creates an instance of the Nova object, given the parameters.
 func New(hostURL, versionPath, tenantId, region string, identityService identityservice.IdentityService) *Nova {
 	URL, err := url.Parse(hostURL)

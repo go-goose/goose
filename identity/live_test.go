@@ -9,19 +9,21 @@ import (
 	"gopkg.in/goose.v1/identity"
 )
 
-func registerOpenStackTests(cred *identity.Credentials) {
+func registerOpenStackTests(cred *identity.Credentials, authMode identity.AuthMode) {
 	gc.Suite(&LiveTests{
-		cred: cred,
+		cred:     cred,
+		authMode: authMode,
 	})
 }
 
 type LiveTests struct {
-	cred   *identity.Credentials
-	client client.AuthenticatingClient
+	cred     *identity.Credentials
+	client   client.AuthenticatingClient
+	authMode identity.AuthMode
 }
 
 func (s *LiveTests) SetUpSuite(c *gc.C) {
-	s.client = client.NewClient(s.cred, identity.AuthUserPass, nil)
+	s.client = client.NewClient(s.cred, s.authMode, nil)
 }
 
 func (s *LiveTests) TearDownSuite(c *gc.C) {

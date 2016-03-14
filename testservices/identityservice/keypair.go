@@ -24,7 +24,7 @@ type KeyPairRequest struct {
 type KeyPair struct {
 	hook.TestService
 	Users
-	services []Service
+	services []V2Service
 }
 
 func NewKeyPair() *KeyPair {
@@ -37,12 +37,12 @@ func NewKeyPair() *KeyPair {
 }
 
 func (u *KeyPair) RegisterServiceProvider(name, serviceType string, serviceProvider ServiceProvider) {
-	service := Service{name, serviceType, serviceProvider.Endpoints()}
-	u.AddService(service)
+	service := V2Service{name, serviceType, serviceProvider.Endpoints()}
+	u.AddService(Service{V2: service})
 }
 
 func (u *KeyPair) AddService(service Service) {
-	u.services = append(u.services, service)
+	u.services = append(u.services, service.V2)
 }
 
 func (u *KeyPair) ReturnFailure(w http.ResponseWriter, status int, message string) {

@@ -72,6 +72,11 @@ func (s *Swift) Endpoints() []identityservice.Endpoint {
 	return []identityservice.Endpoint{ep}
 }
 
+func (s *Swift) V3Endpoints() []identityservice.V3Endpoint {
+	url := s.endpointURL("")
+	return identityservice.NewV3Endpoints(url, url, url, s.RegionID)
+}
+
 // HasContainer verifies the given container exists or not.
 func (s *Swift) HasContainer(name string) bool {
 	s.mu.Lock()

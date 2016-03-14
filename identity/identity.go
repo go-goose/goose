@@ -18,7 +18,7 @@ const (
 	AuthLegacy     = AuthMode(iota) // Legacy authentication
 	AuthUserPass                    // Username + password authentication
 	AuthKeyPair                     // Access/secret key pair authentication
-	AuthV3UserPass                  //Username + password authentication (v3 API)
+	AuthUserPassV3                  // Username + password authentication (v3 API)
 )
 
 func (a AuthMode) String() string {
@@ -29,8 +29,8 @@ func (a AuthMode) String() string {
 		return "Legacy Authentication"
 	case AuthUserPass:
 		return "Username/password Authentication"
-	case AuthV3UserPass:
-		return "Username/password (Version 3) Authentication"
+	case AuthUserPassV3:
+		return "Username/password Authentication (Version 3)"
 	}
 	panic(fmt.Errorf("Unknown athentication type: %d", a))
 }
@@ -53,6 +53,7 @@ type Credentials struct {
 	Secrets    string // The secrets to pass
 	Region     string // Region to send requests to
 	TenantName string // The tenant information for this connection
+	DomainName string `credentials:"optional"` // The domain for this user (new in keystone v3)
 }
 
 // Authenticator is implemented by each authentication method.
@@ -109,6 +110,10 @@ var (
 		"OS_TENANT_NAME",
 		"NOVA_PROJECT_ID",
 	}
+	// CredEnvDomainName is used for Credentials.TenantName.
+	CredEnvDomainName = []string{
+		"OS_DOMAIN_NAME",
+	}
 )
 
 // CredentialsFromEnv creates and initializes the credentials from the
@@ -120,6 +125,7 @@ func CredentialsFromEnv() *Credentials {
 		Secrets:    getConfig(CredEnvSecrets),
 		Region:     getConfig(CredEnvRegion),
 		TenantName: getConfig(CredEnvTenantName),
+		DomainName: getConfig(CredEnvDomainName),
 	}
 }
 
@@ -131,7 +137,8 @@ func CompleteCredentialsFromEnv() (cred *Credentials, err error) {
 	t := v.Type()
 	for i := 0; i < v.NumField(); i++ {
 		f := v.Field(i)
-		if f.String() == "" {
+		tag := t.Field(i).Tag.Get("credentials")
+		if f.String() == "" && tag != "optional" {
 			err = fmt.Errorf("required environment variable not set for credentials attribute: %s", t.Field(i).Name)
 		}
 	}
@@ -154,7 +161,7 @@ func NewAuthenticator(authMode AuthMode, httpClient *goosehttp.Client) Authentic
 		return &UserPass{client: httpClient}
 	case AuthKeyPair:
 		return &KeyPair{client: httpClient}
-	case AuthV3UserPass:
+	case AuthUserPassV3:
 		return &V3UserPass{client: httpClient}
 	}
 }

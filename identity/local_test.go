@@ -12,8 +12,9 @@ import (
 	"gopkg.in/goose.v1/testservices/openstackservice"
 )
 
-func registerLocalTests() {
-	gc.Suite(&localLiveSuite{})
+func registerLocalTests(authMode identity.AuthMode) {
+	lt := LiveTests{authMode: authMode}
+	gc.Suite(&localLiveSuite{LiveTests: lt})
 }
 
 // localLiveSuite runs tests from LiveTests using a fake
@@ -35,17 +36,23 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 	s.Mux = http.NewServeMux()
 	s.Server.Config.Handler = s.Mux
 
+	serverURL := s.Server.URL
+	if s.authMode == identity.AuthUserPassV3 {
+		serverURL = serverURL + "/v3/auth"
+	}
 	// Set up an Openstack service.
 	s.cred = &identity.Credentials{
-		URL:        s.Server.URL,
+		URL:        serverURL,
 		User:       "fred",
 		Secrets:    "secret",
 		Region:     "zone1.some region",
 		TenantName: "tenant",
+		DomainName: "default",
 	}
-	openstack := openstackservice.New(s.cred, identity.AuthUserPass)
+	openstack := openstackservice.New(s.cred, s.authMode)
 	openstack.SetupHTTP(s.Mux)
 
+	openstack.Identity.AddUser("fred", "secret", "tenant")
 	s.LiveTests.SetUpSuite(c)
 }
 
