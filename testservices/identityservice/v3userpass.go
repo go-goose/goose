@@ -30,12 +30,15 @@ type V3UserPassRequest struct {
 	} `json:"auth"`
 }
 
+// V3Endpoint represents endpoints to a Service
 type V3Endpoint struct {
 	Interface string `json:"interface"`
 	RegionID  string `json:"region_id"`
 	URL       string `json:"url"`
 }
 
+// NewV3Endpoints returns an array of V3Endpoint for the given Region and the
+// passed admin, internal and public URLs.
 func NewV3Endpoints(adminURL, internalURL, publicURL, regionID string) []V3Endpoint {
 	var eps []V3Endpoint
 	if adminURL != "" {
@@ -63,6 +66,7 @@ func NewV3Endpoints(adminURL, internalURL, publicURL, regionID string) []V3Endpo
 
 }
 
+// V3Service represents an OpenStack web service that you can access through a URL.
 type V3Service struct {
 	ID        string       `json:"id"`
 	Name      string       `json:"name"`
@@ -70,28 +74,34 @@ type V3Service struct {
 	Endpoints []V3Endpoint `json:"endpoints"`
 }
 
+// V3TokenResponse repesent a Token returned as a response to authentication to
+// keystone v3.
 type V3TokenResponse struct {
 	Expires time.Time   `json:"expires_at"`
 	Issued  time.Time   `json:"issued_at"`
 	Methods []string    `json:"methods"`
 	Catalog []V3Service `json:"catalog,omitempty"`
-	Project *v3Project  `json:"project,omitempty"`
+	Project *V3Project  `json:"project,omitempty"`
 	User    struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	} `json:"user"`
 }
 
-type v3Project struct {
+// V3Project represent an openstack project, A project is the base unit of ownership.
+// Resources are owned by a specific project. A project is owned by a specific domain.
+type V3Project struct {
 	ID string `json:"id,omitempty"`
 }
 
+// V3UserPass represents an authenticated user to a service.
 type V3UserPass struct {
 	hook.TestService
 	Users
 	services []V3Service
 }
 
+// NewV3UserPass returns a new V3UserPass
 func NewV3UserPass() *V3UserPass {
 	userpass := &V3UserPass{
 		services: make([]V3Service, 0),
@@ -101,6 +111,7 @@ func NewV3UserPass() *V3UserPass {
 	return userpass
 }
 
+// RegisterServiceProvider registers V3UserPass as a service provider.
 func (u *V3UserPass) RegisterServiceProvider(name, serviceType string, serviceProvider ServiceProvider) {
 	service := V3Service{
 		ID:        name,
@@ -111,10 +122,12 @@ func (u *V3UserPass) RegisterServiceProvider(name, serviceType string, servicePr
 	u.AddService(Service{V3: service})
 }
 
+// AddService adds a service to the current V3UserPass.
 func (u *V3UserPass) AddService(service Service) {
 	u.services = append(u.services, service.V3)
 }
 
+// ReturnFailure wraps and returns an error through the http connection.
 func (u *V3UserPass) ReturnFailure(w http.ResponseWriter, status int, message string) {
 	e := ErrorWrapper{
 		Error: ErrorResponse{
@@ -134,6 +147,7 @@ func (u *V3UserPass) ReturnFailure(w http.ResponseWriter, status int, message st
 	}
 }
 
+// ServeHTTP serves V3UserPass for testing purposes.
 func (u *V3UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var req V3UserPassRequest
 	// Testing against Canonistack, all responses are application/json, even failures
@@ -166,7 +180,7 @@ func (u *V3UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Auth.Scope.Project.Name != "" {
-		res.Project = &v3Project{
+		res.Project = &V3Project{
 			ID: u.addTenant(req.Auth.Scope.Project.Name),
 		}
 	}
@@ -196,7 +210,7 @@ func (u *V3UserPass) generateV3TokenResponse(userInfo *UserInfo) (*V3TokenRespon
 	return &res, nil
 }
 
-// setupHTTP attaches all the needed handlers to provide the HTTP API.
+// SetupHTTP attaches all the needed handlers to provide the HTTP API.
 func (u *V3UserPass) SetupHTTP(mux *http.ServeMux) {
 	mux.Handle("/v3/auth/tokens", u)
 }
