@@ -38,7 +38,7 @@ type Endpoint struct {
 	Region      string `json:"region"`
 }
 
-type Service struct {
+type V2Service struct {
 	Name      string `json:"name"`
 	Type      string `json:"type"`
 	Endpoints []Endpoint
@@ -68,7 +68,7 @@ type UserResponse struct {
 
 type AccessResponse struct {
 	Access struct {
-		ServiceCatalog []Service     `json:"serviceCatalog"`
+		ServiceCatalog []V2Service   `json:"serviceCatalog"`
 		Token          TokenResponse `json:"token"`
 		User           UserResponse  `json:"user"`
 	} `json:"access"`
@@ -141,12 +141,12 @@ var exampleResponse = `{
 type UserPass struct {
 	hook.TestService
 	Users
-	services []Service
+	services []V2Service
 }
 
 func NewUserPass() *UserPass {
 	userpass := &UserPass{
-		services: make([]Service, 0),
+		services: make([]V2Service, 0),
 	}
 	userpass.users = make(map[string]UserInfo)
 	userpass.tenants = make(map[string]string)
@@ -154,12 +154,12 @@ func NewUserPass() *UserPass {
 }
 
 func (u *UserPass) RegisterServiceProvider(name, serviceType string, serviceProvider ServiceProvider) {
-	service := Service{name, serviceType, serviceProvider.Endpoints()}
-	u.AddService(service)
+	service := V2Service{name, serviceType, serviceProvider.Endpoints()}
+	u.AddService(Service{V2: service})
 }
 
 func (u *UserPass) AddService(service Service) {
-	u.services = append(u.services, service)
+	u.services = append(u.services, service.V2)
 }
 
 var internalError = []byte(`{

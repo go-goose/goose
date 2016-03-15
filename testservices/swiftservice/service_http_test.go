@@ -79,7 +79,7 @@ func (s *SwiftHTTPSuite) sendRequestWithParams(c *gc.C, method, path string, par
 	if s.token != "" {
 		req.Header.Add("X-Auth-Token", s.token)
 	}
-	client := &http.DefaultClient
+	client := http.DefaultClient
 	resp, err = client.Do(req)
 	c.Assert(err, gc.IsNil)
 	c.Assert(resp.StatusCode, gc.Equals, expectedStatusCode)

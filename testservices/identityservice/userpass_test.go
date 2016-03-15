@@ -56,7 +56,7 @@ var authTemplate = `{
 }`
 
 func userPassAuthRequest(URL, user, key string) (*http.Response, error) {
-	client := &http.DefaultClient
+	client := http.DefaultClient
 	body := strings.NewReader(fmt.Sprintf(authTemplate, user, key))
 	request, err := http.NewRequest("POST", URL+"/tokens", body)
 	request.Header.Set("Content-Type", "application/json")
@@ -84,7 +84,7 @@ func CheckErrorResponse(c *gc.C, r *http.Response, status int, msg string) {
 func (s *UserPassSuite) TestNotJSON(c *gc.C) {
 	// We do everything in userPassAuthRequest, except set the Content-Type
 	s.setupUserPass("user", "secret")
-	client := &http.DefaultClient
+	client := http.DefaultClient
 	body := strings.NewReader(fmt.Sprintf(authTemplate, "user", "secret"))
 	request, err := http.NewRequest("POST", s.Server.URL+"/tokens", body)
 	c.Assert(err, gc.IsNil)
@@ -122,9 +122,9 @@ func (s *UserPassSuite) TestBadPassword(c *gc.C) {
 func (s *UserPassSuite) TestValidAuthorization(c *gc.C) {
 	compute_url := "http://testing.invalid/compute"
 	s.setupUserPassWithServices("user", "secret", []Service{
-		{"nova", "compute", []Endpoint{
+		{V2: V2Service{"nova", "compute", []Endpoint{
 			{PublicURL: compute_url},
-		}}})
+		}}}})
 	res, err := userPassAuthRequest(s.Server.URL, "user", "secret")
 	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)

@@ -22,6 +22,7 @@ type ServiceInstance struct {
 	VersionPath     string
 	TenantId        string
 	Region          string
+	RegionID        string
 }
 
 // Internal Openstack errors.

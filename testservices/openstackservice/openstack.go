@@ -26,6 +26,10 @@ func New(cred *identity.Credentials, authMode identity.AuthMode) *Openstack {
 		openstack = Openstack{
 			Identity: identityservice.NewKeyPair(),
 		}
+	} else if authMode == identity.AuthUserPassV3 {
+		openstack = Openstack{
+			Identity: identityservice.NewV3UserPass(),
+		}
 	} else {
 		openstack = Openstack{
 			Identity: identityservice.NewUserPass(),
@@ -47,21 +51,33 @@ func New(cred *identity.Credentials, authMode identity.AuthMode) *Openstack {
 		panic(fmt.Errorf("setting up image metadata container: %v", err))
 	}
 	url := openstack.Swift.Endpoints()[0].PublicURL
-	serviceDef := identityservice.Service{
+	serviceDef := identityservice.V2Service{
 		Name: "simplestreams",
 		Type: "product-streams",
 		Endpoints: []identityservice.Endpoint{
 			{PublicURL: url + "/imagemetadata", Region: cred.Region},
 		}}
-	openstack.Identity.AddService(serviceDef)
+	service3Def := identityservice.V3Service{
+		Name:      "simplestreams",
+		Type:      "product-streams",
+		Endpoints: identityservice.NewV3Endpoints("", "", url+"/imagemetadata", cred.Region),
+	}
+
+	openstack.Identity.AddService(identityservice.Service{V2: serviceDef, V3: service3Def})
 	// Add public bucket endpoint so that juju-tools URLs are included in the keystone catalog.
-	serviceDef = identityservice.Service{
+	serviceDef = identityservice.V2Service{
 		Name: "juju",
 		Type: "juju-tools",
 		Endpoints: []identityservice.Endpoint{
 			{PublicURL: url, Region: cred.Region},
 		}}
-	openstack.Identity.AddService(serviceDef)
+	service3Def = identityservice.V3Service{
+		Name:      "juju",
+		Type:      "juju-tools",
+		Endpoints: identityservice.NewV3Endpoints("", "", url, cred.Region),
+	}
+
+	openstack.Identity.AddService(identityservice.Service{V2: serviceDef, V3: service3Def})
 	return &openstack
 }
 
