@@ -114,9 +114,7 @@ func (s *V3UserPassSuite) TestBadPassword(c *gc.C) {
 func (s *V3UserPassSuite) TestValidAuthorization(c *gc.C) {
 	compute_url := "http://testing.invalid/compute"
 	s.setupUserPassWithServices("user", "secret", []Service{
-		{"nova", "compute", []Endpoint{
-			{PublicURL: compute_url},
-		}}})
+		{V3: V3Service{Name: "nova", Type: "compute", Endpoints: NewV3Endpoints("", "", compute_url, "")}}})
 	res, err := v3UserPassAuthRequest(s.Server.URL, "user", "secret")
 	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)

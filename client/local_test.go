@@ -58,10 +58,12 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 		s.service = openstackservice.New(s.cred, identity.AuthKeyPair)
 		// Add an additional endpoint so region filtering can be properly tested.
 		serviceDef := identityservice.Service{
-			Name: "nova",
-			Type: "compute",
-			Endpoints: []identityservice.Endpoint{
-				{PublicURL: "http://nova2", Region: "zone2.RegionOne"},
+			V2: identityservice.V2Service{
+				Name: "nova",
+				Type: "compute",
+				Endpoints: []identityservice.Endpoint{
+					{PublicURL: "http://nova2", Region: "zone2.RegionOne"},
+				},
 			}}
 		s.service.(*openstackservice.Openstack).Identity.AddService(serviceDef)
 	case identity.AuthUserPass:
@@ -69,10 +71,23 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 		s.service = openstackservice.New(s.cred, identity.AuthUserPass)
 		// Add an additional endpoint so region filtering can be properly tested.
 		serviceDef := identityservice.Service{
-			Name: "nova",
-			Type: "compute",
-			Endpoints: []identityservice.Endpoint{
-				{PublicURL: "http://nova2", Region: "zone2.RegionOne"},
+			V2: identityservice.V2Service{
+				Name: "nova",
+				Type: "compute",
+				Endpoints: []identityservice.Endpoint{
+					{PublicURL: "http://nova2", Region: "zone2.RegionOne"},
+				},
+			}}
+		s.service.(*openstackservice.Openstack).Identity.AddService(serviceDef)
+	case identity.AuthUserPassV3:
+		// The openstack test service sets up userpass authentication.
+		s.service = openstackservice.New(s.cred, identity.AuthUserPass)
+		// Add an additional endpoint so region filtering can be properly tested.
+		serviceDef := identityservice.Service{
+			V3: identityservice.V3Service{
+				Name:      "nova",
+				Type:      "compute",
+				Endpoints: identityservice.NewV3Endpoints("", "", "http://nova2", "zone2.RegionOne"),
 			}}
 		s.service.(*openstackservice.Openstack).Identity.AddService(serviceDef)
 
@@ -362,10 +377,12 @@ func (s *localHTTPSSuite) SetUpSuite(c *gc.C) {
 	s.service = openstackservice.New(s.cred, identity.AuthUserPass)
 	// Add an additional endpoint so region filtering can be properly tested.
 	serviceDef := identityservice.Service{
-		Name: "nova",
-		Type: "compute",
-		Endpoints: []identityservice.Endpoint{
-			{PublicURL: "https://nova2", Region: "zone2.RegionOne"},
+		V2: identityservice.V2Service{
+			Name: "nova",
+			Type: "compute",
+			Endpoints: []identityservice.Endpoint{
+				{PublicURL: "https://nova2", Region: "zone2.RegionOne"},
+			},
 		}}
 	s.service.(*openstackservice.Openstack).Identity.AddService(serviceDef)
 }

@@ -122,9 +122,9 @@ func (s *UserPassSuite) TestBadPassword(c *gc.C) {
 func (s *UserPassSuite) TestValidAuthorization(c *gc.C) {
 	compute_url := "http://testing.invalid/compute"
 	s.setupUserPassWithServices("user", "secret", []Service{
-		{"nova", "compute", []Endpoint{
+		{V2: V2Service{"nova", "compute", []Endpoint{
 			{PublicURL: compute_url},
-		}}})
+		}}}})
 	res, err := userPassAuthRequest(s.Server.URL, "user", "secret")
 	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)
