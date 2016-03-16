@@ -3,6 +3,7 @@ package openstackservice
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"gopkg.in/goose.v1/identity"
@@ -16,6 +17,7 @@ type Openstack struct {
 	Identity identityservice.IdentityService
 	Nova     *novaservice.Nova
 	Swift    *swiftservice.Swift
+	url      string
 }
 
 // New creates an instance of a full Openstack service double.
@@ -44,6 +46,7 @@ func New(cred *identity.Credentials, authMode identity.AuthMode) *Openstack {
 	regionParts := strings.Split(cred.Region, ".")
 	baseRegion := regionParts[len(regionParts)-1]
 	openstack.Swift = swiftservice.New(cred.URL, "v1", userInfo.TenantId, baseRegion, openstack.Identity)
+	openstack.url = cred.URL
 	// Create container and add image metadata endpoint so that product-streams URLs are included
 	// in the keystone catalog.
 	err := openstack.Swift.AddContainer("imagemetadata")
@@ -86,4 +89,22 @@ func (openstack *Openstack) SetupHTTP(mux *http.ServeMux) {
 	openstack.Identity.SetupHTTP(mux)
 	openstack.Nova.SetupHTTP(mux)
 	openstack.Swift.SetupHTTP(mux)
+
+	mux.Handle("/", openstack)
+
+}
+
+const authInformationBody = `{"versions": {"values": [{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v3.4", "links": [{"href": "%s/v3/", "rel": "self"}]}, {"status": "stable", "updated": "2014-04-17T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v2.0+json"}], "id": "v2.0", "links": [{"href": "%s/v2.0/", "rel": "self"}, {"href": "http://docs.openstack.org/", "type": "text/html", "rel": "describedby"}]}]}}`
+
+func (openstack *Openstack) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		openstack.Nova.HandleRoot(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	body := []byte(fmt.Sprintf(authInformationBody, openstack.url, openstack.url))
+	// workaround for https://code.google.com/p/go/issues/detail?id=4454
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
+	w.WriteHeader(http.StatusMultipleChoices)
+	w.Write(body)
 }

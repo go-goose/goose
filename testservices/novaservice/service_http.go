@@ -351,6 +351,10 @@ func (n *Nova) handleRoot(w http.ResponseWriter, r *http.Request) error {
 	return errMultipleChoices
 }
 
+func (n *Nova) HandleRoot(w http.ResponseWriter, r *http.Request) {
+	n.handler((*Nova).handleRoot).ServeHTTP(w, r)
+}
+
 // handleFlavors handles the flavors HTTP API.
 func (n *Nova) handleFlavors(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
@@ -1228,10 +1232,9 @@ func (n *Nova) handleListVolumes(w http.ResponseWriter, r *http.Request) error {
 	return err
 }
 
-// setupHTTP attaches all the needed handlers to provide the HTTP API.
+// SetupHTTP attaches all the needed handlers to provide the HTTP API.
 func (n *Nova) SetupHTTP(mux *http.ServeMux) {
 	handlers := map[string]http.Handler{
-		"/":                              n.handler((*Nova).handleRoot),
 		"/$v/":                           errBadRequest,
 		"/$v/$t/":                        errNotFound,
 		"/$v/$t/flavors":                 n.handler((*Nova).handleFlavors),

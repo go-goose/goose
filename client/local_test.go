@@ -453,3 +453,10 @@ func (s *localHTTPSSuite) TestNonValidatingPublicClientAcceptsSelfSigned(c *gc.C
 	c.Assert(err, gc.IsNil)
 	c.Assert(contents, gc.DeepEquals, []swift.ContainerContents{})
 }
+
+func (s *localHTTPSSuite) TestAuthDiscover(c *gc.C) {
+	cl := client.NewNonValidatingClient(s.cred, identity.AuthUserPass, nil)
+	options, err := cl.IdentityAuthOptions()
+	c.Assert(err, gc.IsNil)
+	c.Assert(options, gc.DeepEquals, identity.AuthOptions{identity.AuthOption{Mode: 3, Endpoint: s.cred.URL + "/v3/"}, identity.AuthOption{Mode: 1, Endpoint: s.cred.URL + "/v2.0/"}})
+}
