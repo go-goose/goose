@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -16,7 +17,8 @@ import (
 )
 
 const (
-	apiTokens = "/tokens"
+	apiTokens   = "/tokens"
+	apiTokensV3 = "/auth/tokens"
 
 	// The HTTP request methods.
 	GET    = "GET"
@@ -47,6 +49,9 @@ type AuthenticatingClient interface {
 	TenantId() string
 
 	EndpointsForRegion(string) identity.ServiceURLs
+	// IdentityAuthOptions returns a list of valid auth options for the given
+	// openstack or error if fetching fails.
+	IdentityAuthOptions() (identity.AuthOptions, error)
 }
 
 // A single http client is shared between all Goose clients.
@@ -70,6 +75,8 @@ type authenticatingClient struct {
 	authMode identity.Authenticator
 
 	auth AuthenticatingClient
+
+	authOptions identity.AuthOptions
 
 	// Service type to endpoint URLs for each available region
 	regionServiceURLs map[string]identity.ServiceURLs
@@ -108,7 +115,15 @@ var defaultRequiredServiceTypes = []string{"compute", "object-store"}
 
 func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpClient *goosehttp.Client, logger *log.Logger) AuthenticatingClient {
 	client_creds := *creds
-	client_creds.URL = client_creds.URL + apiTokens
+	if strings.HasSuffix(client_creds.URL, "/") {
+		client_creds.URL = client_creds.URL[:len(client_creds.URL)-1]
+	}
+	switch auth_method {
+	case identity.AuthUserPassV3:
+		client_creds.URL = client_creds.URL + apiTokensV3
+	default:
+		client_creds.URL = client_creds.URL + apiTokens
+	}
 	client := authenticatingClient{
 		creds:                &client_creds,
 		requiredServiceTypes: defaultRequiredServiceTypes,
@@ -411,4 +426,28 @@ func (c *authenticatingClient) doAuthenticate() error {
 	// after the service URLs have been extracted.
 	c.tokenId = authDetails.Token
 	return nil
+}
+
+func (c *authenticatingClient) IdentityAuthOptions() (identity.AuthOptions, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(c.authOptions) > 0 {
+		return c.authOptions, nil
+	}
+	baseURL := c.baseURL
+	if baseURL == "" {
+		parsedURL, err := url.Parse(c.creds.URL)
+		if err != nil {
+			return identity.AuthOptions{}, gooseerrors.Newf(err, "trying to determine auth information url")
+		}
+		// this cannot fail.
+		authInfoPath, _ := url.Parse("/")
+		baseURL = parsedURL.ResolveReference(authInfoPath).String()
+	}
+	authOptions, err := identity.FetchAuthOptions(baseURL, c.httpClient, c.logger)
+	if err != nil {
+		return identity.AuthOptions{}, gooseerrors.Newf(err, "auth options fetching failed")
+	}
+	c.authOptions = authOptions
+	return authOptions, nil
 }

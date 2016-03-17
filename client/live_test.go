@@ -62,3 +62,22 @@ func (s *LiveTests) TestAuthenticate(c *gc.C) {
 	c.Check(err, gc.IsNil)
 	c.Check(url, gc.NotNil)
 }
+
+func (s *LiveTests) TestAuthDiscover(c *gc.C) {
+	if s.authMode == identity.AuthLegacy {
+		c.Skip("this test will not work with legacy auth")
+	}
+	cl := client.NewClient(s.cred, s.authMode, nil)
+	options, err := cl.IdentityAuthOptions()
+	c.Assert(err, gc.IsNil)
+	optionsAvailable := len(options) > 0
+	c.Assert(optionsAvailable, gc.Equals, true)
+	for _, option := range options {
+		switch option.Mode {
+		case identity.AuthUserPass, identity.AuthUserPassV3:
+		default:
+			c.Logf("unknown identity AuthMode %v", option)
+			c.FailNow()
+		}
+	}
+}

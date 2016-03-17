@@ -24,7 +24,7 @@ const (
 var _ = gc.Suite(&NovaSuite{})
 
 func (s *NovaSuite) SetUpSuite(c *gc.C) {
-	s.service = New(hostname, versionPath, "tenant", region, nil)
+	s.service = New(hostname, versionPath, "tenant", region, nil, nil)
 }
 
 func (s *NovaSuite) ensureNoFlavor(c *gc.C, flavor nova.FlavorDetail) {

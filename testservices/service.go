@@ -17,12 +17,15 @@ type ServiceInstance struct {
 	identityservice.ServiceProvider
 	hook.TestService
 	IdentityService identityservice.IdentityService
-	Scheme          string
-	Hostname        string
-	VersionPath     string
-	TenantId        string
-	Region          string
-	RegionID        string
+	// For Keystone V3, V2 is also accepted as an identity service
+	// this represents that possibility.
+	FallbackIdentityService identityservice.IdentityService
+	Scheme                  string
+	Hostname                string
+	VersionPath             string
+	TenantId                string
+	Region                  string
+	RegionID                string
 }
 
 // Internal Openstack errors.

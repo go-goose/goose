@@ -183,6 +183,9 @@ func (s *Swift) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// does not provide a token, we will let it through and assume a public container is being accessed.
 	token := r.Header.Get("X-Auth-Token")
 	_, err := s.IdentityService.FindUser(token)
+	if err != nil && s.FallbackIdentityService != nil {
+		_, err = s.FallbackIdentityService.FindUser(token)
+	}
 	if token != "" && err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return

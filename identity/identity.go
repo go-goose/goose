@@ -4,8 +4,11 @@ package identity
 
 import (
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 	"reflect"
+	"strings"
 
 	goosehttp "gopkg.in/goose.v1/http"
 )
@@ -34,6 +37,13 @@ func (a AuthMode) String() string {
 	}
 	panic(fmt.Errorf("Unknown athentication type: %d", a))
 }
+
+type AuthOption struct {
+	Mode     AuthMode
+	Endpoint string
+}
+
+type AuthOptions []AuthOption
 
 type ServiceURLs map[string]string
 
@@ -164,4 +174,66 @@ func NewAuthenticator(authMode AuthMode, httpClient *goosehttp.Client) Authentic
 	case AuthUserPassV3:
 		return &V3UserPass{client: httpClient}
 	}
+}
+
+type authInformationLink struct {
+	Href string `json:"href"`
+	Rel  string `json:"base"`
+}
+
+type authInformationMediaType struct {
+	Base      string `json:"base"`
+	MediaType string `json:"type"`
+}
+
+type authInformationValue struct {
+	ID         string                     `json:"id"`
+	Links      []authInformationLink      `json:"links"`
+	MediaTypes []authInformationMediaType `json:"media-types"`
+	Status     string                     `json:"status"`
+	Updated    string                     `json:"updates"`
+}
+
+type authInformationVersions struct {
+	Values []authInformationValue `json:"values"`
+}
+
+type authInformation struct {
+	Versions authInformationVersions `json:"versions"`
+}
+
+// FetchAuthOptions returns the authentication options advertised by this
+// openstack.
+func FetchAuthOptions(url string, client *goosehttp.Client, logger *log.Logger) (AuthOptions, error) {
+	var resp authInformation
+	req := goosehttp.RequestData{
+		RespValue: &resp,
+		ExpectedStatus: []int{
+			http.StatusMultipleChoices,
+		},
+	}
+	if err := client.JsonRequest("GET", url, "", &req, nil); err != nil {
+		return nil, fmt.Errorf("request available auth options: %v", err)
+	}
+	var auths AuthOptions
+	if len(resp.Versions.Values) > 0 {
+		for _, version := range resp.Versions.Values {
+			// TODO(perrito666) figure more cases.
+			link := ""
+			if len(version.Links) > 0 {
+				link = version.Links[0].Href
+			}
+			var opt AuthOption
+			switch {
+			case strings.HasPrefix(version.ID, "v3"):
+				opt = AuthOption{Mode: AuthUserPassV3, Endpoint: link}
+			case strings.HasPrefix(version.ID, "v2"):
+				opt = AuthOption{Mode: AuthUserPass, Endpoint: link}
+			default:
+				logger.Printf("Unknown authentication version %q\n", version.ID)
+			}
+			auths = append(auths, opt)
+		}
+	}
+	return auths, nil
 }

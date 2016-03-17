@@ -20,7 +20,7 @@ var tenantId = "tenant"           // not really used here
 var _ = gc.Suite(&SwiftServiceSuite{})
 
 func (s *SwiftServiceSuite) SetUpSuite(c *gc.C) {
-	s.service = New(hostname, versionPath, tenantId, region, nil)
+	s.service = New(hostname, versionPath, tenantId, region, nil, nil)
 }
 
 func (s *SwiftServiceSuite) TestAddHasRemoveContainer(c *gc.C) {

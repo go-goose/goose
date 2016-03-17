@@ -41,7 +41,7 @@ func (s *NovaHTTPSuite) SetUpSuite(c *gc.C) {
 	identityDouble := identityservice.NewUserPass()
 	userInfo := identityDouble.AddUser("fred", "secret", "tenant")
 	s.token = userInfo.Token
-	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble)
+	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble, nil)
 }
 
 func (s *NovaHTTPSuite) TearDownSuite(c *gc.C) {
@@ -51,6 +51,9 @@ func (s *NovaHTTPSuite) TearDownSuite(c *gc.C) {
 func (s *NovaHTTPSuite) SetUpTest(c *gc.C) {
 	s.HTTPSuite.SetUpTest(c)
 	s.service.SetupHTTP(s.Mux)
+	// this is otherwise handled not directly by nova test service
+	// but by openstack that tries for / before.
+	s.Mux.Handle("/", s.service.handler((*Nova).handleRoot))
 }
 
 func (s *NovaHTTPSuite) TearDownTest(c *gc.C) {
@@ -152,13 +155,6 @@ func (s *NovaHTTPSuite) simpleTests() []SimpleTest {
 			url:     "/any",
 			headers: setHeader(authToken, "phony"),
 			expect:  errUnauthorized,
-		},
-		{
-			unauth:  true,
-			method:  "GET",
-			url:     "/",
-			headers: setHeader(authToken, s.token),
-			expect:  errNoVersion,
 		},
 		{
 			unauth:  true,
@@ -1251,7 +1247,7 @@ func (s *NovaHTTPSSuite) SetUpSuite(c *gc.C) {
 	userInfo := identityDouble.AddUser("fred", "secret", "tenant")
 	s.token = userInfo.Token
 	c.Assert(s.Server.URL[:8], gc.Equals, "https://")
-	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble)
+	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble, nil)
 }
 
 func (s *NovaHTTPSSuite) TearDownSuite(c *gc.C) {

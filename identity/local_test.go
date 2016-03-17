@@ -38,7 +38,7 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 
 	serverURL := s.Server.URL
 	if s.authMode == identity.AuthUserPassV3 {
-		serverURL = serverURL + "/v3/auth"
+		serverURL = serverURL + "/v3"
 	}
 	// Set up an Openstack service.
 	s.cred = &identity.Credentials{
