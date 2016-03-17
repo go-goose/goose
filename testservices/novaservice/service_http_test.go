@@ -478,9 +478,9 @@ func (s *NovaHTTPSuite) TestGetFlavors(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Assert(resp.StatusCode, gc.Equals, http.StatusOK)
 	assertJSON(c, resp, &expected)
-	c.Assert(expected.Flavors, gc.HasLen, 3)
+	c.Assert(expected.Flavors, gc.HasLen, 4)
 	entities := s.service.allFlavorsAsEntities()
-	c.Assert(entities, gc.HasLen, 3)
+	c.Assert(entities, gc.HasLen, 4)
 	sort.Sort(nova.EntitySortBy{Attr: "Id", Entities: expected.Flavors})
 	sort.Sort(nova.EntitySortBy{Attr: "Id", Entities: entities})
 	c.Assert(expected.Flavors, gc.DeepEquals, entities)
@@ -497,7 +497,7 @@ func (s *NovaHTTPSuite) TestGetFlavors(c *gc.C) {
 func (s *NovaHTTPSuite) TestGetFlavorsDetail(c *gc.C) {
 	// The test service has 3 default flavours.
 	flavors := s.service.allFlavors()
-	c.Assert(flavors, gc.HasLen, 3)
+	c.Assert(flavors, gc.HasLen, 4)
 	var expected struct {
 		Flavors []nova.FlavorDetail
 	}
@@ -505,7 +505,7 @@ func (s *NovaHTTPSuite) TestGetFlavorsDetail(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Assert(resp.StatusCode, gc.Equals, http.StatusOK)
 	assertJSON(c, resp, &expected)
-	c.Assert(expected.Flavors, gc.HasLen, 3)
+	c.Assert(expected.Flavors, gc.HasLen, 4)
 	sort.Sort(nova.FlavorDetailSortBy{Attr: "Id", FlavorDetails: expected.Flavors})
 	sort.Sort(nova.FlavorDetailSortBy{Attr: "Id", FlavorDetails: flavors})
 	c.Assert(expected.Flavors, gc.DeepEquals, flavors)

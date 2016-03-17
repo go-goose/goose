@@ -40,6 +40,12 @@ func (s *JsonSuite) TestMarshallFlavorDetailLargeIntId(c *gc.C) {
 	s.assertMarshallRoundtrip(c, &fd, &unmarshalled)
 }
 
+func (s *JsonSuite) TestMarshallFlavorDetailVirtType(c *gc.C) {
+	fd := nova.FlavorDetail{Id: "20", Name: "test", VirtType: "kvm"}
+	var unmarshalled nova.FlavorDetail
+	s.assertMarshallRoundtrip(c, &fd, &unmarshalled)
+}
+
 func (s *JsonSuite) TestMarshallServerDetailLargeIntId(c *gc.C) {
 	fd := nova.Entity{Id: "2000000", Name: "test"}
 	im := nova.Entity{Id: "2000000", Name: "test"}

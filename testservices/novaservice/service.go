@@ -90,6 +90,7 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 		{Id: "1", Name: "m1.tiny", RAM: 512, VCPUs: 1},
 		{Id: "2", Name: "m1.small", RAM: 2048, VCPUs: 1},
 		{Id: "3", Name: "m1.medium", RAM: 4096, VCPUs: 2},
+		{Id: "4", Name: "cc1.4xlarge", RAM: 4096, VCPUs: 2, VirtType: "kvm"},
 	}
 	// Real openstack instances have a default security group "out of the box". So we add it here.
 	defaultSecurityGroups := []nova.SecurityGroup{

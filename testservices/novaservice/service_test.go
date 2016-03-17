@@ -158,18 +158,18 @@ func (s *NovaSuite) TestRemoveFlavorTwiceFails(c *gc.C) {
 func (s *NovaSuite) TestAllFlavors(c *gc.C) {
 	// The test service has 2 default flavours.
 	flavors := s.service.allFlavors()
-	c.Assert(flavors, gc.HasLen, 3)
+	c.Assert(flavors, gc.HasLen, 4)
 	for _, fl := range flavors {
-		c.Assert(fl.Name == "m1.tiny" || fl.Name == "m1.small" || fl.Name == "m1.medium", gc.Equals, true)
+		c.Assert(fl.Name == "m1.tiny" || fl.Name == "m1.small" || fl.Name == "m1.medium" || fl.Name == "cc1.4xlarge", gc.Equals, true)
 	}
 }
 
 func (s *NovaSuite) TestAllFlavorsAsEntities(c *gc.C) {
 	// The test service has 2 default flavours.
 	entities := s.service.allFlavorsAsEntities()
-	c.Assert(entities, gc.HasLen, 3)
+	c.Assert(entities, gc.HasLen, 4)
 	for _, fl := range entities {
-		c.Assert(fl.Name == "m1.tiny" || fl.Name == "m1.small" || fl.Name == "m1.medium", gc.Equals, true)
+		c.Assert(fl.Name == "m1.tiny" || fl.Name == "m1.small" || fl.Name == "m1.medium" || fl.Name == "cc1.4xlarge", gc.Equals, true)
 	}
 }
 
