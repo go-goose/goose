@@ -35,7 +35,7 @@ var _ = gc.Suite(&SwiftHTTPSSuite{HTTPSuite: httpsuite.HTTPSuite{UseTLS: true}})
 func (s *SwiftHTTPSuite) SetUpSuite(c *gc.C) {
 	s.HTTPSuite.SetUpSuite(c)
 	identityDouble := identityservice.NewUserPass()
-	s.service = New(s.Server.URL, versionPath, tenantId, region, identityDouble)
+	s.service = New(s.Server.URL, versionPath, tenantId, region, identityDouble, nil)
 	userInfo := identityDouble.AddUser("fred", "secret", "tenant")
 	s.token = userInfo.Token
 }
@@ -369,7 +369,7 @@ func (s *SwiftHTTPSSuite) SetUpSuite(c *gc.C) {
 	userInfo := identityDouble.AddUser("fred", "secret", "tenant")
 	s.token = userInfo.Token
 	c.Assert(s.Server.URL[:8], gc.Equals, "https://")
-	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble)
+	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble, nil)
 }
 
 func (s *SwiftHTTPSSuite) TearDownSuite(c *gc.C) {

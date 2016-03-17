@@ -41,7 +41,7 @@ func (s *NovaHTTPSuite) SetUpSuite(c *gc.C) {
 	identityDouble := identityservice.NewUserPass()
 	userInfo := identityDouble.AddUser("fred", "secret", "tenant")
 	s.token = userInfo.Token
-	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble)
+	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble, nil)
 }
 
 func (s *NovaHTTPSuite) TearDownSuite(c *gc.C) {
@@ -1247,7 +1247,7 @@ func (s *NovaHTTPSSuite) SetUpSuite(c *gc.C) {
 	userInfo := identityDouble.AddUser("fred", "secret", "tenant")
 	s.token = userInfo.Token
 	c.Assert(s.Server.URL[:8], gc.Equals, "https://")
-	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble)
+	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble, nil)
 }
 
 func (s *NovaHTTPSSuite) TearDownSuite(c *gc.C) {

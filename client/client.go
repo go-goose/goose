@@ -115,9 +115,13 @@ var defaultRequiredServiceTypes = []string{"compute", "object-store"}
 
 func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpClient *goosehttp.Client, logger *log.Logger) AuthenticatingClient {
 	client_creds := *creds
-	if auth_method == identity.AuthUserPassV3 {
+	if strings.HasSuffix(client_creds.URL, "/") {
+		client_creds.URL = client_creds.URL[:len(client_creds.URL)-1]
+	}
+	switch auth_method {
+	case identity.AuthUserPassV3:
 		client_creds.URL = client_creds.URL + apiTokensV3
-	} else {
+	default:
 		client_creds.URL = client_creds.URL + apiTokens
 	}
 	client := authenticatingClient{
@@ -425,10 +429,6 @@ func (c *authenticatingClient) doAuthenticate() error {
 }
 
 func (c *authenticatingClient) IdentityAuthOptions() (identity.AuthOptions, error) {
-	return c.getAuthOptions()
-}
-
-func (c *authenticatingClient) getAuthOptions() (identity.AuthOptions, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if len(c.authOptions) > 0 {
@@ -444,7 +444,7 @@ func (c *authenticatingClient) getAuthOptions() (identity.AuthOptions, error) {
 		authInfoPath, _ := url.Parse("/")
 		baseURL = parsedURL.ResolveReference(authInfoPath).String()
 	}
-	authOptions, err := identity.FetchAuthOptions(baseURL, c.httpClient)
+	authOptions, err := identity.FetchAuthOptions(baseURL, c.httpClient, c.logger)
 	if err != nil {
 		return identity.AuthOptions{}, gooseerrors.Newf(err, "auth options fetching failed")
 	}

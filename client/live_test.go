@@ -72,4 +72,12 @@ func (s *LiveTests) TestAuthDiscover(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	optionsAvailable := len(options) > 0
 	c.Assert(optionsAvailable, gc.Equals, true)
+	for _, option := range options {
+		switch option.Mode {
+		case identity.AuthUserPass, identity.AuthUserPassV3:
+		default:
+			c.Logf("unknown identity AuthMode %v", option)
+			c.FailNow()
+		}
+	}
 }

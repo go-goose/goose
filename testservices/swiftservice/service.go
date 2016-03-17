@@ -28,7 +28,7 @@ type Swift struct {
 }
 
 // New creates an instance of the Swift object, given the parameters.
-func New(hostURL, versionPath, tenantId, region string, identityService identityservice.IdentityService) *Swift {
+func New(hostURL, versionPath, tenantId, region string, identityService, fallbackIdentity identityservice.IdentityService) *Swift {
 	URL, err := url.Parse(hostURL)
 	if err != nil {
 		panic(err)
@@ -40,12 +40,13 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 	swift := &Swift{
 		containers: make(map[string]object),
 		ServiceInstance: testservices.ServiceInstance{
-			IdentityService: identityService,
-			Scheme:          URL.Scheme,
-			Hostname:        hostname,
-			VersionPath:     versionPath,
-			TenantId:        tenantId,
-			Region:          region,
+			IdentityService:         identityService,
+			FallbackIdentityService: fallbackIdentity,
+			Scheme:                  URL.Scheme,
+			Hostname:                hostname,
+			VersionPath:             versionPath,
+			TenantId:                tenantId,
+			Region:                  region,
 		},
 	}
 	if identityService != nil {

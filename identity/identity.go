@@ -4,6 +4,7 @@ package identity
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"reflect"
@@ -201,7 +202,9 @@ type authInformation struct {
 	Versions authInformationVersions `json:"versions"`
 }
 
-func FetchAuthOptions(url string, client *goosehttp.Client) (AuthOptions, error) {
+// FetchAuthOptions returns the authentication options advertised by this
+// openstack.
+func FetchAuthOptions(url string, client *goosehttp.Client, logger *log.Logger) (AuthOptions, error) {
 	var resp authInformation
 	req := goosehttp.RequestData{
 		RespValue: &resp,
@@ -226,7 +229,8 @@ func FetchAuthOptions(url string, client *goosehttp.Client) (AuthOptions, error)
 				opt = AuthOption{Mode: AuthUserPassV3, Endpoint: link}
 			case strings.HasPrefix(version.ID, "v2"):
 				opt = AuthOption{Mode: AuthUserPass, Endpoint: link}
-
+			default:
+				logger.Printf("Unknown authentication version %q\n", version.ID)
 			}
 			auths = append(auths, opt)
 		}

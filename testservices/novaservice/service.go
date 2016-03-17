@@ -76,7 +76,7 @@ func (n *Nova) V3Endpoints() []identityservice.V3Endpoint {
 }
 
 // New creates an instance of the Nova object, given the parameters.
-func New(hostURL, versionPath, tenantId, region string, identityService identityservice.IdentityService) *Nova {
+func New(hostURL, versionPath, tenantId, region string, identityService, fallbackIdentity identityservice.IdentityService) *Nova {
 	URL, err := url.Parse(hostURL)
 	if err != nil {
 		panic(err)
@@ -107,12 +107,13 @@ func New(hostURL, versionPath, tenantId, region string, identityService identity
 		availabilityZones:         make(map[string]nova.AvailabilityZone),
 		serverIdToAttachedVolumes: make(map[string][]nova.VolumeAttachment),
 		ServiceInstance: testservices.ServiceInstance{
-			IdentityService: identityService,
-			Scheme:          URL.Scheme,
-			Hostname:        hostname,
-			VersionPath:     versionPath,
-			TenantId:        tenantId,
-			Region:          region,
+			IdentityService:         identityService,
+			FallbackIdentityService: fallbackIdentity,
+			Scheme:                  URL.Scheme,
+			Hostname:                hostname,
+			VersionPath:             versionPath,
+			TenantId:                tenantId,
+			Region:                  region,
 		},
 	}
 	if identityService != nil {
