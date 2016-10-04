@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"launchpad.net/gnuflag"
+	"github.com/juju/gnuflag"
 
 	"gopkg.in/goose.v1/client"
 	"gopkg.in/goose.v1/identity"

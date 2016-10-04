@@ -214,3 +214,7 @@ func (u *V3UserPass) generateV3TokenResponse(userInfo *UserInfo) (*V3TokenRespon
 func (u *V3UserPass) SetupHTTP(mux *http.ServeMux) {
 	mux.Handle("/v3/auth/tokens", u)
 }
+
+func (u *V3UserPass) Stop() {
+	// noop
+}

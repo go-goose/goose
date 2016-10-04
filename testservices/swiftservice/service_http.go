@@ -4,7 +4,6 @@ package swiftservice
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -193,14 +192,16 @@ func (s *Swift) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimRight(r.URL.Path, "/")
 	path = strings.Trim(path, "/")
 	parts := strings.SplitN(path, "/", 4)
-	parts = parts[2:]
-	if len(parts) == 1 {
-		container := parts[0]
-		s.handleContainers(container, w, r)
-	} else if len(parts) == 2 {
-		container := parts[0]
-		object := parts[1]
-		s.handleObjects(container, object, w, r)
+	if len(parts) > 2 {
+		parts = parts[2:]
+		if len(parts) == 1 {
+			container := parts[0]
+			s.handleContainers(container, w, r)
+		} else if len(parts) == 2 {
+			container := parts[0]
+			object := parts[1]
+			s.handleObjects(container, object, w, r)
+		}
 	} else {
 		panic("not implemented request: " + r.URL.Path)
 	}
@@ -208,6 +209,9 @@ func (s *Swift) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // setupHTTP attaches all the needed handlers to provide the HTTP API.
 func (s *Swift) SetupHTTP(mux *http.ServeMux) {
-	path := fmt.Sprintf("/%s/%s/", s.VersionPath, s.TenantId)
-	mux.Handle(path, s)
+	mux.Handle("/", s)
+}
+
+func (s *Swift) Stop() {
+	// noop
 }

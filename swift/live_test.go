@@ -164,7 +164,7 @@ func (s *LiveTestsPublicContainer) TearDownSuite(c *gc.C) {
 func (s *LiveTestsPublicContainer) SetUpTest(c *gc.C) {
 	err := s.client.Authenticate()
 	c.Assert(err, gc.IsNil)
-	baseURL, err := s.client.MakeServiceURL("object-store", nil)
+	baseURL, err := s.client.MakeServiceURL("object-store", "", nil)
 	c.Assert(err, gc.IsNil)
 	s.publicClient = client.NewPublicClient(baseURL, nil)
 	s.publicSwift = swift.New(s.publicClient)

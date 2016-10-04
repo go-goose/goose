@@ -31,10 +31,10 @@ const (
 
 // Client implementations sends service requests to an OpenStack deployment.
 type Client interface {
-	SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) (err error)
+	SendRequest(method, svcType, svcVersion, apiCall string, requestData *goosehttp.RequestData) (err error)
 	// MakeServiceURL prepares a full URL to a service endpoint, with optional
-	// URL parts. It uses the first endpoint it can find for the given service type.
-	MakeServiceURL(serviceType string, parts []string) (string, error)
+	// URL parts.
+	MakeServiceURL(serviceType, apiVersion string, parts []string) (string, error)
 }
 
 // AuthenticatingClient sends service requests to an OpenStack deployment after first validating
@@ -78,18 +78,22 @@ type authenticatingClient struct {
 
 	authOptions identity.AuthOptions
 
-	// Service type to endpoint URLs for each available region
-	regionServiceURLs map[string]identity.ServiceURLs
-
-	// Service type to endpoint URLs for the authenticated region
-	serviceURLs identity.ServiceURLs
-
 	// The service types which must be available after authentication,
 	// or else services which use this client will not be able to function as expected.
 	requiredServiceTypes []string
 	tokenId              string
 	tenantId             string
 	userId               string
+
+	// Service type to endpoint URLs for each available region
+	regionServiceURLs map[string]identity.ServiceURLs
+
+	// Service type to endpoint URLs for the authenticated region
+	serviceURLs identity.ServiceURLs
+
+	// API versions available based on endpoint url
+	apiURLVersions map[string]*apiURLVersion
+	apiVersionMu   sync.Mutex
 }
 
 func (c *authenticatingClient) EndpointsForRegion(region string) identity.ServiceURLs {
@@ -151,8 +155,8 @@ func (c *client) sendRequest(method, url, token string, requestData *goosehttp.R
 	return
 }
 
-func (c *client) SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) error {
-	url, _ := c.MakeServiceURL(svcType, []string{apiCall})
+func (c *client) SendRequest(method, svcType, apiVersion, apiCall string, requestData *goosehttp.RequestData) error {
+	url, _ := c.MakeServiceURL(svcType, apiVersion, []string{apiCall})
 	return c.sendRequest(method, url, "", requestData)
 }
 
@@ -163,7 +167,7 @@ func makeURL(base string, parts []string) string {
 	return base + strings.Join(parts, "/")
 }
 
-func (c *client) MakeServiceURL(serviceType string, parts []string) (string, error) {
+func (c *client) MakeServiceURL(serviceType, apiVersion string, parts []string) (string, error) {
 	return makeURL(c.baseURL, parts), nil
 }
 
@@ -171,36 +175,57 @@ func (c *authenticatingClient) SetRequiredServiceTypes(requiredServiceTypes []st
 	c.requiredServiceTypes = requiredServiceTypes
 }
 
-func (c *authenticatingClient) SendRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) (err error) {
-	err = c.sendAuthRequest(method, svcType, apiCall, requestData)
+func (c *authenticatingClient) SendRequest(
+	method, svcType, apiVersion, apiCall string,
+	requestData *goosehttp.RequestData,
+) (err error) {
+	err = c.sendAuthRequest(method, svcType, apiVersion, apiCall, requestData)
 	if gooseerrors.IsUnauthorised(err) {
 		c.setToken("")
-		err = c.sendAuthRequest(method, svcType, apiCall, requestData)
+		err = c.sendAuthRequest(method, svcType, apiVersion, apiCall, requestData)
 	}
 	return
 }
 
-func (c *authenticatingClient) sendAuthRequest(method, svcType, apiCall string, requestData *goosehttp.RequestData) (err error) {
+func (c *authenticatingClient) sendAuthRequest(
+	method, svcType, apiVersion, apiCall string,
+	requestData *goosehttp.RequestData,
+) (err error) {
 	if err = c.Authenticate(); err != nil {
 		return
 	}
 
-	url, err := c.MakeServiceURL(svcType, []string{apiCall})
+	url, err := c.MakeServiceURL(svcType, apiVersion, []string{apiCall})
 	if err != nil {
 		return
 	}
 	return c.sendRequest(method, url, c.Token(), requestData)
 }
 
-func (c *authenticatingClient) MakeServiceURL(serviceType string, parts []string) (string, error) {
+// MakeServiceURL uses an endpoint matching the apiVersion for the given service type.
+// Given a major version only, the version with the highest minor will be used.
+// object-store and container service types have no versions
+func (c *authenticatingClient) MakeServiceURL(serviceType, apiVersion string, parts []string) (string, error) {
 	if !c.IsAuthenticated() {
 		return "", errors.New("cannot get endpoint URL without being authenticated")
 	}
-	url, ok := c.serviceURLs[serviceType]
+	serviceURL, ok := c.serviceURLs[serviceType]
 	if !ok {
 		return "", errors.New("no endpoints known for service type: " + serviceType)
 	}
-	return makeURL(url, parts), nil
+	requestedVersion, err := parseVersion(apiVersion)
+	if err != nil {
+		return "", err
+	}
+	apiURLVersionInfo, err := c.getAPIVersions(serviceURL)
+	if err != nil {
+		return "", err
+	}
+	serviceURL, err = getAPIVersionURL(apiURLVersionInfo, requestedVersion)
+	if err != nil {
+		return "", err
+	}
+	return makeURL(serviceURL, parts), nil
 }
 
 // Return the relevant service endpoint URLs for this client's region.
@@ -420,6 +445,7 @@ func (c *authenticatingClient) doAuthenticate() error {
 	if err := c.createServiceURLs(); err != nil {
 		return gooseerrors.Newf(err, "cannot create service URLs")
 	}
+	c.apiURLVersions = make(map[string]*apiURLVersion)
 	c.tenantId = authDetails.TenantId
 	c.userId = authDetails.UserId
 	// A valid token indicates authorisation has been successful, so it needs to be set last. It must be set

@@ -48,7 +48,7 @@ def create_tarmac_repository():
     if b.repository.is_shared():
         return
     pwd = os.getcwd()
-    expected_dir = 'src/launchpad.net/'
+    expected_dir = 'src/github.com/'
     offset = pwd.rfind(expected_dir)
     if offset == -1:
         sys.stderr.write('Could not find %r to create a shared repo\n')
@@ -88,11 +88,11 @@ def ensure_juju_core_dependencies():
     # latest juju-core and everything else. The other is where the
     # goose-under-test resides. So we don't add the goose-under-test to GOPATH,
     # call "go get", then add it to the GOPATH for the rest of the testing.
-    cmd = ['go', 'get', '-u', '-x', 'launchpad.net/juju-core/...']
+    cmd = ['go', 'get', '-u', '-x', 'github.com/juju/...']
     sys.stderr.write('Running: %s\n' % (' '.join(cmd),))
     retcode = subprocess.call(cmd)
     if retcode != 0:
-        sys.stderr.write('WARN: Failed to update launchpad.net/juju-core\n')
+        sys.stderr.write('WARN: Failed to update github.com/juju\n')
 
 
 def tarmac_setup(opts):

@@ -34,7 +34,7 @@ func (c *Client) ListNetworks() ([]Network, error) {
 		Networks []Network `json:"networks"`
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.GET, "compute", apiNetworks, &requestData)
+	err := c.client.SendRequest(client.GET, "compute", "v2", apiNetworks, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get list of networks")
 	}

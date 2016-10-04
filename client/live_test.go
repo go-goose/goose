@@ -55,12 +55,19 @@ func (s *LiveTests) TestAuthenticate(c *gc.C) {
 	c.Assert(cl.IsAuthenticated(), gc.Equals, true)
 
 	// Check service endpoints are discovered
-	url, err := cl.MakeServiceURL("compute", nil)
-	c.Check(err, gc.IsNil)
-	c.Check(url, gc.NotNil)
-	url, err = cl.MakeServiceURL("object-store", nil)
-	c.Check(err, gc.IsNil)
-	c.Check(url, gc.NotNil)
+	if s.authMode == identity.AuthLegacy {
+		// AuthLegacy doesn't use the openstack test double, therefore
+		// MakeServiceURL won't work correctly as the endpoint urls are used,
+		// but setup as bad addresses for AuthLegacy
+		c.Log("half of this test will not work with legacy auth")
+	} else {
+		url, err := cl.MakeServiceURL("compute", "v2", nil)
+		c.Check(err, gc.IsNil)
+		c.Check(url, gc.NotNil)
+		url, err = cl.MakeServiceURL("object-store", "", nil)
+		c.Check(err, gc.IsNil)
+		c.Check(url, gc.NotNil)
+	}
 }
 
 func (s *LiveTests) TestAuthDiscover(c *gc.C) {

@@ -3,6 +3,7 @@ package openstackservice
 import (
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strconv"
 	"strings"
 
@@ -20,10 +21,12 @@ type Openstack struct {
 	FallbackIdentity identityservice.IdentityService
 	Nova             *novaservice.Nova
 	Swift            *swiftservice.Swift
+	muxes            map[string]*http.ServeMux
+	servers          map[string]*httptest.Server
 	// base url of openstack endpoints, might be required to
 	// simmulate response contents such as the ones from
 	// identity discovery.
-	url string
+	URLs map[string]string
 }
 
 func (openstack *Openstack) AddUser(user, secret, tennant string) *identityservice.UserInfo {
@@ -35,34 +38,28 @@ func (openstack *Openstack) AddUser(user, secret, tennant string) *identityservi
 }
 
 // New creates an instance of a full Openstack service double.
-// An initial user with the specified credentials is registered with the identity service.
-func New(cred *identity.Credentials, authMode identity.AuthMode) *Openstack {
-	var openstack Openstack
-	if authMode == identity.AuthKeyPair {
-		openstack = Openstack{
-			Identity: identityservice.NewKeyPair(),
-		}
-	} else if authMode == identity.AuthUserPassV3 {
-		openstack = Openstack{
-			Identity:         identityservice.NewV3UserPass(),
-			FallbackIdentity: identityservice.NewUserPass(),
-		}
+// An initial user with the specified credentials is registered with the
+// identity service. This service double manages the httpServers necessary
+// for Nova, Swift and Identity services
+func New(cred *identity.Credentials, authMode identity.AuthMode, useTLS bool) (*Openstack, []string) {
+	openstack, logMsgs := NewNoSwift(cred, authMode, useTLS)
+
+	var server *httptest.Server
+	if useTLS {
+		server = httptest.NewTLSServer(nil)
 	} else {
-		openstack = Openstack{
-			Identity:         identityservice.NewUserPass(),
-			FallbackIdentity: identityservice.NewV3UserPass(),
-		}
+		server = httptest.NewServer(nil)
 	}
-	userInfo := openstack.AddUser(cred.User, cred.Secrets, cred.TenantName)
-	if cred.TenantName == "" {
-		panic("Openstack service double requires a tenant to be specified.")
-	}
-	openstack.Nova = novaservice.New(cred.URL, "v2", userInfo.TenantId, cred.Region, openstack.Identity, openstack.FallbackIdentity)
+	logMsgs = append(logMsgs, "swift service started: "+server.URL)
+	openstack.muxes["swift"] = http.NewServeMux()
+	server.Config.Handler = openstack.muxes["swift"]
+	openstack.URLs["swift"] = server.URL
+	openstack.servers["swift"] = server
+
 	// Create the swift service using only the region base so we emulate real world deployments.
 	regionParts := strings.Split(cred.Region, ".")
 	baseRegion := regionParts[len(regionParts)-1]
-	openstack.Swift = swiftservice.New(cred.URL, "v1", userInfo.TenantId, baseRegion, openstack.Identity, openstack.FallbackIdentity)
-	openstack.url = cred.URL
+	openstack.Swift = swiftservice.New(openstack.URLs["swift"], "v1", cred.TenantName, baseRegion, openstack.Identity, openstack.FallbackIdentity)
 	// Create container and add image metadata endpoint so that product-streams URLs are included
 	// in the keystone catalog.
 	err := openstack.Swift.AddContainer("imagemetadata")
@@ -97,23 +94,96 @@ func New(cred *identity.Credentials, authMode identity.AuthMode) *Openstack {
 	}
 
 	openstack.Identity.AddService(identityservice.Service{V2: serviceDef, V3: service3Def})
-	return &openstack
+	return openstack, logMsgs
+}
+
+// NewNoSwift creates an instance of a partial Openstack service double.
+// An initial user with the specified credentials is registered with the
+// identity service. This service double manages the httpServers necessary
+// for Nova and Identity services
+func NewNoSwift(cred *identity.Credentials, authMode identity.AuthMode, useTLS bool) (*Openstack, []string) {
+	var openstack Openstack
+	if authMode == identity.AuthKeyPair {
+		openstack = Openstack{
+			Identity: identityservice.NewKeyPair(),
+		}
+	} else if authMode == identity.AuthUserPassV3 {
+		openstack = Openstack{
+			Identity:         identityservice.NewV3UserPass(),
+			FallbackIdentity: identityservice.NewUserPass(),
+		}
+	} else {
+		openstack = Openstack{
+			Identity:         identityservice.NewUserPass(),
+			FallbackIdentity: identityservice.NewV3UserPass(),
+		}
+	}
+	userInfo := openstack.AddUser(cred.User, cred.Secrets, cred.TenantName)
+	if cred.TenantName == "" {
+		panic("Openstack service double requires a tenant to be specified.")
+	}
+
+	if useTLS {
+		openstack.servers = map[string]*httptest.Server{
+			"identity": httptest.NewTLSServer(nil),
+			"nova":     httptest.NewTLSServer(nil),
+		}
+	} else {
+		openstack.servers = map[string]*httptest.Server{
+			"identity": httptest.NewServer(nil),
+			"nova":     httptest.NewServer(nil),
+		}
+	}
+
+	openstack.muxes = map[string]*http.ServeMux{
+		"identity": http.NewServeMux(),
+		"nova":     http.NewServeMux(),
+	}
+
+	for k, v := range openstack.servers {
+		v.Config.Handler = openstack.muxes[k]
+	}
+
+	cred.URL = openstack.servers["identity"].URL
+	openstack.URLs = make(map[string]string)
+	var logMsgs []string
+	for k, v := range openstack.servers {
+		openstack.URLs[k] = v.URL
+		logMsgs = append(logMsgs, k+" service started: "+openstack.URLs[k])
+	}
+
+	openstack.Nova = novaservice.New(openstack.URLs["nova"], "v2", userInfo.TenantId, cred.Region, openstack.Identity, openstack.FallbackIdentity)
+	return &openstack, logMsgs
 }
 
 // SetupHTTP attaches all the needed handlers to provide the HTTP API for the Openstack service..
 func (openstack *Openstack) SetupHTTP(mux *http.ServeMux) {
-	openstack.Identity.SetupHTTP(mux)
+	openstack.Identity.SetupHTTP(openstack.muxes["identity"])
 	// If there is a FallbackIdentity service also register its urls.
 	if openstack.FallbackIdentity != nil {
-		openstack.FallbackIdentity.SetupHTTP(mux)
+		openstack.FallbackIdentity.SetupHTTP(openstack.muxes["identity"])
 	}
-	openstack.Nova.SetupHTTP(mux)
-	openstack.Swift.SetupHTTP(mux)
+	openstack.Nova.SetupHTTP(openstack.muxes["nova"])
+	if openstack.Swift != nil {
+		openstack.Swift.SetupHTTP(openstack.muxes["swift"])
+	}
 
 	// Handle root calls to be able to return auth information or fallback
 	// to Nova root handler in case its not an auth info request.
-	mux.Handle("/", openstack)
+	openstack.muxes["identity"].Handle("/", openstack)
+	openstack.Nova.SetupRootHandler(openstack.muxes["nova"])
+}
 
+// Stop closes the Openstack service double http Servers and clears the
+// related http handling
+func (openstack *Openstack) Stop() {
+	for _, v := range openstack.servers {
+		v.Config.Handler = nil
+		v.Close()
+	}
+	for k, _ := range openstack.muxes {
+		openstack.muxes[k] = nil
+	}
 }
 
 const authInformationBody = `{"versions": {"values": [{"status": "stable", ` +
@@ -131,7 +201,7 @@ func (openstack *Openstack) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	body := []byte(fmt.Sprintf(authInformationBody, openstack.url, openstack.url))
+	body := []byte(fmt.Sprintf(authInformationBody, openstack.URLs["identity"], openstack.URLs["identity"]))
 	// workaround for https://code.google.com/p/go/issues/detail?id=4454
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	w.WriteHeader(http.StatusMultipleChoices)

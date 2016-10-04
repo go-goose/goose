@@ -37,7 +37,8 @@ type localLiveSuite struct {
 	LiveTests
 	// The following attributes are for using testing doubles.
 	httpsuite.HTTPSuite
-	service testservices.HttpService
+	service         testservices.HttpService
+	versionHandlers map[string]*versionHandler
 }
 
 func (s *localLiveSuite) SetUpSuite(c *gc.C) {
@@ -50,12 +51,13 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 		Region:     "zone1.some region",
 		TenantName: "tenant",
 	}
+	var logMsg []string
 	switch s.authMode {
 	default:
 		panic("Invalid authentication method")
 	case identity.AuthKeyPair:
 		// The openstack test service sets up keypair authentication.
-		s.service = openstackservice.New(s.cred, identity.AuthKeyPair)
+		s.service, logMsg = openstackservice.New(s.cred, identity.AuthKeyPair, s.UseTLS)
 		// Add an additional endpoint so region filtering can be properly tested.
 		serviceDef := identityservice.Service{
 			V2: identityservice.V2Service{
@@ -68,7 +70,7 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 		s.service.(*openstackservice.Openstack).Identity.AddService(serviceDef)
 	case identity.AuthUserPass:
 		// The openstack test service sets up userpass authentication.
-		s.service = openstackservice.New(s.cred, identity.AuthUserPass)
+		s.service, logMsg = openstackservice.New(s.cred, identity.AuthUserPass, s.UseTLS)
 		// Add an additional endpoint so region filtering can be properly tested.
 		serviceDef := identityservice.Service{
 			V2: identityservice.V2Service{
@@ -81,7 +83,7 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 		s.service.(*openstackservice.Openstack).Identity.AddService(serviceDef)
 	case identity.AuthUserPassV3:
 		// The openstack test service sets up userpass authentication.
-		s.service = openstackservice.New(s.cred, identity.AuthUserPass)
+		s.service, logMsg = openstackservice.New(s.cred, identity.AuthUserPass, s.UseTLS)
 		// Add an additional endpoint so region filtering can be properly tested.
 		serviceDef := identityservice.Service{
 			V3: identityservice.V3Service{
@@ -97,18 +99,28 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 		legacy.SetManagementURL("http://management.test.invalid/url")
 		s.service = legacy
 	}
+	for _, msg := range logMsg {
+		c.Logf(msg)
+	}
+	if s.authMode != identity.AuthLegacy {
+		s.service.SetupHTTP(nil)
+	}
+	s.versionHandlers = make(map[string]*versionHandler)
 	s.LiveTests.SetUpSuite(c)
 }
 
 func (s *localLiveSuite) TearDownSuite(c *gc.C) {
 	s.LiveTests.TearDownSuite(c)
 	s.HTTPSuite.TearDownSuite(c)
+	s.service.Stop()
 }
 
 func (s *localLiveSuite) SetUpTest(c *gc.C) {
 	s.HTTPSuite.SetUpTest(c)
-	s.service.SetupHTTP(s.Mux)
 	s.LiveTests.SetUpTest(c)
+	if s.authMode == identity.AuthLegacy {
+		s.service.SetupHTTP(s.Mux)
+	}
 }
 
 func (s *localLiveSuite) TearDownTest(c *gc.C) {
@@ -124,7 +136,7 @@ func (s *localLiveSuite) TestInvalidRegion(c *gc.C) {
 	}
 	creds := &identity.Credentials{
 		User:    "fred",
-		URL:     s.Server.URL,
+		URL:     s.service.(*openstackservice.Openstack).URLs["identity"],
 		Secrets: "secret",
 		Region:  "invalid",
 	}
@@ -140,11 +152,11 @@ func (s *localLiveSuite) TestInexactRegionMatch(c *gc.C) {
 	}
 	cl := client.NewClient(s.cred, s.authMode, nil)
 	err := cl.Authenticate()
-	serviceURL, err := cl.MakeServiceURL("compute", []string{})
+	serviceURL, err := cl.MakeServiceURL("compute", "v2", []string{})
 	c.Assert(err, gc.IsNil)
 	_, err = url.Parse(serviceURL)
 	c.Assert(err, gc.IsNil)
-	serviceURL, err = cl.MakeServiceURL("object-store", []string{})
+	serviceURL, err = cl.MakeServiceURL("object-store", "", []string{})
 	c.Assert(err, gc.IsNil)
 	_, err = url.Parse(serviceURL)
 	c.Assert(err, gc.IsNil)
@@ -155,12 +167,34 @@ type fakeAuthenticator struct {
 	nrCallers int
 	// authStart is used as a gate to signal the fake authenticator that it can start.
 	authStart chan struct{}
+	port      string // for startApiVersionMux()
 }
 
-func newAuthenticator(bufsize int) *fakeAuthenticator {
+func newAuthenticator(bufsize int, port string) *fakeAuthenticator {
 	return &fakeAuthenticator{
 		authStart: make(chan struct{}, bufsize),
+		port:      port,
 	}
+}
+
+// doNewAuthenticator sets up the HTTP listener on localhost:<port> for testing
+// api version functionality within MakeServiceURL if we're using a fakeAuthenticator.
+func (s *localLiveSuite) doNewAuthenticator(c *gc.C, bufsize int, port string) *fakeAuthenticator {
+	newAuth := newAuthenticator(bufsize, port)
+	newAuth.mu.Lock()
+	if _, ok := s.versionHandlers[port]; !ok {
+		var vh versionHandler
+		if port == "3000" {
+			vh.authBody = authInformationBody
+		} else if port == "3003" {
+			vh.authBody = authValuesInformationBody
+		}
+		vh.port = port
+		c.Logf(startApiVersionMux(vh))
+		s.versionHandlers[port] = &vh
+	}
+	newAuth.mu.Unlock()
+	return newAuth
 }
 
 func (auth *fakeAuthenticator) Auth(creds *identity.Credentials) (*identity.AuthDetails, error) {
@@ -183,7 +217,9 @@ func (auth *fakeAuthenticator) Auth(creds *identity.Credentials) (*identity.Auth
 	}
 	URLs := make(map[string]identity.ServiceURLs)
 	endpoints := make(map[string]string)
-	endpoints["compute"] = "http://localhost"
+	endpoints["compute"] = fmt.Sprintf("http://localhost:%s", auth.port)
+	endpoints["object-store"] = fmt.Sprintf("http://localhost:%s/swift/v1", auth.port)
+	endpoints["juju-container-test"] = fmt.Sprintf("http://localhost:%s/swift/v1", auth.port)
 	URLs[creds.Region] = endpoints
 	return &identity.AuthDetails{
 		Token:             "token",
@@ -196,7 +232,7 @@ func (auth *fakeAuthenticator) Auth(creds *identity.Credentials) (*identity.Auth
 func (s *localLiveSuite) TestAuthenticationTimeout(c *gc.C) {
 	cl := client.NewClient(s.cred, s.authMode, nil)
 	defer client.SetAuthenticationTimeout(1 * time.Millisecond)()
-	auth := newAuthenticator(0)
+	auth := s.doNewAuthenticator(c, 0, "3003")
 	client.SetAuthenticator(cl, auth)
 
 	var err error
@@ -206,11 +242,11 @@ func (s *localLiveSuite) TestAuthenticationTimeout(c *gc.C) {
 	c.Assert(errors.IsTimeout(err), gc.Equals, true)
 }
 
-func (s *localLiveSuite) assertAuthenticationSuccess(c *gc.C) client.Client {
+func (s *localLiveSuite) assertAuthenticationSuccess(c *gc.C, port string) client.Client {
 	cl := client.NewClient(s.cred, s.authMode, nil)
 	cl.SetRequiredServiceTypes([]string{"compute"})
-	defer client.SetAuthenticationTimeout(1 * time.Millisecond)()
-	auth := newAuthenticator(1)
+	defer client.SetAuthenticationTimeout(2 * time.Millisecond)()
+	auth := s.doNewAuthenticator(c, 1, port)
 	client.SetAuthenticator(cl, auth)
 
 	// Signal that the authenticator can proceed immediately.
@@ -223,24 +259,10 @@ func (s *localLiveSuite) assertAuthenticationSuccess(c *gc.C) client.Client {
 }
 
 func (s *localLiveSuite) TestAuthenticationSuccess(c *gc.C) {
-	cl := s.assertAuthenticationSuccess(c)
-	URL, err := cl.MakeServiceURL("compute", nil)
+	cl := s.assertAuthenticationSuccess(c, "3000")
+	URL, err := cl.MakeServiceURL("compute", "v2.0", nil)
 	c.Assert(err, gc.IsNil)
-	c.Assert(URL, gc.Equals, "http://localhost")
-}
-
-func (s *localLiveSuite) TestMakeServiceURL(c *gc.C) {
-	cl := s.assertAuthenticationSuccess(c)
-	URL, err := cl.MakeServiceURL("compute", []string{"foo"})
-	c.Assert(err, gc.IsNil)
-	c.Assert(URL, gc.Equals, "http://localhost/foo")
-}
-
-func (s *localLiveSuite) TestMakeServiceURLRetainsTrailingSlash(c *gc.C) {
-	cl := s.assertAuthenticationSuccess(c)
-	URL, err := cl.MakeServiceURL("compute", []string{"foo", "bar/"})
-	c.Assert(err, gc.IsNil)
-	c.Assert(URL, gc.Equals, "http://localhost/foo/bar/")
+	c.Assert(URL, gc.Equals, "http://localhost:3000/v2.0")
 }
 
 func checkAuthentication(cl client.AuthenticatingClient) error {
@@ -248,11 +270,11 @@ func checkAuthentication(cl client.AuthenticatingClient) error {
 	if err != nil {
 		return err
 	}
-	URL, err := cl.MakeServiceURL("compute", nil)
+	URL, err := cl.MakeServiceURL("compute", "v3", nil)
 	if err != nil {
 		return err
 	}
-	if URL != "http://localhost" {
+	if URL != "http://localhost:3000/v3" {
 		return fmt.Errorf("Unexpected URL: %s", URL)
 	}
 	return nil
@@ -264,7 +286,7 @@ func (s *localLiveSuite) TestAuthenticationForbidsMultipleCallers(c *gc.C) {
 	}
 	cl := client.NewClient(s.cred, s.authMode, nil)
 	cl.SetRequiredServiceTypes([]string{"compute"})
-	auth := newAuthenticator(2)
+	auth := s.doNewAuthenticator(c, 2, "3000")
 	client.SetAuthenticator(cl, auth)
 
 	// Signal that the authenticator can proceed immediately.
@@ -367,14 +389,17 @@ func (s *localHTTPSSuite) SetUpSuite(c *gc.C) {
 	s.HTTPSuite.SetUpSuite(c)
 	c.Assert(s.Server.URL[:8], gc.Equals, "https://")
 	s.cred = &identity.Credentials{
-		URL:        s.Server.URL,
 		User:       "fred",
 		Secrets:    "secret",
 		Region:     "zone1.some region",
 		TenantName: "tenant",
 	}
 	// The openstack test service sets up userpass authentication.
-	s.service = openstackservice.New(s.cred, identity.AuthUserPass)
+	var logMsg []string
+	s.service, logMsg = openstackservice.New(s.cred, identity.AuthUserPass, s.UseTLS)
+	for _, msg := range logMsg {
+		c.Logf(msg)
+	}
 	// Add an additional endpoint so region filtering can be properly tested.
 	serviceDef := identityservice.Service{
 		V2: identityservice.V2Service{
@@ -385,15 +410,16 @@ func (s *localHTTPSSuite) SetUpSuite(c *gc.C) {
 			},
 		}}
 	s.service.(*openstackservice.Openstack).Identity.AddService(serviceDef)
+	s.service.SetupHTTP(nil)
 }
 
 func (s *localHTTPSSuite) TearDownSuite(c *gc.C) {
 	s.HTTPSuite.TearDownSuite(c)
+	s.service.Stop()
 }
 
 func (s *localHTTPSSuite) SetUpTest(c *gc.C) {
 	s.HTTPSuite.SetUpTest(c)
-	s.service.SetupHTTP(s.Mux)
 }
 
 func (s *localHTTPSSuite) TearDownTest(c *gc.C) {
@@ -412,7 +438,7 @@ func (s *localHTTPSSuite) TestNonValidatingClientAcceptsSelfSigned(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 
 	// Requests into this client should be https:// URLs
-	swiftURL, err := cl.MakeServiceURL("object-store", []string{"test_container"})
+	swiftURL, err := cl.MakeServiceURL("object-store", "", []string{"test_container"})
 	c.Assert(err, gc.IsNil)
 	c.Assert(swiftURL[:8], gc.Equals, "https://")
 	// We use swiftClient.CreateContainer to test a Binary request
@@ -432,7 +458,7 @@ func (s *localHTTPSSuite) setupPublicContainer(c *gc.C) string {
 	err := authSwift.CreateContainer("test_container", swift.PublicRead)
 	c.Assert(err, gc.IsNil)
 
-	baseURL, err := authClient.MakeServiceURL("object-store", nil)
+	baseURL, err := authClient.MakeServiceURL("object-store", "", nil)
 	c.Assert(err, gc.IsNil)
 	c.Assert(baseURL[:8], gc.Equals, "https://")
 	return baseURL

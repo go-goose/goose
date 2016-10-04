@@ -48,7 +48,7 @@ func (c *Client) ListImages() ([]Image, error) {
 		Images []Image
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp, ExpectedStatus: []int{http.StatusOK}}
-	err := c.client.SendRequest(client.GET, "compute", apiImages, &requestData)
+	err := c.client.SendRequest(client.GET, "compute", "v2", apiImages, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get list of images")
 	}
@@ -86,7 +86,7 @@ func (c *Client) ListImagesDetail() ([]ImageDetail, error) {
 		Images []ImageDetail
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.GET, "compute", apiImagesDetail, &requestData)
+	err := c.client.SendRequest(client.GET, "compute", "v2", apiImagesDetail, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get list of image details")
 	}
@@ -100,7 +100,7 @@ func (c *Client) GetImageDetail(imageId string) (*ImageDetail, error) {
 	}
 	url := fmt.Sprintf("%s/%s", apiImages, imageId)
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.GET, "compute", url, &requestData)
+	err := c.client.SendRequest(client.GET, "compute", "v2", url, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get details of imageId: %s", imageId)
 	}

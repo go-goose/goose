@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"launchpad.net/gnuflag"
+	"github.com/juju/gnuflag"
 
 	"gopkg.in/goose.v1/testservices/identityservice"
 )

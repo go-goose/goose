@@ -254,3 +254,7 @@ func (u *UserPass) generateAccessResponse(userInfo *UserInfo) (*AccessResponse, 
 func (u *UserPass) SetupHTTP(mux *http.ServeMux) {
 	mux.Handle("/tokens", u)
 }
+
+func (u *UserPass) Stop() {
+	// noop
+}
