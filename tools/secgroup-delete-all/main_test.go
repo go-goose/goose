@@ -47,7 +47,7 @@ func (s *ToolSuite) makeServices(c *gc.C) (*openstackservice.Openstack, *nova.Cl
 		Region:     region,
 		TenantName: tenant,
 	}
-	openstack := openstackservice.New(creds, identity.AuthUserPass)
+	openstack, _ := openstackservice.New(creds, identity.AuthUserPass, false)
 	openstack.SetupHTTP(s.Mux)
 	return openstack, createNovaClientFromCreds(creds)
 }

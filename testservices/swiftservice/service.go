@@ -55,8 +55,17 @@ func New(hostURL, versionPath, tenantId, region string, identityService, fallbac
 	return swift
 }
 
+func Stop() {
+	// noop
+}
+
 func (s *Swift) endpointURL(path string) string {
-	ep := s.Scheme + "://" + s.Hostname + s.VersionPath + "/" + s.TenantId
+	// Note: We're using the Openstack Style endpoints for this testservice
+	// 	Openstack object-storage endpoint url:
+	// 	http://<ip addr>:<port>/swift/v1
+	// 	Rackspace object-storage endpoint url:
+	// 	https://<rackspace addr>/v1/MossoCloudFS_<tenant id>
+	ep := s.Scheme + "://" + s.Hostname + "swift/" + s.VersionPath
 	if path != "" {
 		ep += "/" + strings.TrimLeft(path, "/")
 	}

@@ -58,22 +58,19 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 	c.Logf("Using identity and nova service test doubles %s", idInfo)
 	nova.UseNumericIds(s.useNumericIds)
 
-	// Set up the HTTP server.
-	s.Server = httptest.NewServer(nil)
-	s.oldHandler = s.Server.Config.Handler
-	s.Mux = http.NewServeMux()
-	s.Server.Config.Handler = s.Mux
-
 	// Set up an Openstack service.
 	s.cred = &identity.Credentials{
-		URL:        s.Server.URL,
 		User:       "fred",
 		Secrets:    "secret",
 		Region:     "some region",
 		TenantName: "tenant",
 	}
-	s.openstack = openstackservice.New(s.cred, identity.AuthUserPass)
-	s.openstack.SetupHTTP(s.Mux)
+	var logMsg []string
+	s.openstack, logMsg = openstackservice.New(s.cred, identity.AuthUserPass, false)
+	for _, msg := range logMsg {
+		c.Logf(msg)
+	}
+	s.openstack.SetupHTTP(nil)
 
 	s.testFlavor = "m1.small"
 	s.testImageId = "1"
@@ -82,9 +79,7 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 
 func (s *localLiveSuite) TearDownSuite(c *gc.C) {
 	s.LiveTests.TearDownSuite(c)
-	s.Mux = nil
-	s.Server.Config.Handler = s.oldHandler
-	s.Server.Close()
+	s.openstack.Stop()
 }
 
 func (s *localLiveSuite) SetUpTest(c *gc.C) {

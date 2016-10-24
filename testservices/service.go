@@ -10,6 +10,7 @@ import (
 // An HttpService provides the HTTP API for a service double.
 type HttpService interface {
 	SetupHTTP(mux *http.ServeMux)
+	Stop()
 }
 
 // A ServiceInstance is an Openstack module, one of nova, swift, glance.

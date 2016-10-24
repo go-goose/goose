@@ -120,3 +120,7 @@ func (u *KeyPair) generateAccessResponse(userInfo *UserInfo) (*AccessResponse, e
 func (u *KeyPair) SetupHTTP(mux *http.ServeMux) {
 	mux.Handle("/tokens", u)
 }
+
+func (u *KeyPair) Stop() {
+	// noop
+}

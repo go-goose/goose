@@ -80,7 +80,7 @@ func (s *SwiftServiceSuite) TestGetURL(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	url, err := s.service.GetURL("test", "obj")
 	c.Assert(err, gc.IsNil)
-	c.Assert(url, gc.Equals, fmt.Sprintf("%s/%s/%s/test/obj", hostname, versionPath, tenantId))
+	c.Assert(url, gc.Equals, fmt.Sprintf("%s/swift/%s/test/obj", hostname, versionPath))
 	err = s.service.RemoveContainer("test")
 	c.Assert(err, gc.IsNil)
 	ok = s.service.HasContainer("test")

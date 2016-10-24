@@ -143,6 +143,10 @@ func New(hostURL, versionPath, tenantId, region string, identityService, fallbac
 	return novaService
 }
 
+func (n *Nova) Stop() {
+	// noop
+}
+
 // SetAvailabilityZones sets the availability zones for setting
 // availability zones.
 //

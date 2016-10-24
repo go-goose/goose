@@ -34,8 +34,13 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 		TenantName: "tenant",
 	}
 	s.LiveTestsPublicContainer.cred = s.LiveTests.cred
-	s.openstack = openstackservice.New(s.LiveTests.cred,
-		identity.AuthUserPass)
+	var logMsg []string
+	s.openstack, logMsg = openstackservice.New(s.LiveTests.cred,
+		identity.AuthUserPass, false)
+	for _, msg := range logMsg {
+		c.Logf(msg)
+	}
+	s.openstack.SetupHTTP(nil)
 
 	s.LiveTests.SetUpSuite(c)
 	s.LiveTestsPublicContainer.SetUpSuite(c)
@@ -49,7 +54,6 @@ func (s *localLiveSuite) TearDownSuite(c *gc.C) {
 
 func (s *localLiveSuite) SetUpTest(c *gc.C) {
 	s.HTTPSuite.SetUpTest(c)
-	s.openstack.SetupHTTP(s.Mux)
 	s.LiveTests.SetUpTest(c)
 	s.LiveTestsPublicContainer.SetUpTest(c)
 }

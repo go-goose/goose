@@ -33,6 +33,10 @@ func (lis *Legacy) SetupHTTP(mux *http.ServeMux) {
 	mux.Handle("/", lis)
 }
 
+func (lis *Legacy) Stop() {
+	// NOOP for legacy identity service.
+}
+
 func (lis *Legacy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	username := r.Header.Get("X-Auth-User")
 	userInfo, ok := lis.users[username]

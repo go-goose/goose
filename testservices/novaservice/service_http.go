@@ -167,8 +167,8 @@ The resource could not be found.
 	}
 	errNoVersion = &errorResponse{
 		http.StatusOK,
-		`{"versions": [{"status": "CURRENT", "updated": "2011-01-21` +
-			`T11:33:21Z", "id": "v2.0", "links": [{"href": "$ENDPOINT$", "rel": "self"}]}]}`,
+		`{"versions": [` +
+			`{"id": "v2.0", "links": [{"href": "v2", "rel": "self"}], "status": "SUPPORTED", "updated": "2011-01-21T11:33:21Z"}]}`,
 		"application/json",
 		"no version specified in URL",
 		nil,
@@ -1255,4 +1255,8 @@ func (n *Nova) SetupHTTP(mux *http.ServeMux) {
 		}
 		mux.Handle(path, h)
 	}
+}
+
+func (n *Nova) SetupRootHandler(mux *http.ServeMux) {
+	mux.Handle("/", n.handler((*Nova).handleRoot))
 }
