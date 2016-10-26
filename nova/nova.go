@@ -758,10 +758,10 @@ func (c *Client) ListAvailabilityZones() ([]AvailabilityZone, error) {
 // VolumeAttachment represents both the request and response for
 // attaching volumes.
 type VolumeAttachment struct {
-	Device   string `json:"device"`
-	Id       string `json:"id"`
-	ServerId string `json:"serverId"`
-	VolumeId string `json:"volumeId"`
+	Device   *string `json:"device,omitempty"`
+	Id       string  `json:"id"`
+	ServerId string  `json:"serverId"`
+	VolumeId string  `json:"volumeId"`
 }
 
 // AttachVolume attaches the given volumeId to the given serverId at
@@ -774,12 +774,17 @@ func (c *Client) AttachVolume(serverId, volumeId, device string) (*VolumeAttachm
 		VolumeAttachment VolumeAttachment `json:"volumeAttachment"`
 	}
 
+	var devicePtr *string
+	if device != "" {
+		devicePtr = &device
+	}
+
 	var resp volumeAttachment
 	requestData := goosehttp.RequestData{
 		ReqValue: &volumeAttachment{VolumeAttachment{
 			ServerId: serverId,
 			VolumeId: volumeId,
-			Device:   device,
+			Device:   devicePtr,
 		}},
 		RespValue: &resp,
 	}

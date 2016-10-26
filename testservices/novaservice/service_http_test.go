@@ -1289,3 +1289,27 @@ func (s *NovaHTTPSuite) TestSetServerMetadata(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Assert(server.Metadata, gc.DeepEquals, req.Metadata)
 }
+
+func (s *NovaHTTPSuite) TestAttachVolumeBlankDeviceName(c *gc.C) {
+	var req struct {
+		VolumeAttachment struct {
+			Device string `json:"device"`
+		} `json:"volumeAttachment"`
+	}
+	resp, err := s.jsonRequest("POST", "/servers/123/os-volume_attachments", req, nil)
+	c.Assert(err, gc.IsNil)
+	c.Assert(resp.StatusCode, gc.Equals, http.StatusBadRequest)
+
+	// Passing an empty string in the "device" attribute
+	// is invalid. It should be omitted instead.
+	message := "Invalid input for field/attribute device. Value: '' does not match '(^/dev/x{0,1}[a-z]{0,1}d{0,1})([a-z]+)[0-9]*$'"
+	assertBody(c, resp, &errorResponse{
+		http.StatusBadRequest,
+		fmt.Sprintf(`{"badRequest": {"message": "%s", "code": 400}}`, message),
+		"application/json; charset=UTF-8",
+		message,
+		nil,
+		nil,
+	})
+
+}

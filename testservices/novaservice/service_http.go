@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -31,6 +32,10 @@ type errorResponse struct {
 	headers     map[string]string
 	nova        *Nova
 }
+
+var (
+	regexpVolumeAttachmentDevice = regexp.MustCompile("(^/dev/x{0,1}[a-z]{0,1}d{0,1})([a-z]+)[0-9]*$")
+)
 
 // verbatim real Nova responses (as errors).
 var (
@@ -1184,6 +1189,24 @@ func (n *Nova) handleAttachVolumes(w http.ResponseWriter, r *http.Request) error
 	if err := json.Unmarshal(bodyBytes, &attachment); err != nil {
 		return err
 	}
+
+	if attachment.VolumeAttachment.Device != nil {
+		if !regexpVolumeAttachmentDevice.MatchString(*attachment.VolumeAttachment.Device) {
+			message := fmt.Sprintf(
+				"Invalid input for field/attribute device. Value: '%s' does not match '%s'",
+				*attachment.VolumeAttachment.Device, regexpVolumeAttachmentDevice,
+			)
+			return &errorResponse{
+				http.StatusBadRequest,
+				fmt.Sprintf(`{"badRequest": {"message": "%s", "code": 400}}`, message),
+				"application/json; charset=UTF-8",
+				message,
+				nil,
+				nil,
+			}
+		}
+	}
+
 	n.nextAttachmentId++
 	attachment.VolumeAttachment.Id = fmt.Sprintf("%d", n.nextAttachmentId)
 
