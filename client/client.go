@@ -204,7 +204,10 @@ func (c *authenticatingClient) sendAuthRequest(
 
 // MakeServiceURL uses an endpoint matching the apiVersion for the given service type.
 // Given a major version only, the version with the highest minor will be used.
-// object-store and container service types have no versions
+//
+// object-store and container service types have no versions. For these services, the
+// caller may pass "" for apiVersion, to use the service catalogue URL without any
+// version discovery.
 func (c *authenticatingClient) MakeServiceURL(serviceType, apiVersion string, parts []string) (string, error) {
 	if !c.IsAuthenticated() {
 		return "", errors.New("cannot get endpoint URL without being authenticated")
@@ -212,6 +215,9 @@ func (c *authenticatingClient) MakeServiceURL(serviceType, apiVersion string, pa
 	serviceURL, ok := c.serviceURLs[serviceType]
 	if !ok {
 		return "", errors.New("no endpoints known for service type: " + serviceType)
+	}
+	if apiVersion == "" {
+		return makeURL(serviceURL, parts), nil
 	}
 	requestedVersion, err := parseVersion(apiVersion)
 	if err != nil {
