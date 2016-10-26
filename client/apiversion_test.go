@@ -25,6 +25,16 @@ type makeServiceURLTest struct {
 func (s *localLiveSuite) makeServiceURLTests() []makeServiceURLTest {
 	return []makeServiceURLTest{
 		{
+			// As a special case, if no version is specified
+			// then we use whatever URL is recoded in the
+			// service catalogue verbatim.
+			serviceType: "compute",
+			version:     "",
+			parts:       []string{},
+			success:     true,
+			URL:         "http://localhost:%s",
+		},
+		{
 			serviceType: "compute",
 			version:     "v2.1",
 			parts:       []string{"foo", "bar/"},
@@ -93,13 +103,6 @@ func (s *localLiveSuite) makeServiceURLTests() []makeServiceURLTest {
 			parts:       []string{"foo", "bar/"},
 			success:     true,
 			URL:         "http://localhost:%s/swift/v1/foo/bar/",
-		},
-		{
-			serviceType: "compute",
-			version:     "",
-			parts:       []string{},
-			success:     false,
-			err:         "could not find matching URL",
 		},
 		{
 			serviceType: "compute",
