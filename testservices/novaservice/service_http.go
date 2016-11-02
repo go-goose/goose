@@ -1207,8 +1207,28 @@ func (n *Nova) handleAttachVolumes(w http.ResponseWriter, r *http.Request) error
 		}
 	}
 
+	var additionalProperties []string
+	if attachment.VolumeAttachment.ServerId != "" {
+		additionalProperties = append(additionalProperties, "'serverId'")
+	}
+	if len(additionalProperties) > 0 {
+		message := fmt.Sprintf(
+			"Additional properties are not allowed (%s were unexpected)",
+			strings.Join(additionalProperties, ", "),
+		)
+		return &errorResponse{
+			http.StatusBadRequest,
+			fmt.Sprintf(`{"badRequest": {"message": "%s", "code": 400}}`, message),
+			"application/json; charset=UTF-8",
+			message,
+			nil,
+			nil,
+		}
+	}
+
 	n.nextAttachmentId++
 	attachment.VolumeAttachment.Id = fmt.Sprintf("%d", n.nextAttachmentId)
+	attachment.VolumeAttachment.ServerId = serverId
 
 	serverVols := n.serverIdToAttachedVolumes[serverId]
 	serverVols = append(serverVols, attachment.VolumeAttachment)

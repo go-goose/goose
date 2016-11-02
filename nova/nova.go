@@ -759,8 +759,8 @@ func (c *Client) ListAvailabilityZones() ([]AvailabilityZone, error) {
 // attaching volumes.
 type VolumeAttachment struct {
 	Device   *string `json:"device,omitempty"`
-	Id       string  `json:"id"`
-	ServerId string  `json:"serverId"`
+	Id       string  `json:"id,omitempty"`
+	ServerId string  `json:"serverId,omitempty"`
 	VolumeId string  `json:"volumeId"`
 }
 
@@ -782,7 +782,6 @@ func (c *Client) AttachVolume(serverId, volumeId, device string) (*VolumeAttachm
 	var resp volumeAttachment
 	requestData := goosehttp.RequestData{
 		ReqValue: &volumeAttachment{VolumeAttachment{
-			ServerId: serverId,
 			VolumeId: volumeId,
 			Device:   devicePtr,
 		}},
