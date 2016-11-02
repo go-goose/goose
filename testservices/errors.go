@@ -108,6 +108,10 @@ func NewSecurityGroupRuleAlreadyExistsError(id string) *ServerError {
 	return serverErrorf(409, "A security group rule with id %s already exists", id)
 }
 
+func NewNeutronSecurityGroupRuleAlreadyExistsError(parentId string) *ServerError {
+	return serverErrorf(409, "Security group rule already exists. Group id is %s.", parentId)
+}
+
 func NewCannotAddTwiceRuleToGroupError(ruleId, groupId string) *ServerError {
 	return serverErrorf(409, "Cannot add twice rule %s to security group %s", ruleId, groupId)
 }
@@ -118,6 +122,10 @@ func NewUnknownSecurityGroupError(groupId string) *ServerError {
 
 func NewSecurityGroupRuleNotFoundError(ruleId string) *ServerError {
 	return serverErrorf(404, "No such security group rule %s", ruleId)
+}
+
+func NewInvalidDirectionSecurityGroupError(direction string) *ServerError {
+	return serverErrorf(400, "Invalid input for direction. Reason: %s is not ingress or egress.", direction)
 }
 
 func NewServerBelongsToGroupError(serverId, groupId string) *ServerError {
@@ -150,4 +158,20 @@ func NewNoFloatingIPsToRemoveError(serverId string) *ServerError {
 
 func NewNoFloatingIPsError(serverId, ipId string) *ServerError {
 	return serverErrorf(404, "Server %q does not have floating IP %s", serverId, ipId)
+}
+
+func NewNetworkNotFoundError(network string) *ServerError {
+	return serverErrorf(404, "No such network %q", network)
+}
+
+func NewNetworkAlreadyExistsError(id string) *ServerError {
+	return serverErrorf(409, "A network with id %q already exists", id)
+}
+
+func NewSubnetNotFoundError(subnet string) *ServerError {
+	return serverErrorf(404, "No such subnet %q", subnet)
+}
+
+func NewSubnetAlreadyExistsError(id string) *ServerError {
+	return serverErrorf(409, "A subnet with id %q already exists", id)
 }

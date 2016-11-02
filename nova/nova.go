@@ -203,6 +203,7 @@ func (c *Client) ListServers(filter *Filter) ([]Entity, error) {
 type IPAddress struct {
 	Version int    `json:"version"`
 	Address string `json:"addr"`
+	Type    string `json:"OS-EXT-IPS:type"` // fixed or floating
 }
 
 // ServerDetail describes a server in more detail.

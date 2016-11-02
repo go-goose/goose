@@ -78,3 +78,30 @@ func (s *GlanceSuite) TestGetImageDetail(c *gc.C) {
 	c.Assert(ir.Name, gc.Equals, firstImage.Name)
 	c.Assert(ir.Status, gc.Equals, firstImage.Status)
 }
+
+func (s *GlanceSuite) TestListImagesV2(c *gc.C) {
+	images, err := s.glance.ListImagesV2()
+	c.Assert(err, gc.IsNil)
+	c.Assert(images, gc.Not(gc.HasLen), 0)
+	for _, ir := range images {
+		c.Assert(ir.CreatedAt, gc.Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
+		c.Assert(ir.UpdatedAt, gc.Matches, `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.*`)
+		c.Assert(ir.Id, gc.Not(gc.Equals), "")
+		c.Assert(ir.Status, gc.Not(gc.Equals), "")
+		c.Assert(ir.Name, gc.Not(gc.Equals), "")
+		c.Assert(ir.Self, gc.Not(gc.Equals), "")
+		c.Assert(ir.Checksum, gc.Not(gc.Equals), "")
+	}
+}
+
+func (s *GlanceSuite) TestGetImageDetailV2(c *gc.C) {
+	images, err := s.glance.ListImagesV2()
+	c.Assert(err, gc.IsNil)
+	firstImage := images[0]
+	ir, err := s.glance.GetImageDetailV2(firstImage.Id)
+	c.Assert(err, gc.IsNil)
+	c.Assert(ir.CreatedAt, gc.Matches, firstImage.CreatedAt)
+	c.Assert(ir.UpdatedAt, gc.Matches, firstImage.UpdatedAt)
+	c.Assert(ir.Name, gc.Equals, firstImage.Name)
+	c.Assert(ir.Status, gc.Equals, firstImage.Status)
+}

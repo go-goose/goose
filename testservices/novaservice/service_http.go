@@ -652,9 +652,9 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	n.buildServerLinks(&server)
 	// set some IP addresses
 	addr := fmt.Sprintf("127.10.0.%d", nextServer)
-	server.Addresses["public"] = []nova.IPAddress{{4, addr}, {6, "::dead:beef:f00d"}}
+	server.Addresses["public"] = []nova.IPAddress{{4, addr, "fixed"}, {6, "::dead:beef:f00d", "fixed"}}
 	addr = fmt.Sprintf("127.0.0.%d", nextServer)
-	server.Addresses["private"] = []nova.IPAddress{{4, addr}, {6, "::face::000f"}}
+	server.Addresses["private"] = []nova.IPAddress{{4, addr, "fixed"}, {6, "::face::000f", "fixed"}}
 	if err := n.addServer(server); err != nil {
 		return err
 	}
@@ -1278,17 +1278,19 @@ func (n *Nova) handleListVolumes(w http.ResponseWriter, r *http.Request) error {
 // SetupHTTP attaches all the needed handlers to provide the HTTP API.
 func (n *Nova) SetupHTTP(mux *http.ServeMux) {
 	handlers := map[string]http.Handler{
-		"/$v/":                           errBadRequest,
-		"/$v/$t/":                        errNotFound,
-		"/$v/$t/flavors":                 n.handler((*Nova).handleFlavors),
-		"/$v/$t/flavors/detail":          n.handler((*Nova).handleFlavorsDetail),
-		"/$v/$t/servers":                 n.handler((*Nova).handleServers),
-		"/$v/$t/servers/detail":          n.handler((*Nova).handleServersDetail),
-		"/$v/$t/os-security-groups":      n.handler((*Nova).handleSecurityGroups),
-		"/$v/$t/os-security-group-rules": n.handler((*Nova).handleSecurityGroupRules),
-		"/$v/$t/os-floating-ips":         n.handler((*Nova).handleFloatingIPs),
-		"/$v/$t/os-networks":             n.handler((*Nova).handleNetworks),
-		"/$v/$t/os-availability-zone":    n.handler((*Nova).handleAvailabilityZones),
+		"/$v/":                        errBadRequest,
+		"/$v/$t/":                     errNotFound,
+		"/$v/$t/flavors":              n.handler((*Nova).handleFlavors),
+		"/$v/$t/flavors/detail":       n.handler((*Nova).handleFlavorsDetail),
+		"/$v/$t/servers":              n.handler((*Nova).handleServers),
+		"/$v/$t/servers/detail":       n.handler((*Nova).handleServersDetail),
+		"/$v/$t/os-availability-zone": n.handler((*Nova).handleAvailabilityZones),
+	}
+	if !n.useNeutronNetworking {
+		handlers["/$v/$t/os-security-groups"] = n.handler((*Nova).handleSecurityGroups)
+		handlers["/$v/$t/os-security-group-rules"] = n.handler((*Nova).handleSecurityGroupRules)
+		handlers["/$v/$t/os-floating-ips"] = n.handler((*Nova).handleFloatingIPs)
+		handlers["/$v/$t/os-networks"] = n.handler((*Nova).handleNetworks)
 	}
 	for path, h := range handlers {
 		path = strings.Replace(path, "$v", n.VersionPath, 1)
