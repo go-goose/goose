@@ -41,16 +41,45 @@ type Client interface {
 // a user's credentials.
 type AuthenticatingClient interface {
 	Client
+
+	// SetVersionDiscoveryEnabled enables or disables API version
+	// discovery. Discovery is enabled by default. If enabled,
+	// the client will attempt to list all versions available
+	// for a service and use the best match. Otherwise, any API
+	// version specified in an SendRequest or MakeServiceURL
+	// call will be ignored, and the service catalogue endpoint
+	// URL will be used directly.
+	SetVersionDiscoveryEnabled(bool) bool
+
+	// SetRequiredServiceTypes sets the service types that the
+	// openstack must provide.
 	SetRequiredServiceTypes(requiredServiceTypes []string)
+
+	// Authenticate authenticates the client with the OpenStack
+	// identity service.
 	Authenticate() error
+
+	// IsAuthenticated reports whether the client is
+	// authenticated.
 	IsAuthenticated() bool
+
+	// Token returns the authentication token. If the client
+	// is not yet authenticated, this will return an empty
+	// string.
 	Token() string
+
+	// UserId returns the user ID for authentication.
 	UserId() string
+
+	// TenantId returns the tenant ID for authentication.
 	TenantId() string
 
-	EndpointsForRegion(string) identity.ServiceURLs
-	// IdentityAuthOptions returns a list of valid auth options for the given
-	// openstack or error if fetching fails.
+	// EndpointsForRegion returns the service catalog URLs
+	// for the specified region.
+	EndpointsForRegion(region string) identity.ServiceURLs
+
+	// IdentityAuthOptions returns a list of valid auth options
+	// for the given openstack or error if fetching fails.
 	IdentityAuthOptions() (identity.AuthOptions, error)
 }
 
@@ -91,9 +120,10 @@ type authenticatingClient struct {
 	// Service type to endpoint URLs for the authenticated region
 	serviceURLs identity.ServiceURLs
 
-	// API versions available based on endpoint url
-	apiURLVersions map[string]*apiURLVersion
-	apiVersionMu   sync.Mutex
+	// API versions available based on service catalogue URL.
+	apiVersionMu               sync.Mutex
+	apiVersionDiscoveryEnabled bool
+	apiURLVersions             map[string]*apiURLVersion
 }
 
 func (c *authenticatingClient) EndpointsForRegion(region string) identity.ServiceURLs {
@@ -132,6 +162,7 @@ func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpC
 		creds:                &client_creds,
 		requiredServiceTypes: defaultRequiredServiceTypes,
 		client:               client{logger: logger, httpClient: httpClient},
+		apiVersionDiscoveryEnabled: true,
 	}
 	client.auth = &client
 	client.authMode = identity.NewAuthenticator(auth_method, httpClient)
@@ -216,7 +247,7 @@ func (c *authenticatingClient) MakeServiceURL(serviceType, apiVersion string, pa
 	if !ok {
 		return "", errors.New("no endpoints known for service type: " + serviceType)
 	}
-	if apiVersion == "" {
+	if apiVersion == "" || !c.isAPIVersionDiscoveryEnabled() {
 		return makeURL(serviceURL, parts), nil
 	}
 	requestedVersion, err := parseVersion(apiVersion)
@@ -232,6 +263,20 @@ func (c *authenticatingClient) MakeServiceURL(serviceType, apiVersion string, pa
 		return "", err
 	}
 	return makeURL(serviceURL, parts), nil
+}
+
+func (c *authenticatingClient) SetVersionDiscoveryEnabled(enabled bool) bool {
+	c.apiVersionMu.Lock()
+	defer c.apiVersionMu.Unlock()
+	old := c.apiVersionDiscoveryEnabled
+	c.apiVersionDiscoveryEnabled = enabled
+	return old
+}
+
+func (c *authenticatingClient) isAPIVersionDiscoveryEnabled() bool {
+	c.apiVersionMu.Lock()
+	defer c.apiVersionMu.Unlock()
+	return c.apiVersionDiscoveryEnabled
 }
 
 // Return the relevant service endpoint URLs for this client's region.

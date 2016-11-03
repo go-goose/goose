@@ -142,6 +142,17 @@ func (s *localLiveSuite) TestMakeServiceURL(c *gc.C) {
 	}
 }
 
+func (s *localLiveSuite) TestMakeServiceURLAPIVersionDiscoveryDisabled(c *gc.C) {
+	port := "3000"
+	cl := s.assertAuthenticationSuccess(c, port)
+	wasEnabled := cl.SetVersionDiscoveryEnabled(false)
+	c.Assert(wasEnabled, gc.Equals, true)
+
+	url, err := cl.MakeServiceURL("compute", "v2.1", []string{"foo", "bar/"})
+	c.Assert(err, gc.IsNil)
+	c.Assert(url, gc.Equals, fmt.Sprintf("http://localhost:%s/foo/bar/", port))
+}
+
 func (s *localLiveSuite) TestMakeServiceURLValues(c *gc.C) {
 	port := "3003"
 	cl := s.assertAuthenticationSuccess(c, port)
