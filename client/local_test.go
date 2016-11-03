@@ -242,7 +242,7 @@ func (s *localLiveSuite) TestAuthenticationTimeout(c *gc.C) {
 	c.Assert(errors.IsTimeout(err), gc.Equals, true)
 }
 
-func (s *localLiveSuite) assertAuthenticationSuccess(c *gc.C, port string) client.Client {
+func (s *localLiveSuite) assertAuthenticationSuccess(c *gc.C, port string) client.AuthenticatingClient {
 	cl := client.NewClient(s.cred, s.authMode, nil)
 	cl.SetRequiredServiceTypes([]string{"compute"})
 	defer client.SetAuthenticationTimeout(2 * time.Millisecond)()
