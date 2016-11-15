@@ -12,6 +12,7 @@ import (
 	"gopkg.in/goose.v1/nova"
 	"gopkg.in/goose.v1/testservices"
 	"gopkg.in/goose.v1/testservices/identityservice"
+	"gopkg.in/goose.v1/testservices/neutronmodel"
 )
 
 var _ testservices.HttpService = (*Nova)(nil)
@@ -21,6 +22,7 @@ var _ identityservice.ServiceProvider = (*Nova)(nil)
 // contains the service double's internal state.
 type Nova struct {
 	testservices.ServiceInstance
+	neutronModel              *neutronmodel.NeutronModel
 	flavors                   map[string]nova.FlavorDetail
 	servers                   map[string]nova.ServerDetail
 	groups                    map[string]nova.SecurityGroup
@@ -36,6 +38,7 @@ type Nova struct {
 	nextRuleId                int
 	nextIPId                  int
 	nextAttachmentId          int
+	useNeutronNetworking      bool
 }
 
 func errorJSONEncode(err error) (int, string) {
@@ -106,6 +109,7 @@ func New(hostURL, versionPath, tenantId, region string, identityService, fallbac
 		serverIPs:                 make(map[string][]string),
 		availabilityZones:         make(map[string]nova.AvailabilityZone),
 		serverIdToAttachedVolumes: make(map[string][]nova.VolumeAttachment),
+		useNeutronNetworking:      false,
 		ServiceInstance: testservices.ServiceInstance{
 			IdentityService:         identityService,
 			FallbackIdentityService: fallbackIdentity,
@@ -145,6 +149,13 @@ func New(hostURL, versionPath, tenantId, region string, identityService, fallbac
 
 func (n *Nova) Stop() {
 	// noop
+}
+
+// AddNeutronModel setups up the test double to use Neutron networking
+// which requires shared data between the nova and neutron test doubles.
+func (n *Nova) AddNeutronModel(neutronModel *neutronmodel.NeutronModel) {
+	n.neutronModel = neutronModel
+	n.useNeutronNetworking = true
 }
 
 // SetAvailabilityZones sets the availability zones for setting
@@ -434,6 +445,9 @@ func (n *Nova) updateSecurityGroup(group nova.SecurityGroup) error {
 	if err := n.ProcessFunctionHook(n, group); err != nil {
 		return err
 	}
+	if n.useNeutronNetworking {
+		return n.neutronModel.UpdateNovaSecurityGroup(group)
+	}
 	existingGroup, err := n.securityGroup(group.Id)
 	if err != nil {
 		return testservices.NewSecurityGroupByIDNotFoundError(group.Id)
@@ -448,6 +462,9 @@ func (n *Nova) updateSecurityGroup(group nova.SecurityGroup) error {
 func (n *Nova) addSecurityGroup(group nova.SecurityGroup) error {
 	if err := n.ProcessFunctionHook(n, group); err != nil {
 		return err
+	}
+	if n.useNeutronNetworking {
+		return n.neutronModel.AddNovaSecurityGroup(group)
 	}
 	if _, err := n.securityGroup(group.Id); err == nil {
 		return testservices.NewSecurityGroupAlreadyExistsError(group.Id)
@@ -465,6 +482,9 @@ func (n *Nova) securityGroup(groupId string) (*nova.SecurityGroup, error) {
 	if err := n.ProcessFunctionHook(n, groupId); err != nil {
 		return nil, err
 	}
+	if n.useNeutronNetworking {
+		return n.neutronModel.NovaSecurityGroup(groupId)
+	}
 	group, ok := n.groups[groupId]
 	if !ok {
 		return nil, testservices.NewSecurityGroupByIDNotFoundError(groupId)
@@ -477,6 +497,9 @@ func (n *Nova) securityGroupByName(groupName string) (*nova.SecurityGroup, error
 	if err := n.ProcessFunctionHook(n, groupName); err != nil {
 		return nil, err
 	}
+	if n.useNeutronNetworking {
+		return n.neutronModel.NovaSecurityGroupByName(groupName)
+	}
 	for _, group := range n.groups {
 		if group.Name == groupName {
 			return &group, nil
@@ -488,6 +511,9 @@ func (n *Nova) securityGroupByName(groupName string) (*nova.SecurityGroup, error
 // allSecurityGroups returns a list of all existing groups.
 func (n *Nova) allSecurityGroups() []nova.SecurityGroup {
 	var groups []nova.SecurityGroup
+	if n.useNeutronNetworking {
+		return n.neutronModel.AllNovaSecurityGroups()
+	}
 	for _, group := range n.groups {
 		groups = append(groups, group)
 	}
@@ -498,6 +524,9 @@ func (n *Nova) allSecurityGroups() []nova.SecurityGroup {
 func (n *Nova) removeSecurityGroup(groupId string) error {
 	if err := n.ProcessFunctionHook(n, groupId); err != nil {
 		return err
+	}
+	if n.useNeutronNetworking {
+		return n.neutronModel.RemoveSecurityGroup(groupId)
 	}
 	if _, err := n.securityGroup(groupId); err != nil {
 		return err
@@ -621,10 +650,16 @@ func (n *Nova) addServerSecurityGroup(serverId string, groupId string) error {
 	if err := n.ProcessFunctionHook(n, serverId, groupId); err != nil {
 		return err
 	}
-	if _, err := n.server(serverId); err != nil {
-		return err
+	if n.useNeutronNetworking {
+		if _, err := n.neutronModel.NovaSecurityGroup(groupId); err != nil {
+			return err
+		}
+	} else {
+		if _, err := n.securityGroup(groupId); err != nil {
+			return err
+		}
 	}
-	if _, err := n.securityGroup(groupId); err != nil {
+	if _, err := n.server(serverId); err != nil {
 		return err
 	}
 	groups, ok := n.serverGroups[serverId]
@@ -642,10 +677,16 @@ func (n *Nova) addServerSecurityGroup(serverId string, groupId string) error {
 
 // hasServerSecurityGroup returns whether the given server belongs to the group.
 func (n *Nova) hasServerSecurityGroup(serverId string, groupId string) bool {
-	if _, err := n.server(serverId); err != nil {
-		return false
+	if n.useNeutronNetworking {
+		if _, err := n.neutronModel.NovaSecurityGroup(groupId); err != nil {
+			return false
+		}
+	} else {
+		if _, err := n.securityGroup(groupId); err != nil {
+			return false
+		}
 	}
-	if _, err := n.securityGroup(groupId); err != nil {
+	if _, err := n.server(serverId); err != nil {
 		return false
 	}
 	groups, ok := n.serverGroups[serverId]
@@ -679,10 +720,16 @@ func (n *Nova) removeServerSecurityGroup(serverId string, groupId string) error 
 	if err := n.ProcessFunctionHook(n, serverId, groupId); err != nil {
 		return err
 	}
-	if _, err := n.server(serverId); err != nil {
-		return err
+	if n.useNeutronNetworking {
+		if _, err := n.neutronModel.NovaSecurityGroup(groupId); err != nil {
+			return err
+		}
+	} else {
+		if _, err := n.securityGroup(groupId); err != nil {
+			return err
+		}
 	}
-	if _, err := n.securityGroup(groupId); err != nil {
+	if _, err := n.server(serverId); err != nil {
 		return err
 	}
 	groups, ok := n.serverGroups[serverId]
@@ -709,6 +756,9 @@ func (n *Nova) addFloatingIP(ip nova.FloatingIP) error {
 	if err := n.ProcessFunctionHook(n, ip); err != nil {
 		return err
 	}
+	if n.useNeutronNetworking {
+		return n.neutronModel.AddNovaFloatingIP(ip)
+	}
 	if _, err := n.floatingIP(ip.Id); err == nil {
 		return testservices.NewFloatingIPExistsError(ip.Id)
 	}
@@ -718,6 +768,9 @@ func (n *Nova) addFloatingIP(ip nova.FloatingIP) error {
 
 // hasFloatingIP returns whether the given floating IP address exists.
 func (n *Nova) hasFloatingIP(address string) bool {
+	if n.useNeutronNetworking {
+		return n.neutronModel.HasFloatingIP(address)
+	}
 	if len(n.floatingIPs) == 0 {
 		return false
 	}
@@ -734,6 +787,9 @@ func (n *Nova) floatingIP(ipId string) (*nova.FloatingIP, error) {
 	if err := n.ProcessFunctionHook(n, ipId); err != nil {
 		return nil, err
 	}
+	if n.useNeutronNetworking {
+		return n.neutronModel.NovaFloatingIP(ipId)
+	}
 	ip, ok := n.floatingIPs[ipId]
 	if !ok {
 		return nil, testservices.NewFloatingIPNotFoundError(ipId)
@@ -746,6 +802,9 @@ func (n *Nova) floatingIPByAddr(address string) (*nova.FloatingIP, error) {
 	if err := n.ProcessFunctionHook(n, address); err != nil {
 		return nil, err
 	}
+	if n.useNeutronNetworking {
+		return n.neutronModel.NovaFloatingIPByAddr(address)
+	}
 	for _, fip := range n.floatingIPs {
 		if fip.IP == address {
 			return &fip, nil
@@ -756,6 +815,9 @@ func (n *Nova) floatingIPByAddr(address string) (*nova.FloatingIP, error) {
 
 // allFloatingIPs returns a list of all created floating IPs.
 func (n *Nova) allFloatingIPs() []nova.FloatingIP {
+	if n.useNeutronNetworking {
+		return n.neutronModel.AllNovaFloatingIPs()
+	}
 	var fips []nova.FloatingIP
 	for _, fip := range n.floatingIPs {
 		fips = append(fips, fip)
@@ -767,6 +829,9 @@ func (n *Nova) allFloatingIPs() []nova.FloatingIP {
 func (n *Nova) removeFloatingIP(ipId string) error {
 	if err := n.ProcessFunctionHook(n, ipId); err != nil {
 		return err
+	}
+	if n.useNeutronNetworking {
+		return n.neutronModel.RemoveFloatingIP(ipId)
 	}
 	if _, err := n.floatingIP(ipId); err != nil {
 		return err
@@ -783,13 +848,27 @@ func (n *Nova) addServerFloatingIP(serverId string, ipId string) error {
 	if _, err := n.server(serverId); err != nil {
 		return err
 	}
-	if fip, err := n.floatingIP(ipId); err != nil {
-		return err
-	} else {
-		fixedIP := "4.3.2.1" // not important really, unused
+	fixedIP := "4.3.2.1" // not important really, unused
+	var fip *nova.FloatingIP
+	var err error
+	if n.useNeutronNetworking {
+		fip, err = n.neutronModel.NovaFloatingIP(ipId)
+		if err != nil {
+			return err
+		}
 		fip.FixedIP = &fixedIP
-		fip.InstanceId = &serverId
-		n.floatingIPs[ipId] = *fip
+		if err := n.neutronModel.UpdateNovaFloatingIP(fip); err != nil {
+			return err
+		}
+	} else {
+		fip, err = n.floatingIP(ipId)
+		if err != nil {
+			return err
+		} else {
+			fip.FixedIP = &fixedIP
+			fip.InstanceId = &serverId
+			n.floatingIPs[ipId] = *fip
+		}
 	}
 	fips, ok := n.serverIPs[serverId]
 	if ok {
@@ -801,12 +880,43 @@ func (n *Nova) addServerFloatingIP(serverId string, ipId string) error {
 	}
 	fips = append(fips, ipId)
 	n.serverIPs[serverId] = fips
+	if err := n.addFloatingIPToServerAddresses(serverId, fip.IP); err != nil {
+		return err
+	}
+	return nil
+}
+
+// addFloatingIPToServerAddresses adds a floating ip address to the servers list
+// of Addresses to facilitate juju openstack provider tests.
+func (n *Nova) addFloatingIPToServerAddresses(serverId, address string) error {
+	server, err := n.server(serverId)
+	if err != nil {
+		return err
+	}
+	newAddresses := server.Addresses["private"]
+	if strings.Contains(address, ":") {
+		newAddresses = append(newAddresses, nova.IPAddress{6, address, "floating"})
+	} else {
+		newAddresses = append(newAddresses, nova.IPAddress{4, address, "floating"})
+	}
+	server.Addresses["private"] = newAddresses
+	n.servers[serverId] = *server
 	return nil
 }
 
 // hasServerFloatingIP verifies the given floating IP belongs to a server.
 func (n *Nova) hasServerFloatingIP(serverId, address string) bool {
-	if _, err := n.server(serverId); err != nil || !n.hasFloatingIP(address) {
+	if _, err := n.server(serverId); err != nil {
+		return false
+	}
+	var fip *nova.FloatingIP
+	var err error
+	if n.useNeutronNetworking {
+		fip, err = n.neutronModel.NovaFloatingIPByAddr(address)
+	} else {
+		fip, err = n.floatingIPByAddr(address)
+	}
+	if err != nil {
 		return false
 	}
 	fips, ok := n.serverIPs[serverId]
@@ -814,12 +924,33 @@ func (n *Nova) hasServerFloatingIP(serverId, address string) bool {
 		return false
 	}
 	for _, fipId := range fips {
-		fip := n.floatingIPs[fipId]
-		if fip.IP == address {
+		if fipId == fip.Id {
 			return true
 		}
 	}
 	return false
+}
+
+// removeFloatingIPFromServerAddresses removes a floating ip address from the
+// servers list of Addresses to facilitate juju openstack provider tests.
+func (n *Nova) removeFloatingIPFromServerAddresses(serverId, address string) error {
+	server, err := n.server(serverId)
+	if err != nil {
+		return err
+	}
+	serverAddresses := []nova.IPAddress{}
+	for _, serverAddress := range server.Addresses["private"] {
+		if serverAddress.Address != address {
+			serverAddresses = append(serverAddresses, serverAddress)
+		}
+	}
+	if len(serverAddresses) != 0 {
+		server.Addresses["private"] = serverAddresses
+	} else {
+		server.Addresses["private"] = []nova.IPAddress{}
+	}
+	n.servers[serverId] = *server
+	return nil
 }
 
 // removeServerFloatingIP deletes an attached floating IP from a server.
@@ -830,12 +961,28 @@ func (n *Nova) removeServerFloatingIP(serverId string, ipId string) error {
 	if _, err := n.server(serverId); err != nil {
 		return err
 	}
-	if fip, err := n.floatingIP(ipId); err != nil {
-		return err
-	} else {
+	var fip *nova.FloatingIP
+	var err error
+	if n.useNeutronNetworking {
+		fip, err = n.neutronModel.NovaFloatingIP(ipId)
+		if err != nil {
+			return err
+		}
 		fip.FixedIP = nil
-		fip.InstanceId = nil
-		n.floatingIPs[ipId] = *fip
+		if err = n.neutronModel.UpdateNovaFloatingIP(fip); err != nil {
+			return err
+		}
+	} else {
+		if fip, err = n.floatingIP(ipId); err != nil {
+			return err
+		} else {
+			fip.FixedIP = nil
+			fip.InstanceId = nil
+			n.floatingIPs[ipId] = *fip
+		}
+	}
+	if err := n.removeFloatingIPFromServerAddresses(serverId, fip.IP); err != nil {
+		return err
 	}
 	fips, ok := n.serverIPs[serverId]
 	if !ok {
@@ -858,10 +1005,14 @@ func (n *Nova) removeServerFloatingIP(serverId string, ipId string) error {
 
 // allNetworks returns a list of all existing networks.
 func (n *Nova) allNetworks() (networks []nova.Network) {
-	for _, net := range n.networks {
-		networks = append(networks, net)
+	if n.useNeutronNetworking {
+		return n.neutronModel.AllNovaNetworks()
+	} else {
+		for _, net := range n.networks {
+			networks = append(networks, net)
+		}
+		return networks
 	}
-	return networks
 }
 
 // allAvailabilityZones returns a list of all existing availability zones,

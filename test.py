@@ -10,6 +10,7 @@ KNOWN_LIVE_SUITES = [
     'glance',
     'identity',
     'nova',
+    'neutron',
     'swift',
 ]
 

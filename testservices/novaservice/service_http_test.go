@@ -18,23 +18,26 @@ import (
 	"gopkg.in/goose.v1/testing/httpsuite"
 	"gopkg.in/goose.v1/testservices/hook"
 	"gopkg.in/goose.v1/testservices/identityservice"
+	"gopkg.in/goose.v1/testservices/neutronmodel"
 )
 
 type NovaHTTPSuite struct {
 	httpsuite.HTTPSuite
-	service *Nova
-	token   string
+	service              *Nova
+	token                string
+	useNeutronNetworking bool
 }
 
-var _ = gc.Suite(&NovaHTTPSuite{})
+var _ = gc.Suite(&NovaHTTPSuite{useNeutronNetworking: false})
 
 type NovaHTTPSSuite struct {
 	httpsuite.HTTPSuite
-	service *Nova
-	token   string
+	service              *Nova
+	token                string
+	useNeutronNetworking bool
 }
 
-var _ = gc.Suite(&NovaHTTPSSuite{HTTPSuite: httpsuite.HTTPSuite{UseTLS: true}})
+var _ = gc.Suite(&NovaHTTPSSuite{HTTPSuite: httpsuite.HTTPSuite{UseTLS: true}, useNeutronNetworking: true})
 
 func (s *NovaHTTPSuite) SetUpSuite(c *gc.C) {
 	s.HTTPSuite.SetUpSuite(c)
@@ -42,6 +45,12 @@ func (s *NovaHTTPSuite) SetUpSuite(c *gc.C) {
 	userInfo := identityDouble.AddUser("fred", "secret", "tenant")
 	s.token = userInfo.Token
 	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble, nil)
+	if s.useNeutronNetworking {
+		c.Logf("Nova Service using Neutron Networking")
+		s.service.AddNeutronModel(neutronmodel.New())
+	} else {
+		c.Logf("Nova Service using Nova Networking")
+	}
 }
 
 func (s *NovaHTTPSuite) TearDownSuite(c *gc.C) {
@@ -327,6 +336,12 @@ func (s *NovaHTTPSuite) simpleTests() []SimpleTest {
 			url:    "/servers/detail/invalid",
 			expect: errNotFound,
 		},
+	}
+	return simpleTests
+}
+
+func (s *NovaHTTPSuite) simpleNovaNetworkingTests() []SimpleTest {
+	var simpleTests = []SimpleTest{
 		{
 			method: "GET",
 			url:    "/os-security-groups/42",
@@ -442,7 +457,13 @@ func (s *NovaHTTPSuite) simpleTests() []SimpleTest {
 }
 
 func (s *NovaHTTPSuite) TestSimpleRequestTests(c *gc.C) {
-	simpleTests := s.simpleTests()
+	s.runSimpleTests(c, s.simpleTests())
+	if !s.useNeutronNetworking {
+		s.runSimpleTests(c, s.simpleNovaNetworkingTests())
+	}
+}
+
+func (s *NovaHTTPSuite) runSimpleTests(c *gc.C, simpleTests []SimpleTest) {
 	for i, t := range simpleTests {
 		c.Logf("#%d. %s %s -> %d", i, t.method, t.url, t.expect.code)
 		if t.headers == nil {
@@ -823,6 +844,9 @@ func (s *NovaHTTPSuite) TestGetServersDetailWithFilters(c *gc.C) {
 }
 
 func (s *NovaHTTPSuite) TestGetSecurityGroups(c *gc.C) {
+	if s.service.useNeutronNetworking {
+		c.Skip("skipped in novaservice when using Neutron Model")
+	}
 	// There is always a default security group.
 	groups := s.service.allSecurityGroups()
 	c.Assert(groups, gc.HasLen, 1)
@@ -870,6 +894,9 @@ func (s *NovaHTTPSuite) TestGetSecurityGroups(c *gc.C) {
 }
 
 func (s *NovaHTTPSuite) TestAddSecurityGroup(c *gc.C) {
+	if s.service.useNeutronNetworking {
+		c.Skip("skipped in novaservice when using Neutron Model")
+	}
 	group := nova.SecurityGroup{
 		Id:          "1",
 		Name:        "group 1",
@@ -900,6 +927,9 @@ func (s *NovaHTTPSuite) TestAddSecurityGroup(c *gc.C) {
 }
 
 func (s *NovaHTTPSuite) TestDeleteSecurityGroup(c *gc.C) {
+	if s.service.useNeutronNetworking {
+		c.Skip("skipped in novaservice when using Neutron Model")
+	}
 	group := nova.SecurityGroup{Id: "1", Name: "group 1"}
 	_, err := s.service.securityGroup(group.Id)
 	c.Assert(err, gc.NotNil)
@@ -914,6 +944,9 @@ func (s *NovaHTTPSuite) TestDeleteSecurityGroup(c *gc.C) {
 }
 
 func (s *NovaHTTPSuite) TestAddSecurityGroupRule(c *gc.C) {
+	if s.service.useNeutronNetworking {
+		c.Skip("skipped in novaservice when using Neutron Model")
+	}
 	group1 := nova.SecurityGroup{Id: "1", Name: "src"}
 	group2 := nova.SecurityGroup{Id: "2", Name: "tgt"}
 	err := s.service.addSecurityGroup(group1)
@@ -987,6 +1020,9 @@ func (s *NovaHTTPSuite) TestAddSecurityGroupRule(c *gc.C) {
 }
 
 func (s *NovaHTTPSuite) TestDeleteSecurityGroupRule(c *gc.C) {
+	if s.service.useNeutronNetworking {
+		c.Skip("skipped in novaservice when using Neutron Model")
+	}
 	group1 := nova.SecurityGroup{Id: "1", Name: "src"}
 	group2 := nova.SecurityGroup{Id: "2", Name: "tgt"}
 	err := s.service.addSecurityGroup(group1)
@@ -1078,10 +1114,19 @@ func (s *NovaHTTPSuite) TestGetServerSecurityGroups(c *gc.C) {
 	resp, err := s.authRequest("GET", "/servers/"+server.Id+"/os-security-groups", nil, nil)
 	c.Assert(err, gc.IsNil)
 	assertJSON(c, resp, &expected)
+	// nova networking doesn't know about neutron egress direction rules,
+	// created by default with a new security group
+	if s.service.useNeutronNetworking {
+		expected.Groups[0].Rules = []nova.SecurityGroupRule{}
+		expected.Groups[1].Rules = []nova.SecurityGroupRule{}
+	}
 	c.Assert(expected.Groups, gc.DeepEquals, groups)
 }
 
 func (s *NovaHTTPSuite) TestDeleteServerSecurityGroup(c *gc.C) {
+	if s.service.useNeutronNetworking {
+		c.Skip("skipped in novaservice when using Neutron Model")
+	}
 	group := nova.SecurityGroup{Id: "1", Name: "group"}
 	err := s.service.addSecurityGroup(group)
 	c.Assert(err, gc.IsNil)
@@ -1108,6 +1153,9 @@ func (s *NovaHTTPSuite) TestDeleteServerSecurityGroup(c *gc.C) {
 }
 
 func (s *NovaHTTPSuite) TestPostFloatingIP(c *gc.C) {
+	if s.service.useNeutronNetworking {
+		c.Skip("skipped in novaservice when using Neutron Model")
+	}
 	fip := nova.FloatingIP{Id: "1", IP: "10.0.0.1", Pool: "nova"}
 	c.Assert(s.service.allFloatingIPs(), gc.HasLen, 0)
 	var expected struct {
@@ -1123,6 +1171,9 @@ func (s *NovaHTTPSuite) TestPostFloatingIP(c *gc.C) {
 }
 
 func (s *NovaHTTPSuite) TestGetFloatingIPs(c *gc.C) {
+	if s.service.useNeutronNetworking {
+		c.Skip("skipped in novaservice when using Neutron Model")
+	}
 	c.Assert(s.service.allFloatingIPs(), gc.HasLen, 0)
 	var expected struct {
 		IPs []nova.FloatingIP `json:"floating_ips"`
@@ -1160,6 +1211,9 @@ func (s *NovaHTTPSuite) TestGetFloatingIPs(c *gc.C) {
 }
 
 func (s *NovaHTTPSuite) TestDeleteFloatingIP(c *gc.C) {
+	if s.service.useNeutronNetworking {
+		c.Skip("skipped in novaservice when using Neutron Model")
+	}
 	fip := nova.FloatingIP{Id: "1", IP: "10.0.0.1", Pool: "nova"}
 	err := s.service.addFloatingIP(fip)
 	c.Assert(err, gc.IsNil)
@@ -1173,7 +1227,10 @@ func (s *NovaHTTPSuite) TestDeleteFloatingIP(c *gc.C) {
 
 func (s *NovaHTTPSuite) TestAddServerFloatingIP(c *gc.C) {
 	fip := nova.FloatingIP{Id: "1", IP: "1.2.3.4"}
-	server := nova.ServerDetail{Id: "sr1"}
+	server := nova.ServerDetail{
+		Id:        "sr1",
+		Addresses: map[string][]nova.IPAddress{"private": []nova.IPAddress{}},
+	}
 	err := s.service.addFloatingIP(fip)
 	c.Assert(err, gc.IsNil)
 	defer s.service.removeFloatingIP(fip.Id)
@@ -1197,7 +1254,10 @@ func (s *NovaHTTPSuite) TestAddServerFloatingIP(c *gc.C) {
 
 func (s *NovaHTTPSuite) TestRemoveServerFloatingIP(c *gc.C) {
 	fip := nova.FloatingIP{Id: "1", IP: "1.2.3.4"}
-	server := nova.ServerDetail{Id: "sr1"}
+	server := nova.ServerDetail{
+		Id:        "sr1",
+		Addresses: map[string][]nova.IPAddress{"private": []nova.IPAddress{}},
+	}
 	err := s.service.addFloatingIP(fip)
 	c.Assert(err, gc.IsNil)
 	defer s.service.removeFloatingIP(fip.Id)
@@ -1248,6 +1308,12 @@ func (s *NovaHTTPSSuite) SetUpSuite(c *gc.C) {
 	s.token = userInfo.Token
 	c.Assert(s.Server.URL[:8], gc.Equals, "https://")
 	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble, nil)
+	if s.useNeutronNetworking {
+		c.Logf("Nova Service using Neutron Networking")
+		s.service.AddNeutronModel(neutronmodel.New())
+	} else {
+		c.Logf("Nova Service using Nova Networking")
+	}
 }
 
 func (s *NovaHTTPSSuite) TearDownSuite(c *gc.C) {

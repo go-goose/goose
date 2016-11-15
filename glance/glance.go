@@ -1,5 +1,6 @@
 // goose/glance - Go package to interact with OpenStack Image Service (Glance) API.
-// See http://docs.openstack.org/api/openstack-image-service/2.0/content/.
+// For V2 functions see http://developer.openstack.org/api-ref/image/v2/index.html
+// For all other functions see http://developer.openstack.org/api-ref/compute/#list-images
 
 package glance
 
@@ -105,4 +106,58 @@ func (c *Client) GetImageDetail(imageId string) (*ImageDetail, error) {
 		return nil, errors.Newf(err, "failed to get details of imageId: %s", imageId)
 	}
 	return &resp.Image, nil
+}
+
+// ImageDetailV2 describes extended information about an image for API v2.0.
+type ImageDetailV2 struct {
+	Architecture    string `json:",omitempty"`
+	Checksum        string
+	ContainerFormat string `json:"container_format"`
+	CreatedAt       string `json:"created_at"`
+	DirectUrl       string
+	DiskFormat      string `json:"disk_format"`
+	File            string
+	Id              string
+	HwVifModel      string      `json:"hw_vif_model,omitempty"`
+	HwDiskModel     string      `json:"hw_disk_bus,omitempty"`
+	Locations       interface{} `json:",omitempty"`
+	MinimumDisk     int         `json:"min_disk"`
+	MinimumRAM      int         `json:"min_ram"`
+	Name            string
+	Owner           string
+	OsType          string `json:"os_type"`
+	Protected       bool
+	Schema          string
+	Self            string
+	Size            int
+	Status          string
+	Tags            []string
+	UpdatedAt       string `json:"updated_at"`
+	VirtualSize     string `json:"virtual_size"`
+	Visibility      string
+}
+
+// ListImagesV2 lists all details for available image, uses API v2.0.
+func (c *Client) ListImagesV2() ([]ImageDetailV2, error) {
+	var resp struct {
+		Images []ImageDetailV2
+	}
+	requestData := goosehttp.RequestData{RespValue: &resp}
+	err := c.client.SendRequest(client.GET, "image", "v2", apiImages, &requestData)
+	if err != nil {
+		return nil, errors.Newf(err, "failed to get list of image details (v2)")
+	}
+	return resp.Images, nil
+}
+
+// GetImageDetailV2 lists details of the specified image, uses API v2.0
+func (c *Client) GetImageDetailV2(imageId string) (*ImageDetailV2, error) {
+	var resp ImageDetailV2
+	url := fmt.Sprintf("%s/%s", apiImages, imageId)
+	requestData := goosehttp.RequestData{RespValue: &resp}
+	err := c.client.SendRequest(client.GET, "image", "v2", url, &requestData)
+	if err != nil {
+		return nil, errors.Newf(err, "failed to get details of imageId (v2): %s", imageId)
+	}
+	return &resp, nil
 }

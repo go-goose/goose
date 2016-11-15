@@ -22,7 +22,6 @@ type HTTPSuite struct {
 }
 
 func (s *HTTPSuite) SetUpSuite(c *gc.C) {
-	// fmt.Printf("Starting New Server\n")
 	if s.UseTLS {
 		s.Server = httptest.NewTLSServer(nil)
 	} else {
@@ -43,7 +42,6 @@ func (s *HTTPSuite) TearDownTest(c *gc.C) {
 
 func (s *HTTPSuite) TearDownSuite(c *gc.C) {
 	if s.Server != nil {
-		// fmt.Printf("Stopping Server\n")
 		s.Server.Close()
 	}
 }
