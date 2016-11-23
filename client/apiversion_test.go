@@ -153,6 +153,18 @@ func (s *localLiveSuite) TestMakeServiceURLAPIVersionDiscoveryDisabled(c *gc.C) 
 	c.Assert(url, gc.Equals, fmt.Sprintf("http://localhost:%s/foo/bar/", port))
 }
 
+func (s *localLiveSuite) TestMakeServiceURLNoAPIVersionEndpoint(c *gc.C) {
+	// See https://bugs.launchpad.net/juju/+bug/1638304
+	// Some OpenStacks don't support version discovery.
+
+	port := "3005"
+	cl := s.assertAuthenticationSuccess(c, port)
+
+	url, err := cl.MakeServiceURL("compute", "v2.1", []string{"foo", "bar/"})
+	c.Assert(err, gc.IsNil)
+	c.Assert(url, gc.Equals, fmt.Sprintf("http://localhost:%s/foo/bar/", port))
+}
+
 func (s *localLiveSuite) TestMakeServiceURLValues(c *gc.C) {
 	port := "3003"
 	cl := s.assertAuthenticationSuccess(c, port)
@@ -188,6 +200,12 @@ const authValuesInformationBody = `{"versions": {"values": [` +
 
 func (vh *versionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	if vh.authBody == "" {
+		body := `{"message":"Api does not exist","request_id":"83A781AE-9A0C-43C7-B405-310A5A94566E"}`
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(body))
+		return
+	}
 	body := []byte(fmt.Sprintf(vh.authBody, "http://localhost:"+vh.port, "http://localhost:"+vh.port, "http://localhost:"+vh.port))
 	// workaround for https://code.google.com/p/go/issues/detail?id=4454
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))

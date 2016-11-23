@@ -258,6 +258,13 @@ func (c *authenticatingClient) MakeServiceURL(serviceType, apiVersion string, pa
 	if err != nil {
 		return "", err
 	}
+	if len(apiURLVersionInfo.versions) == 0 {
+		// There is no API version information for this service,
+		// so just use the service URL as if discovery were
+		// disabled. This isn't guaranteed to result in a valid
+		// endpoint, but it's the best we can do.
+		return makeURL(serviceURL, parts), nil
+	}
 	serviceURL, err = getAPIVersionURL(apiURLVersionInfo, requestedVersion)
 	if err != nil {
 		return "", err
