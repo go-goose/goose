@@ -484,7 +484,8 @@ func (n *Neutron) handleSecurityGroupRules(w http.ResponseWriter, r *http.Reques
 			// why are we reimplementing half of neutron/api/openstack in go again?
 			if r.IPProtocol != nil && *r.IPProtocol == inrule.IPProtocol &&
 				r.PortRangeMax != nil && *r.PortRangeMax == inrule.PortRangeMax &&
-				r.PortRangeMin != nil && *r.PortRangeMin == inrule.PortRangeMin {
+				r.PortRangeMin != nil && *r.PortRangeMin == inrule.PortRangeMin &&
+				r.RemoteIPPrefix != "" && r.RemoteIPPrefix == inrule.RemoteIPPrefix {
 				// TODO: Use a proper helper and sane error type
 				return &errorResponse{
 					http.StatusBadRequest,
