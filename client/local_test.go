@@ -184,10 +184,13 @@ func (s *localLiveSuite) doNewAuthenticator(c *gc.C, bufsize int, port string) *
 	newAuth.mu.Lock()
 	if _, ok := s.versionHandlers[port]; !ok {
 		var vh versionHandler
-		if port == "3000" {
+		switch port {
+		case "3000":
 			vh.authBody = authInformationBody
-		} else if port == "3003" {
+		case "3003":
 			vh.authBody = authValuesInformationBody
+		case "3005":
+			vh.authBody = ""
 		}
 		vh.port = port
 		c.Logf(startApiVersionMux(vh))

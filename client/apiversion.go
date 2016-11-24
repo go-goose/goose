@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	gooseerrors "gopkg.in/goose.v1/errors"
 	goosehttp "gopkg.in/goose.v1/http"
 )
 
@@ -134,7 +135,10 @@ func unmarshallVersion(Versions json.RawMessage) ([]apiVersionInfo, error) {
 	return versions, nil
 }
 
-// getAPIVersions returns data on the API versions supported by the specified service endpoint.
+// getAPIVersions returns data on the API versions supported by the specified
+// service endpoint. Some OpenStack clouds do not support the version endpoint,
+// in which case this method will return an empty set of versions in the result
+// structure.
 func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURLVersion, error) {
 	url, err := url.Parse(serviceCatalogURL)
 	if err != nil {
@@ -179,7 +183,7 @@ func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURL
 		return &apiURLVersion{*url, strings.Join(origPathParts, "/"), objectStoreApiVersionInfo}, nil
 	}
 
-	// make sure we haven't already received the version info
+	// Make sure we haven't already received the version info.
 	c.apiVersionMu.Lock()
 	defer c.apiVersionMu.Unlock()
 	if apiInfo, ok := c.apiURLVersions[baseURL]; ok {
@@ -196,7 +200,19 @@ func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURL
 			http.StatusMultipleChoices,
 		},
 	}
+	apiURLVersionInfo := &apiURLVersion{
+		rootURL:          *url,
+		serviceURLSuffix: strings.Join(pathParts, "/"),
+	}
 	if err := c.sendRequest("GET", baseURL, c.Token(), requestData); err != nil {
+		if gooseerrors.IsNotFound(err) {
+			// Some OpenStack clouds do not support the
+			// version endpoint, and will return a status
+			// code of 404. We check for 404 and return an
+			// empty set of versions.
+			c.apiURLVersions[baseURL] = apiURLVersionInfo
+			return apiURLVersionInfo, nil
+		}
 		return nil, err
 	}
 
@@ -204,10 +220,9 @@ func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURL
 	if err != nil {
 		return nil, err
 	}
+	apiURLVersionInfo.versions = versions
 
-	// save this info, so we don't have to get it again
-	apiURLVersionInfo := &apiURLVersion{*url, strings.Join(pathParts, "/"), versions}
+	// Cache the result.
 	c.apiURLVersions[baseURL] = apiURLVersionInfo
-
 	return apiURLVersionInfo, nil
 }
