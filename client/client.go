@@ -3,7 +3,6 @@ package client
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/url"
 	"sort"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	gooseerrors "gopkg.in/goose.v1/errors"
 	goosehttp "gopkg.in/goose.v1/http"
 	"gopkg.in/goose.v1/identity"
+	"gopkg.in/goose.v1/logging"
 	goosesync "gopkg.in/goose.v1/sync"
 )
 
@@ -89,7 +89,7 @@ var sharedHttpClient = goosehttp.New()
 // This client sends requests without authenticating.
 type client struct {
 	mu         sync.Mutex
-	logger     *log.Logger
+	logger     logging.CompatLogger
 	baseURL    string
 	httpClient *goosehttp.Client
 }
@@ -132,12 +132,12 @@ func (c *authenticatingClient) EndpointsForRegion(region string) identity.Servic
 
 var _ AuthenticatingClient = (*authenticatingClient)(nil)
 
-func NewPublicClient(baseURL string, logger *log.Logger) Client {
+func NewPublicClient(baseURL string, logger logging.CompatLogger) Client {
 	client := client{baseURL: baseURL, logger: logger, httpClient: sharedHttpClient}
 	return &client
 }
 
-func NewNonValidatingPublicClient(baseURL string, logger *log.Logger) Client {
+func NewNonValidatingPublicClient(baseURL string, logger logging.CompatLogger) Client {
 	return &client{
 		baseURL:    baseURL,
 		logger:     logger,
@@ -147,7 +147,7 @@ func NewNonValidatingPublicClient(baseURL string, logger *log.Logger) Client {
 
 var defaultRequiredServiceTypes = []string{"compute", "object-store"}
 
-func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpClient *goosehttp.Client, logger *log.Logger) AuthenticatingClient {
+func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpClient *goosehttp.Client, logger logging.CompatLogger) AuthenticatingClient {
 	client_creds := *creds
 	if strings.HasSuffix(client_creds.URL, "/") {
 		client_creds.URL = client_creds.URL[:len(client_creds.URL)-1]
@@ -169,11 +169,11 @@ func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpC
 	return &client
 }
 
-func NewClient(creds *identity.Credentials, auth_method identity.AuthMode, logger *log.Logger) AuthenticatingClient {
+func NewClient(creds *identity.Credentials, auth_method identity.AuthMode, logger logging.CompatLogger) AuthenticatingClient {
 	return newClient(creds, auth_method, sharedHttpClient, logger)
 }
 
-func NewNonValidatingClient(creds *identity.Credentials, auth_method identity.AuthMode, logger *log.Logger) AuthenticatingClient {
+func NewNonValidatingClient(creds *identity.Credentials, auth_method identity.AuthMode, logger logging.CompatLogger) AuthenticatingClient {
 	return newClient(creds, auth_method, goosehttp.NewNonSSLValidating(), logger)
 }
 
@@ -263,6 +263,7 @@ func (c *authenticatingClient) MakeServiceURL(serviceType, apiVersion string, pa
 		// so just use the service URL as if discovery were
 		// disabled. This isn't guaranteed to result in a valid
 		// endpoint, but it's the best we can do.
+		internalLogger(c.logger).Warningf("falling back to catalogue service URL")
 		return makeURL(serviceURL, parts), nil
 	}
 	serviceURL, err = getAPIVersionURL(apiURLVersionInfo, requestedVersion)
@@ -499,6 +500,8 @@ func (c *authenticatingClient) doAuthenticate() error {
 	if authDetails, err = c.authMode.Auth(c.creds); err != nil {
 		return gooseerrors.Newf(err, "authentication failed")
 	}
+	internalLogger(c.logger).Debugf("auth details: %+v", authDetails)
+
 	c.regionServiceURLs = authDetails.RegionServiceURLs
 	if err := c.createServiceURLs(); err != nil {
 		return gooseerrors.Newf(err, "cannot create service URLs")

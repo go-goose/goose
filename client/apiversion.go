@@ -190,6 +190,9 @@ func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURL
 		return apiInfo, nil
 	}
 
+	logger := internalLogger(c.logger)
+	logger.Debugf("performing API version discovery for %q", baseURL)
+
 	var raw struct {
 		Versions json.RawMessage `json:"versions"`
 	}
@@ -210,6 +213,7 @@ func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURL
 			// version endpoint, and will return a status
 			// code of 404. We check for 404 and return an
 			// empty set of versions.
+			logger.Warningf("API version discovery failed: %v", err)
 			c.apiURLVersions[baseURL] = apiURLVersionInfo
 			return apiURLVersionInfo, nil
 		}
@@ -221,6 +225,7 @@ func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURL
 		return nil, err
 	}
 	apiURLVersionInfo.versions = versions
+	logger.Warningf("discovered API versions: %+v", versions)
 
 	// Cache the result.
 	c.apiURLVersions[baseURL] = apiURLVersionInfo
