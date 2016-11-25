@@ -326,6 +326,7 @@ func (s *NeutronSuite) TestAddSecurityGroupRuleUpdatesParent(c *gc.C) {
 		ParentGroupId: group.Id,
 		Direction:     "egress",
 		TenantId:      s.service.TenantId,
+		EthernetType:  "IPv4",
 	}
 	s.ensureNoRule(c, rule)
 	err := s.service.addSecurityGroupRule(rule.Id, ri)

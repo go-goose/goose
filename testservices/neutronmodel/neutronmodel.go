@@ -4,6 +4,7 @@
 package neutronmodel
 
 import (
+	"net"
 	"strconv"
 	"sync"
 
@@ -320,8 +321,24 @@ func (n *NeutronModel) AddSecurityGroupRule(ruleId string, rule neutron.RuleInfo
 	if rule.IPProtocol != "" {
 		newrule.IPProtocol = &rule.IPProtocol
 	}
-	if rule.EthernetType != "" {
-		newrule.EthernetType = rule.EthernetType
+	switch rule.EthernetType {
+		case "":
+			// Neutron assumes IPv4 if no EthernetType is specified
+			newrule.EthernetType = "IPv4"
+		case "IPv4", "IPv6":
+			newrule.EthernetType = rule.EthernetType
+		default:
+			return testservices.NewSecurityGroupRuleInvalidEthernetType(rule.EthernetType)
+	}
+	if (newrule.RemoteIPPrefix != "") {
+		ip, _, err := net.ParseCIDR(newrule.RemoteIPPrefix)
+		if (err != nil) {
+			return testservices.NewSecurityGroupRuleInvalidCIDR(rule.RemoteIPPrefix)
+		}
+		if ((newrule.EthernetType == "IPv4" && ip.To4() == nil) ||
+		    (newrule.EthernetType == "IPv6" && ip.To4() != nil)) {
+			return testservices.NewSecurityGroupRuleParameterConflict("ethertype", newrule.EthernetType, "CIDR", newrule.RemoteIPPrefix)
+		}
 	}
 	if group.TenantId != "" {
 		newrule.TenantId = group.TenantId

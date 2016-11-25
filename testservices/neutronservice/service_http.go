@@ -475,6 +475,12 @@ func (n *Neutron) handleSecurityGroupRules(w http.ResponseWriter, r *http.Reques
 			return err
 		}
 		inrule := req.Rule
+		// set default EthernetType for correct comparison
+		// TODO: we should probably have a neutronmodel func to parse and set default values
+		//       and/or move the duplicate check there
+		if (inrule.EthernetType == "") {
+			inrule.EthernetType = "IPv4"
+		}
 		group, err := n.securityGroup(inrule.ParentGroupId)
 		if err != nil {
 			return err // TODO: should be a 4XX error with details
@@ -485,7 +491,8 @@ func (n *Neutron) handleSecurityGroupRules(w http.ResponseWriter, r *http.Reques
 			if r.IPProtocol != nil && *r.IPProtocol == inrule.IPProtocol &&
 				r.PortRangeMax != nil && *r.PortRangeMax == inrule.PortRangeMax &&
 				r.PortRangeMin != nil && *r.PortRangeMin == inrule.PortRangeMin &&
-				r.RemoteIPPrefix != "" && r.RemoteIPPrefix == inrule.RemoteIPPrefix {
+				r.RemoteIPPrefix != "" && r.RemoteIPPrefix == inrule.RemoteIPPrefix &&
+				r.EthernetType != "" && r.EthernetType == inrule.EthernetType {
 				// TODO: Use a proper helper and sane error type
 				return &errorResponse{
 					http.StatusBadRequest,

@@ -128,6 +128,18 @@ func NewInvalidDirectionSecurityGroupError(direction string) *ServerError {
 	return serverErrorf(400, "Invalid input for direction. Reason: %s is not ingress or egress.", direction)
 }
 
+func NewSecurityGroupRuleInvalidEthernetType(ethernetType string) *ServerError {
+	return serverErrorf(400, "Invalid input for ethertype. Reason: %s is not '', 'IPv4' or 'IPv6'.", ethernetType)
+}
+
+func NewSecurityGroupRuleParameterConflict(param1 string, value1 string, param2 string, value2 string) *ServerError {
+	return serverErrorf(400, "Conflicting value %s %s for %s %s", param1, value1, param2, value2)
+}
+
+func NewSecurityGroupRuleInvalidCIDR(cidr string) *ServerError {
+	return serverErrorf(400, "Invalid CIDR %s given as IP prefix.", cidr)
+}
+
 func NewServerBelongsToGroupError(serverId, groupId string) *ServerError {
 	return serverErrorf(409, "Server %q already belongs to group %s", serverId, groupId)
 }

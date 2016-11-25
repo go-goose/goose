@@ -533,6 +533,15 @@ func (s *NeutronHTTPSuite) TestAddSecurityGroupRule(c *gc.C) {
 		IPProtocol:     "tcp",
 		RemoteIPPrefix: "5.4.3.2/1",
 	}
+	riIngress6 := neutron.RuleInfoV2{
+		ParentGroupId:  "1",
+		Direction:      "ingress",
+		PortRangeMax:   22,
+		PortRangeMin:   22,
+		IPProtocol:     "tcp",
+		RemoteIPPrefix: "2001:db8:42::/64",
+		EthernetType:   "IPv6",
+	}
 	rule1 := neutron.SecurityGroupRuleV2{
 		Id:             "1",
 		ParentGroupId:  group1.Id,
@@ -559,6 +568,15 @@ func (s *NeutronHTTPSuite) TestAddSecurityGroupRule(c *gc.C) {
 		PortRangeMin:  &riEgress.PortRangeMin,
 		IPProtocol:    &riEgress.IPProtocol,
 	}
+	rule6 := neutron.SecurityGroupRuleV2{
+		Id:             "5",
+		ParentGroupId:  group1.Id,
+		Direction:      riIngress6.Direction,
+		PortRangeMax:   &riIngress6.PortRangeMax,
+		PortRangeMin:   &riIngress6.PortRangeMin,
+		IPProtocol:     &riIngress6.IPProtocol,
+		RemoteIPPrefix: riIngress6.RemoteIPPrefix,
+	}
 	ok := s.service.hasSecurityGroupRule(group1.Id, rule1.Id)
 	c.Assert(ok, gc.Equals, false)
 	ok = s.service.hasSecurityGroupRule(group2.Id, rule2.Id)
@@ -584,12 +602,15 @@ func (s *NeutronHTTPSuite) TestAddSecurityGroupRule(c *gc.C) {
 	// Attempt to create duplicate rule should fail
 	resp, err = s.jsonRequest("POST", neutron.ApiSecurityGroupRulesV2, req, nil)
 	c.Assert(resp.StatusCode, gc.Equals, http.StatusBadRequest)
-	defer s.service.removeSecurityGroupRule(rule1.Id)
+	err = s.service.removeSecurityGroupRule(rule1.Id)
+	c.Assert(err, gc.IsNil)
 	// Attempt to create rule with all fields but RemoteIPPrefix identical should pass
 	req.Rule = riIngress2
 	resp, err = s.jsonRequest("POST", neutron.ApiSecurityGroupRulesV2, req, nil)
 	c.Assert(err, gc.IsNil)
 	c.Assert(resp.StatusCode, gc.Equals, http.StatusCreated)
+	err = s.service.removeSecurityGroupRule(rule2.Id)
+	c.Assert(err, gc.IsNil)
 	assertJSON(c, resp, &expected)
 	c.Assert(expected.Rule.Id, gc.Equals, rule2.Id)
 	c.Assert(expected.Rule.ParentGroupId, gc.Equals, rule2.ParentGroupId)
@@ -598,16 +619,30 @@ func (s *NeutronHTTPSuite) TestAddSecurityGroupRule(c *gc.C) {
 	c.Assert(*expected.Rule.IPProtocol, gc.Equals, *rule2.IPProtocol)
 	c.Assert(expected.Rule.Direction, gc.Equals, rule2.Direction)
 	c.Assert(expected.Rule.RemoteIPPrefix, gc.Equals, rule2.RemoteIPPrefix)
-	defer s.service.removeSecurityGroupRule(rule2.Id)
 	req.Rule = riEgress
 	resp, err = s.jsonRequest("POST", neutron.ApiSecurityGroupRulesV2, req, nil)
 	c.Assert(err, gc.IsNil)
 	c.Assert(resp.StatusCode, gc.Equals, http.StatusCreated)
+	err = s.service.removeSecurityGroupRule(rule3.Id)
+	c.Assert(err, gc.IsNil)
 	assertJSON(c, resp, &expected)
 	c.Assert(expected.Rule.Id, gc.Equals, rule3.Id)
 	c.Assert(expected.Rule.ParentGroupId, gc.Equals, rule3.ParentGroupId)
-	err = s.service.removeSecurityGroupRule(rule3.Id)
+	// Attempt to create rule with IPv6 RemoteIPPrefix without specifying EthernetType, should fail
+	req.Rule = riIngress6
+	req.Rule.EthernetType = ""
+	resp, err = s.jsonRequest("POST", neutron.ApiSecurityGroupRulesV2, req, nil)
+	c.Assert(resp.StatusCode, gc.Equals, http.StatusBadRequest)
+	// Attempt to create rule with IPv6 RemoteIPPrefix with correct EthernetType, should pass
+	req.Rule = riIngress6
+	resp, err = s.jsonRequest("POST", neutron.ApiSecurityGroupRulesV2, req, nil)
 	c.Assert(err, gc.IsNil)
+	c.Assert(resp.StatusCode, gc.Equals, http.StatusCreated)
+	err = s.service.removeSecurityGroupRule(rule6.Id)
+	c.Assert(err, gc.IsNil)
+	assertJSON(c, resp, &expected)
+	c.Assert(expected.Rule.Id, gc.Equals, rule6.Id)
+	c.Assert(expected.Rule.ParentGroupId, gc.Equals, rule6.ParentGroupId)
 }
 
 func (s *NeutronHTTPSuite) TestDeleteSecurityGroupRule(c *gc.C) {
