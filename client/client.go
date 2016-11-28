@@ -263,7 +263,8 @@ func (c *authenticatingClient) MakeServiceURL(serviceType, apiVersion string, pa
 		// so just use the service URL as if discovery were
 		// disabled. This isn't guaranteed to result in a valid
 		// endpoint, but it's the best we can do.
-		internalLogger(c.logger).Warningf("falling back to catalogue service URL")
+		logger := logging.FromCompat(c.logger)
+		logger.Warningf("falling back to catalogue service URL")
 		return makeURL(serviceURL, parts), nil
 	}
 	serviceURL, err = getAPIVersionURL(apiURLVersionInfo, requestedVersion)
@@ -500,7 +501,8 @@ func (c *authenticatingClient) doAuthenticate() error {
 	if authDetails, err = c.authMode.Auth(c.creds); err != nil {
 		return gooseerrors.Newf(err, "authentication failed")
 	}
-	internalLogger(c.logger).Debugf("auth details: %+v", authDetails)
+	logger := logging.FromCompat(c.logger)
+	logger.Debugf("auth details: %+v", authDetails)
 
 	c.regionServiceURLs = authDetails.RegionServiceURLs
 	if err := c.createServiceURLs(); err != nil {

@@ -160,7 +160,7 @@ func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, lo
 		len(body),
 		headers,
 		reqData.ExpectedStatus,
-		internalLogger(logger),
+		logging.FromCompat(logger),
 	)
 	if err != nil {
 		return
@@ -205,7 +205,7 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 		reqData.ReqLength,
 		headers,
 		reqData.ExpectedStatus,
-		internalLogger(logger),
+		logging.FromCompat(logger),
 	)
 	if err != nil {
 		return
@@ -230,7 +230,7 @@ func (c *Client) sendRequest(
 	length int,
 	headers http.Header,
 	expectedStatus []int,
-	logger logger,
+	logger logging.Logger,
 ) (*http.Response, error) {
 	reqData := make([]byte, length)
 	if reqReader != nil {
@@ -266,7 +266,7 @@ func (c *Client) sendRateLimitedRequest(
 	method, URL string,
 	headers http.Header,
 	reqData []byte,
-	logger logger,
+	logger logging.Logger,
 ) (resp *http.Response, err error) {
 	for i := 0; i < c.maxSendAttempts; i++ {
 		var reqReader io.Reader
@@ -299,9 +299,7 @@ func (c *Client) sendRateLimitedRequest(
 		if retryAfter == 0 {
 			return nil, errors.Newf(err, "Resource limit exeeded at URL %s", URL)
 		}
-		if logger != nil {
-			logger.Debugf("Too many requests, retrying in %dms.", int(retryAfter*1000))
-		}
+		logger.Debugf("Too many requests, retrying in %dms.", int(retryAfter*1000))
 		time.Sleep(time.Duration(retryAfter) * time.Second)
 	}
 	return nil, errors.Newf(err, "Maximum number of attempts (%d) reached sending request to %s", c.maxSendAttempts, URL)

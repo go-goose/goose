@@ -249,7 +249,7 @@ func (s *localLiveSuite) TestAuthenticationTimeout(c *gc.C) {
 }
 
 func (s *localLiveSuite) assertAuthenticationSuccess(c *gc.C, port string) client.AuthenticatingClient {
-	cl := client.NewClient(s.cred, s.authMode, logging.Logger{loggo.GetLogger("goose.client")})
+	cl := client.NewClient(s.cred, s.authMode, logging.LoggoLogger{loggo.GetLogger("goose.client")})
 	cl.SetRequiredServiceTypes([]string{"compute"})
 	defer client.SetAuthenticationTimeout(2 * time.Millisecond)()
 	auth := s.doNewAuthenticator(c, 1, port)

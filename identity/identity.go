@@ -215,7 +215,7 @@ func FetchAuthOptions(url string, client *goosehttp.Client, compatLogger logging
 	if err := client.JsonRequest("GET", url, "", &req, nil); err != nil {
 		return nil, fmt.Errorf("request available auth options: %v", err)
 	}
-	logger := internalLogger(compatLogger)
+	logger := logging.FromCompat(compatLogger)
 	var auths AuthOptions
 	if len(resp.Versions.Values) > 0 {
 		for _, version := range resp.Versions.Values {

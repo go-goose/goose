@@ -11,6 +11,7 @@ import (
 
 	gooseerrors "gopkg.in/goose.v1/errors"
 	goosehttp "gopkg.in/goose.v1/http"
+	"gopkg.in/goose.v1/logging"
 )
 
 type apiVersion struct {
@@ -190,7 +191,7 @@ func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURL
 		return apiInfo, nil
 	}
 
-	logger := internalLogger(c.logger)
+	logger := logging.FromCompat(c.logger)
 	logger.Debugf("performing API version discovery for %q", baseURL)
 
 	var raw struct {
