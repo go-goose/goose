@@ -120,9 +120,12 @@ var (
 		"OS_TENANT_NAME",
 		"NOVA_PROJECT_ID",
 	}
-	// CredEnvDomainName is used for Credentials.TenantName.
+	// CredEnvDomainName is used for Credentials.DomainName.
 	CredEnvDomainName = []string{
+		"OS_USER_DOMAIN_NAME",
+		"OS_PROJECT_DOMAIN_NAME",
 		"OS_DOMAIN_NAME",
+		"OS_DEFAULT_DOMAIN",
 	}
 )
 
