@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -19,6 +18,7 @@ import (
 
 	"gopkg.in/goose.v1"
 	"gopkg.in/goose.v1/errors"
+	"gopkg.in/goose.v1/logging"
 )
 
 const (
@@ -139,7 +139,7 @@ func createHeaders(extraHeaders http.Header, contentType, authToken string) http
 // ExpectedStatus: the allowed HTTP response status values, else an error is returned.
 // ReqValue: the data object to send.
 // RespValue: the data object to decode the result into.
-func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, logger *log.Logger) (err error) {
+func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, logger logging.CompatLogger) (err error) {
 	err = nil
 	var body []byte
 	if reqData.Params != nil {
@@ -154,7 +154,14 @@ func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, lo
 	}
 	headers := createHeaders(reqData.ReqHeaders, contentTypeJSON, token)
 	resp, err := c.sendRequest(
-		method, url, bytes.NewReader(body), len(body), headers, reqData.ExpectedStatus, logger)
+		method,
+		url,
+		bytes.NewReader(body),
+		len(body),
+		headers,
+		reqData.ExpectedStatus,
+		logging.FromCompat(logger),
+	)
 	if err != nil {
 		return
 	}
@@ -184,7 +191,7 @@ func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, lo
 // ExpectedStatus: the allowed HTTP response status values, else an error is returned.
 // ReqReader: an io.Reader providing the bytes to send.
 // RespReader: assigned an io.ReadCloser instance used to read the returned data..
-func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, logger *log.Logger) (err error) {
+func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, logger logging.CompatLogger) (err error) {
 	err = nil
 
 	if reqData.Params != nil {
@@ -192,7 +199,14 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 	}
 	headers := createHeaders(reqData.ReqHeaders, contentTypeOctetStream, token)
 	resp, err := c.sendRequest(
-		method, url, reqData.ReqReader, reqData.ReqLength, headers, reqData.ExpectedStatus, logger)
+		method,
+		url,
+		reqData.ReqReader,
+		reqData.ReqLength,
+		headers,
+		reqData.ExpectedStatus,
+		logging.FromCompat(logger),
+	)
 	if err != nil {
 		return
 	}
@@ -210,8 +224,14 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 // length: the number of bytes to send.
 // headers: HTTP headers to include with the request.
 // expectedStatus: a slice of allowed response status codes.
-func (c *Client) sendRequest(method, URL string, reqReader io.Reader, length int, headers http.Header,
-	expectedStatus []int, logger *log.Logger) (*http.Response, error) {
+func (c *Client) sendRequest(
+	method, URL string,
+	reqReader io.Reader,
+	length int,
+	headers http.Header,
+	expectedStatus []int,
+	logger logging.Logger,
+) (*http.Response, error) {
 	reqData := make([]byte, length)
 	if reqReader != nil {
 		nrRead, err := io.ReadFull(reqReader, reqData)
@@ -242,8 +262,12 @@ func (c *Client) sendRequest(method, URL string, reqReader io.Reader, length int
 	return rawResp, err
 }
 
-func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header, reqData []byte,
-	logger *log.Logger) (resp *http.Response, err error) {
+func (c *Client) sendRateLimitedRequest(
+	method, URL string,
+	headers http.Header,
+	reqData []byte,
+	logger logging.Logger,
+) (resp *http.Response, err error) {
 	for i := 0; i < c.maxSendAttempts; i++ {
 		var reqReader io.Reader
 		if reqData != nil {
@@ -275,9 +299,7 @@ func (c *Client) sendRateLimitedRequest(method, URL string, headers http.Header,
 		if retryAfter == 0 {
 			return nil, errors.Newf(err, "Resource limit exeeded at URL %s", URL)
 		}
-		if logger != nil {
-			logger.Printf("Too many requests, retrying in %dms.", int(retryAfter*1000))
-		}
+		logger.Debugf("Too many requests, retrying in %dms.", int(retryAfter*1000))
 		time.Sleep(time.Duration(retryAfter) * time.Second)
 	}
 	return nil, errors.Newf(err, "Maximum number of attempts (%d) reached sending request to %s", c.maxSendAttempts, URL)

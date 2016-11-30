@@ -8,11 +8,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/juju/loggo"
+
 	gc "gopkg.in/check.v1"
 
 	"gopkg.in/goose.v1/client"
 	"gopkg.in/goose.v1/errors"
 	"gopkg.in/goose.v1/identity"
+	"gopkg.in/goose.v1/logging"
 	"gopkg.in/goose.v1/swift"
 	"gopkg.in/goose.v1/testing/httpsuite"
 	"gopkg.in/goose.v1/testservices"
@@ -246,7 +249,7 @@ func (s *localLiveSuite) TestAuthenticationTimeout(c *gc.C) {
 }
 
 func (s *localLiveSuite) assertAuthenticationSuccess(c *gc.C, port string) client.AuthenticatingClient {
-	cl := client.NewClient(s.cred, s.authMode, nil)
+	cl := client.NewClient(s.cred, s.authMode, logging.LoggoLogger{loggo.GetLogger("goose.client")})
 	cl.SetRequiredServiceTypes([]string{"compute"})
 	defer client.SetAuthenticationTimeout(2 * time.Millisecond)()
 	auth := s.doNewAuthenticator(c, 1, port)
