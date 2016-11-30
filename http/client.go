@@ -114,7 +114,7 @@ func gooseAgent() string {
 	return fmt.Sprintf("goose (%s)", goose.Version)
 }
 
-func createHeaders(extraHeaders http.Header, contentType, authToken string) http.Header {
+func createHeaders(extraHeaders http.Header, contentType, authToken string, payloadExists bool) http.Header {
 	headers := make(http.Header)
 	if extraHeaders != nil {
 		for header, values := range extraHeaders {
@@ -126,7 +126,9 @@ func createHeaders(extraHeaders http.Header, contentType, authToken string) http
 	if authToken != "" {
 		headers.Set("X-Auth-Token", authToken)
 	}
-	headers.Add("Content-Type", contentType)
+	if payloadExists {
+		headers.Add("Content-Type", contentType)
+	}
 	headers.Add("Accept", contentType)
 	headers.Add("User-Agent", gooseAgent())
 	return headers
@@ -152,7 +154,7 @@ func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, lo
 			return
 		}
 	}
-	headers := createHeaders(reqData.ReqHeaders, contentTypeJSON, token)
+	headers := createHeaders(reqData.ReqHeaders, contentTypeJSON, token, len(body) != 0)
 	resp, err := c.sendRequest(
 		method,
 		url,
@@ -197,7 +199,7 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 	if reqData.Params != nil {
 		url += "?" + reqData.Params.Encode()
 	}
-	headers := createHeaders(reqData.ReqHeaders, contentTypeOctetStream, token)
+	headers := createHeaders(reqData.ReqHeaders, contentTypeOctetStream, token, reqData.ReqLength != 0)
 	resp, err := c.sendRequest(
 		method,
 		url,

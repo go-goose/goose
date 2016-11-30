@@ -51,7 +51,7 @@ var _ = gc.Suite(&HTTPSClientTestSuite{LoopingHTTPSuite{httpsuite.HTTPSuite{UseT
 
 func (s *HTTPClientTestSuite) assertHeaderValues(c *gc.C, token string) {
 	emptyHeaders := http.Header{}
-	headers := createHeaders(emptyHeaders, "content-type", token)
+	headers := createHeaders(emptyHeaders, "content-type", token, true)
 	contentTypes := []string{"content-type"}
 	headerData := map[string][]string{
 		"Content-Type": contentTypes, "Accept": contentTypes, "User-Agent": {gooseAgent()}}
@@ -76,7 +76,7 @@ func (s *HTTPClientTestSuite) TestCreateHeadersCopiesSupplied(c *gc.C) {
 	initialHeaders["Foo"] = []string{"Bar"}
 	contentType := contentTypeJSON
 	contentTypes := []string{contentType}
-	headers := createHeaders(initialHeaders, contentType, "")
+	headers := createHeaders(initialHeaders, contentType, "", true)
 	// it should not change the headers passed in
 	c.Assert(initialHeaders, gc.DeepEquals, http.Header{"Foo": []string{"Bar"}})
 	// The initial headers should be in the output
@@ -141,6 +141,25 @@ func (s *HTTPClientTestSuite) TestJSONRequestSetsContentLength(c *gc.C) {
 	c.Assert(ok, gc.Equals, true)
 	c.Check(body, gc.Not(gc.Equals), "")
 	c.Check(length, gc.Equals, fmt.Sprintf("%d", len(body)))
+}
+
+func (s *HTTPClientTestSuite) TestJSONRequestNoPayload(c *gc.C) {
+	headers, bodyChan, client := s.setupLoopbackRequest()
+	req := &RequestData{
+		ExpectedStatus: []int{http.StatusNoContent},
+		ReqValue:       nil,
+	}
+	err := client.JsonRequest("POST", s.Server.URL, "", req, nil)
+	c.Assert(err, gc.IsNil)
+	encoding := headers.Get("Transfer-Encoding")
+	c.Check(encoding, gc.Equals, "")
+	length := headers.Get("Content-Length")
+	ctype := headers.Get("Content-Type")
+	body, ok := <-bodyChan
+	c.Assert(ok, gc.Equals, true)
+	c.Check(body, gc.Equals, "")
+	c.Check(length, gc.Equals, "0")
+	c.Check(ctype, gc.Equals, "")
 }
 
 func (s *HTTPClientTestSuite) TestBinaryRequestSetsToken(c *gc.C) {
