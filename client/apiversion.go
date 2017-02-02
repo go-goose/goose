@@ -226,7 +226,7 @@ func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURL
 		return nil, err
 	}
 	apiURLVersionInfo.versions = versions
-	logger.Warningf("discovered API versions: %+v", versions)
+	logger.Debugf("discovered API versions: %+v", versions)
 
 	// Cache the result.
 	c.apiURLVersions[baseURL] = apiURLVersionInfo

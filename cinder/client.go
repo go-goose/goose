@@ -296,3 +296,14 @@ func (c *Client) SnapshotStatusNotifier(snapId, status string, numAttempts int, 
 	}
 	return notifier(statusMatches, numAttempts, waitDur)
 }
+
+// SetVolumeMetadata sets metadata on a server. Replaces metadata
+// items that match keys - doesn't modify items that aren't in the
+// request. Returns the complete, updated metadata for the volume.
+func (c *Client) SetVolumeMetadata(volumeId string, metadata map[string]string) (map[string]string, error) {
+	response, err := updateVolumeMetadata(c, volumeId, &UpdateVolumeMetadataParams{metadata})
+	if err != nil {
+		return nil, err
+	}
+	return response.Metadata, nil
+}

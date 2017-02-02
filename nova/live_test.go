@@ -627,6 +627,9 @@ func (s *LiveTests) TestSetServerMetadata(c *gc.C) {
 	}, {
 		"k1": "v1.replacement",
 		"k2": "v2",
+	}, {
+		// Check that missing keys get left alone.
+		"k2": "v2.replacement",
 	}} {
 		err = s.nova.SetServerMetadata(entity.Id, metadata)
 		c.Assert(err, gc.IsNil)
@@ -635,5 +638,5 @@ func (s *LiveTests) TestSetServerMetadata(c *gc.C) {
 	server, err := s.nova.GetServer(entity.Id)
 	c.Assert(err, gc.IsNil)
 	c.Assert(server.Metadata["k1"], gc.Equals, "v1.replacement")
-	c.Assert(server.Metadata["k2"], gc.Equals, "v2")
+	c.Assert(server.Metadata["k2"], gc.Equals, "v2.replacement")
 }
