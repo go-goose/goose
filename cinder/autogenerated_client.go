@@ -1675,3 +1675,51 @@ func updateSnapshotMetadata(client *Client, args UpdateSnapshotMetadataParams) (
 
 	return &results, nil
 }
+
+type UpdateVolumeMetadataParams struct {
+	// Key-value pairs to set in the volume metadata.
+	Metadata map[string]string `json:"metadata"`
+}
+
+// Updates the metadata for a specified volume.
+func updateVolumeMetadata(client *Client, volumeId string, args *UpdateVolumeMetadataParams) (*UpdateVolumeMetadataParams, error) {
+	argsAsJson, err := json.Marshal(args)
+	if err != nil {
+		return nil, err
+	}
+
+	urlPath := url.URL{Path: fmt.Sprintf("volumes/%s/metadata", volumeId)}
+	url := client.endpoint.ResolveReference(&urlPath).String()
+	// Contrary to what the documentation says, using POST here means
+	// that we can update a single key. Using PUT will always
+	// overwrite the entire metadata, throwing away keys it they
+	// aren't in the request.
+	// https://developer.openstack.org/api-ref/block-storage/v3/?expanded=update-a-volume-s-metadata-detail#update-a-volume-s-metadata
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(argsAsJson))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.handleRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	switch resp.StatusCode {
+	default:
+		return nil, fmt.Errorf("invalid status (%d): %s", resp.StatusCode, body)
+	case 200:
+		break
+	}
+
+	var results UpdateVolumeMetadataParams
+	json.Unmarshal(body, &results)
+
+	return &results, nil
+}

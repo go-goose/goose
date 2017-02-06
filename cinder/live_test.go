@@ -143,3 +143,40 @@ func (s *liveCinderSuite) TestListVersions(c *gc.C) {
 	c.Logf("versions: %#v", result.Versions)
 	c.Assert(len(result.Versions), gc.Not(gc.Equals), 0)
 }
+
+func (s *liveCinderSuite) TestUpdateVolumeMetadata(c *gc.C) {
+	metadata := map[string]string{
+		"Fresh": "Born",
+		"Twin":  "Killers",
+	}
+	volInfo, err := s.client.CreateVolume(CreateVolumeVolumeParams{
+		Size:     75,
+		Metadata: metadata,
+	})
+	c.Assert(err, gc.IsNil)
+	volumeId := volInfo.Volume.ID
+
+	defer func() {
+		err := s.client.DeleteVolume(volumeId)
+		c.Assert(err, gc.IsNil)
+	}()
+
+	err = <-s.client.VolumeStatusNotifier(volumeId, "available", 10, 1*time.Second)
+	c.Assert(err, gc.IsNil)
+
+	result, err := s.client.SetVolumeMetadata(volumeId, map[string]string{
+		"Twin":     "Huggers",
+		"Paradise": "People",
+	})
+	c.Assert(err, gc.IsNil)
+	c.Assert(result["Fresh"], gc.Equals, "Born")
+	c.Assert(result["Twin"], gc.Equals, "Huggers")
+	c.Assert(result["Paradise"], gc.Equals, "People")
+
+	volResult, err := s.client.GetVolume(volumeId)
+	c.Assert(err, gc.IsNil)
+	c.Assert(volResult, gc.NotNil)
+	c.Assert(volResult.Volume.Metadata["Fresh"], gc.Equals, "Born")
+	c.Assert(volResult.Volume.Metadata["Twin"], gc.Equals, "Huggers")
+	c.Assert(volResult.Volume.Metadata["Paradise"], gc.Equals, "People")
+}

@@ -843,7 +843,10 @@ func (c *Client) ListVolumeAttachments(serverId string) ([]VolumeAttachment, err
 	return resp.VolumeAttachments, nil
 }
 
-// SetServerMetadata sets metadata on a server.
+// SetServerMetadata sets metadata on a server. Replaces metadata
+// items that match keys - doesn't modify items that aren't in the
+// request.
+// See https://developer.openstack.org/api-ref/compute/?expanded=update-metadata-items-detail#update-metadata-items
 func (c *Client) SetServerMetadata(serverId string, metadata map[string]string) error {
 	req := struct {
 		Metadata map[string]string `json:"metadata"`
