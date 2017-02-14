@@ -16,7 +16,7 @@ var _ = gc.Suite(&LegacyTestSuite{})
 func (s *LegacyTestSuite) TestAuthAgainstServer(c *gc.C) {
 	service := identityservice.NewLegacy()
 	s.Mux.Handle("/", service)
-	userInfo := service.AddUser("joe-user", "secrets", "tenant")
+	userInfo := service.AddUser("joe-user", "secrets", "tenant", "default")
 	service.SetManagementURL("http://management.test.invalid/url")
 	var l Authenticator = &Legacy{}
 	creds := Credentials{User: "joe-user", URL: s.Server.URL, Secrets: "secrets"}
@@ -32,7 +32,7 @@ func (s *LegacyTestSuite) TestAuthAgainstServer(c *gc.C) {
 func (s *LegacyTestSuite) TestBadAuth(c *gc.C) {
 	service := identityservice.NewLegacy()
 	s.Mux.Handle("/", service)
-	_ = service.AddUser("joe-user", "secrets", "tenant")
+	_ = service.AddUser("joe-user", "secrets", "tenant", "default")
 	var l Authenticator = &Legacy{}
 	creds := Credentials{User: "joe-user", URL: s.Server.URL, Secrets: "bad-secrets"}
 	auth, err := l.Auth(&creds)

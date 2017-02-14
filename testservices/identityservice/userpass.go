@@ -213,7 +213,7 @@ func (u *UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	userInfo, errmsg := u.authenticate(req.Auth.PasswordCredentials.Username, req.Auth.PasswordCredentials.Password)
+	userInfo, errmsg := u.authenticate(req.Auth.PasswordCredentials.Username, req.Auth.PasswordCredentials.Password, "default")
 	if errmsg != "" {
 		u.ReturnFailure(w, http.StatusUnauthorized, errmsg)
 		return

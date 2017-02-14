@@ -65,7 +65,7 @@ func main() {
 	mux := http.NewServeMux()
 	p.SetupHTTP(mux)
 	for _, u := range users.users {
-		p.AddUser(u.user, u.secret, "tenant")
+		p.AddUser(u.user, u.secret, "tenant", "default")
 	}
 	log.Fatal(http.ListenAndServe(*serveAddr, mux))
 }

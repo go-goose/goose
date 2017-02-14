@@ -32,10 +32,10 @@ type Openstack struct {
 	URLs map[string]string
 }
 
-func (openstack *Openstack) AddUser(user, secret, tennant string) *identityservice.UserInfo {
-	uinfo := openstack.Identity.AddUser(user, secret, tennant)
+func (openstack *Openstack) AddUser(user, secret, project, authDomain string) *identityservice.UserInfo {
+	uinfo := openstack.Identity.AddUser(user, secret, project, authDomain)
 	if openstack.FallbackIdentity != nil {
-		_ = openstack.FallbackIdentity.AddUser(user, secret, tennant)
+		_ = openstack.FallbackIdentity.AddUser(user, secret, project, authDomain)
 	}
 	return uinfo
 }
@@ -121,9 +121,19 @@ func NewNoSwift(cred *identity.Credentials, authMode identity.AuthMode, useTLS b
 			FallbackIdentity: identityservice.NewV3UserPass(),
 		}
 	}
-	userInfo := openstack.AddUser(cred.User, cred.Secrets, cred.TenantName)
+	domain := cred.ProjectDomain
+	if domain == "" {
+		domain = cred.UserDomain
+	}
+	if domain == "" {
+		domain = cred.Domain
+	}
+	if domain == "" {
+		domain = "default"
+	}
+	userInfo := openstack.AddUser(cred.User, cred.Secrets, cred.TenantName, domain)
 	if cred.TenantName == "" {
-		panic("Openstack service double requires a tenant to be specified.")
+		panic("Openstack service double requires a project to be specified.")
 	}
 
 	if useTLS {

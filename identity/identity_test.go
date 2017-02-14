@@ -76,14 +76,18 @@ func (s *CredentialsTestSuite) TestCredentialsFromEnv(c *gc.C) {
 
 func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvValid(c *gc.C) {
 	env := map[string]string{
-		"OS_AUTH_URL":    "http://auth",
-		"OS_USERNAME":    "test-user",
-		"OS_PASSWORD":    "test-pass",
-		"OS_ACCESS_KEY":  "test-access-key",
-		"OS_SECRET_KEY":  "test-secret-key",
-		"OS_TENANT_NAME": "tenant-name",
-		"OS_REGION_NAME": "region",
-		"OS_DOMAIN_NAME": "domain-name",
+		"OS_AUTH_URL":            "http://auth",
+		"OS_USERNAME":            "test-user",
+		"OS_PASSWORD":            "test-pass",
+		"OS_ACCESS_KEY":          "test-access-key",
+		"OS_SECRET_KEY":          "test-secret-key",
+		"OS_PROJECT_NAME":        "tenant-name",
+		"OS_REGION_NAME":         "region",
+		"OS_DOMAIN_NAME":         "domain-name",
+		"OS_PROJECT_DOMAIN_NAME": "project-domain-name",
+		"OS_USER_DOMAIN_NAME":    "user-domain-name",
+		// ignored because user and project domains set
+		"OS_DEFAULT_DOMAIN_NAME": "default-domain-name",
 	}
 	for key, value := range env {
 		os.Setenv(key, value)
@@ -95,18 +99,47 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvValid(c *gc.C) {
 	c.Check(creds.Secrets, gc.Equals, "test-pass")
 	c.Check(creds.Region, gc.Equals, "region")
 	c.Check(creds.TenantName, gc.Equals, "tenant-name")
-	c.Check(creds.DomainName, gc.Equals, "domain-name")
+	c.Check(creds.Domain, gc.Equals, "domain-name")
+	c.Check(creds.ProjectDomain, gc.Equals, "project-domain-name")
+	c.Check(creds.UserDomain, gc.Equals, "user-domain-name")
+}
+
+func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvDefaultDomain(c *gc.C) {
+	env := map[string]string{
+		"OS_AUTH_URL":            "http://auth",
+		"OS_USERNAME":            "test-user",
+		"OS_PASSWORD":            "test-pass",
+		"OS_ACCESS_KEY":          "test-access-key",
+		"OS_SECRET_KEY":          "test-secret-key",
+		"OS_PROJECT_NAME":        "tenant-name",
+		"OS_REGION_NAME":         "region",
+		"OS_DOMAIN_NAME":         "domain-name",
+		"OS_DEFAULT_DOMAIN_NAME": "default-domain-name",
+	}
+	for key, value := range env {
+		os.Setenv(key, value)
+	}
+	creds, err := CompleteCredentialsFromEnv()
+	c.Assert(err, gc.IsNil)
+	c.Check(creds.URL, gc.Equals, "http://auth")
+	c.Check(creds.User, gc.Equals, "test-user")
+	c.Check(creds.Secrets, gc.Equals, "test-pass")
+	c.Check(creds.Region, gc.Equals, "region")
+	c.Check(creds.TenantName, gc.Equals, "tenant-name")
+	c.Check(creds.Domain, gc.Equals, "domain-name")
+	c.Check(creds.ProjectDomain, gc.Equals, "default-domain-name")
+	c.Check(creds.UserDomain, gc.Equals, "default-domain-name")
 }
 
 // An error is returned if not all required environment variables are set.
 func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvInvalid(c *gc.C) {
 	env := map[string]string{
-		"OS_AUTH_URL":    "http://auth",
-		"OS_USERNAME":    "test-user",
-		"OS_ACCESS_KEY":  "test-access-key",
-		"OS_TENANT_NAME": "tenant-name",
-		"OS_REGION_NAME": "region",
-		"OS_DOMAIN_NAME": "domain-name",
+		"OS_AUTH_URL":     "http://auth",
+		"OS_USERNAME":     "test-user",
+		"OS_ACCESS_KEY":   "test-access-key",
+		"OS_PROJECT_NAME": "tenant-name",
+		"OS_REGION_NAME":  "region",
+		"OS_DOMAIN_NAME":  "domain-name",
 	}
 	for key, value := range env {
 		os.Setenv(key, value)
@@ -118,14 +151,14 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvInvalid(c *gc.C) {
 
 func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvKeypair(c *gc.C) {
 	env := map[string]string{
-		"OS_AUTH_URL":    "http://auth",
-		"OS_USERNAME":    "",
-		"OS_PASSWORD":    "",
-		"OS_ACCESS_KEY":  "test-access-key",
-		"OS_SECRET_KEY":  "test-secret-key",
-		"OS_TENANT_NAME": "tenant-name",
-		"OS_REGION_NAME": "region",
-		"OS_DOMAIN_NAME": "domain-name",
+		"OS_AUTH_URL":     "http://auth",
+		"OS_USERNAME":     "",
+		"OS_PASSWORD":     "",
+		"OS_ACCESS_KEY":   "test-access-key",
+		"OS_SECRET_KEY":   "test-secret-key",
+		"OS_PROJECT_NAME": "tenant-name",
+		"OS_REGION_NAME":  "region",
+		"OS_DOMAIN_NAME":  "domain-name",
 	}
 	for key, value := range env {
 		os.Setenv(key, value)
@@ -137,7 +170,7 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvKeypair(c *gc.C) {
 	c.Check(creds.Secrets, gc.Equals, "test-secret-key")
 	c.Check(creds.Region, gc.Equals, "region")
 	c.Check(creds.TenantName, gc.Equals, "tenant-name")
-	c.Check(creds.DomainName, gc.Equals, "domain-name")
+	c.Check(creds.Domain, gc.Equals, "domain-name")
 }
 
 func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvKeypairCompatibleEnvVars(c *gc.C) {
@@ -161,7 +194,7 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvKeypairCompatibleEn
 	c.Check(creds.Secrets, gc.Equals, "test-secret-key")
 	c.Check(creds.Region, gc.Equals, "region")
 	c.Check(creds.TenantName, gc.Equals, "tenant-name")
-	c.Check(creds.DomainName, gc.Equals, "domain-name")
+	c.Check(creds.Domain, gc.Equals, "domain-name")
 }
 
 func (s *NewAuthenticatorSuite) TestUserPassNoHTTPClient(c *gc.C) {

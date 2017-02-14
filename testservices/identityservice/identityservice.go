@@ -4,7 +4,7 @@ import "net/http"
 
 // An IdentityService provides user authentication for an Openstack instance.
 type IdentityService interface {
-	AddUser(user, secret, tenant string) *UserInfo
+	AddUser(user, secret, tenant, authDomain string) *UserInfo
 	FindUser(token string) (*UserInfo, error)
 	RegisterServiceProvider(name, serviceType string, serviceProvider ServiceProvider)
 	AddService(service Service)

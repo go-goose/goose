@@ -23,7 +23,7 @@ func makeUserPass(user, secret string) (identity *UserPass) {
 	// Ensure that it conforms to the interface
 	var _ IdentityService = identity
 	if user != "" {
-		identity.AddUser(user, secret, "tenant")
+		identity.AddUser(user, secret, "tenant", "default")
 	}
 	return
 }
@@ -89,8 +89,8 @@ func (s *UserPassSuite) TestNotJSON(c *gc.C) {
 	request, err := http.NewRequest("POST", s.Server.URL+"/tokens", body)
 	c.Assert(err, gc.IsNil)
 	res, err := client.Do(request)
-	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)
+	defer res.Body.Close()
 	CheckErrorResponse(c, res, http.StatusBadRequest, notJSON)
 }
 
@@ -98,24 +98,24 @@ func (s *UserPassSuite) TestBadJSON(c *gc.C) {
 	// We do everything in userPassAuthRequest, except set the Content-Type
 	s.setupUserPass("user", "secret")
 	res, err := userPassAuthRequest(s.Server.URL, "garbage\"in", "secret")
-	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)
+	defer res.Body.Close()
 	CheckErrorResponse(c, res, http.StatusBadRequest, notJSON)
 }
 
 func (s *UserPassSuite) TestNoSuchUser(c *gc.C) {
 	s.setupUserPass("user", "secret")
 	res, err := userPassAuthRequest(s.Server.URL, "not-user", "secret")
-	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)
+	defer res.Body.Close()
 	CheckErrorResponse(c, res, http.StatusUnauthorized, notAuthorized)
 }
 
 func (s *UserPassSuite) TestBadPassword(c *gc.C) {
 	s.setupUserPass("user", "secret")
 	res, err := userPassAuthRequest(s.Server.URL, "user", "not-secret")
-	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)
+	defer res.Body.Close()
 	CheckErrorResponse(c, res, http.StatusUnauthorized, invalidUser)
 }
 
@@ -126,8 +126,8 @@ func (s *UserPassSuite) TestValidAuthorization(c *gc.C) {
 			{PublicURL: compute_url},
 		}}}})
 	res, err := userPassAuthRequest(s.Server.URL, "user", "secret")
-	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)
+	defer res.Body.Close()
 	c.Check(res.StatusCode, gc.Equals, http.StatusOK)
 	c.Check(res.Header.Get("Content-Type"), gc.Equals, "application/json")
 	content, err := ioutil.ReadAll(res.Body)

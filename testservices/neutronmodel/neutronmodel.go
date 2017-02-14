@@ -322,21 +322,21 @@ func (n *NeutronModel) AddSecurityGroupRule(ruleId string, rule neutron.RuleInfo
 		newrule.IPProtocol = &rule.IPProtocol
 	}
 	switch rule.EthernetType {
-		case "":
-			// Neutron assumes IPv4 if no EthernetType is specified
-			newrule.EthernetType = "IPv4"
-		case "IPv4", "IPv6":
-			newrule.EthernetType = rule.EthernetType
-		default:
-			return testservices.NewSecurityGroupRuleInvalidEthernetType(rule.EthernetType)
+	case "":
+		// Neutron assumes IPv4 if no EthernetType is specified
+		newrule.EthernetType = "IPv4"
+	case "IPv4", "IPv6":
+		newrule.EthernetType = rule.EthernetType
+	default:
+		return testservices.NewSecurityGroupRuleInvalidEthernetType(rule.EthernetType)
 	}
-	if (newrule.RemoteIPPrefix != "") {
+	if newrule.RemoteIPPrefix != "" {
 		ip, _, err := net.ParseCIDR(newrule.RemoteIPPrefix)
-		if (err != nil) {
+		if err != nil {
 			return testservices.NewSecurityGroupRuleInvalidCIDR(rule.RemoteIPPrefix)
 		}
-		if ((newrule.EthernetType == "IPv4" && ip.To4() == nil) ||
-		    (newrule.EthernetType == "IPv6" && ip.To4() != nil)) {
+		if (newrule.EthernetType == "IPv4" && ip.To4() == nil) ||
+			(newrule.EthernetType == "IPv6" && ip.To4() != nil) {
 			return testservices.NewSecurityGroupRuleParameterConflict("ethertype", newrule.EthernetType, "CIDR", newrule.RemoteIPPrefix)
 		}
 	}

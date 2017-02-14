@@ -8,10 +8,11 @@ import (
 )
 
 type UserInfo struct {
-	Id       string
-	TenantId string
-	Token    string
-	secret   string
+	Id         string
+	TenantId   string
+	Token      string
+	secret     string
+	authDomain string
 }
 
 var randReader = rand.Reader

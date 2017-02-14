@@ -36,7 +36,7 @@ func (s *SwiftHTTPSuite) SetUpSuite(c *gc.C) {
 	s.HTTPSuite.SetUpSuite(c)
 	identityDouble := identityservice.NewUserPass()
 	s.service = New(s.Server.URL, versionPath, tenantId, region, identityDouble, nil)
-	userInfo := identityDouble.AddUser("fred", "secret", "tenant")
+	userInfo := identityDouble.AddUser("fred", "secret", "tenant", "default")
 	s.token = userInfo.Token
 }
 
@@ -366,7 +366,7 @@ func (s *SwiftHTTPSuite) TestUnauthorizedFails(c *gc.C) {
 func (s *SwiftHTTPSSuite) SetUpSuite(c *gc.C) {
 	s.HTTPSuite.SetUpSuite(c)
 	identityDouble := identityservice.NewUserPass()
-	userInfo := identityDouble.AddUser("fred", "secret", "tenant")
+	userInfo := identityDouble.AddUser("fred", "secret", "tenant", "default")
 	s.token = userInfo.Token
 	c.Assert(s.Server.URL[:8], gc.Equals, "https://")
 	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble, nil)

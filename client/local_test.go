@@ -48,11 +48,12 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 	c.Logf("Using identity service test double")
 	s.HTTPSuite.SetUpSuite(c)
 	s.cred = &identity.Credentials{
-		URL:        s.Server.URL,
-		User:       "fred",
-		Secrets:    "secret",
-		Region:     "zone1.some region",
-		TenantName: "tenant",
+		URL:           s.Server.URL,
+		User:          "fred",
+		Secrets:       "secret",
+		Region:        "zone1.some region",
+		TenantName:    "tenant",
+		ProjectDomain: "default",
 	}
 	var logMsg []string
 	switch s.authMode {
@@ -98,7 +99,7 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 
 	case identity.AuthLegacy:
 		legacy := identityservice.NewLegacy()
-		legacy.AddUser(s.cred.User, s.cred.Secrets, s.cred.TenantName)
+		legacy.AddUser(s.cred.User, s.cred.Secrets, s.cred.TenantName, "default")
 		legacy.SetManagementURL("http://management.test.invalid/url")
 		s.service = legacy
 	}

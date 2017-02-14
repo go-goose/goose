@@ -19,13 +19,22 @@ type V3UserPassRequest struct {
 				User struct {
 					Name     string `json:"name"`
 					Password string `json:"password"`
+					Domain   struct {
+						Name string `json:"name,omitempty"`
+					} `json:"domain"`
 				} `json:"user"`
 			} `json:"password"`
 		} `json:"identity"`
 		Scope struct {
 			Project struct {
-				Name string `json:"name"`
+				Name   string `json:"name"`
+				Domain struct {
+					Name string `json:"name,omitempty"`
+				} `json:"domain,omitempty"`
 			} `json:"project"`
+			Domain struct {
+				Name string `json:"name,omitempty"`
+			} `json:"domain"`
 		} `json:"scope"`
 	} `json:"auth"`
 }
@@ -82,6 +91,7 @@ type V3TokenResponse struct {
 	Methods []string    `json:"methods"`
 	Catalog []V3Service `json:"catalog,omitempty"`
 	Project *V3Project  `json:"project,omitempty"`
+	Domain  *V3Domain   `json:"domain,omitempty"`
 	User    struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
@@ -92,6 +102,12 @@ type V3TokenResponse struct {
 // Resources are owned by a specific project. A project is owned by a specific domain.
 type V3Project struct {
 	ID string `json:"id,omitempty"`
+}
+
+// V3Domain represents an authentication domain.
+type V3Domain struct {
+	ID   string `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
 }
 
 // V3UserPass represents an authenticated user to a service.
@@ -165,9 +181,17 @@ func (u *V3UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	domain := req.Auth.Scope.Project.Domain.Name
+	if domain == "" {
+		domain = req.Auth.Scope.Domain.Name
+	}
+	if domain == "" {
+		domain = "default"
+	}
 	userInfo, errmsg := u.authenticate(
 		req.Auth.Identity.Password.User.Name,
 		req.Auth.Identity.Password.User.Password,
+		domain,
 	)
 	if errmsg != "" {
 		u.ReturnFailure(w, http.StatusUnauthorized, errmsg)
@@ -182,6 +206,11 @@ func (u *V3UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if req.Auth.Scope.Project.Name != "" {
 		res.Project = &V3Project{
 			ID: u.addTenant(req.Auth.Scope.Project.Name),
+		}
+	}
+	if req.Auth.Scope.Domain.Name != "" {
+		res.Domain = &V3Domain{
+			Name: req.Auth.Scope.Domain.Name,
 		}
 	}
 	content, err := json.Marshal(struct {
