@@ -42,7 +42,7 @@ var _ = gc.Suite(&NovaHTTPSSuite{HTTPSuite: httpsuite.HTTPSuite{UseTLS: true}, u
 func (s *NovaHTTPSuite) SetUpSuite(c *gc.C) {
 	s.HTTPSuite.SetUpSuite(c)
 	identityDouble := identityservice.NewUserPass()
-	userInfo := identityDouble.AddUser("fred", "secret", "tenant")
+	userInfo := identityDouble.AddUser("fred", "secret", "tenant", "default")
 	s.token = userInfo.Token
 	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble, nil)
 	if s.useNeutronNetworking {
@@ -1304,7 +1304,7 @@ func (s *NovaHTTPSuite) TestListAvailabilityZones(c *gc.C) {
 func (s *NovaHTTPSSuite) SetUpSuite(c *gc.C) {
 	s.HTTPSuite.SetUpSuite(c)
 	identityDouble := identityservice.NewUserPass()
-	userInfo := identityDouble.AddUser("fred", "secret", "tenant")
+	userInfo := identityDouble.AddUser("fred", "secret", "tenant", "default")
 	s.token = userInfo.Token
 	c.Assert(s.Server.URL[:8], gc.Equals, "https://")
 	s.service = New(s.Server.URL, versionPath, userInfo.TenantId, region, identityDouble, nil)

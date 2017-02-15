@@ -478,7 +478,7 @@ func (n *Neutron) handleSecurityGroupRules(w http.ResponseWriter, r *http.Reques
 		// set default EthernetType for correct comparison
 		// TODO: we should probably have a neutronmodel func to parse and set default values
 		//       and/or move the duplicate check there
-		if (inrule.EthernetType == "") {
+		if inrule.EthernetType == "" {
 			inrule.EthernetType = "IPv4"
 		}
 		group, err := n.securityGroup(inrule.ParentGroupId)

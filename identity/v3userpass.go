@@ -79,9 +79,13 @@ func (u *V3UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 	if u.client == nil {
 		u.client = goosehttp.New()
 	}
-	domain := creds.DomainName
-	if domain == "" {
-		domain = "default"
+	userDomain := creds.UserDomain
+	if userDomain == "" {
+		userDomain = "default"
+	}
+	projectDomain := creds.ProjectDomain
+	if projectDomain == "" {
+		projectDomain = "default"
 	}
 	auth := v3AuthWrapper{
 		Auth: v3AuthRequest{
@@ -90,7 +94,7 @@ func (u *V3UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 				Password: &v3AuthPassword{
 					User: v3AuthUser{
 						Domain: &v3AuthDomain{
-							Name: domain,
+							Name: userDomain,
 						},
 						Name:     creds.User,
 						Password: creds.Secrets,
@@ -103,15 +107,19 @@ func (u *V3UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 		auth.Auth.Scope = &v3AuthScope{
 			Project: &v3AuthProject{
 				Domain: &v3AuthDomain{
-					Name: domain,
+					Name: projectDomain,
 				},
 				Name: creds.TenantName,
 			},
 		}
 	}
-	// TODO(perrito666) it is possible to scope by domain too
-	// but we don't have yet a clear way to add this into the
-	// credentials.
+	if creds.Domain != "" {
+		auth.Auth.Scope = &v3AuthScope{
+			Domain: &v3AuthDomain{
+				Name: creds.Domain,
+			},
+		}
+	}
 
 	return v3KeystoneAuth(u.client, &auth, creds.URL)
 }
@@ -128,6 +136,7 @@ type v3Token struct {
 	Methods []string         `json:"methods"`
 	Catalog []v3TokenCatalog `json:"catalog"`
 	Project v3TokenProject   `json:"project"`
+	Domain  v3TokenDomain    `json:"domain"`
 	User    v3TokenUser      `json:"user"`
 }
 
@@ -197,6 +206,7 @@ func v3KeystoneAuth(c *goosehttp.Client, v interface{}, url string) (*AuthDetail
 		Token:             tok,
 		TenantId:          resp.Token.Project.ID,
 		UserId:            resp.Token.User.ID,
+		Domain:            resp.Token.Domain.Name,
 		RegionServiceURLs: rsu,
 	}, nil
 }

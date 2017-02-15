@@ -23,7 +23,7 @@ func makeV3UserPass(user, secret string) (identity *V3UserPass) {
 	// Ensure that it conforms to the interface
 	var _ IdentityService = identity
 	if user != "" {
-		identity.AddUser(user, secret, "tenant")
+		identity.AddUser(user, secret, "tenant", "default")
 	}
 	return
 }
@@ -81,8 +81,8 @@ func (s *V3UserPassSuite) TestNotJSON(c *gc.C) {
 	request, err := http.NewRequest("POST", s.Server.URL+"/v3/auth/tokens", body)
 	c.Assert(err, gc.IsNil)
 	res, err := client.Do(request)
-	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)
+	defer res.Body.Close()
 	CheckErrorResponse(c, res, http.StatusBadRequest, notJSON)
 }
 
@@ -90,24 +90,24 @@ func (s *V3UserPassSuite) TestBadJSON(c *gc.C) {
 	// We do everything in userPassAuthRequest, except set the Content-Type
 	s.setupUserPass("user", "secret")
 	res, err := v3UserPassAuthRequest(s.Server.URL, "garbage\"in", "secret")
-	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)
+	defer res.Body.Close()
 	CheckErrorResponse(c, res, http.StatusBadRequest, notJSON)
 }
 
 func (s *V3UserPassSuite) TestNoSuchUser(c *gc.C) {
 	s.setupUserPass("user", "secret")
 	res, err := v3UserPassAuthRequest(s.Server.URL, "not-user", "secret")
-	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)
+	defer res.Body.Close()
 	CheckErrorResponse(c, res, http.StatusUnauthorized, notAuthorized)
 }
 
 func (s *V3UserPassSuite) TestBadPassword(c *gc.C) {
 	s.setupUserPass("user", "secret")
 	res, err := v3UserPassAuthRequest(s.Server.URL, "user", "not-secret")
-	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)
+	defer res.Body.Close()
 	CheckErrorResponse(c, res, http.StatusUnauthorized, invalidUser)
 }
 
@@ -116,8 +116,8 @@ func (s *V3UserPassSuite) TestValidAuthorization(c *gc.C) {
 	s.setupUserPassWithServices("user", "secret", []Service{
 		{V3: V3Service{Name: "nova", Type: "compute", Endpoints: NewV3Endpoints("", "", compute_url, "")}}})
 	res, err := v3UserPassAuthRequest(s.Server.URL, "user", "secret")
-	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)
+	defer res.Body.Close()
 	c.Check(res.StatusCode, gc.Equals, http.StatusCreated)
 	c.Check(res.Header.Get("Content-Type"), gc.Equals, "application/json")
 	content, err := ioutil.ReadAll(res.Body)

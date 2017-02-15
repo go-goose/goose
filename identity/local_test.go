@@ -31,7 +31,6 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 		Secrets:    "secret",
 		Region:     "zone1.some region",
 		TenantName: "tenant",
-		DomainName: "default",
 	}
 	var logMsg []string
 	s.openstack, logMsg = openstackservice.New(s.cred, s.authMode, false)
@@ -44,7 +43,7 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 		s.cred.URL = s.cred.URL + "/v3"
 	}
 
-	s.openstack.Identity.AddUser("fred", "secret", "tenant")
+	s.openstack.Identity.AddUser("fred", "secret", "tenant", "default")
 	s.LiveTests.SetUpSuite(c)
 }
 

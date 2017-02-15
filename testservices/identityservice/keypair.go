@@ -81,7 +81,7 @@ func (u *KeyPair) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	userInfo, errmsg := u.authenticate(req.Auth.ApiAccessKeyCredentials.AccessKey, req.Auth.ApiAccessKeyCredentials.SecretKey)
+	userInfo, errmsg := u.authenticate(req.Auth.ApiAccessKeyCredentials.AccessKey, req.Auth.ApiAccessKeyCredentials.SecretKey, "default")
 	if errmsg != "" {
 		u.ReturnFailure(w, http.StatusUnauthorized, errmsg)
 		return

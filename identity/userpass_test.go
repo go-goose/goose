@@ -16,7 +16,7 @@ var _ = gc.Suite(&UserPassTestSuite{})
 func (s *UserPassTestSuite) TestAuthAgainstServer(c *gc.C) {
 	service := identityservice.NewUserPass()
 	service.SetupHTTP(s.Mux)
-	userInfo := service.AddUser("joe-user", "secrets", "tenant")
+	userInfo := service.AddUser("joe-user", "secrets", "tenant", "default")
 	var l Authenticator = &UserPass{}
 	creds := Credentials{User: "joe-user", URL: s.Server.URL + "/tokens", Secrets: "secrets"}
 	auth, err := l.Auth(&creds)
@@ -29,7 +29,7 @@ func (s *UserPassTestSuite) TestAuthAgainstServer(c *gc.C) {
 func (s *UserPassTestSuite) TestRegionMatch(c *gc.C) {
 	service := identityservice.NewUserPass()
 	service.SetupHTTP(s.Mux)
-	userInfo := service.AddUser("joe-user", "secrets", "tenant")
+	userInfo := service.AddUser("joe-user", "secrets", "tenant", "default")
 	serviceDef := identityservice.V2Service{
 		Name: "swift",
 		Type: "object-store",

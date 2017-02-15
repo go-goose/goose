@@ -24,12 +24,17 @@ func (u *Users) addTenant(tenant string) string {
 	return id
 }
 
-func (u *Users) AddUser(user, secret, tenant string) *UserInfo {
+func (u *Users) AddUser(user, secret, tenant, authDomain string) *UserInfo {
 	tenantId := u.addTenant(tenant)
 	u.nextUserId++
-	userInfo := &UserInfo{secret: secret, Id: strconv.Itoa(u.nextUserId), TenantId: tenantId}
+	userInfo := &UserInfo{
+		secret:     secret,
+		Id:         strconv.Itoa(u.nextUserId),
+		TenantId:   tenantId,
+		authDomain: authDomain,
+	}
 	u.users[user] = *userInfo
-	userInfo, _ = u.authenticate(user, secret)
+	userInfo, _ = u.authenticate(user, secret, authDomain)
 	return userInfo
 }
 
@@ -47,10 +52,13 @@ const (
 	invalidUser   = "Invalid user / password"
 )
 
-func (u *Users) authenticate(username, password string) (*UserInfo, string) {
+func (u *Users) authenticate(username, password, domain string) (*UserInfo, string) {
 	userInfo, ok := u.users[username]
 	if !ok {
 		return nil, notAuthorized
+	}
+	if domain != "" && domain != userInfo.authDomain {
+		return nil, invalidUser
 	}
 	if userInfo.secret != password {
 		return nil, invalidUser

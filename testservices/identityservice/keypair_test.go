@@ -23,7 +23,7 @@ func makeKeyPair(user, secret string) (identity *KeyPair) {
 	// Ensure that it conforms to the interface
 	var _ IdentityService = identity
 	if user != "" {
-		identity.AddUser(user, secret, "tenant")
+		identity.AddUser(user, secret, "tenant", "default")
 	}
 	return
 }
@@ -74,8 +74,8 @@ func (s *KeyPairSuite) TestNotJSON(c *gc.C) {
 	request, err := http.NewRequest("POST", s.Server.URL+"/tokens", body)
 	c.Assert(err, gc.IsNil)
 	res, err := client.Do(request)
-	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)
+	defer res.Body.Close()
 	CheckErrorResponse(c, res, http.StatusBadRequest, notJSON)
 }
 
@@ -83,24 +83,24 @@ func (s *KeyPairSuite) TestBadJSON(c *gc.C) {
 	// We do everything in keyPairAuthRequest, except set the Content-Type
 	s.setupKeyPair("user", "secret")
 	res, err := keyPairAuthRequest(s.Server.URL, `garbage"in`, "secret")
-	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)
+	defer res.Body.Close()
 	CheckErrorResponse(c, res, http.StatusBadRequest, notJSON)
 }
 
 func (s *KeyPairSuite) TestNoSuchUser(c *gc.C) {
 	s.setupKeyPair("user", "secret")
 	res, err := keyPairAuthRequest(s.Server.URL, "not-user", "secret")
-	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)
+	defer res.Body.Close()
 	CheckErrorResponse(c, res, http.StatusUnauthorized, notAuthorized)
 }
 
 func (s *KeyPairSuite) TestBadPassword(c *gc.C) {
 	s.setupKeyPair("user", "secret")
 	res, err := keyPairAuthRequest(s.Server.URL, "user", "not-secret")
-	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)
+	defer res.Body.Close()
 	CheckErrorResponse(c, res, http.StatusUnauthorized, invalidUser)
 }
 
@@ -111,8 +111,8 @@ func (s *KeyPairSuite) TestValidAuthorization(c *gc.C) {
 			{PublicURL: compute_url},
 		}}}})
 	res, err := keyPairAuthRequest(s.Server.URL, "user", "secret")
-	defer res.Body.Close()
 	c.Assert(err, gc.IsNil)
+	defer res.Body.Close()
 	c.Check(res.StatusCode, gc.Equals, http.StatusOK)
 	c.Check(res.Header.Get("Content-Type"), gc.Equals, "application/json")
 	content, err := ioutil.ReadAll(res.Body)

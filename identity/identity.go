@@ -53,17 +53,20 @@ type AuthDetails struct {
 	Token             string
 	TenantId          string
 	UserId            string
+	Domain            string
 	RegionServiceURLs map[string]ServiceURLs // Service type to endpoint URLs for each region
 }
 
 // Credentials defines necessary parameters for authentication.
 type Credentials struct {
-	URL        string // The URL to authenticate against
-	User       string // The username to authenticate as
-	Secrets    string // The secrets to pass
-	Region     string // Region to send requests to
-	TenantName string // The tenant information for this connection
-	DomainName string `credentials:"optional"` // The domain for this user (new in keystone v3)
+	URL           string // The URL to authenticate against
+	User          string // The username to authenticate as
+	Secrets       string // The secrets to pass
+	Region        string // Region to send requests to
+	TenantName    string // The project name for this connection
+	Domain        string `credentials:"optional"` // The domain for authorization (new in keystone v3)
+	UserDomain    string `credentials:"optional"` // The owning domain for this user (new in keystone v3)
+	ProjectDomain string `credentials:"optional"` // The project domain for authorization (new in keystone v3)
 }
 
 // Authenticator is implemented by each authentication method.
@@ -117,10 +120,22 @@ var (
 	}
 	// CredEnvTenantName is used for Credentials.TenantName.
 	CredEnvTenantName = []string{
+		"OS_PROJECT_NAME",
 		"OS_TENANT_NAME",
 		"NOVA_PROJECT_ID",
 	}
-	// CredEnvDomainName is used for Credentials.TenantName.
+
+	// The following env vars are set according to what type
+	// of keystone v3 domain authorization is required.
+	CredEnvDefaultDomainName = []string{
+		"OS_DEFAULT_DOMAIN_NAME",
+	}
+	CredEnvProjectDomainName = []string{
+		"OS_PROJECT_DOMAIN_NAME",
+	}
+	CredEnvUserDomainName = []string{
+		"OS_USER_DOMAIN_NAME",
+	}
 	CredEnvDomainName = []string{
 		"OS_DOMAIN_NAME",
 	}
@@ -129,14 +144,26 @@ var (
 // CredentialsFromEnv creates and initializes the credentials from the
 // environment variables.
 func CredentialsFromEnv() *Credentials {
-	return &Credentials{
-		URL:        getConfig(CredEnvAuthURL),
-		User:       getConfig(CredEnvUser),
-		Secrets:    getConfig(CredEnvSecrets),
-		Region:     getConfig(CredEnvRegion),
-		TenantName: getConfig(CredEnvTenantName),
-		DomainName: getConfig(CredEnvDomainName),
+	cred := &Credentials{
+		URL:           getConfig(CredEnvAuthURL),
+		User:          getConfig(CredEnvUser),
+		Secrets:       getConfig(CredEnvSecrets),
+		Region:        getConfig(CredEnvRegion),
+		TenantName:    getConfig(CredEnvTenantName),
+		Domain:        getConfig(CredEnvDomainName),
+		UserDomain:    getConfig(CredEnvUserDomainName),
+		ProjectDomain: getConfig(CredEnvProjectDomainName),
 	}
+	defaultDomain := getConfig(CredEnvDefaultDomainName)
+	if defaultDomain != "" {
+		if cred.ProjectDomain == "" {
+			cred.ProjectDomain = defaultDomain
+		}
+		if cred.UserDomain == "" {
+			cred.UserDomain = defaultDomain
+		}
+	}
+	return cred
 }
 
 // CompleteCredentialsFromEnv gets and verifies all the required
