@@ -4,6 +4,8 @@ package neutronservice
 
 import (
 	"net/url"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"gopkg.in/goose.v1/neutron"
@@ -252,9 +254,72 @@ func (n *Neutron) removeFloatingIP(ipId string) error {
 	return n.neutronModel.RemoveFloatingIP(ipId)
 }
 
+// filter is used internally by matchNetworks.
+type filter map[string]string
+
+// matchNetworks returns a list of matching networks, after applying the
+// given filter. Each separate filter is combined with a logical AND.
+// Each filter can have only one value. A nil filter matches all networks.
+//
+// This is tested to match OpenStack behavior. Regular expression
+// matching is supported for FilterNetwork only, and the supported
+// syntax is limited to whatever DB backend is used (see SQL
+// REGEXP/RLIKE).
+//
+// Example:
+//
+// f := filter{
+//     neutron.FilterRouterExternal: true,
+//     neutron.FilterNetwork: `foo.*`,
+// }
+//
+// This will match all external neworks with names starting
+// with "foo".
+func (n *Neutron) matchNetworks(f filter) ([]neutron.NetworkV2, error) {
+	networks := n.neutronModel.AllNetworks()
+	if len(f) == 0 {
+		return networks, nil
+	}
+	if external := f[neutron.FilterRouterExternal]; external != "" {
+		matched := []neutron.NetworkV2{}
+		externalBool, err := strconv.ParseBool(external)
+		if err != nil {
+			return nil, err
+		}
+		for _, network := range networks {
+			if network.External == externalBool {
+				matched = append(matched, network)
+			}
+		}
+		if len(matched) == 0 {
+			// no match, so no need to look further
+			return nil, nil
+		}
+		networks = matched
+	}
+	if nameRegExp := f[neutron.FilterNetwork]; nameRegExp != "" {
+		matched := []neutron.NetworkV2{}
+		regExp, err := regexp.Compile(nameRegExp)
+		if err != nil {
+			return nil, err
+		}
+		for _, network := range networks {
+			if regExp.MatchString(network.Name) {
+				matched = append(matched, network)
+			}
+		}
+		if len(matched) == 0 {
+			// no match, so no need to look further
+			return nil, nil
+		}
+		networks = matched
+	}
+	return networks, nil
+}
+
 // allNetworks returns a list of all existing networks.
-func (n *Neutron) allNetworks() (networks []neutron.NetworkV2) {
-	return n.neutronModel.AllNetworks()
+func (n *Neutron) allNetworks(f filter) ([]neutron.NetworkV2, error) {
+	return n.matchNetworks(f)
 }
 
 // network retrieves the network by ID.

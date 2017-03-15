@@ -431,12 +431,13 @@ func (s *NeutronSuite) TestGetFloatingIPByAddr(c *gc.C) {
 }
 
 func (s *NeutronSuite) TestAllNetworksV2(c *gc.C) {
-	networks := s.service.allNetworks()
+	networks, err := s.service.allNetworks(nil)
+	c.Assert(err, gc.IsNil)
 	newNets := []neutron.NetworkV2{
 		{Id: "75", Name: "ListNetwork75", External: true, SubnetIds: []string{}, TenantId: s.service.TenantId},
 		{Id: "42", Name: "ListNetwork42", External: true, SubnetIds: []string{}, TenantId: s.service.TenantId},
 	}
-	err := s.service.addNetwork(newNets[0])
+	err = s.service.addNetwork(newNets[0])
 	c.Assert(err, gc.IsNil)
 	defer s.service.removeNetwork(newNets[0].Id)
 	err = s.service.addNetwork(newNets[1])
@@ -445,7 +446,8 @@ func (s *NeutronSuite) TestAllNetworksV2(c *gc.C) {
 	newNets[0].TenantId = s.service.TenantId
 	newNets[1].TenantId = s.service.TenantId
 	networks = append(networks, newNets...)
-	foundNetworks := s.service.allNetworks()
+	foundNetworks, err := s.service.allNetworks(nil)
+	c.Assert(err, gc.IsNil)
 	c.Assert(foundNetworks, gc.HasLen, len(networks))
 	for _, net := range networks {
 		for _, newNet := range foundNetworks {
@@ -454,6 +456,66 @@ func (s *NeutronSuite) TestAllNetworksV2(c *gc.C) {
 			}
 		}
 	}
+}
+
+func (s *NeutronSuite) TestAllNetworksV2WithMultipleFilters(c *gc.C) {
+	newNets := []neutron.NetworkV2{
+		{Id: "75", Name: "ListNetwork75", External: true, SubnetIds: []string{}, TenantId: s.service.TenantId},
+		{Id: "7", Name: "ListNetwork7", External: false, SubnetIds: []string{}, TenantId: s.service.TenantId},
+		{Id: "42", Name: "ListNetwork42", External: true, SubnetIds: []string{}, TenantId: s.service.TenantId},
+	}
+	for _, net := range newNets {
+		err := s.service.addNetwork(net)
+		c.Assert(err, gc.IsNil)
+		defer s.service.removeNetwork(net.Id)
+		net.TenantId = s.service.TenantId
+	}
+	f := filter{
+		neutron.FilterRouterExternal: "true",
+		neutron.FilterNetwork:        "L.*4",
+	}
+	foundNetworks, err := s.service.allNetworks(f)
+	c.Assert(err, gc.IsNil)
+	c.Assert(foundNetworks, gc.HasLen, 1)
+	c.Assert(foundNetworks[0], gc.DeepEquals, newNets[2])
+}
+
+func (s *NeutronSuite) TestAllNetworksV2WithFilters(c *gc.C) {
+	networks, err := s.service.allNetworks(nil)
+	c.Assert(err, gc.IsNil)
+	newNets := []neutron.NetworkV2{
+		{Id: "75", Name: "ListNetwork75", External: true, SubnetIds: []string{}, TenantId: s.service.TenantId},
+		{Id: "7", Name: "ListNetwork7", External: false, SubnetIds: []string{}, TenantId: s.service.TenantId},
+		{Id: "42", Name: "ListNetwork42", External: true, SubnetIds: []string{}, TenantId: s.service.TenantId},
+	}
+	for _, net := range newNets {
+		err := s.service.addNetwork(net)
+		c.Assert(err, gc.IsNil)
+		defer s.service.removeNetwork(net.Id)
+		net.TenantId = s.service.TenantId
+	}
+	f := filter{
+		neutron.FilterRouterExternal: "true",
+	}
+	foundNetworks, err := s.service.allNetworks(f)
+	c.Assert(err, gc.IsNil)
+	c.Assert(foundNetworks, gc.HasLen, 4)
+	for _, net := range networks {
+		if net.External == true {
+			for _, newNet := range foundNetworks {
+				if net.Id == newNet.Id {
+					c.Assert(net, gc.DeepEquals, newNet)
+				}
+			}
+		}
+	}
+	f = filter{
+		neutron.FilterNetwork: "L.*7$",
+	}
+	foundNetworks, err = s.service.allNetworks(f)
+	c.Assert(err, gc.IsNil)
+	c.Assert(foundNetworks, gc.HasLen, 1)
+	c.Assert(foundNetworks[0].Name, gc.Equals, "ListNetwork7")
 }
 
 func (s *NeutronSuite) TestGetNetworkV2(c *gc.C) {
