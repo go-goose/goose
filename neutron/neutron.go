@@ -21,6 +21,13 @@ const (
 	ApiSecurityGroupRulesV2 = "security-group-rules"
 )
 
+// Filter keys for Networks.
+// As of the Newton release of OpenStack, Network filter by subnet was not implemented
+const (
+	FilterRouterExternal    = "router:external"    // The router:external
+	FilterNetwork           = "name"               // The network name.
+)
+
 // NetworkV2 contains details about a labeled network
 type NetworkV2 struct {
 	Id                string   `json:"id"` // UUID of the resource
@@ -51,12 +58,49 @@ func New(client client.Client) *Client {
 	return &Client{client}
 }
 
-// ListNetworksV2 gives details on available networks
-func (c *Client) ListNetworksV2() ([]NetworkV2, error) {
+// ----------------------------------------------------------------------------
+// Filter builds filtering parameters to be used in an OpenStack query which supports
+// filtering.  For example:
+//
+//     filter := NewFilter()
+//     filter.Set(neutron.FilterRouterExternal, "true")
+//     resp, err := neutron.ListNetworks(filter)
+//
+// TODO(hml): copied from the nova package.  However it should really be pulled out
+// and shared between goose pkgs, but  we don't want to break compatibility or rev
+// the package at this time.
+//
+type Filter struct {
+	v url.Values
+}
+
+// NewFilter creates a new Filter.
+func NewFilter() *Filter {
+	return &Filter{make(url.Values)}
+}
+
+// Set sets a value in the filter.
+func (f *Filter) Set(filter, value string) {
+	f.v.Set(filter, value)
+}
+
+// ----------------------------------------------------------------------------
+
+// ListNetworksV2 gives details on available networks, zero or one Filters
+// accepted, any more will be ignored.
+//
+// TODO(hml): when this package revs to a new version, make this the same as other
+// methods with Filters.  We don't want to break compatibility at this time or rev
+// the package at this time.
+func (c *Client) ListNetworksV2(filter ...*Filter) ([]NetworkV2, error) {
 	var resp struct {
 		Networks []NetworkV2 `json:"networks"`
 	}
-	requestData := goosehttp.RequestData{RespValue: &resp}
+	var params *url.Values
+	if len(filter) > 0 {
+		params = &filter[0].v
+	}
+	requestData := goosehttp.RequestData{RespValue: &resp, Params: params}
 	err := c.client.SendRequest(client.GET, "network", "v2.0", ApiNetworksV2, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to get list of networks")

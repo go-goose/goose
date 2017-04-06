@@ -108,6 +108,26 @@ func (s *LiveTests) TestListNetworksV2(c *gc.C) {
 	c.Check(foundNetwork.Name, gc.Equals, firstNetwork.Name)
 }
 
+func (s *LiveTests) TestListNetworksV2WithFilters(c *gc.C) {
+	filter := neutron.NewFilter()
+	filter.Set(neutron.FilterRouterExternal, "true")
+	networks, err := s.neutron.ListNetworksV2(filter)
+	c.Assert(err, gc.IsNil)
+	if len(networks) < 1 {
+		c.Errorf("at least one neutron network is necessary for this tests")
+	}
+	for _, network := range networks {
+		c.Check(network.Id, gc.Not(gc.Equals), "")
+		c.Check(network.Name, gc.Not(gc.Equals), "")
+		c.Check(network.External, gc.Equals, true)
+	}
+	firstNetwork := networks[0]
+	foundNetwork, err := s.neutron.GetNetworkV2(firstNetwork.Id)
+	c.Assert(err, gc.IsNil)
+	c.Check(foundNetwork.Id, gc.Equals, firstNetwork.Id)
+	c.Check(foundNetwork.Name, gc.Equals, firstNetwork.Name)
+}
+
 func (s *LiveTests) TestSubnetsV2(c *gc.C) {
 	subnets, err := s.neutron.ListSubnetsV2()
 	c.Assert(err, gc.IsNil)

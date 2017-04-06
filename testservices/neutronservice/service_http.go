@@ -631,7 +631,18 @@ func (n *Neutron) handleNetworks(w http.ResponseWriter, r *http.Request) error {
 			}{*network}
 			return sendJSON(http.StatusOK, resp, w, r)
 		}
-		nets := n.allNetworks()
+		f := make(filter)
+		if err := r.ParseForm(); err == nil && len(r.Form) > 0 {
+			for filterKey, filterValues := range r.Form {
+				for _, value := range filterValues {
+					f[filterKey] = value
+				}
+			}
+		}
+		nets, err := n.allNetworks(f)
+		if err != nil {
+			return err
+		}
 		if len(nets) == 0 {
 			nets = []neutron.NetworkV2{}
 		}

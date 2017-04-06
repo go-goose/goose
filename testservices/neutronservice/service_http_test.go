@@ -750,7 +750,8 @@ func (s *NeutronHTTPSuite) TestDeleteFloatingIP(c *gc.C) {
 
 func (s *NeutronHTTPSuite) TestGetNetworks(c *gc.C) {
 	// There are always 4 networks
-	networks := s.service.allNetworks()
+	networks, err := s.service.allNetworks(nil)
+	c.Assert(err, gc.IsNil)
 	c.Assert(networks, gc.HasLen, 4)
 	var expected struct {
 		Networks []neutron.NetworkV2 `json:"networks"`
