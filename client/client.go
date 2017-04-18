@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	gooseerrors "gopkg.in/goose.v1/errors"
-	goosehttp "gopkg.in/goose.v1/http"
-	"gopkg.in/goose.v1/identity"
-	"gopkg.in/goose.v1/logging"
-	goosesync "gopkg.in/goose.v1/sync"
+	gooseerrors "gopkg.in/goose.v2/errors"
+	goosehttp "gopkg.in/goose.v2/http"
+	"gopkg.in/goose.v2/identity"
+	"gopkg.in/goose.v2/logging"
+	goosesync "gopkg.in/goose.v2/sync"
 )
 
 const (

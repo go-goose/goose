@@ -9,15 +9,15 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v1/client"
-	"gopkg.in/goose.v1/errors"
-	goosehttp "gopkg.in/goose.v1/http"
-	"gopkg.in/goose.v1/identity"
-	"gopkg.in/goose.v1/nova"
-	"gopkg.in/goose.v1/testservices"
-	"gopkg.in/goose.v1/testservices/hook"
-	"gopkg.in/goose.v1/testservices/identityservice"
-	"gopkg.in/goose.v1/testservices/openstackservice"
+	"gopkg.in/goose.v2/client"
+	"gopkg.in/goose.v2/errors"
+	goosehttp "gopkg.in/goose.v2/http"
+	"gopkg.in/goose.v2/identity"
+	"gopkg.in/goose.v2/nova"
+	"gopkg.in/goose.v2/testservices"
+	"gopkg.in/goose.v2/testservices/hook"
+	"gopkg.in/goose.v2/testservices/identityservice"
+	"gopkg.in/goose.v2/testservices/openstackservice"
 )
 
 func registerLocalTests() {

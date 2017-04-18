@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"strings"
 
-	goosehttp "gopkg.in/goose.v1/http"
-	"gopkg.in/goose.v1/logging"
+	goosehttp "gopkg.in/goose.v2/http"
+	"gopkg.in/goose.v2/logging"
 )
 
 // AuthMode defines the authentication method to use (see Auth*

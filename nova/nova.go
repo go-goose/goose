@@ -9,9 +9,9 @@ import (
 	"net/url"
 	"reflect"
 
-	"gopkg.in/goose.v1/client"
-	"gopkg.in/goose.v1/errors"
-	goosehttp "gopkg.in/goose.v1/http"
+	"gopkg.in/goose.v2/client"
+	"gopkg.in/goose.v2/errors"
+	goosehttp "gopkg.in/goose.v2/http"
 )
 
 // API URL parts.

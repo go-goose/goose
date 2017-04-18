@@ -7,12 +7,12 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/goose.v1/identity"
-	"gopkg.in/goose.v1/testservices/identityservice"
-	"gopkg.in/goose.v1/testservices/neutronmodel"
-	"gopkg.in/goose.v1/testservices/neutronservice"
-	"gopkg.in/goose.v1/testservices/novaservice"
-	"gopkg.in/goose.v1/testservices/swiftservice"
+	"gopkg.in/goose.v2/identity"
+	"gopkg.in/goose.v2/testservices/identityservice"
+	"gopkg.in/goose.v2/testservices/neutronmodel"
+	"gopkg.in/goose.v2/testservices/neutronservice"
+	"gopkg.in/goose.v2/testservices/novaservice"
+	"gopkg.in/goose.v2/testservices/swiftservice"
 )
 
 // Openstack provides an Openstack service double implementation.

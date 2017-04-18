@@ -13,9 +13,9 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/goose.v1/neutron"
-	"gopkg.in/goose.v1/testservices"
-	"gopkg.in/goose.v1/testservices/identityservice"
+	"gopkg.in/goose.v2/neutron"
+	"gopkg.in/goose.v2/testservices"
+	"gopkg.in/goose.v2/testservices/identityservice"
 )
 
 const (

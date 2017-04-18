@@ -7,7 +7,7 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v1/identity"
+	"gopkg.in/goose.v2/identity"
 )
 
 // imageDetails specify parameters used to start a test machine for the live tests.
