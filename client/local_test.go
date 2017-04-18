@@ -12,15 +12,15 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v1/client"
-	"gopkg.in/goose.v1/errors"
-	"gopkg.in/goose.v1/identity"
-	"gopkg.in/goose.v1/logging"
-	"gopkg.in/goose.v1/swift"
-	"gopkg.in/goose.v1/testing/httpsuite"
-	"gopkg.in/goose.v1/testservices"
-	"gopkg.in/goose.v1/testservices/identityservice"
-	"gopkg.in/goose.v1/testservices/openstackservice"
+	"gopkg.in/goose.v2/client"
+	"gopkg.in/goose.v2/errors"
+	"gopkg.in/goose.v2/identity"
+	"gopkg.in/goose.v2/logging"
+	"gopkg.in/goose.v2/swift"
+	"gopkg.in/goose.v2/testing/httpsuite"
+	"gopkg.in/goose.v2/testservices"
+	"gopkg.in/goose.v2/testservices/identityservice"
+	"gopkg.in/goose.v2/testservices/openstackservice"
 )
 
 func registerLocalTests(authModes []identity.AuthMode) {

@@ -3,7 +3,7 @@ package client
 import (
 	"time"
 
-	"gopkg.in/goose.v1/identity"
+	"gopkg.in/goose.v2/identity"
 )
 
 type AuthCleanup func()

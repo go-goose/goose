@@ -10,10 +10,10 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v1/client"
-	"gopkg.in/goose.v1/errors"
-	"gopkg.in/goose.v1/identity"
-	"gopkg.in/goose.v1/swift"
+	"gopkg.in/goose.v2/client"
+	"gopkg.in/goose.v2/errors"
+	"gopkg.in/goose.v2/identity"
+	"gopkg.in/goose.v2/swift"
 )
 
 func registerOpenStackTests(cred *identity.Credentials) {

@@ -6,9 +6,9 @@ package neutron
 
 import (
 	"fmt"
-	"gopkg.in/goose.v1/client"
-	"gopkg.in/goose.v1/errors"
-	goosehttp "gopkg.in/goose.v1/http"
+	"gopkg.in/goose.v2/client"
+	"gopkg.in/goose.v2/errors"
+	goosehttp "gopkg.in/goose.v2/http"
 	"net/http"
 	"net/url"
 )
@@ -24,8 +24,8 @@ const (
 // Filter keys for Networks.
 // As of the Newton release of OpenStack, Network filter by subnet was not implemented
 const (
-	FilterRouterExternal    = "router:external"    // The router:external
-	FilterNetwork           = "name"               // The network name.
+	FilterRouterExternal = "router:external" // The router:external
+	FilterNetwork        = "name"            // The network name.
 )
 
 // NetworkV2 contains details about a labeled network

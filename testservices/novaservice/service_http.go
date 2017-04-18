@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/goose.v1/errors"
-	"gopkg.in/goose.v1/nova"
-	"gopkg.in/goose.v1/testservices"
-	"gopkg.in/goose.v1/testservices/identityservice"
+	"gopkg.in/goose.v2/errors"
+	"gopkg.in/goose.v2/nova"
+	"gopkg.in/goose.v2/testservices"
+	"gopkg.in/goose.v2/testservices/identityservice"
 )
 
 const authToken = "X-Auth-Token"

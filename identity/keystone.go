@@ -3,7 +3,7 @@ package identity
 import (
 	"fmt"
 
-	goosehttp "gopkg.in/goose.v1/http"
+	goosehttp "gopkg.in/goose.v2/http"
 )
 
 type endpoint struct {

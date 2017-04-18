@@ -3,8 +3,8 @@ package client_test
 import (
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v1/client"
-	"gopkg.in/goose.v1/identity"
+	"gopkg.in/goose.v2/client"
+	"gopkg.in/goose.v2/identity"
 )
 
 func registerOpenStackTests(cred *identity.Credentials, authModes []identity.AuthMode) {

@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	gooseerrors "gopkg.in/goose.v1/errors"
-	goosehttp "gopkg.in/goose.v1/http"
-	"gopkg.in/goose.v1/logging"
+	gooseerrors "gopkg.in/goose.v2/errors"
+	goosehttp "gopkg.in/goose.v2/http"
+	"gopkg.in/goose.v2/logging"
 )
 
 type apiVersion struct {

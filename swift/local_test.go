@@ -3,9 +3,9 @@ package swift_test
 import (
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v1/identity"
-	"gopkg.in/goose.v1/testing/httpsuite"
-	"gopkg.in/goose.v1/testservices/openstackservice"
+	"gopkg.in/goose.v2/identity"
+	"gopkg.in/goose.v2/testing/httpsuite"
+	"gopkg.in/goose.v2/testservices/openstackservice"
 )
 
 func registerLocalTests() {

@@ -16,9 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"gopkg.in/goose.v1"
-	"gopkg.in/goose.v1/errors"
-	"gopkg.in/goose.v1/logging"
+	"gopkg.in/goose.v2"
+	"gopkg.in/goose.v2/errors"
+	"gopkg.in/goose.v2/logging"
 )
 
 const (
