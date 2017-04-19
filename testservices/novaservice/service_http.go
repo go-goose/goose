@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"gopkg.in/goose.v2/errors"
+	"gopkg.in/goose.v2/neutron"
 	"gopkg.in/goose.v2/nova"
 	"gopkg.in/goose.v2/testservices"
 	"gopkg.in/goose.v2/testservices/identityservice"
@@ -601,8 +602,36 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		return err
 	}
+	// TODO(gz) some kind of sane handling of networks
+	// only networks with sub-nets should be used for boot
+	createSecurityGroups := true
+	for _, net := range req.Server.Networks {
+		var netPortSecurity *neutron.NetworkV2
+		var err error
+		if n.useNeutronNetworking {
+			netPortSecurity, err = n.neutronModel.Network(net["uuid"])
+			if err != nil {
+				fmt.Println("handleRunServer(): networks returning errNotFoundJSON")
+				return errNotFoundJSON
+			}
+			if createSecurityGroups && netPortSecurity.PortSecurityEnabled != nil {
+				createSecurityGroups = *netPortSecurity.PortSecurityEnabled
+			}
+		} else {
+			_, err = n.network(net["uuid"])
+			if err != nil {
+				fmt.Println("handleRunServer(): networks returning errNotFoundJSON")
+				return errNotFoundJSON
+			}
+		}
+	}
+	// TODO: (hml) - 2017-04-26
+	// If the test server had state for an instance, if createSecurityGroups is
+	// false and req.Server.SecurityGroups > 0, during the "build" process instance
+	// state should be set to ERROR and a server.fault should be filled in.
+	// Related to neutron network.port_security_enabled.
 	var groups []string
-	if len(req.Server.SecurityGroups) > 0 {
+	if len(req.Server.SecurityGroups) > 0 && createSecurityGroups {
 		for _, group := range req.Server.SecurityGroups {
 			groupName := group["name"]
 			if sg, err := n.securityGroupByName(groupName); err != nil {
@@ -610,14 +639,6 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 			} else {
 				groups = append(groups, sg.Id)
 			}
-		}
-	}
-	// TODO(gz) some kind of sane handling of networks
-	for _, network := range req.Server.Networks {
-		networkId := network["uuid"]
-		_, ok := n.networks[networkId]
-		if !ok {
-			return errNotFoundJSON
 		}
 	}
 	// TODO(dimitern) - 2013-02-11 bug=1121684
@@ -674,7 +695,11 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 		}
 		resp.Server.SecurityGroups = req.Server.SecurityGroups
 	} else {
-		resp.Server.SecurityGroups = []map[string]string{{"name": "default"}}
+		if createSecurityGroups {
+			resp.Server.SecurityGroups = []map[string]string{{"name": "default"}}
+		} else {
+			resp.Server.SecurityGroups = []map[string]string{{}}
+		}
 	}
 	resp.Server.Id = id
 	resp.Server.Links = server.Links

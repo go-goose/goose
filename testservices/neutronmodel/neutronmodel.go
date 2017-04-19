@@ -34,18 +34,31 @@ func New() *NeutronModel {
 		{Id: "999", TenantId: "1", Name: "default", Description: "default group"},
 	}
 	// There are no create/delete network/subnet commands, so make a few default
+	t := true
+	f := false
 	defaultNetworks := []neutron.NetworkV2{
 		{ // for use by opentstack provider test
-			Id:        "1",
-			Name:      "net",
-			SubnetIds: []string{"sub-net"},
-			External:  false,
+			Id:                  "1",
+			Name:                "net",
+			SubnetIds:           []string{"sub-net"},
+			External:            false,
+			AvailabilityZones:   []string{"nova"},
+			PortSecurityEnabled: &t,
+		},
+		{ // for use by opentstack provider test
+			Id:                  "2",
+			Name:                "net-disabled",
+			SubnetIds:           []string{"sub-net2"},
+			External:            false,
+			AvailabilityZones:   []string{"nova"},
+			PortSecurityEnabled: &f,
 		},
 		{
-			Id:        "999",
-			Name:      "private_999",
-			SubnetIds: []string{"999-01"},
-			External:  false,
+			Id:                "999",
+			Name:              "private_999",
+			SubnetIds:         []string{"999-01"},
+			External:          false,
+			AvailabilityZones: []string{"test-available"},
 		},
 		{
 			Id:                "998",

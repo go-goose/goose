@@ -30,12 +30,13 @@ const (
 
 // NetworkV2 contains details about a labeled network
 type NetworkV2 struct {
-	Id                string   `json:"id"` // UUID of the resource
-	Name              string   // User-provided name for the network range
-	SubnetIds         []string `json:"subnets"`         // an array of subnet UUIDs
-	External          bool     `json:"router:external"` // is this network connected to an external router
-	AvailabilityZones []string `json:"availability_zones"`
-	TenantId          string   `json:"tenant_id"`
+	Id                  string   `json:"id"` // UUID of the resource
+	Name                string   // User-provided name for the network range
+	SubnetIds           []string `json:"subnets"`         // an array of subnet UUIDs
+	External            bool     `json:"router:external"` // is this network connected to an external router
+	AvailabilityZones   []string `json:"availability_zones"`
+	TenantId            string   `json:"tenant_id"`
+	PortSecurityEnabled *bool    `json:"port_security_enabled"`
 }
 
 // SubnetV2 contains details about a labeled subnet
