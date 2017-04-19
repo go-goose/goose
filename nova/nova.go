@@ -224,7 +224,7 @@ type ServerDetail struct {
 	Created string
 
 	Flavor   Entity
-	HostId   string
+	HostId   string `json:"hostId"`
 	Id       string `json:"-"`
 	UUID     string
 	Image    Entity
@@ -317,8 +317,8 @@ type RunServerOpts struct {
 	Name               string              `json:"name"`                        // Required
 	FlavorId           string              `json:"flavorRef"`                   // Required
 	ImageId            string              `json:"imageRef"`                    // Required
-	UserData           []byte              `json:"user_data"`                   // Optional
-	SecurityGroupNames []SecurityGroupName `json:"security_groups"`             // Optional
+	UserData           []byte              `json:"user_data,omitempty"`         // Optional
+	SecurityGroupNames []SecurityGroupName `json:"security_groups,omitempty"`   // Optional
 	Networks           []ServerNetworks    `json:"networks"`                    // Optional
 	AvailabilityZone   string              `json:"availability_zone,omitempty"` // Optional
 	Metadata           map[string]string   `json:"metadata,omitempty"`          // Optional

@@ -20,12 +20,14 @@ const (
 	testImageName = "nova_test_server"
 )
 
-func registerOpenStackTests(cred *identity.Credentials, testImageDetails imageDetails) {
+func registerOpenStackTests(cred *identity.Credentials, testDetails instanceDetails) {
 	gc.Suite(&LiveTests{
-		cred:        cred,
-		testImageId: testImageDetails.imageId,
-		testFlavor:  testImageDetails.flavor,
-		vendor:      testImageDetails.vendor,
+		cred:                 cred,
+		testImageId:          testDetails.imageId,
+		testFlavor:           testDetails.flavor,
+		testNetwork:          testDetails.network,
+		vendor:               testDetails.vendor,
+		useNeutronNetworking: testDetails.useNeutronNetworking,
 	})
 }
 
@@ -40,19 +42,22 @@ type LiveTests struct {
 	testFlavor           string
 	testFlavorId         string
 	testAvailabilityZone string
+	testNetwork          string
 	vendor               string
 	useNumericIds        bool
+	useNeutronNetworking bool
 }
 
 func (s *LiveTests) SetUpSuite(c *gc.C) {
 	s.client = client.NewClient(s.cred, identity.AuthUserPass, nil)
+	s.client.SetRequiredServiceTypes([]string{"compute"})
 	s.nova = nova.New(s.client)
 	var err error
 	s.testFlavorId, err = s.findFlavorId(s.testFlavor)
 	c.Assert(err, gc.IsNil)
 	s.testServer, err = s.createInstance(testImageName)
 	c.Assert(err, gc.IsNil)
-	s.waitTestServerToStart(c)
+	s.waitTestServerCompleteBuilding(c, s.testServer.Id)
 	// These will not be filled in until a client has authorised which will happen creating the instance above.
 	s.userId = s.client.UserId()
 	s.tenantId = s.client.TenantId()
@@ -97,7 +102,9 @@ func (s *LiveTests) createInstance(name string) (instance *nova.Entity, err erro
 		FlavorId:         s.testFlavorId,
 		ImageId:          s.testImageId,
 		AvailabilityZone: s.testAvailabilityZone,
-		UserData:         nil,
+		Networks: []nova.ServerNetworks{{
+			NetworkId: s.testNetwork,
+		}},
 	}
 	instance, err = s.nova.RunServer(opts)
 	if err != nil {
@@ -251,6 +258,9 @@ func (s *LiveTests) TestListServersDetailWithFilter(c *gc.C) {
 }
 
 func (s *LiveTests) TestListSecurityGroups(c *gc.C) {
+	if s.useNeutronNetworking {
+		c.Skip("Live tests use Neutron, this test will fail")
+	}
 	groups, err := s.nova.ListSecurityGroups()
 	c.Assert(err, gc.IsNil)
 	if len(groups) < 1 {
@@ -265,6 +275,9 @@ func (s *LiveTests) TestListSecurityGroups(c *gc.C) {
 }
 
 func (s *LiveTests) TestCreateAndDeleteSecurityGroup(c *gc.C) {
+	if s.useNeutronNetworking {
+		c.Skip("Live tests use Neutron, this test will fail")
+	}
 	group, err := s.nova.CreateSecurityGroup("test_secgroup", "test_desc")
 	c.Assert(err, gc.IsNil)
 	c.Check(group.Name, gc.Equals, "test_secgroup")
@@ -287,6 +300,9 @@ func (s *LiveTests) TestCreateAndDeleteSecurityGroup(c *gc.C) {
 }
 
 func (s *LiveTests) TestUpdateSecurityGroup(c *gc.C) {
+	if s.useNeutronNetworking {
+		c.Skip("Live tests use Neutron, this test will fail")
+	}
 	group, err := s.nova.CreateSecurityGroup("test_secgroup", "test_desc")
 	c.Assert(err, gc.IsNil)
 	c.Check(group.Name, gc.Equals, "test_secgroup")
@@ -316,6 +332,9 @@ func (s *LiveTests) TestUpdateSecurityGroup(c *gc.C) {
 }
 
 func (s *LiveTests) TestDuplicateSecurityGroupError(c *gc.C) {
+	if s.useNeutronNetworking {
+		c.Skip("Live tests use Neutron, this test will fail")
+	}
 	group, err := s.nova.CreateSecurityGroup("test_dupgroup", "test_desc")
 	c.Assert(err, gc.IsNil)
 	defer s.nova.DeleteSecurityGroup(group.Id)
@@ -324,10 +343,15 @@ func (s *LiveTests) TestDuplicateSecurityGroupError(c *gc.C) {
 }
 
 func (s *LiveTests) TestCreateAndDeleteSecurityGroupRules(c *gc.C) {
+	if s.useNeutronNetworking {
+		c.Skip("Live tests use Neutron, this test will fail")
+	}
 	group1, err := s.nova.CreateSecurityGroup("test_secgroup1", "test_desc")
 	c.Assert(err, gc.IsNil)
+	defer s.nova.DeleteSecurityGroup(group1.Id)
 	group2, err := s.nova.CreateSecurityGroup("test_secgroup2", "test_desc")
 	c.Assert(err, gc.IsNil)
+	defer s.nova.DeleteSecurityGroup(group2.Id)
 
 	// First type of rule - port range + protocol
 	ri := nova.RuleInfo{
@@ -373,13 +397,13 @@ func (s *LiveTests) TestGetServer(c *gc.C) {
 	s.assertServerDetails(c, server)
 }
 
-func (s *LiveTests) waitTestServerToStart(c *gc.C) {
+func (s *LiveTests) waitTestServerCompleteBuilding(c *gc.C, id string) {
 	// Wait until the test server is actually running
-	c.Logf("waiting the test server %s to start...", s.testServer.Id)
+	c.Logf("waiting the test server %s to start...", id)
 	for {
-		server, err := s.nova.GetServer(s.testServer.Id)
+		server, err := s.nova.GetServer(id)
 		c.Assert(err, gc.IsNil)
-		if server.Status == nova.StatusActive {
+		if server.Status != nova.StatusBuild {
 			break
 		}
 		// We dont' want to flood the connection while polling the server waiting for it to start.
@@ -390,6 +414,11 @@ func (s *LiveTests) waitTestServerToStart(c *gc.C) {
 }
 
 func (s *LiveTests) TestServerAddGetRemoveSecurityGroup(c *gc.C) {
+	// TODO (hml): fix to use Neutron also
+	if s.useNeutronNetworking {
+		c.Skip("Live tests use Neutron, this test will fail")
+	}
+
 	group, err := s.nova.CreateSecurityGroup("test_server_secgroup", "test desc")
 	if err != nil {
 		c.Assert(errors.IsDuplicateValue(err), gc.Equals, true)
@@ -397,7 +426,7 @@ func (s *LiveTests) TestServerAddGetRemoveSecurityGroup(c *gc.C) {
 		c.Assert(err, gc.IsNil)
 	}
 
-	s.waitTestServerToStart(c)
+	s.waitTestServerCompleteBuilding(c, s.testServer.Id)
 	err = s.nova.AddServerSecurityGroup(s.testServer.Id, group.Name)
 	c.Assert(err, gc.IsNil)
 	groups, err := s.nova.GetServerSecurityGroups(s.testServer.Id)
@@ -421,6 +450,9 @@ func (s *LiveTests) TestServerAddGetRemoveSecurityGroup(c *gc.C) {
 }
 
 func (s *LiveTests) TestFloatingIPs(c *gc.C) {
+	if s.useNeutronNetworking {
+		c.Skip("Live tests use Neutron, this test will fail")
+	}
 	ip, err := s.nova.AllocateFloatingIP()
 	c.Assert(err, gc.IsNil)
 	defer s.nova.DeleteFloatingIP(ip.Id)
@@ -455,12 +487,16 @@ func (s *LiveTests) TestFloatingIPs(c *gc.C) {
 }
 
 func (s *LiveTests) TestServerFloatingIPs(c *gc.C) {
+	// TODO (hml): fix to use Neutron also
+	if s.useNeutronNetworking {
+		c.Skip("Live tests use Neutron, this test will fail")
+	}
 	ip, err := s.nova.AllocateFloatingIP()
 	c.Assert(err, gc.IsNil)
 	defer s.nova.DeleteFloatingIP(ip.Id)
 	c.Check(ip.IP, gc.Matches, `\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`)
 
-	s.waitTestServerToStart(c)
+	s.waitTestServerCompleteBuilding(c, s.testServer.Id)
 	err = s.nova.AddServerFloatingIP(s.testServer.Id, ip.IP)
 	c.Assert(err, gc.IsNil)
 	// TODO (wallyworld) - 2013-02-11 bug=1121666
@@ -484,6 +520,9 @@ func (s *LiveTests) TestServerFloatingIPs(c *gc.C) {
 // TestRateLimitRetry checks that when we make too many requests and receive a Retry-After response, the retry
 // occurs and the request ultimately succeeds.
 func (s *LiveTests) TestRateLimitRetry(c *gc.C) {
+	if s.useNeutronNetworking {
+		c.Skip("Live tests use Neutron, this test will fail")
+	}
 	if s.vendor != "canonistack" {
 		c.Skip("TestRateLimitRetry is only run for Canonistack")
 	}
@@ -546,6 +585,9 @@ func (s *LiveTests) TestRegexpInstanceFilters(c *gc.C) {
 }
 
 func (s *LiveTests) TestListNetworks(c *gc.C) {
+	if s.useNeutronNetworking {
+		c.Skip("Live tests use Neutron, this test will fail")
+	}
 	networks, err := s.nova.ListNetworks()
 	c.Assert(err, gc.IsNil)
 	for _, network := range networks {
@@ -573,7 +615,10 @@ func (s *LiveTests) TestUpdateServerName(c *gc.C) {
 		FlavorId:         s.testFlavorId,
 		ImageId:          s.testImageId,
 		AvailabilityZone: s.testAvailabilityZone,
-		Metadata:         map[string]string{},
+		Networks: []nova.ServerNetworks{{
+			NetworkId: s.testNetwork,
+		}},
+		Metadata: map[string]string{},
 	})
 	c.Assert(err, gc.IsNil)
 	defer s.nova.DeleteServer(entity.Id)
@@ -594,10 +639,14 @@ func (s *LiveTests) TestInstanceMetadata(c *gc.C) {
 		FlavorId:         s.testFlavorId,
 		ImageId:          s.testImageId,
 		AvailabilityZone: s.testAvailabilityZone,
-		Metadata:         metadata,
+		Networks: []nova.ServerNetworks{{
+			NetworkId: s.testNetwork,
+		}},
+		Metadata: metadata,
 	})
 	c.Assert(err, gc.IsNil)
 	defer s.nova.DeleteServer(entity.Id)
+	s.waitTestServerCompleteBuilding(c, entity.Id)
 
 	server, err := s.nova.GetServer(entity.Id)
 	c.Assert(err, gc.IsNil)
@@ -618,9 +667,13 @@ func (s *LiveTests) TestSetServerMetadata(c *gc.C) {
 		FlavorId:         s.testFlavorId,
 		ImageId:          s.testImageId,
 		AvailabilityZone: s.testAvailabilityZone,
+		Networks: []nova.ServerNetworks{{
+			NetworkId: s.testNetwork,
+		}},
 	})
 	c.Assert(err, gc.IsNil)
 	defer s.nova.DeleteServer(entity.Id)
+	s.waitTestServerCompleteBuilding(c, entity.Id)
 
 	for _, metadata := range []map[string]string{{
 		"k1": "v1",

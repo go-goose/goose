@@ -66,7 +66,7 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 		TenantName: "tenant",
 	}
 	var logMsg []string
-	s.openstack, logMsg = openstackservice.New(s.cred, identity.AuthUserPass, false)
+	s.openstack, logMsg = openstackservice.NewNoSwift(s.cred, identity.AuthUserPass, false)
 	for _, msg := range logMsg {
 		c.Logf(msg)
 	}
@@ -74,6 +74,7 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 
 	s.testFlavor = "m1.small"
 	s.testImageId = "1"
+	s.testNetwork = "net" // per neutronmodel setup
 	s.LiveTests.SetUpSuite(c)
 }
 
@@ -106,6 +107,7 @@ func (s *localLiveSuite) retryLimitHook(sc hook.ServiceControl) hook.ControlProc
 
 func (s *localLiveSuite) setupClient(c *gc.C, logger *log.Logger) *nova.Client {
 	client := client.NewClient(s.cred, identity.AuthUserPass, logger)
+	client.SetRequiredServiceTypes([]string{"compute"})
 	return nova.New(client)
 }
 
