@@ -74,7 +74,7 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 
 	s.testFlavor = "m1.small"
 	s.testImageId = "1"
-	s.testNetwork = "net" // per neutronmodel setup
+	s.testNetwork = "1" // per neutronmodel setup
 	s.LiveTests.SetUpSuite(c)
 }
 
