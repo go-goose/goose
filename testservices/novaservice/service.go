@@ -138,10 +138,10 @@ func New(hostURL, versionPath, tenantId, region string, identityService, fallbac
 		}
 	}
 	// Add a sample default network
-	var netId = "1"
-	novaService.networks[netId] = nova.Network{
-		Id:    netId,
-		Label: "net",
+	var name = "net"
+	novaService.networks[name] = nova.Network{
+		Id:    "1",
+		Label: name,
 		Cidr:  "10.0.0.0/24",
 	}
 	return novaService
