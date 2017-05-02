@@ -217,6 +217,33 @@ The resource could not be found.
 		map[string]string{"Retry-After": "0.001"},
 		nil,
 	}
+	errMaxRequestRateExceeded = &errorResponse{
+		http.StatusServiceUnavailable,
+		"",
+		"text/plain; charset=UTF-8",
+		"The maximum request receiving rate is exceeded",
+		// RFC says that Retry-After should be an int, but we don't want to wait an entire second during the test suite.
+		map[string]string{"Retry-After": "0.001"},
+		nil,
+	}
+	errTooManyRequests = &errorResponse{
+		http.StatusTooManyRequests,
+		"",
+		"text/plain; charset=UTF-8",
+		"too man requests",
+		// RFC says that Retry-After should be an int, but we don't want to wait an entire second during the test suite.
+		map[string]string{"Retry-After": "0.001"},
+		nil,
+	}
+	errForbiddenRetryAfter = &errorResponse{
+		http.StatusForbidden,
+		"",
+		"text/plain; charset=UTF-8",
+		"Forbidden, please retry",
+		// RFC says that Retry-After should be an int, but we don't want to wait an entire second during the test suite.
+		map[string]string{"Retry-After": "0.001"},
+		nil,
+	}
 	errNoMoreFloatingIPs = &errorResponse{
 		http.StatusNotFound,
 		"Zero floating ips available.",
@@ -308,6 +335,12 @@ func (h *novaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err == testservices.RateLimitExceededError {
 		resp = errRateLimitExceeded
+	} else if err == testservices.ServiceUnavailRateLimitError {
+		resp = errMaxRequestRateExceeded
+	} else if err == testservices.TooManyRequestsError {
+		resp = errTooManyRequests
+	} else if err == testservices.ForbiddenRateLimitError {
+		resp = errForbiddenRetryAfter
 	} else if err == testservices.NoMoreFloatingIPs {
 		resp = errNoMoreFloatingIPs
 	} else if err == testservices.IPLimitExceeded {

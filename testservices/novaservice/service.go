@@ -41,7 +41,7 @@ type Nova struct {
 	nextAttachmentId          int
 	useNeutronNetworking      bool
 	noValidHostZone           nova.AvailabilityZone
-	serverStatus		string
+	serverStatus              string
 }
 
 func errorJSONEncode(err error) (int, string) {

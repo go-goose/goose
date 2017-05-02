@@ -30,8 +30,10 @@ type ServiceInstance struct {
 }
 
 // Internal Openstack errors.
-
 var RateLimitExceededError = NewRateLimitExceededError()
+var TooManyRequestsError = NewTooManyRequestsError()
+var ForbiddenRateLimitError = NewForbiddenRateLimitError()
+var ServiceUnavailRateLimitError = NewServiceUnavailRateLimitError()
 
 // NoMoreFloatingIPs corresponds to "HTTP 404 Zero floating ips available."
 var NoMoreFloatingIPs = NewNoMoreFloatingIpsError()
