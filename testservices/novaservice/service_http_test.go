@@ -572,6 +572,7 @@ func (s *NovaHTTPSuite) TestGetServers(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Assert(resp.StatusCode, gc.Equals, http.StatusOK)
 	assertJSON(c, resp, &expectedServer)
+	servers[0].Status = nova.StatusActive
 	c.Assert(expectedServer.Server, gc.DeepEquals, servers[0])
 }
 

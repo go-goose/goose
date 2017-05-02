@@ -40,6 +40,7 @@ type Nova struct {
 	nextIPId                  int
 	nextAttachmentId          int
 	useNeutronNetworking      bool
+	noValidHostZone           nova.AvailabilityZone
 }
 
 func errorJSONEncode(err error) (int, string) {
@@ -139,10 +140,10 @@ func New(hostURL, versionPath, tenantId, region string, identityService, fallbac
 		}
 	}
 	// Add a sample default network
-	var name = "net"
-	novaService.networks[name] = nova.Network{
-		Id:    "1",
-		Label: name,
+	var id = "1"
+	novaService.networks[id] = nova.Network{
+		Id:    id,
+		Label: "net",
 		Cidr:  "10.0.0.0/24",
 	}
 	return novaService
@@ -171,6 +172,22 @@ func (n *Nova) SetAvailabilityZones(zones ...nova.AvailabilityZone) {
 	n.availabilityZones = make(map[string]nova.AvailabilityZone)
 	for _, z := range zones {
 		n.availabilityZones[z.Name] = z
+	}
+}
+
+// SetAZForNoValidHosts sets an availability zone to cause a
+// No valid host failures.
+
+// Note: this is implemented as a public method rather than as
+// an HTTP API for the same reasons as SetAvailabilityZones, as
+// well as defining an availability zone to cause 'No valid host'
+// failures.
+func (n *Nova) SetAZForNoValidHosts(zone nova.AvailabilityZone) {
+	n.noValidHostZone = zone
+	// ensure the zone for failure, is on the list of
+	// possible zones
+	if _, ok := n.availabilityZones[zone.Name]; !ok {
+		n.availabilityZones[zone.Name] = zone
 	}
 }
 
@@ -314,6 +331,15 @@ func (n *Nova) server(serverId string) (*nova.ServerDetail, error) {
 		server.Groups = &groupNames
 	} else {
 		server.Groups = nil
+	}
+	if server.AvailabilityZone != "" && server.AvailabilityZone == n.noValidHostZone.Name {
+		server.Status = nova.StatusError
+		server.Fault = &nova.ServerFault{
+			Code:    500,
+			Message: "No valid host was found. There are not enough hosts available.",
+		}
+	} else {
+		server.Status = nova.StatusActive
 	}
 	return &server, nil
 }

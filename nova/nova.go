@@ -206,6 +206,15 @@ type IPAddress struct {
 	Type    string `json:"OS-EXT-IPS:type"` // fixed or floating
 }
 
+// ServerFault describes a single server fault. Details (stack trace) are available for
+// those with adminstrator privilages.
+type ServerFault struct {
+	Code    int    `json:"code"` // Response code
+	Created string `json:"created"`
+	Message string `json:"message"`
+	Details string `json:"details,omitempty"`
+}
+
 // ServerDetail describes a server in more detail.
 // See: http://docs.openstack.org/api/openstack-compute/2/content/Extensions-d1e1444.html#ServersCBSJ
 type ServerDetail struct {
@@ -241,6 +250,9 @@ type ServerDetail struct {
 	// Status holds the current status of the server,
 	// one of the Status* constants.
 	Status string
+
+	// Only returned if status is Error
+	Fault *ServerFault `json:"fault"`
 
 	TenantId string `json:"tenant_id"`
 

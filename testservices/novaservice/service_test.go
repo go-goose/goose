@@ -241,6 +241,7 @@ func (s *NovaSuite) TestAddServerWithLinks(c *gc.C) {
 	s.createServer(c, server)
 	defer s.deleteServer(c, server)
 	sr, _ := s.service.server(server.Id)
+	server.Status = nova.StatusActive
 	c.Assert(*sr, gc.DeepEquals, server)
 }
 
@@ -252,13 +253,15 @@ func (s *NovaSuite) TestAddServerTwiceFails(c *gc.C) {
 	c.Assert(err, gc.ErrorMatches, `conflictingRequest: A server with id "test" already exists`)
 }
 
-// A control point can be used to change the status of the added server.
+// A control point can be used to change the name of the added server.
+// Changing the server status is no longer effective, due to changes
+// in server()
 func (s *NovaSuite) TestAddServerControlPoint(c *gc.C) {
 	cleanup := s.service.RegisterControlPoint(
 		"addServer",
 		func(sc hook.ServiceControl, args ...interface{}) error {
 			details := args[0].(*nova.ServerDetail)
-			details.Status = nova.StatusBuildSpawning
+			details.Name = "test-name"
 			return nil
 		},
 	)
@@ -272,7 +275,7 @@ func (s *NovaSuite) TestAddServerControlPoint(c *gc.C) {
 	defer s.deleteServer(c, *server)
 
 	server, _ = s.service.server(server.Id)
-	c.Assert(server.Status, gc.Equals, nova.StatusBuildSpawning)
+	c.Assert(server.Name, gc.Equals, "test-name")
 }
 
 func (s *NovaSuite) TestRemoveServerTwiceFails(c *gc.C) {
@@ -316,6 +319,7 @@ func (s *NovaSuite) TestAllServersWithFilters(c *gc.C) {
 	for _, server := range servers {
 		s.createServer(c, server)
 		defer s.deleteServer(c, server)
+		server.Status = nova.StatusActive
 	}
 	f := filter{
 		nova.FilterStatus: nova.StatusRescue,
@@ -360,6 +364,7 @@ func (s *NovaSuite) TestAllServersWithEmptyFilter(c *gc.C) {
 	for _, server := range servers {
 		s.createServer(c, server)
 		defer s.deleteServer(c, server)
+		server.Status = nova.StatusActive
 	}
 	sr, err := s.service.allServers(nil)
 	c.Assert(err, gc.IsNil)
@@ -383,6 +388,7 @@ func (s *NovaSuite) TestAllServersWithRegexFilters(c *gc.C) {
 	for _, server := range servers {
 		s.createServer(c, server)
 		defer s.deleteServer(c, server)
+		server.Status = nova.StatusActive
 	}
 	f := filter{
 		nova.FilterServer: `foo.*baz`,
@@ -539,6 +545,7 @@ func (s *NovaSuite) TestGetServer(c *gc.C) {
 	}
 	s.createServer(c, server)
 	defer s.deleteServer(c, server)
+	server.Status = nova.StatusActive
 	sr, _ := s.service.server(server.Id)
 	c.Assert(*sr, gc.DeepEquals, server)
 }
@@ -569,6 +576,7 @@ func (s *NovaSuite) TestGetServerByName(c *gc.C) {
 	for _, server := range servers {
 		s.createServer(c, server)
 		defer s.deleteServer(c, server)
+		server.Status = nova.StatusActive
 	}
 	named, err = s.service.serverByName("test")
 	c.Assert(err, gc.IsNil)

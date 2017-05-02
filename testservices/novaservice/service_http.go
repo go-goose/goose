@@ -658,7 +658,7 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 		HostId:           "1",
 		Image:            image,
 		Flavor:           flavorEnt,
-		Status:           nova.StatusActive,
+		Status:           nova.StatusBuild,
 		Created:          timestr,
 		Updated:          timestr,
 		Addresses:        make(map[string][]nova.IPAddress),
