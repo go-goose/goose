@@ -4,7 +4,6 @@ package neutronservice
 
 import (
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -297,14 +296,10 @@ func (n *Neutron) matchNetworks(f filter) ([]neutron.NetworkV2, error) {
 		}
 		networks = matched
 	}
-	if nameRegExp := f[neutron.FilterNetwork]; nameRegExp != "" {
+	if name := f[neutron.FilterNetwork]; name != "" {
 		matched := []neutron.NetworkV2{}
-		regExp, err := regexp.Compile(nameRegExp)
-		if err != nil {
-			return nil, err
-		}
 		for _, network := range networks {
-			if regExp.MatchString(network.Name) {
+			if name == network.Name {
 				matched = append(matched, network)
 			}
 		}

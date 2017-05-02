@@ -752,7 +752,7 @@ func (s *NeutronHTTPSuite) TestGetNetworks(c *gc.C) {
 	// There are always 4 networks
 	networks, err := s.service.allNetworks(nil)
 	c.Assert(err, gc.IsNil)
-	c.Assert(networks, gc.HasLen, 4)
+	c.Assert(networks, gc.HasLen, 5)
 	var expected struct {
 		Networks []neutron.NetworkV2 `json:"networks"`
 	}

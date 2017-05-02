@@ -232,8 +232,7 @@ type ServerDetail struct {
 	Name     string
 	Metadata map[string]string
 
-	// HP Cloud returns security groups in server details.
-	Groups []Entity `json:"security_groups"`
+	Groups *[]SecurityGroupName `json:"security_groups"`
 
 	// Progress holds the completion percentage of
 	// the current operation
@@ -433,16 +432,13 @@ func (c *Client) GetServerSecurityGroups(serverId string) ([]SecurityGroup, erro
 	err := c.client.SendRequest(client.GET, "compute", "v2", url, &requestData)
 	if err != nil {
 		// Sadly HP Cloud lacks the necessary API and also doesn't provide full SecurityGroup lookup.
-		// The best we can do for now is to use just the Id and Name from the group entities.
+		// The best we can do for now is to use just the Name from the group entities.
 		if errors.IsNotFound(err) {
 			serverDetails, err := c.GetServer(serverId)
-			if err == nil {
-				result := make([]SecurityGroup, len(serverDetails.Groups))
-				for i, e := range serverDetails.Groups {
-					result[i] = SecurityGroup{
-						Id:   e.Id,
-						Name: e.Name,
-					}
+			if err == nil && serverDetails.Groups != nil {
+				result := make([]SecurityGroup, len(*serverDetails.Groups))
+				for i, e := range *serverDetails.Groups {
+					result[i] = SecurityGroup{Name: e.Name}
 				}
 				return result, nil
 			}

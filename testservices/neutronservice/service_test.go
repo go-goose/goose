@@ -472,7 +472,7 @@ func (s *NeutronSuite) TestAllNetworksV2WithMultipleFilters(c *gc.C) {
 	}
 	f := filter{
 		neutron.FilterRouterExternal: "true",
-		neutron.FilterNetwork:        "L.*4",
+		neutron.FilterNetwork:        "ListNetwork42",
 	}
 	foundNetworks, err := s.service.allNetworks(f)
 	c.Assert(err, gc.IsNil)
@@ -510,7 +510,7 @@ func (s *NeutronSuite) TestAllNetworksV2WithFilters(c *gc.C) {
 		}
 	}
 	f = filter{
-		neutron.FilterNetwork: "L.*7$",
+		neutron.FilterNetwork: "ListNetwork7",
 	}
 	foundNetworks, err = s.service.allNetworks(f)
 	c.Assert(err, gc.IsNil)

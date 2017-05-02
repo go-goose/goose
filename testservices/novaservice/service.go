@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"gopkg.in/goose.v2/errors"
 	"gopkg.in/goose.v2/nova"
 	"gopkg.in/goose.v2/testservices"
 	"gopkg.in/goose.v2/testservices/identityservice"
@@ -303,6 +304,16 @@ func (n *Nova) server(serverId string) (*nova.ServerDetail, error) {
 	server, ok := n.servers[serverId]
 	if !ok {
 		return nil, testservices.NewServerByIDNotFoundError(serverId)
+	}
+	groups := n.allServerSecurityGroups(serverId)
+	if len(groups) > 0 {
+		groupNames := make([]nova.SecurityGroupName, len(groups))
+		for i, group := range groups {
+			groupNames[i] = nova.SecurityGroupName{Name: group.Name}
+		}
+		server.Groups = &groupNames
+	} else {
+		server.Groups = nil
 	}
 	return &server, nil
 }
@@ -1012,6 +1023,20 @@ func (n *Nova) allNetworks() (networks []nova.Network) {
 			networks = append(networks, net)
 		}
 		return networks
+	}
+}
+
+// networks returns the named network if it exists
+func (n *Nova) network(name string) (*nova.Network, error) {
+	if n.useNeutronNetworking {
+		return n.neutronModel.NovaNetwork(name)
+	} else {
+		net, ok := n.networks[name]
+		var err error
+		if !ok {
+			err = errors.NewNotFoundf(nil, nil, "network")
+		}
+		return &net, err
 	}
 }
 
