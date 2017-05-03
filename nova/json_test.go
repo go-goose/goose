@@ -81,3 +81,14 @@ func (s *JsonSuite) TestUnmarshallRuleInfoNilStrings(c *gc.C) {
 	}
 	c.Assert(ri, gc.DeepEquals, expected)
 }
+
+func (s *JsonSuite) TestUnmarshallServerDetailImage(c *gc.C) {
+	var image nova.Entity
+	data := []byte(`""`)
+	err := json.Unmarshal(data, &image)
+	c.Assert(err, gc.IsNil)
+	expected := nova.Entity{
+		Id: "",
+	}
+	c.Assert(image, gc.DeepEquals, expected)
+}
