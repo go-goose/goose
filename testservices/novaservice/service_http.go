@@ -611,7 +611,6 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 		if n.useNeutronNetworking {
 			netPortSecurity, err = n.neutronModel.Network(net["uuid"])
 			if err != nil {
-				fmt.Println("handleRunServer(): networks returning errNotFoundJSON")
 				return errNotFoundJSON
 			}
 			if createSecurityGroups && netPortSecurity.PortSecurityEnabled != nil {
@@ -620,7 +619,6 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 		} else {
 			_, err = n.network(net["uuid"])
 			if err != nil {
-				fmt.Println("handleRunServer(): networks returning errNotFoundJSON")
 				return errNotFoundJSON
 			}
 		}
