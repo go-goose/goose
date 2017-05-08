@@ -41,6 +41,7 @@ type Nova struct {
 	nextAttachmentId          int
 	useNeutronNetworking      bool
 	noValidHostZone           nova.AvailabilityZone
+	serverStatus		string
 }
 
 func errorJSONEncode(err error) (int, string) {
@@ -177,7 +178,7 @@ func (n *Nova) SetAvailabilityZones(zones ...nova.AvailabilityZone) {
 
 // SetAZForNoValidHosts sets an availability zone to cause a
 // No valid host failures.
-
+//
 // Note: this is implemented as a public method rather than as
 // an HTTP API for the same reasons as SetAvailabilityZones, as
 // well as defining an availability zone to cause 'No valid host'
@@ -189,6 +190,17 @@ func (n *Nova) SetAZForNoValidHosts(zone nova.AvailabilityZone) {
 	if _, ok := n.availabilityZones[zone.Name]; !ok {
 		n.availabilityZones[zone.Name] = zone
 	}
+}
+
+// SetServerStatus sets the ServerDetail.Status to a new
+// value.
+//
+// Note: this is implemented as a public method rather than as
+// an HTTP API to allow for changing the status inside of the
+// returned data structure, not accomplished by the testservice
+// hooks
+func (n *Nova) SetServerStatus(status string) {
+	n.serverStatus = status
 }
 
 // buildFlavorLinks populates the Links field of the passed
@@ -338,6 +350,8 @@ func (n *Nova) server(serverId string) (*nova.ServerDetail, error) {
 			Code:    500,
 			Message: "No valid host was found. There are not enough hosts available.",
 		}
+	} else if n.serverStatus != "" {
+		server.Status = n.serverStatus
 	} else {
 		server.Status = nova.StatusActive
 	}
