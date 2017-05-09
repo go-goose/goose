@@ -88,7 +88,16 @@ func (entity *Entity) UnmarshalJSON(b []byte) error {
 	var je jsonEntity = jsonEntity(*entity)
 	var err error
 	if err = json.Unmarshal(b, &je); err != nil {
-		return err
+		// Related Bug lp:1683495, within the openstack compute api
+		// response to List Servers Detailed, the image object might
+		// be an empty string when you boot the server from a volume.
+		// Before failing here, let's check to see if that's the case.
+		if string(b) == "\"\"" {
+			*entity = Entity(je)
+			return nil
+		} else {
+			return err
+		}
 	}
 	if je.Id, err = getIdAsString(b, idTag); err != nil {
 		return err

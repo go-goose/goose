@@ -74,7 +74,7 @@ func (s *localLiveSuite) makeServiceURLTests() []makeServiceURLTest {
 			version:     "q2.0",
 			parts:       []string{"foo", "bar/"},
 			success:     false,
-			err:         "strconv.ParseInt: parsing \"q2\": invalid syntax",
+			err:         "strconv.Atoi: parsing \"q2\": invalid syntax",
 		},
 		{
 			serviceType: "object-store",
