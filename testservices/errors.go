@@ -68,6 +68,18 @@ func NewRateLimitExceededError() *ServerError {
 	return serverErrorf(413, "Retry limit exceeded")
 }
 
+func NewTooManyRequestsError() *ServerError {
+	return serverErrorf(429, "Too many requests")
+}
+
+func NewForbiddenRateLimitError() *ServerError {
+	return serverErrorf(403, "User Rate Limit Exceeded.")
+}
+
+func NewServiceUnavailRateLimitError() *ServerError {
+	return serverErrorf(503, "The maximum request receiving rate is exceeded.")
+}
+
 func NewAvailabilityZoneIsNotAvailableError() *ServerError {
 	return serverErrorf(400, "The requested availability zone is not available")
 }
