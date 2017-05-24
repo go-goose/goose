@@ -79,6 +79,7 @@ type RequestData struct {
 	RespValue      interface{}
 	ReqReader      io.Reader
 	ReqLength      int
+	RespLength     int64
 	RespReader     io.ReadCloser
 	RespHeaders    http.Header
 }
@@ -212,6 +213,7 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 	if err != nil {
 		return
 	}
+	reqData.RespLength = resp.ContentLength
 	reqData.RespHeaders = resp.Header
 	if reqData.RespReader != nil {
 		reqData.RespReader = resp.Body
