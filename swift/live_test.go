@@ -245,3 +245,69 @@ func (s *LiveTests) TestHeadObject(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Check(headers.Get("Date"), gc.Not(gc.Equals), "")
 }
+
+func (s *LiveTests) TestReadSeeker(c *gc.C) {
+	object := "test_obj2"
+	data := "...some data..."
+	err := s.swift.PutReader(s.containerName, object, bytes.NewReader([]byte(data)), int64(len(data)))
+	c.Check(err, gc.IsNil)
+	r, headers, err := s.swift.GetReadSeeker(s.containerName, object)
+	c.Check(err, gc.IsNil)
+	readData, err := ioutil.ReadAll(r)
+	c.Check(err, gc.IsNil)
+	c.Check(string(readData), gc.Equals, data)
+	err = s.swift.DeleteObject(s.containerName, object)
+	c.Assert(err, gc.IsNil)
+	c.Check(headers.Get("Date"), gc.Not(gc.Equals), "")
+}
+
+func (s *LiveTests) TestReadSeekerSeek(c *gc.C) {
+	object := "test_obj2"
+	data := "...some data..."
+	err := s.swift.PutReader(s.containerName, object, bytes.NewReader([]byte(data)), int64(len(data)))
+	c.Check(err, gc.IsNil)
+	r, headers, err := s.swift.GetReadSeeker(s.containerName, object)
+	c.Check(err, gc.IsNil)
+	n, err := r.Seek(3, io.SeekStart)
+	c.Check(err, gc.IsNil)
+	c.Check(n, gc.Equals, int64(3))
+	readData, err := ioutil.ReadAll(r)
+	c.Check(err, gc.IsNil)
+	c.Check(string(readData), gc.Equals, data[3:])
+	err = s.swift.DeleteObject(s.containerName, object)
+	c.Assert(err, gc.IsNil)
+	c.Check(headers.Get("Date"), gc.Not(gc.Equals), "")
+}
+
+func (s *LiveTests) TestReadSeekerReadLimit(c *gc.C) {
+	object := "test_obj2"
+	data := "...some data..."
+	err := s.swift.PutReader(s.containerName, object, bytes.NewReader([]byte(data)), int64(len(data)))
+	c.Check(err, gc.IsNil)
+	r, headers, err := s.swift.GetReadSeeker(s.containerName, object)
+	c.Check(err, gc.IsNil)
+	n, err := r.Seek(3, io.SeekStart)
+	c.Check(err, gc.IsNil)
+	c.Check(n, gc.Equals, int64(3))
+	buf := make([]byte, 9)
+	n1, err := r.Read(buf)
+	c.Check(n1, gc.Equals, 9)
+	c.Check(err, gc.IsNil)
+	c.Check(string(buf), gc.Equals, data[3:12])
+	err = s.swift.DeleteObject(s.containerName, object)
+	c.Assert(err, gc.IsNil)
+	c.Check(headers.Get("Date"), gc.Not(gc.Equals), "")
+}
+
+func (s *LiveTests) TestReadSeekerSeekContract(c *gc.C) {
+	object := "test_obj2"
+	data := "...some data..."
+	err := s.swift.PutReader(s.containerName, object, bytes.NewReader([]byte(data)), int64(len(data)))
+	c.Check(err, gc.IsNil)
+	r, _, err := s.swift.GetReadSeeker(s.containerName, object)
+	c.Check(err, gc.IsNil)
+	_, err = r.Seek(-1, io.SeekStart)
+	c.Check(err, gc.NotNil)
+	_, err = r.Seek(-20, io.SeekEnd)
+	c.Check(err, gc.NotNil)
+}

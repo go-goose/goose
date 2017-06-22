@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -134,9 +135,14 @@ func (s *Swift) handleObjects(container, object string, w http.ResponseWriter, r
 	exists := err == nil
 	switch r.Method {
 	case "GET":
-		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json; charset=UF-8")
-		w.Write([]byte(objdata))
+		w.Header().Set("Content-Length", strconv.Itoa(len(objdata)))
+		w.WriteHeader(http.StatusOK)
+		if hr, err := parseRange(r.Header.Get("Range"), int64(len(objdata))); err == nil && len(hr) > 0 {
+			w.Write([]byte(objdata[hr[0].start : hr[0].start+hr[0].length]))
+		} else {
+			w.Write([]byte(objdata))
+		}
 	case "DELETE":
 		if err = s.RemoveObject(container, object); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -146,8 +152,8 @@ func (s *Swift) handleObjects(container, object string, w http.ResponseWriter, r
 			w.WriteHeader(http.StatusNoContent)
 		}
 	case "HEAD":
+		w.Header().Set("Content-Length", strconv.Itoa(len(objdata)))
 		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json; charset=UF-8")
 	case "PUT":
 		bodydata, err := ioutil.ReadAll(r.Body)
 		if err != nil {
