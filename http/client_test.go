@@ -160,6 +160,7 @@ func (s *HTTPClientTestSuite) TestJSONRequestNoPayload(c *gc.C) {
 	c.Check(body, gc.Equals, "")
 	c.Check(length, gc.Equals, "0")
 	c.Check(ctype, gc.Equals, "")
+	c.Check(req.RespStatusCode, gc.Equals, http.StatusNoContent)
 }
 
 func (s *HTTPClientTestSuite) TestBinaryRequestSetsToken(c *gc.C) {
@@ -169,6 +170,7 @@ func (s *HTTPClientTestSuite) TestBinaryRequestSetsToken(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	agent := headers.Get("X-Auth-Token")
 	c.Check(agent, gc.Equals, "token")
+	c.Check(req.RespStatusCode, gc.Equals, http.StatusNoContent)
 }
 
 func (s *HTTPClientTestSuite) TestJSONRequestSetsToken(c *gc.C) {

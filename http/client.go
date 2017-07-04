@@ -76,9 +76,11 @@ type RequestData struct {
 	Params         *url.Values
 	ExpectedStatus []int
 	ReqValue       interface{}
-	RespValue      interface{}
 	ReqReader      io.Reader
 	ReqLength      int
+
+	RespStatusCode int
+	RespValue      interface{}
 	RespLength     int64
 	RespReader     io.ReadCloser
 	RespHeaders    http.Header
@@ -169,6 +171,7 @@ func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, lo
 		return
 	}
 	reqData.RespHeaders = resp.Header
+	reqData.RespStatusCode = resp.StatusCode
 	defer resp.Body.Close()
 	respData, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -187,13 +190,15 @@ func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, lo
 	return
 }
 
-// Sends the byte array in reqData.ReqValue (if any) to the specified URL.
+// BinaryRequest sends the byte array in reqData.ReqValue (if any) to
+// the specified URL.
 // Optional method arguments are passed using the RequestData object.
 // Relevant RequestData fields:
 // ReqHeaders: additional HTTP header values to add to the request.
 // ExpectedStatus: the allowed HTTP response status values, else an error is returned.
 // ReqReader: an io.Reader providing the bytes to send.
-// RespReader: assigned an io.ReadCloser instance used to read the returned data..
+// RespReader: if non-nil, is assigned an io.ReadCloser instance used to
+// read the returned data.
 func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, logger logging.CompatLogger) (err error) {
 	err = nil
 
@@ -213,6 +218,7 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 	if err != nil {
 		return
 	}
+	reqData.RespStatusCode = resp.StatusCode
 	reqData.RespLength = resp.ContentLength
 	reqData.RespHeaders = resp.Header
 	if reqData.RespReader != nil {
@@ -223,7 +229,8 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 	return
 }
 
-// Sends the specified request to URL and checks that the HTTP response status is as expected.
+// sendRequest sends the specified request to URL and checks that the
+// HTTP response status is as expected.
 // reqReader: a reader returning the data to send.
 // length: the number of bytes to send.
 // headers: HTTP headers to include with the request.
