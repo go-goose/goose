@@ -103,6 +103,11 @@ type noData struct {
 	io.ReadCloser
 }
 
+type ReadSeekCloser interface {
+	io.ReadSeeker
+	io.Closer
+}
+
 // GetObject retrieves the specified object's data.
 func (c *Client) GetReader(containerName, objectName string) (io.ReadCloser, http.Header, error) {
 	requestData := goosehttp.RequestData{RespReader: &emptyReadCloser}
@@ -111,14 +116,19 @@ func (c *Client) GetReader(containerName, objectName string) (io.ReadCloser, htt
 }
 
 // GetReadSeeker creates a read seeker closer to the specified object's data.
-func (c *Client) GetReadSeeker(containerName, objectName string) (io.ReadSeeker, http.Header, error) {
+func (c *Client) GetReadSeeker(containerName, objectName string) (ReadSeekCloser, http.Header, error) {
 	requestData := goosehttp.RequestData{}
 	err := c.touchObject(&requestData, client.HEAD, containerName, objectName)
 	if err != nil {
 		return nil, nil, err
 	}
-	o := &oreadseeker{c, containerName, objectName, requestData.RespLength, 0}
-	return o, requestData.RespHeaders, err
+	return &object{
+		c:             c,
+		containerName: containerName,
+		objectName:    objectName,
+		length:        requestData.RespLength,
+		etag:          requestData.RespHeaders.Get("Etag"),
+	}, requestData.RespHeaders, err
 }
 
 // DeleteObject removes an object from the storage system permanently.
@@ -160,7 +170,6 @@ func (c *Client) List(containerName, prefix, delim, marker string, limit int) (c
 	if limit > 0 {
 		params.Add("limit", fmt.Sprintf("%d", limit))
 	}
-
 	requestData := goosehttp.RequestData{Params: &params, RespValue: &contents}
 	err = c.client.SendRequest(client.GET, "object-store", "", containerName, &requestData)
 	if err != nil {
@@ -201,56 +210,63 @@ func maybeNotFound(err error, format string, arg ...interface{}) error {
 	return errors.Newf(err, format, arg...)
 }
 
-type oreadseeker struct {
+type object struct {
 	c             *Client
 	containerName string
 	objectName    string
 	length        int64
 	pos           int64
+	etag          string
 }
 
-// Read reads up to len(b) bytes from the oreadseeker. It returns the number of
+var supportedReadStatuses = []int{http.StatusOK, http.StatusPartialContent, http.StatusPreconditionFailed}
+
+// Read reads up to len(b) bytes from the object. It returns the number of
 // bytes read and any error encountered. At end of stream, Read returns no EOF
 // on the first EOF and EOF after that.
-func (o *oreadseeker) Read(p []byte) (n int, err error) {
-	if o.pos == o.length {
+func (o *object) Read(p []byte) (n int, err error) {
+	if o.pos >= o.length {
 		return 0, io.EOF
 	}
-	end := int64(len(p)) + o.pos
+	end := o.pos + int64(len(p))
+	if end > o.length {
+		p = p[:o.length-o.pos]
+		end = o.length
+	}
 	header := make(http.Header)
 	header.Add("Range", fmt.Sprintf("bytes=%d-%d", o.pos, end))
+	if o.etag != "" {
+		// Ensure that the read fails if the file has
+		// been written to since we opened it.
+		header.Set("If-Match", o.etag)
+	}
 	requestData := goosehttp.RequestData{
+		// Signal to the client that we want the reader back
+		// by placing a dummy reader there.
+		// (RespReader gets replaced).
 		RespReader:     &emptyReadCloser,
 		ReqHeaders:     header,
-		ExpectedStatus: []int{http.StatusOK, http.StatusPartialContent},
+		ExpectedStatus: supportedReadStatuses,
 	}
 	err = o.c.touchObject(&requestData, client.GET, o.containerName, o.objectName)
 	if err != nil {
 		return
 	}
 	defer requestData.RespReader.Close()
-	readSize := 0
-	for n < len(p) {
-		readSize, err = requestData.RespReader.Read(p[n:])
-		n += readSize
-		o.pos += int64(readSize)
-		if err != nil {
-			// Eat the ErrUnexpectedEOF because net/http response turns any EOF into
-			// ErrUnexpectedEOF if it happened when net/http didn't expect it.
-			if err == io.EOF || err == io.ErrUnexpectedEOF {
-				// Some code assumes certain semantics about when EOF is returned.
-				err = nil
-				// Set pos to length, this should be noop but its possible something lies.
-				o.pos = o.length
-			}
-			return
-		}
+	if requestData.RespStatusCode == http.StatusPreconditionFailed {
+		return 0, goerrors.New("file has changed since it was opened")
 	}
-	return
+	// Since we should be ensuring that the data never changes
+	// underfoot because we're setting the If-Match header,
+	// then the length should always be the same as when we
+	// first opened it, so any short read justifies an ErrUnexpectedEOF.
+	n, err = io.ReadFull(requestData.RespReader, p)
+	o.pos += int64(n)
+	return n, err
 }
 
 // Seek sets the offset for the next Read operation on the readseeker.
-func (o *oreadseeker) Seek(offset int64, whence int) (int64, error) {
+func (o *object) Seek(offset int64, whence int) (int64, error) {
 	switch whence {
 	default:
 		return 0, goerrors.New("Seek: invalid whence")
@@ -268,6 +284,6 @@ func (o *oreadseeker) Seek(offset int64, whence int) (int64, error) {
 	return o.pos, nil
 }
 
-func (o *oreadseeker) Close() error {
+func (o *object) Close() error {
 	return nil
 }

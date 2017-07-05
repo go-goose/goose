@@ -3,12 +3,16 @@
 package swiftservice
 
 import (
+	"bytes"
+	"crypto/md5"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // verbatim real Swift responses
@@ -135,14 +139,18 @@ func (s *Swift) handleObjects(container, object string, w http.ResponseWriter, r
 	exists := err == nil
 	switch r.Method {
 	case "GET":
-		w.Header().Set("Content-Type", "application/json; charset=UF-8")
-		w.Header().Set("Content-Length", strconv.Itoa(len(objdata)))
-		w.WriteHeader(http.StatusOK)
-		if hr, err := parseRange(r.Header.Get("Range"), int64(len(objdata))); err == nil && len(hr) > 0 {
-			w.Write([]byte(objdata[hr[0].start : hr[0].start+hr[0].length]))
-		} else {
-			w.Write([]byte(objdata))
-		}
+		// Note: even though the real Swift service does not
+		// quote the Etag header value, we need to quote it here
+		// because http.ServeContent requires the quotes, and
+		// this means that we can have a naive client that puts
+		// the exact Etag value in (for example) an If-Match
+		// header and it will work with both the real Swift and
+		// the local mock server. Note also that the HTTP
+		// standard does require the Etag value to be quoted;
+		// see https://tools.ietf.org/html/rfc7232#section-2.3
+		// TODO maintain modification time.
+		w.Header().Set("Etag", fmt.Sprintf(`"%x"`, md5.Sum(objdata)))
+		http.ServeContent(w, r, object, time.Now(), bytes.NewReader(objdata))
 	case "DELETE":
 		if err = s.RemoveObject(container, object); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -153,6 +161,7 @@ func (s *Swift) handleObjects(container, object string, w http.ResponseWriter, r
 		}
 	case "HEAD":
 		w.Header().Set("Content-Length", strconv.Itoa(len(objdata)))
+		w.Header().Set("Etag", fmt.Sprintf(`"%x"`, md5.Sum(objdata)))
 		w.WriteHeader(http.StatusOK)
 	case "PUT":
 		bodydata, err := ioutil.ReadAll(r.Body)
