@@ -26,17 +26,6 @@ const (
 	contentTypeOctetStream = "application/octet-stream"
 )
 
-func init() {
-	// See https://code.google.com/p/go/issues/detail?id=4677
-	// We need to force the connection to close each time so that we don't
-	// hit the above Go bug.
-	roundTripper := http.DefaultClient.Transport
-	if transport, ok := roundTripper.(*http.Transport); ok {
-		transport.DisableKeepAlives = true
-	}
-	http.DefaultTransport.(*http.Transport).DisableKeepAlives = true
-}
-
 type Client struct {
 	http.Client
 	maxSendAttempts int
@@ -224,6 +213,16 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 	if reqData.RespReader != nil {
 		reqData.RespReader = resp.Body
 	} else {
+		if method != "HEAD" && resp.ContentLength != 0 {
+			// Read a small amount of data from the response
+			// body so that the client connection can
+			// be reused.
+			size := resp.ContentLength
+			if size > 1024 || size < 0 {
+				size = 1024
+			}
+			resp.Body.Read(make([]byte, size))
+		}
 		resp.Body.Close()
 	}
 	return

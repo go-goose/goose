@@ -5,16 +5,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"testing"
 
 	gc "gopkg.in/check.v1"
 
 	"gopkg.in/goose.v2/testing/httpsuite"
 )
-
-func Test(t *testing.T) {
-	gc.TestingT(t)
-}
 
 type LoopingHTTPSuite struct {
 	httpsuite.HTTPSuite
@@ -42,12 +37,7 @@ type HTTPClientTestSuite struct {
 	LoopingHTTPSuite
 }
 
-type HTTPSClientTestSuite struct {
-	LoopingHTTPSuite
-}
-
 var _ = gc.Suite(&HTTPClientTestSuite{})
-var _ = gc.Suite(&HTTPSClientTestSuite{LoopingHTTPSuite{httpsuite.HTTPSuite{UseTLS: true}}})
 
 func (s *HTTPClientTestSuite) assertHeaderValues(c *gc.C, token string) {
 	emptyHeaders := http.Header{}
@@ -182,9 +172,15 @@ func (s *HTTPClientTestSuite) TestJSONRequestSetsToken(c *gc.C) {
 	c.Check(agent, gc.Equals, "token")
 }
 
-func (s *HTTPClientTestSuite) TestHttpTransport(c *gc.C) {
-	transport := http.DefaultTransport.(*http.Transport)
-	c.Assert(transport.DisableKeepAlives, gc.Equals, true)
+type HTTPSClientTestSuite struct {
+	LoopingHTTPSuite
+}
+
+var _ = gc.Suite(&HTTPSClientTestSuite{})
+
+func (s *HTTPSClientTestSuite) SetUpSuite(c *gc.C) {
+	s.UseTLS = true
+	s.LoopingHTTPSuite.SetUpSuite(c)
 }
 
 func (s *HTTPSClientTestSuite) TestDefaultClientRejectSelfSigned(c *gc.C) {
