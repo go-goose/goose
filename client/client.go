@@ -225,7 +225,6 @@ func (c *authenticatingClient) sendAuthRequest(
 	if err = c.Authenticate(); err != nil {
 		return
 	}
-
 	url, err := c.MakeServiceURL(svcType, apiVersion, []string{apiCall})
 	if err != nil {
 		return

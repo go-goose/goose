@@ -5,7 +5,6 @@ package swift
 
 import (
 	"bytes"
-	goerrors "errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,6 +15,7 @@ import (
 	"gopkg.in/goose.v2/client"
 	"gopkg.in/goose.v2/errors"
 	goosehttp "gopkg.in/goose.v2/http"
+	"gopkg.in/goose.v2/internal/httpfile"
 )
 
 // Client provides a means to access the OpenStack Object Storage Service.
@@ -39,7 +39,9 @@ const (
 func (c *Client) CreateContainer(containerName string, acl ACL) error {
 	// [sodre]: Due to a possible bug in ceph-radosgw, we need to split the
 	// creation of the bucket and the changing its ACL.
-	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusAccepted, http.StatusCreated}}
+	requestData := goosehttp.RequestData{
+		ExpectedStatus: []int{http.StatusAccepted, http.StatusCreated},
+	}
 	err := c.client.SendRequest(client.PUT, "object-store", "", containerName, &requestData)
 	if err != nil {
 		err = maybeNotFound(err, "failed to create container: %s", containerName)
@@ -50,8 +52,10 @@ func (c *Client) CreateContainer(containerName string, acl ACL) error {
 	// can be used to allow unauthenticated HTTP access.
 	headers := make(http.Header)
 	headers.Add("X-Container-Read", string(acl))
-	requestData = goosehttp.RequestData{ReqHeaders: headers,
-		ExpectedStatus: []int{http.StatusAccepted, http.StatusNoContent}}
+	requestData = goosehttp.RequestData{
+		ReqHeaders:     headers,
+		ExpectedStatus: []int{http.StatusAccepted, http.StatusNoContent},
+	}
 	err = c.client.SendRequest(client.POST, "object-store", "", containerName, &requestData)
 	if err != nil {
 		err = maybeNotFound(err, "failed to update container read acl: %s", containerName)
@@ -61,7 +65,9 @@ func (c *Client) CreateContainer(containerName string, acl ACL) error {
 
 // DeleteContainer deletes the specified container.
 func (c *Client) DeleteContainer(containerName string) error {
-	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusNoContent}}
+	requestData := goosehttp.RequestData{
+		ExpectedStatus: []int{http.StatusNoContent},
+	}
 	err := c.client.SendRequest(client.DELETE, "object-store", "", containerName, &requestData)
 	if err != nil {
 		err = maybeNotFound(err, "failed to delete container: %s", containerName)
@@ -69,20 +75,15 @@ func (c *Client) DeleteContainer(containerName string) error {
 	return err
 }
 
-func (c *Client) touchObject(requestData *goosehttp.RequestData, op, containerName, objectName string) error {
-	path := fmt.Sprintf("%s/%s", containerName, objectName)
-	err := c.client.SendRequest(op, "object-store", "", path, requestData)
-	if err != nil {
-		err = maybeNotFound(err, "failed to %s object %s from container %s", op, objectName, containerName)
-	}
-	return err
-}
-
 // HeadObject retrieves object metadata and other standard HTTP headers.
 func (c *Client) HeadObject(containerName, objectName string) (http.Header, error) {
-	requestData := goosehttp.RequestData{}
-	err := c.touchObject(&requestData, client.HEAD, containerName, objectName)
-	return requestData.RespHeaders, err
+	req := &objectRequest{
+		method:    client.HEAD,
+		container: containerName,
+		object:    objectName,
+	}
+	err := c.sendRequest(req)
+	return req.RespHeaders, err
 }
 
 // GetObject retrieves the specified object's data.
@@ -95,47 +96,16 @@ func (c *Client) GetObject(containerName, objectName string) (obj []byte, err er
 	return ioutil.ReadAll(rc)
 }
 
-// The following defines a ReadCloser implementation which reads no data.
-// It is used instead of returning a nil pointer, which is the same as http.Request.Body.
-var emptyReadCloser noData
-
-type noData struct {
-	io.ReadCloser
-}
-
-type ReadSeekCloser interface {
-	io.ReadSeeker
-	io.Closer
-}
-
-// GetObject retrieves the specified object's data.
-func (c *Client) GetReader(containerName, objectName string) (io.ReadCloser, http.Header, error) {
-	requestData := goosehttp.RequestData{RespReader: &emptyReadCloser}
-	err := c.touchObject(&requestData, client.GET, containerName, objectName)
-	return requestData.RespReader, requestData.RespHeaders, err
-}
-
-// GetReadSeeker creates a read seeker closer to the specified object's data.
-func (c *Client) GetReadSeeker(containerName, objectName string) (ReadSeekCloser, http.Header, error) {
-	requestData := goosehttp.RequestData{}
-	err := c.touchObject(&requestData, client.HEAD, containerName, objectName)
-	if err != nil {
-		return nil, nil, err
-	}
-	return &object{
-		c:             c,
-		containerName: containerName,
-		objectName:    objectName,
-		length:        requestData.RespLength,
-		etag:          requestData.RespHeaders.Get("Etag"),
-	}, requestData.RespHeaders, err
-}
-
 // DeleteObject removes an object from the storage system permanently.
 func (c *Client) DeleteObject(containerName, objectName string) error {
-	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusNoContent}}
-	err := c.touchObject(&requestData, client.DELETE, containerName, objectName)
-	return err
+	return c.sendRequest(&objectRequest{
+		method:    client.DELETE,
+		container: containerName,
+		object:    objectName,
+		RequestData: goosehttp.RequestData{
+			ExpectedStatus: []int{http.StatusNoContent},
+		},
+	})
 }
 
 // PutObject writes, or overwrites, an object's content and metadata.
@@ -146,9 +116,16 @@ func (c *Client) PutObject(containerName, objectName string, data []byte) error 
 
 // PutReader writes, or overwrites, an object's content and metadata.
 func (c *Client) PutReader(containerName, objectName string, r io.Reader, length int64) error {
-	requestData := goosehttp.RequestData{ReqReader: r, ReqLength: int(length), ExpectedStatus: []int{http.StatusCreated}}
-	err := c.touchObject(&requestData, client.PUT, containerName, objectName)
-	return err
+	return c.sendRequest(&objectRequest{
+		method:    client.PUT,
+		container: containerName,
+		object:    objectName,
+		RequestData: goosehttp.RequestData{
+			ReqReader:      r,
+			ReqLength:      int(length),
+			ExpectedStatus: []int{http.StatusCreated},
+		},
+	})
 }
 
 // ContainerContents describes a single container and its contents.
@@ -160,7 +137,8 @@ type ContainerContents struct {
 	LastModified string `json:"last_modified"`
 }
 
-// GetObject retrieves the specified object's data.
+// List lists the objects in a bucket.
+// TODO describe prefix, delim, marker, limit parameters.
 func (c *Client) List(containerName, prefix, delim, marker string, limit int) (contents []ContainerContents, err error) {
 	params := make(url.Values)
 	params.Add("prefix", prefix)
@@ -170,7 +148,10 @@ func (c *Client) List(containerName, prefix, delim, marker string, limit int) (c
 	if limit > 0 {
 		params.Add("limit", fmt.Sprintf("%d", limit))
 	}
-	requestData := goosehttp.RequestData{Params: &params, RespValue: &contents}
+	requestData := goosehttp.RequestData{
+		Params:    &params,
+		RespValue: &contents,
+	}
 	err = c.client.SendRequest(client.GET, "object-store", "", containerName, &requestData)
 	if err != nil {
 		err = errors.Newf(err, "failed to list contents of container: %s", containerName)
@@ -197,6 +178,53 @@ func (c *Client) SignedURL(containerName, file string, expires time.Time) (strin
 	return rawURL, nil
 }
 
+func (c *Client) sendRequest(req *objectRequest) error {
+	err := c.client.SendRequest(req.method, "object-store", "", req.container+"/"+req.object, &req.RequestData)
+	if err != nil {
+		return maybeNotFound(err, "failed to %s object %s from container %s", req.method, req.object, req.container)
+	}
+	return nil
+}
+
+// OpenObject opens an object for reading. The readAhead parameter governs
+// how much data is scheduled to be read speculatively from the object before
+// actual Read requests are issued. If readAhead is -1, an indefinite amount
+// of data will be requested; if readAhead is 0, no data will be requested.
+func (c *Client) OpenObject(containerName, objectName string, readAhead int64) (ReadSeekCloser, http.Header, error) {
+	client := &objectClient{
+		client:    c,
+		container: containerName,
+		object:    objectName,
+	}
+	f, h, err := httpfile.Open(client, readAhead)
+	if err != nil {
+		if err == httpfile.ErrNotFound {
+			err = errors.NewNotFoundf(nil, "", "object %q in container %q not found", objectName, containerName)
+		}
+		return nil, h, err
+	}
+	return f, h, nil
+}
+
+// GetReader returns a reader from which the object's data can be read,
+// and the HTTP header of the initial response.
+func (c *Client) GetReader(containerName, objectName string) (io.ReadCloser, http.Header, error) {
+	return c.OpenObject(containerName, objectName, -1)
+}
+
+// The following defines a ReadCloser implementation which reads no data.
+// It is used instead of returning a nil pointer, which is the same as http.Request.Body.
+var emptyReadCloser noData
+
+type noData struct {
+	io.ReadCloser
+}
+
+type ReadSeekCloser interface {
+	io.ReadSeeker
+	io.Closer
+}
+
 func maybeNotFound(err error, format string, arg ...interface{}) error {
 	if !errors.IsNotFound(err) {
 		if error, ok := err.(*goosehttp.HttpError); ok {
@@ -210,80 +238,42 @@ func maybeNotFound(err error, format string, arg ...interface{}) error {
 	return errors.Newf(err, format, arg...)
 }
 
-type object struct {
-	c             *Client
-	containerName string
-	objectName    string
-	length        int64
-	pos           int64
-	etag          string
+type objectClient struct {
+	client    *Client
+	container string
+	object    string
 }
 
-var supportedReadStatuses = []int{http.StatusOK, http.StatusPartialContent, http.StatusPreconditionFailed}
-
-// Read reads up to len(b) bytes from the object. It returns the number of
-// bytes read and any error encountered. At end of stream, Read returns no EOF
-// on the first EOF and EOF after that.
-func (o *object) Read(p []byte) (n int, err error) {
-	if o.pos >= o.length {
-		return 0, io.EOF
-	}
-	end := o.pos + int64(len(p))
-	if end > o.length {
-		p = p[:o.length-o.pos]
-		end = o.length
-	}
-	header := make(http.Header)
-	header.Add("Range", fmt.Sprintf("bytes=%d-%d", o.pos, end))
-	if o.etag != "" {
-		// Ensure that the read fails if the file has
-		// been written to since we opened it.
-		header.Set("If-Match", o.etag)
-	}
-	requestData := goosehttp.RequestData{
-		// Signal to the client that we want the reader back
-		// by placing a dummy reader there.
-		// (RespReader gets replaced).
-		RespReader:     &emptyReadCloser,
-		ReqHeaders:     header,
-		ExpectedStatus: supportedReadStatuses,
-	}
-	err = o.c.touchObject(&requestData, client.GET, o.containerName, o.objectName)
-	if err != nil {
-		return
-	}
-	defer requestData.RespReader.Close()
-	if requestData.RespStatusCode == http.StatusPreconditionFailed {
-		return 0, goerrors.New("file has changed since it was opened")
-	}
-	// Since we should be ensuring that the data never changes
-	// underfoot because we're setting the If-Match header,
-	// then the length should always be the same as when we
-	// first opened it, so any short read justifies an ErrUnexpectedEOF.
-	n, err = io.ReadFull(requestData.RespReader, p)
-	o.pos += int64(n)
-	return n, err
+type objectRequest struct {
+	container string
+	object    string
+	method    string
+	goosehttp.RequestData
 }
 
-// Seek sets the offset for the next Read operation on the readseeker.
-func (o *object) Seek(offset int64, whence int) (int64, error) {
-	switch whence {
-	default:
-		return 0, goerrors.New("Seek: invalid whence")
-	case io.SeekStart:
-		break
-	case io.SeekCurrent:
-		offset += o.pos
-	case io.SeekEnd:
-		offset += o.length
+func (c *objectClient) Do(req *httpfile.Request) (*httpfile.Response, error) {
+	gooseReq := &objectRequest{
+		object:    c.object,
+		container: c.container,
+		method:    req.Method,
+		RequestData: goosehttp.RequestData{
+			// Signal to the client that we want the reader back
+			// by placing a dummy reader there.
+			// (RespReader gets replaced).
+			RespReader:     &emptyReadCloser,
+			ReqHeaders:     req.Header,
+			ExpectedStatus: httpfile.SupportedResponseStatuses,
+		},
 	}
-	if offset < 0 {
-		return 0, goerrors.New("Seek: invalid offset")
+	err := c.client.sendRequest(gooseReq)
+	if gooseReq.RespReader == &emptyReadCloser {
+		// sendRequest hasn't actually replaced the body.
+		gooseReq.RespReader = nil
 	}
-	o.pos = offset
-	return o.pos, nil
-}
-
-func (o *object) Close() error {
-	return nil
+	return &httpfile.Response{
+		StatusCode:    gooseReq.RespStatusCode,
+		Header:        gooseReq.RespHeaders,
+		ContentLength: gooseReq.RespLength,
+		Body:          gooseReq.RespReader,
+	}, err
 }

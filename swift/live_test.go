@@ -66,7 +66,7 @@ func assertCreateContainer(c *gc.C, container string, s *swift.Client, acl swift
 	// If the result is a NotFound error, we don't care.
 	err := s.DeleteContainer(container)
 	if err != nil {
-		c.Check(errors.IsNotFound(err), gc.Equals, true)
+		c.Check(errors.IsNotFound(err), gc.Equals, true, gc.Commentf("cannot delete container: %v", err))
 	}
 	err = s.CreateContainer(container, acl)
 	c.Assert(err, gc.IsNil)
@@ -86,6 +86,12 @@ func (s *LiveTests) TestObject(c *gc.C) {
 	objdata, err := s.swift.GetObject(s.containerName, object)
 	c.Check(err, gc.IsNil)
 	c.Check(string(objdata), gc.Equals, data)
+}
+
+func (s *LiveTests) TestObjectNotFound(c *gc.C) {
+	_, err := s.swift.GetObject(s.containerName, "not-there")
+	c.Check(err, gc.ErrorMatches, `object "not-there" in container ".*" not found`)
+	c.Check(errors.IsNotFound(err), gc.Equals, true)
 }
 
 func (s *LiveTests) TestObjectReader(c *gc.C) {
@@ -250,13 +256,13 @@ func (s *LiveTests) TestHeadObject(c *gc.C) {
 	c.Check(headers.Get("Date"), gc.Not(gc.Equals), "")
 }
 
-func (s *LiveTests) TestReadSeeker(c *gc.C) {
+func (s *LiveTests) TestOpenObject(c *gc.C) {
 	object := "test_obj2"
 	data := "...some data..."
 	err := s.swift.PutReader(s.containerName, object, bytes.NewReader([]byte(data)), int64(len(data)))
 	c.Assert(err, gc.IsNil)
 	defer s.checkDeleteObject(c, object)
-	r, headers, err := s.swift.GetReadSeeker(s.containerName, object)
+	r, headers, err := s.swift.OpenObject(s.containerName, object, 0)
 	c.Assert(err, gc.IsNil)
 	defer r.Close()
 	readData, err := ioutil.ReadAll(r)
@@ -265,13 +271,13 @@ func (s *LiveTests) TestReadSeeker(c *gc.C) {
 	c.Check(headers.Get("Date"), gc.Not(gc.Equals), "")
 }
 
-func (s *LiveTests) TestReadSeekerSeek(c *gc.C) {
+func (s *LiveTests) TestOpenObjectSeek(c *gc.C) {
 	object := "test_obj2"
 	data := "...some data..."
 	err := s.swift.PutReader(s.containerName, object, bytes.NewReader([]byte(data)), int64(len(data)))
 	c.Assert(err, gc.IsNil)
 	defer s.checkDeleteObject(c, object)
-	r, headers, err := s.swift.GetReadSeeker(s.containerName, object)
+	r, headers, err := s.swift.OpenObject(s.containerName, object, 0)
 	c.Assert(err, gc.IsNil)
 	defer r.Close()
 	n, err := r.Seek(3, io.SeekStart)
@@ -283,13 +289,13 @@ func (s *LiveTests) TestReadSeekerSeek(c *gc.C) {
 	c.Check(headers.Get("Date"), gc.Not(gc.Equals), "")
 }
 
-func (s *LiveTests) TestReadSeekerReadLimit(c *gc.C) {
+func (s *LiveTests) TestOpenObjectReadLimit(c *gc.C) {
 	object := "test_obj2"
 	data := "...some data..."
 	err := s.swift.PutReader(s.containerName, object, bytes.NewReader([]byte(data)), int64(len(data)))
 	c.Assert(err, gc.IsNil)
 	defer s.checkDeleteObject(c, object)
-	r, headers, err := s.swift.GetReadSeeker(s.containerName, object)
+	r, headers, err := s.swift.OpenObject(s.containerName, object, 0)
 	c.Assert(err, gc.IsNil)
 	defer r.Close()
 	n, err := r.Seek(3, io.SeekStart)
@@ -303,13 +309,13 @@ func (s *LiveTests) TestReadSeekerReadLimit(c *gc.C) {
 	c.Check(headers.Get("Date"), gc.Not(gc.Equals), "")
 }
 
-func (s *LiveTests) TestReadSeekerSeekContract(c *gc.C) {
+func (s *LiveTests) TestOpenObjectSeekContract(c *gc.C) {
 	object := "test_obj2"
 	data := "...some data..."
 	err := s.swift.PutReader(s.containerName, object, bytes.NewReader([]byte(data)), int64(len(data)))
 	c.Assert(err, gc.IsNil)
 	defer s.checkDeleteObject(c, object)
-	r, _, err := s.swift.GetReadSeeker(s.containerName, object)
+	r, _, err := s.swift.OpenObject(s.containerName, object, 0)
 	c.Assert(err, gc.IsNil)
 	defer r.Close()
 	_, err = r.Seek(-1, io.SeekStart)
@@ -318,14 +324,14 @@ func (s *LiveTests) TestReadSeekerSeekContract(c *gc.C) {
 	c.Check(err, gc.NotNil)
 }
 
-func (s *LiveTests) TestReadSeekerFileChangedUnderfoot(c *gc.C) {
+func (s *LiveTests) TestOpenObjectFileChangedUnderfoot(c *gc.C) {
 	object := "test_obj2"
 	err := s.swift.PutObject(s.containerName, object, []byte("...some data..."))
 	c.Assert(err, gc.IsNil)
 	defer s.checkDeleteObject(c, object)
 
 	// Get a Reader handle on the object but don't read it yet.
-	r, _, err := s.swift.GetReadSeeker(s.containerName, object)
+	r, _, err := s.swift.OpenObject(s.containerName, object, 0)
 	c.Assert(err, gc.Equals, nil)
 	defer r.Close()
 
