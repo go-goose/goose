@@ -190,7 +190,7 @@ func (c *Client) sendRequest(req *objectRequest) error {
 // how much data is scheduled to be read speculatively from the object before
 // actual Read requests are issued. If readAhead is -1, an indefinite amount
 // of data will be requested; if readAhead is 0, no data will be requested.
-func (c *Client) OpenObject(containerName, objectName string, readAhead int64) (ReadSeekCloser, http.Header, error) {
+func (c *Client) OpenObject(containerName, objectName string, readAhead int64) (Object, http.Header, error) {
 	client := &objectClient{
 		client:    c,
 		container: containerName,
@@ -201,6 +201,13 @@ func (c *Client) OpenObject(containerName, objectName string, readAhead int64) (
 		if err == httpfile.ErrNotFound {
 			err = errors.NewNotFoundf(nil, "", "object %q in container %q not found", objectName, containerName)
 		}
+		// TODO it seems weird to return the headers when we're
+		// returning an error. The original use case (explained in
+		// commit 6a06aeb5776abe26d86c38210732009de9f74335)
+		// doesn't seem like it would require the headers in this case.
+		// If we didn't need to return the headers on error, we could
+		// just make them available on the Object interface, thus
+		// simplifying this API for the common case.
 		return nil, h, err
 	}
 	return f, h, nil
@@ -208,8 +215,31 @@ func (c *Client) OpenObject(containerName, objectName string, readAhead int64) (
 
 // GetReader returns a reader from which the object's data can be read,
 // and the HTTP header of the initial response.
-func (c *Client) GetReader(containerName, objectName string) (io.ReadCloser, http.Header, error) {
-	return c.OpenObject(containerName, objectName, -1)
+func (c *Client) GetReader(containerName, objectName string) (_ io.ReadCloser, _ http.Header, err error) {
+	// We only want a reader, so we don't need all the httpfile logic.
+	client := &objectClient{
+		client:    c,
+		container: containerName,
+		object:    objectName,
+	}
+	resp, err := client.Do(&httpfile.Request{
+		Method: "GET",
+	})
+	defer func() {
+		if err != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
+	}()
+	if err != nil {
+		return nil, resp.Header, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, resp.Header, errors.NewNotFoundf(nil, "", "object %q in container %q not found", objectName, containerName)
+		}
+		return nil, resp.Header, fmt.Errorf("unexpected response status %v", resp.StatusCode)
+	}
+	return resp.Body, resp.Header, nil
 }
 
 // The following defines a ReadCloser implementation which reads no data.
@@ -220,7 +250,11 @@ type noData struct {
 	io.ReadCloser
 }
 
-type ReadSeekCloser interface {
+// Object is the interface provided by an Swift object.
+type Object interface {
+	// Size returns the size of the object.
+	Size() int64
+
 	io.ReadSeeker
 	io.Closer
 }
