@@ -36,6 +36,7 @@ type Response struct {
 	Body          io.ReadCloser
 }
 
+// Client represents a client that can send HTTP requests.
 type Client interface {
 	// Do sends an HTTP request to the file.
 	// The provided header fields are added
@@ -157,14 +158,13 @@ func (f *File) Read(buf []byte) (int, error) {
 		return n, err
 	}
 	if err == nil {
-		if f.reader0.remaining() < int64(f.readAhead/2) && f.reader0.p1 < f.length {
+		if f.reader1 == nil && f.reader0.remaining() < int64(f.readAhead/2) && f.reader0.p1 < f.length {
 			// We're well advanced through the current reader,
 			// so kick off a new one.
 			f.reader1 = f.newReaderAhead(f.reader0.p1, f.reader0.p1+f.readAhead)
 		}
 		return n, nil
 	}
-
 	// We're trying to read out of range of the current reader, so
 	// throw it away, replace reader0 with reader1 and try
 	// everything again.
@@ -249,7 +249,7 @@ func (f *File) newReaderAhead(p0, p1 int64) *readerAhead {
 		reqp1: p1,
 		done:  make(chan struct{}),
 	}
-	go ra.do(f, f.client, f.newRequest(p0, p1))
+	go ra.do(f, f.client, newRequest(f.etag, p0, p1))
 	return ra
 }
 
@@ -263,7 +263,7 @@ func (ra *readerAhead) do(f *File, client Client, req *Request) {
 		ra.statusCode = resp.StatusCode
 	}
 	defer func() {
-		if ra.err != nil && resp.Body != nil {
+		if resp != nil && ra.err != nil && resp.Body != nil {
 			resp.Body.Close()
 		}
 	}()
@@ -295,6 +295,13 @@ func (ra *readerAhead) updateRange(f *File, resp *Response) error {
 	if err != nil {
 		return err
 	}
+	if ra.reqp0 == ra.reqp1 {
+		// Because we weren't asking for any data, we issued a
+		// HEAD request which fools contentRangeFromResponse
+		// into thinking it's getting the whole thing, but we're
+		// actually getting nothing.
+		cr.p1 = cr.p0
+	}
 	if f.length != -1 && cr.length != f.length {
 		return fmt.Errorf("response range has unexpected length; got %d want %d", cr.length, f.length)
 	}
@@ -321,18 +328,23 @@ func (ra *readerAhead) wait() error {
 // it does not attempt to read the entire buffer when
 // less data is immediately available.
 func (ra *readerAhead) readAt(buf []byte, p0 int64) (int, error) {
-	// Make an initial check against the requested range, so we
-	// don't bother waiting for the response if we're known to be
-	// out of range.
-	if p0 < ra.reqp0 || p0 >= ra.reqp1 || p0 > ra.reqp0+NoSkip {
-		return 0, errOutOfRange
+	select {
+	case <-ra.done:
+	default:
+		// The initial request is still in progress, so make an initial check
+		// against the requested range, so we
+		// don't bother waiting for the response if we're known to be
+		// out of range.
+		if p0 < ra.reqp0 || p0 >= ra.reqp1 || p0 > ra.reqp0+NoSkip {
+			return 0, errOutOfRange
+		}
 	}
 	if err := ra.wait(); err != nil {
 		return 0, err
 	}
 	// Check the actual range, because it may be
 	// different from the request.
-	if p0 < ra.p0 || p0 >= ra.p1 || p0 > ra.p0+NoSkip {
+	if p0 < ra.p0 || p0 >= ra.p1 || p0 > ra.p0+NoSkip || p0 >= ra.p1 {
 		return 0, errOutOfRange
 	}
 	if p0 > ra.p0 {
@@ -366,6 +378,25 @@ func (ra *readerAhead) remaining() int64 {
 
 // close closes ra. It does not block.
 func (ra *readerAhead) close() {
+	select {
+	case <-ra.done:
+		if ra.r == nil {
+			return
+		}
+		// Request is done already. Close the body
+		// synchronously if there's nothing left to read
+		// or we're going to throw the connection away
+		// anyway.
+		if remaining := ra.remaining(); remaining == 0 || remaining > NoSkip {
+			ra.r.Close()
+			return
+		}
+	default:
+	}
+	// Either the request hasn't completed yet or
+	// there's something left to read, so start
+	// a goroutine so that we don't block the
+	// close.
 	go func() {
 		ra.wait()
 		if ra.r == nil {
@@ -391,39 +422,6 @@ func (ra *readerAhead) discard(n int64) error {
 		return io.ErrUnexpectedEOF
 	}
 	return err
-}
-
-// newRequest returns a new Request to read the data
-// in the interval [p0, p1). If p1 is unlimited, an
-// unlimited amount of data is requested.
-func (f *File) newRequest(p0, p1 int64) *Request {
-	header := make(http.Header)
-	req := &Request{
-		Method: "GET",
-		Header: header,
-	}
-	switch {
-	case p0 == p1:
-		// No bytes requested - no need for a range request.
-		req.Method = "HEAD"
-	case p1 == unlimited && p0 == 0:
-		// We want the whole thing - no need for a range request.
-	case p1 == unlimited:
-		// Indefinite range not starting from the beginning.
-		// This case is here just for completeness - it doesn't
-		// happen in practice.
-		header.Set("Range", fmt.Sprintf("bytes=%d-", p0))
-	default:
-		// Note that the Range header uses a closed interval,
-		// hence the -1.
-		header.Set("Range", fmt.Sprintf("bytes=%d-%d", p0, p1-1))
-	}
-	if f.etag != "" {
-		// Ensure that the read fails if the file has been
-		// written to since we opened it.
-		header.Set("If-Match", f.etag)
-	}
-	return req
 }
 
 // contentRangeFromResponse infers the response content
@@ -453,6 +451,41 @@ func contentRangeFromResponse(resp *Response) (contentRange, error) {
 		return contentRange{}, fmt.Errorf("bad Content-Range header %q", got)
 	}
 	return r, nil
+}
+
+// newRequest returns a new Request to read the data
+// in the interval [p0, p1). If p1 is unlimited, an
+// unlimited amount of data is requested.
+// If etag is non-empty, the request is constrained
+// to succeed only if the file's etag matches.
+func newRequest(etag string, p0, p1 int64) *Request {
+	header := make(http.Header)
+	req := &Request{
+		Method: "GET",
+		Header: header,
+	}
+	switch {
+	case p0 == p1:
+		// No bytes requested - no need for a range request.
+		req.Method = "HEAD"
+	case p1 == unlimited && p0 == 0:
+		// We want the whole thing - no need for a range request.
+	case p1 == unlimited:
+		// Indefinite range not starting from the beginning.
+		// This case is here just for completeness - it doesn't
+		// happen in practice.
+		header.Set("Range", fmt.Sprintf("bytes=%d-", p0))
+	default:
+		// Note that the Range header uses a closed interval,
+		// hence the -1.
+		header.Set("Range", fmt.Sprintf("bytes=%d-%d", p0, p1-1))
+	}
+	if etag != "" {
+		// Ensure that the read fails if the file has been
+		// written to since we opened it.
+		header.Set("If-Match", etag)
+	}
+	return req
 }
 
 // contentRange holds the values in a Content-Range header. The content

@@ -2,12 +2,16 @@ package httpfile_test
 
 import (
 	"bytes"
+	"context"
 	"crypto/md5"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
+	"testing/iotest"
 	"time"
 
 	gc "gopkg.in/check.v1"
@@ -20,7 +24,7 @@ var _ = gc.Suite(&httpFileSuite{})
 
 func (*httpFileSuite) TestNoReadAhead(c *gc.C) {
 	content := newContent(10 * 1024)
-	requestc := make(chan readRequest, 2)
+	requestc := make(chan readRequest, 1000)
 	srv := httptest.NewServer(&fakeReadServer{
 		content: content,
 		request: requestc,
@@ -29,10 +33,7 @@ func (*httpFileSuite) TestNoReadAhead(c *gc.C) {
 
 	// Open the file. Because we've requested zero readahead,
 	// it should just issue a HEAD request.
-	f, h, err := httpfile.Open(&client{
-		c:   c,
-		url: srv.URL + "/file",
-	}, 0)
+	f, h, err := httpfile.Open(newClient(c, srv.URL+"/file"), 0)
 	c.Assert(err, gc.Equals, nil)
 	defer f.Close()
 	c.Check(f.Size(), gc.Equals, int64(len(content)))
@@ -86,7 +87,7 @@ func (*httpFileSuite) TestNoReadAhead(c *gc.C) {
 
 func (*httpFileSuite) TestInfiniteReadAhead(c *gc.C) {
 	content := newContent(10 * 1024)
-	requestc := make(chan readRequest, 2)
+	requestc := make(chan readRequest, 1000)
 	srv := httptest.NewServer(&fakeReadServer{
 		content: content,
 		request: requestc,
@@ -96,10 +97,7 @@ func (*httpFileSuite) TestInfiniteReadAhead(c *gc.C) {
 	// Open the file. Because we've requested arbitrary
 	// readahead, it should issue a request to get the
 	// whole file.
-	f, _, err := httpfile.Open(&client{
-		c:   c,
-		url: srv.URL + "/file",
-	}, -1)
+	f, _, err := httpfile.Open(newClient(c, srv.URL+"/file"), -1)
 	c.Assert(err, gc.Equals, nil)
 	defer f.Close()
 
@@ -147,7 +145,7 @@ func (*httpFileSuite) TestInfiniteReadAhead(c *gc.C) {
 
 func (*httpFileSuite) TestLimitedReadAhead(c *gc.C) {
 	content := newContent(10 * 1024)
-	requestc := make(chan readRequest, 2)
+	requestc := make(chan readRequest, 1000)
 	srv := httptest.NewServer(&fakeReadServer{
 		content: content,
 		request: requestc,
@@ -157,10 +155,8 @@ func (*httpFileSuite) TestLimitedReadAhead(c *gc.C) {
 	// Open the file. Because we've requested arbitrary
 	// readahead, it should issue a request to get the
 	// whole file.
-	f, _, err := httpfile.Open(&client{
-		c:   c,
-		url: srv.URL + "/file",
-	}, 200)
+	client := newClient(c, srv.URL+"/file")
+	f, _, err := httpfile.Open(client, 200)
 	c.Assert(err, gc.Equals, nil)
 	defer f.Close()
 
@@ -199,23 +195,105 @@ func (*httpFileSuite) TestLimitedReadAhead(c *gc.C) {
 	// Check we can read all the rest of the content.
 	done := make(chan struct{})
 	go func() {
-		close(done)
+		defer close(done)
 		// Expect one request per readahead block (note
-		// it's rounded up) less the request we've already
+		// it's rounded up) less the two requests we've already
 		// seen.
-		for i := 0; i < (len(content)+199)/200-1; i++ {
+		expectRequestCount := (len(content)+199)/200 - 2
+		for i := 0; i < expectRequestCount; i++ {
 			getRequest(c, requestc)
 		}
 		assertNoRequest(c, requestc)
 	}()
-	data, err := ioutil.ReadAll(f)
+	// Read the rest of the buffer in small increments so
+	// that we use many reads. Wrap the buffer so that it
+	// doesn't implement ReadFrom and bybass our buffer
+	// size choice.
+	var rbuf bytes.Buffer
+	_, err = io.CopyBuffer(struct{ io.Writer }{&rbuf}, f, make([]byte, 20))
 	c.Assert(err, gc.Equals, nil)
-	c.Assert(string(data), gc.Equals, string(content[200:]))
+	c.Assert(rbuf.String(), gc.Equals, string(content[200:]))
 	select {
 	case <-done:
 	case <-time.After(time.Second):
 		c.Fatalf("timed out waiting for expected requests")
 	}
+
+	// One connection for each concurrent read.
+	c.Assert(client.connectionCount(), gc.Equals, 2)
+}
+
+func (s *httpFileSuite) TestConnectionReuseWhenStreaming(c *gc.C) {
+	const size = 1024 * 1024
+	content := newContent(size)
+	srv := httptest.NewServer(&fakeReadServer{
+		content: content,
+	})
+	defer srv.Close()
+
+	client := newClient(c, srv.URL+"/file")
+	f, _, err := httpfile.Open(client, 8192)
+	c.Assert(err, gc.Equals, nil)
+	defer f.Close()
+
+	// Use OneByteReader so that the client takes enough time reading
+	// that both connections actually get made.
+	n, err := io.CopyBuffer(ioutil.Discard, iotest.OneByteReader(f), make([]byte, 512))
+	c.Assert(err, gc.Equals, nil)
+	c.Assert(n, gc.Equals, int64(size))
+
+	f.Close()
+	if got, want := client.connectionCount(), 2; got > want {
+		c.Errorf("more client connections than expected; got %d want <= %d", got, want)
+	}
+}
+
+func (s *httpFileSuite) TestCloseSkipsDataIfNotTooLong(c *gc.C) {
+	// When there's less than NoSkip bytes of data
+	// in the pool, the Close logic reads it so that
+	// the connection can be reused.
+	s.testDataSkip(c, httpfile.NoSkip, 1)
+}
+
+func (s *httpFileSuite) TestCloseDoesNotSkipDataWhenTooLong(c *gc.C) {
+	// When there's at least NoSkip bytes of data
+	// in the pool, the Close logic throws away
+	// the connection.
+	s.testDataSkip(c, httpfile.NoSkip-1, 2)
+}
+
+func (s *httpFileSuite) testDataSkip(c *gc.C, remain int64, expectConnections int) {
+	size := httpfile.NoSkip * 3
+	content := newContent(size)
+	srv := httptest.NewServer(&fakeReadServer{
+		content: content,
+	})
+	defer srv.Close()
+
+	client := newClient(c, srv.URL+"/file")
+	f, _, err := httpfile.Open(client, httpfile.NoSkip*2)
+	c.Assert(err, gc.Equals, nil)
+	defer f.Close()
+
+	buf := make([]byte, httpfile.NoSkip*2-remain)
+	_, err = io.ReadFull(f, buf)
+	c.Assert(err, gc.Equals, nil)
+
+	f.Close()
+
+	// Allow time for the asynchronous discard to happen
+	// (or not).
+	time.Sleep(100 * time.Millisecond)
+
+	// Open the file again and check the number of connections
+	f, _, err = httpfile.Open(client, httpfile.NoSkip*2)
+	c.Assert(err, gc.Equals, nil)
+	defer f.Close()
+
+	_, err = io.ReadFull(f, buf)
+	c.Assert(err, gc.Equals, nil)
+
+	c.Assert(client.connectionCount(), gc.Equals, expectConnections)
 }
 
 var badContentRangeResponseTests = []struct {
@@ -323,10 +401,7 @@ func (*httpFileSuite) TestBadContentRangeResponse(c *gc.C) {
 		c.Logf("test %d: %v", i, test.about)
 		contentRange = test.contentRange
 		status = test.status
-		f, _, err := httpfile.Open(&client{
-			c:   c,
-			url: srv.URL,
-		}, test.readAhead)
+		f, _, err := httpfile.Open(newClient(c, srv.URL), test.readAhead)
 		if test.secondContentRange == "" {
 			c.Assert(err, gc.ErrorMatches, test.expectError)
 			continue
@@ -346,10 +421,7 @@ func (*httpFileSuite) TestBadContentRangeResponse(c *gc.C) {
 func (*httpFileSuite) TestFileNotFound(c *gc.C) {
 	srv := httptest.NewServer(http.HandlerFunc(http.NotFound))
 	defer srv.Close()
-	_, _, err := httpfile.Open(&client{
-		c:   c,
-		url: srv.URL,
-	}, -1)
+	_, _, err := httpfile.Open(newClient(c, srv.URL), -1)
 	c.Assert(err, gc.Equals, httpfile.ErrNotFound)
 }
 
@@ -358,10 +430,7 @@ func (*httpFileSuite) TestNotFoundFromPreconditionFailed(c *gc.C) {
 		w.WriteHeader(http.StatusPreconditionFailed)
 	}))
 	defer srv.Close()
-	_, _, err := httpfile.Open(&client{
-		c:   c,
-		url: srv.URL,
-	}, -1)
+	_, _, err := httpfile.Open(newClient(c, srv.URL), -1)
 	c.Assert(err, gc.Equals, httpfile.ErrNotFound)
 }
 
@@ -371,10 +440,7 @@ func (s *httpFileSuite) TestFileChangedUnderfoot(c *gc.C) {
 		w.Header().Set("Etag", fmt.Sprintf(`"%x"`, md5.Sum(content)))
 		http.ServeContent(w, req, "foo.gif", time.Now(), bytes.NewReader(content))
 	}))
-	f, _, err := httpfile.Open(&client{
-		c:   c,
-		url: srv.URL,
-	}, 200)
+	f, _, err := httpfile.Open(newClient(c, srv.URL), 200)
 	c.Assert(err, gc.Equals, nil)
 
 	_, err = f.Seek(600, io.SeekStart)
@@ -404,8 +470,54 @@ func newContent(size int) []byte {
 }
 
 type client struct {
-	c   *gc.C
-	url string
+	c          *gc.C
+	url        string
+	transport  *http.Transport
+	httpClient *http.Client
+	connCount  int32
+}
+
+func newClient(c *gc.C, url string) *client {
+	client := &client{
+		c:          c,
+		url:        url,
+		httpClient: new(http.Client),
+	}
+	// Use an HTTP client that allows us to keep track of the total
+	// number of live connections.
+	dialer := (&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+		DualStack: true,
+	}).DialContext
+	client.transport = &http.Transport{
+		DialContext: func(ctx context.Context, net, addr string) (net.Conn, error) {
+			netConn, err := dialer(ctx, net, addr)
+			if err != nil {
+				return nil, err
+			}
+			atomic.AddInt32(&client.connCount, 1)
+			return conn{netConn, client}, nil
+		},
+		MaxIdleConns:        1000,
+		MaxIdleConnsPerHost: 1000,
+		IdleConnTimeout:     5 * time.Second,
+	}
+	client.httpClient.Transport = client.transport
+	return client
+}
+
+func (c *client) connectionCount() int {
+	return int(atomic.LoadInt32(&c.connCount))
+}
+
+type conn struct {
+	net.Conn
+	client *client
+}
+
+func (c conn) Close() error {
+	return c.Conn.Close()
 }
 
 func (c *client) Do(req *httpfile.Request) (*httpfile.Response, error) {
@@ -413,12 +525,12 @@ func (c *client) Do(req *httpfile.Request) (*httpfile.Response, error) {
 	for key, val := range req.Header {
 		hreq.Header[key] = val
 	}
-	hresp, err := http.DefaultClient.Do(hreq)
+	hresp, err := c.httpClient.Do(hreq)
 	if err != nil {
 		return nil, err
 	}
-	c.c.Logf("sent request %v %q", req.Method, req.Header)
-	c.c.Logf("-> %v [%d] %q", hresp.StatusCode, hresp.ContentLength, hresp.Header)
+	//	c.c.Logf("sent request %v %q", req.Method, req.Header)
+	//	c.c.Logf("-> %v [%d] %q", hresp.StatusCode, hresp.ContentLength, hresp.Header)
 	return &httpfile.Response{
 		StatusCode:    hresp.StatusCode,
 		Header:        hresp.Header,
@@ -441,29 +553,49 @@ func assertNoRequest(c *gc.C, requestc chan readRequest) {
 	select {
 	case <-requestc:
 		c.Fatalf("got request when none was expected")
-	case <-time.After(10 * time.Millisecond):
+	case <-time.After(100 * time.Millisecond):
 	}
 }
 
+// readRequest holds details of a request made to fakeReadServer.
 type readRequest struct {
+	// Request holds the HTTP request used.
 	*http.Request
+
+	// doneRead holds whether any actual data has been requested.
 	doneRead bool
-	p0, p1   int64
+
+	// [p0, p1) is the byte range requested with the read request.
+	p0, p1 int64
 }
 
+// fakeReadServer is an HTTP server that serves some
+// content with http.ServeContent.
 type fakeReadServer struct {
+	// content holds the content to be served.
 	content []byte
+
+	// If request is non-nil, it is sent on when a request is completed.
 	request chan readRequest
 }
 
 func (srv *fakeReadServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	time.Sleep(time.Millisecond)
+	// Prevent ServeContent from sniffing into the content
+	// and confusing our rangeRecorder.
+	w.Header().Set("Content-Type", "application/binary")
+
 	rec := newRangeRecorder(bytes.NewReader(srv.content))
 	w.Header().Set("Etag", fmt.Sprintf(`"%x"`, md5.Sum(srv.content)))
 
 	// Use a SectionReader to make a ReadSeeker out of our
 	// rangeRecord (which is a ReaderAt).
 	r := io.NewSectionReader(rec, 0, int64(len(srv.content)))
-	http.ServeContent(w, req, "x.gif", time.Now(), r)
+
+	http.ServeContent(w, req, "x", time.Now(), r)
+	if srv.request == nil {
+		return
+	}
 	select {
 	case srv.request <- readRequest{
 		Request:  req,
@@ -476,15 +608,6 @@ func (srv *fakeReadServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// contentRangeServer returns an http.Server that
-// always responds with the given Content-Range header.
-func contentRangeServer(contentRange string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Content-Range", contentRange)
-		w.WriteHeader(http.StatusPartialContent)
-	})
-}
-
 type rangeRecorder struct {
 	r        io.ReaderAt
 	p0, p1   int64
@@ -493,19 +616,6 @@ type rangeRecorder struct {
 
 func newRangeRecorder(r io.ReaderAt) *rangeRecorder {
 	return &rangeRecorder{r: r}
-}
-
-// assertRange asserts that the given range of bytes has
-// been read since the last time that assertRange was
-// called or the rangeRecorder was created.
-func (r *rangeRecorder) assertRange(c *gc.C, p0, p1 int64) {
-	if !r.doneRead {
-		c.Fatalf("nothing has been read")
-	}
-	if r.p0 != p0 || r.p1 != p1 {
-		c.Fatalf("unexpected read range; got [%d %d] want [%d %d]", r.p0, r.p1, p0, p1)
-	}
-	r.doneRead = false
 }
 
 func (r *rangeRecorder) ReadAt(buf []byte, p0 int64) (int, error) {
