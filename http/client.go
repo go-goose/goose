@@ -24,6 +24,10 @@ import (
 const (
 	contentTypeJSON        = "application/json"
 	contentTypeOctetStream = "application/octet-stream"
+	// maxBufSize holds the maximum amount of data
+	// that may be allocated as a buffer when sending
+	// a request when the body is not seekable.
+	maxBufSize = 1024 * 1024 * 1024
 )
 
 type Client struct {
@@ -65,8 +69,15 @@ type RequestData struct {
 	Params         *url.Values
 	ExpectedStatus []int
 	ReqValue       interface{}
-	ReqReader      io.Reader
-	ReqLength      int
+	// ReqReader is used to read the body of the request.
+	// If it does not implement io.Seeker, the entire
+	// body will be read into memory before sending the request (so
+	// that the request can be retried if needed) otherwise
+	// Seek will be used to rewind the request on retry.
+	ReqReader io.Reader
+
+	// TODO this should really be int64 not int.
+	ReqLength int
 
 	RespStatusCode int
 	RespValue      interface{}
@@ -133,50 +144,47 @@ func createHeaders(extraHeaders http.Header, contentType, authToken string, payl
 // ExpectedStatus: the allowed HTTP response status values, else an error is returned.
 // ReqValue: the data object to send.
 // RespValue: the data object to decode the result into.
-func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, logger logging.CompatLogger) (err error) {
-	err = nil
-	var body []byte
+func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, logger logging.CompatLogger) error {
+	var body io.Reader
+	var length int64
 	if reqData.Params != nil {
 		url += "?" + reqData.Params.Encode()
 	}
 	if reqData.ReqValue != nil {
-		body, err = json.Marshal(reqData.ReqValue)
+		data, err := json.Marshal(reqData.ReqValue)
 		if err != nil {
-			err = errors.Newf(err, "failed marshalling the request body")
-			return
+			return errors.Newf(err, "failed marshalling the request body")
 		}
+		body = bytes.NewReader(data)
+		length = int64(len(data))
 	}
-	headers := createHeaders(reqData.ReqHeaders, contentTypeJSON, token, len(body) != 0)
+	headers := createHeaders(reqData.ReqHeaders, contentTypeJSON, token, reqData.ReqValue != nil)
 	resp, err := c.sendRequest(
 		method,
 		url,
-		bytes.NewReader(body),
-		len(body),
+		body,
+		length,
 		headers,
 		reqData.ExpectedStatus,
 		logging.FromCompat(logger),
 	)
 	if err != nil {
-		return
+		return err
 	}
 	reqData.RespHeaders = resp.Header
 	reqData.RespStatusCode = resp.StatusCode
 	defer resp.Body.Close()
 	respData, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		err = errors.Newf(err, "failed reading the response body")
-		return
+		return errors.Newf(err, "failed reading the response body")
 	}
 
-	if len(respData) > 0 {
-		if reqData.RespValue != nil {
-			err = json.Unmarshal(respData, &reqData.RespValue)
-			if err != nil {
-				err = errors.Newf(err, "failed unmarshaling the response body: %s", respData)
-			}
+	if len(respData) > 0 && reqData.RespValue != nil {
+		if err := json.Unmarshal(respData, &reqData.RespValue); err != nil {
+			return errors.Newf(err, "failed unmarshaling the response body: %s", respData)
 		}
 	}
-	return
+	return nil
 }
 
 // BinaryRequest sends the byte array in reqData.ReqValue (if any) to
@@ -199,7 +207,7 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 		method,
 		url,
 		reqData.ReqReader,
-		reqData.ReqLength,
+		int64(reqData.ReqLength),
 		headers,
 		reqData.ExpectedStatus,
 		logging.FromCompat(logger),
@@ -236,21 +244,17 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 // expectedStatus: a slice of allowed response status codes.
 func (c *Client) sendRequest(
 	method, URL string,
-	reqReader io.Reader,
-	length int,
+	reqReader0 io.Reader,
+	length int64,
 	headers http.Header,
 	expectedStatus []int,
 	logger logging.Logger,
 ) (*http.Response, error) {
-	reqData := make([]byte, length)
-	if reqReader != nil {
-		nrRead, err := io.ReadFull(reqReader, reqData)
-		if err != nil {
-			err = errors.Newf(err, "failed reading the request data, read %v of %v bytes", nrRead, length)
-			return nil, err
-		}
+	reqReader, err := seekable(reqReader0, length)
+	if err != nil {
+		return nil, err
 	}
-	rawResp, err := c.sendRateLimitedRequest(method, URL, headers, reqData, logger)
+	rawResp, err := c.sendRateLimitedRequest(method, URL, headers, reqReader, length, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -272,28 +276,51 @@ func (c *Client) sendRequest(
 	return rawResp, err
 }
 
+func seekable(r io.Reader, length int64) (io.ReadSeeker, error) {
+	if r == nil {
+		return nil, nil
+	}
+	if r, ok := r.(io.ReadSeeker); ok {
+		return r, nil
+	}
+	if length > maxBufSize {
+		return nil, fmt.Errorf("body of length %d is too large to hold in memory (max %d bytes)", length, maxBufSize)
+	}
+	reqData := make([]byte, int(length))
+	nrRead, err := io.ReadFull(r, reqData)
+	if err != nil {
+		return nil, errors.Newf(err, "failed reading the request data, read %v of %v bytes", nrRead, length)
+	}
+	return bytes.NewReader(reqData), nil
+}
+
 func (c *Client) sendRateLimitedRequest(
 	method, URL string,
 	headers http.Header,
-	reqData []byte,
+	reqReader io.ReadSeeker,
+	length int64,
 	logger logging.Logger,
 ) (resp *http.Response, err error) {
 	for i := 0; i < c.maxSendAttempts; i++ {
-		var reqReader io.Reader
-		if reqData != nil {
-			reqReader = bytes.NewReader(reqData)
+		var body io.ReadCloser
+		var notifier closeNotifier
+		if reqReader != nil {
+			notifier = make(closeNotifier)
+			body = struct {
+				io.Closer
+				io.Reader
+			}{notifier, reqReader}
 		}
-		req, err := http.NewRequest(method, URL, reqReader)
+		req, err := http.NewRequest(method, URL, body)
 		if err != nil {
-			err = errors.Newf(err, "failed creating the request %s", URL)
-			return nil, err
+			return nil, errors.Newf(err, "failed creating the request %s", URL)
 		}
 		for header, values := range headers {
 			for _, value := range values {
 				req.Header.Add(header, value)
 			}
 		}
-		req.ContentLength = int64(len(reqData))
+		req.ContentLength = length
 		resp, err = c.Do(req)
 		if err != nil {
 			return nil, errors.Newf(err, "failed executing the request %s", URL)
@@ -320,8 +347,34 @@ func (c *Client) sendRateLimitedRequest(
 		}
 		logger.Debugf("Too many requests, retrying in %dms.", int(retryAfter*1000))
 		time.Sleep(time.Duration(retryAfter) * time.Second)
+		if reqReader != nil {
+			// Wait for body to be closed - if we don't, then it could be used
+			// concurrently.
+			<-notifier
+			if _, err := reqReader.Seek(0, 0); err != nil {
+				return nil, fmt.Errorf("cannot seek to start of body: %v", err)
+			}
+		}
 	}
 	return nil, errors.Newf(err, "Maximum number of attempts (%d) reached sending request to %s", c.maxSendAttempts, URL)
+}
+
+type nopReader struct{}
+
+func (nopReader) Read(buf []byte) (int, error) {
+	return 0, io.EOF
+}
+
+type closeNotifier chan struct{}
+
+func (c closeNotifier) Close() error {
+	select {
+	case <-c:
+		return nil
+	default:
+	}
+	close(c)
+	return nil
 }
 
 type HttpError struct {

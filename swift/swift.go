@@ -115,6 +115,11 @@ func (c *Client) PutObject(containerName, objectName string, data []byte) error 
 }
 
 // PutReader writes, or overwrites, an object's content and metadata.
+// The object's content will be read from r, and should have
+// the given length. If r does not implement io.Seeker, the entire
+// content will be read into memory before sending the request (so
+// that the request can be retried if needed) otherwise
+// Seek will be used to rewind the request on retry.
 func (c *Client) PutReader(containerName, objectName string, r io.Reader, length int64) error {
 	return c.sendRequest(&objectRequest{
 		method:    client.PUT,
