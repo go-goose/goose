@@ -1,10 +1,13 @@
 package http
 
 import (
-	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
+	"strings"
+	"time"
 
 	gc "gopkg.in/check.v1"
 
@@ -101,7 +104,7 @@ func (s *HTTPClientTestSuite) TestBinaryRequestSetsContentLength(c *gc.C) {
 	content := "binary\ncontent\n"
 	req := &RequestData{
 		ExpectedStatus: []int{http.StatusNoContent},
-		ReqReader:      bytes.NewBufferString(content),
+		ReqReader:      strings.NewReader(content),
 		ReqLength:      len(content),
 	}
 	err := client.BinaryRequest("POST", s.Server.URL, "", req, nil)
@@ -170,6 +173,75 @@ func (s *HTTPClientTestSuite) TestJSONRequestSetsToken(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	agent := headers.Get("X-Auth-Token")
 	c.Check(agent, gc.Equals, "token")
+}
+
+func (s *HTTPClientTestSuite) TestRetry(c *gc.C) {
+	count := 0
+	var t0 time.Time
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		data, _ := ioutil.ReadAll(req.Body)
+		c.Check(string(data), gc.Equals, "request body")
+		count++
+		switch count {
+		case 1:
+			t0 = time.Now()
+			w.Header().Set("Retry-After", "1")
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		case 2:
+			if waitDuration := time.Since(t0); waitDuration < time.Second {
+				c.Errorf("client did not wait long enough (expected 1s got %v)", waitDuration)
+			}
+			w.Write([]byte(`hello`))
+		default:
+			c.Errorf("handler too many times")
+		}
+	}))
+	defer srv.Close()
+	client := New()
+	req := &RequestData{
+		ExpectedStatus: []int{http.StatusOK},
+		ReqReader:      strings.NewReader("request body"),
+		ReqLength:      len("request body"),
+		RespReader:     nopReadCloser{},
+	}
+	err := client.BinaryRequest("POST", srv.URL, "", req, nil)
+	c.Assert(err, gc.Equals, nil)
+	c.Assert(count, gc.Equals, 2)
+
+	defer req.RespReader.Close()
+	data, _ := ioutil.ReadAll(req.RespReader)
+	c.Assert(string(data), gc.Equals, "hello")
+
+	// Try without a seeker for the request body.
+	count = 0
+	req = &RequestData{
+		ExpectedStatus: []int{http.StatusOK},
+		ReqReader:      struct{ io.Reader }{strings.NewReader("request body")},
+		ReqLength:      len("request body"),
+		RespReader:     nopReadCloser{},
+	}
+	err = client.BinaryRequest("POST", srv.URL, "", req, nil)
+	c.Assert(err, gc.Equals, nil)
+	c.Assert(count, gc.Equals, 2)
+
+	defer req.RespReader.Close()
+	data, _ = ioutil.ReadAll(req.RespReader)
+	c.Assert(string(data), gc.Equals, "hello")
+}
+
+func (s *HTTPClientTestSuite) TestResourceLimitExceeded(c *gc.C) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Retry-After", "0")
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+	client := New()
+	req := &RequestData{
+		ExpectedStatus: []int{http.StatusOK},
+	}
+	err := client.JsonRequest("POST", srv.URL, "", req, nil)
+	c.Assert(err, gc.ErrorMatches, `Resource limit exeeded at URL http://.*`)
 }
 
 type HTTPSClientTestSuite struct {
@@ -241,4 +313,14 @@ func (s *HTTPSClientTestSuite) TestBrokenBodyJSONUnmarshalling(c *gc.C) {
 	c.Assert(err, gc.NotNil)
 	c.Assert(unmarshalled, gc.IsNil)
 	c.Check(err, gc.ErrorMatches, `Unparsable json error body: \"{\\\"itemNotFound\\\": {}}\"`)
+}
+
+type nopReadCloser struct{}
+
+func (nopReadCloser) Read([]byte) (int, error) {
+	return 0, io.EOF
+}
+
+func (nopReadCloser) Close() error {
+	return nil
 }
