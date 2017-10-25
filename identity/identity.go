@@ -123,8 +123,9 @@ var (
 		"OS_PROJECT_NAME",
 		"OS_TENANT_NAME",
 		"NOVA_PROJECT_ID",
+		"OS_PROJECT_ID",
+		"OS_TENANT_ID",
 	}
-
 	// The following env vars are set according to what type
 	// of keystone v3 domain authorization is required.
 	CredEnvDefaultDomainName = []string{
