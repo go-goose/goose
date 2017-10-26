@@ -66,6 +66,7 @@ func New() *NeutronModel {
 			SubnetIds:         []string{"998-01"},
 			External:          true,
 			AvailabilityZones: []string{"test-available"},
+			TenantId:          "tenant-one",
 		},
 		{
 			Id:                "997",
@@ -73,6 +74,7 @@ func New() *NeutronModel {
 			SubnetIds:         []string{"997-01"},
 			External:          true,
 			AvailabilityZones: []string{"unavailable-az"},
+			TenantId:          "tenant-two",
 		},
 	}
 

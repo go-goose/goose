@@ -555,7 +555,15 @@ func (n *Neutron) handleFloatingIPs(w http.ResponseWriter, r *http.Request) erro
 			}{*fip}
 			return sendJSON(http.StatusOK, resp, w, r)
 		}
-		fips := n.allFloatingIPs()
+		f := make(filter)
+		if err := r.ParseForm(); err == nil && len(r.Form) > 0 {
+			for filterKey, filterValues := range r.Form {
+				for _, value := range filterValues {
+					f[filterKey] = value
+				}
+			}
+		}
+		fips := n.allFloatingIPs(f)
 		if len(fips) == 0 {
 			fips = []neutron.FloatingIPV2{}
 		}

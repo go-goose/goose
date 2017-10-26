@@ -26,6 +26,7 @@ const (
 const (
 	FilterRouterExternal = "router:external" // The router:external
 	FilterNetwork        = "name"            // The network name.
+	FilterProjectId      = "project_id"      // The project id
 )
 
 // NetworkV2 contains details about a labeled network
@@ -160,12 +161,20 @@ type FloatingIPV2 struct {
 }
 
 // ListFloatingIPsV2 lists floating IP addresses associated with the tenant or account.
-func (c *Client) ListFloatingIPsV2() ([]FloatingIPV2, error) {
+// Zero or one Filters accepted, any more will be ignored.
+//
+// TODO(hml): when this package revs to a new version, make this the same as other
+// methods with Filters.  We don't want to break compatibility at this time or rev
+// the package at this time.
+func (c *Client) ListFloatingIPsV2(filter ...*Filter) ([]FloatingIPV2, error) {
 	var resp struct {
 		FloatingIPV2s []FloatingIPV2 `json:"floatingips"`
 	}
-
-	requestData := goosehttp.RequestData{RespValue: &resp}
+	var params *url.Values
+	if len(filter) > 0 {
+		params = &filter[0].v
+	}
+	requestData := goosehttp.RequestData{RespValue: &resp, Params: params}
 	err := c.client.SendRequest(client.GET, "network", "v2.0", ApiFloatingIPsV2, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to list floating ips")
