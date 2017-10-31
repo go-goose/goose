@@ -197,6 +197,37 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvKeypairCompatibleEn
 	c.Check(creds.Domain, gc.Equals, "domain-name")
 }
 
+func (s *CredentialsTestSuite) TestCompleteCredentialsCheckProjectNameAliasVars(c *gc.C) {
+	env := map[string]string{
+		// required env vars
+		"OS_AUTH_URL":     "http://auth",
+		"NOVA_API_KEY":    "test-access-key",
+		"EC2_SECRET_KEYS": "test-secret-key",
+		"OS_REGION_NAME":  "region",
+
+		// project Name Aliases
+		"OS_PROJECT_NAME": "project-name",
+		"OS_TENANT_NAME":  "tenant-name",
+		"NOVA_PROJECT_ID": "nova-project-id",
+		"OS_PROJECT_ID":   "project-id",
+		"OS_TENANT_ID":    "tenant-id",
+	}
+
+	for key, value := range env {
+		os.Setenv(key, value)
+	}
+
+	// Environment variables aliases are checked and set in the order
+	// defined by their `Cred` slices. The first one found to be set and to
+	// a value other than empty string is used.
+	for _, key := range CredEnvTenantName {
+		creds, err := CompleteCredentialsFromEnv()
+		c.Assert(err, gc.IsNil)
+		c.Check(creds.TenantName, gc.Equals, env[key])
+		os.Unsetenv(key)
+	}
+}
+
 func (s *NewAuthenticatorSuite) TestUserPassNoHTTPClient(c *gc.C) {
 	auth := NewAuthenticator(AuthUserPass, nil)
 	userAuth, ok := auth.(*UserPass)
