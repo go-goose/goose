@@ -338,15 +338,33 @@ func (c *Client) sendRateLimitedRequest(
 			return resp, nil
 		}
 		resp.Body.Close()
-		retryAfter, err := strconv.ParseFloat(resp.Header.Get("Retry-After"), 32)
-		if err != nil {
-			return nil, errors.Newf(err, "Invalid Retry-After header %s", URL)
+		respRetryAfter := resp.Header.Get("Retry-After")
+		// Per: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Retry-After
+		// Retry-After can be: <delay-seconds> or <http-date>
+		// Try <delay-seconds> first
+		if retryAfter, err := strconv.ParseFloat(respRetryAfter, 32); err == nil {
+			if retryAfter == 0 {
+				return nil, errors.Newf(err, "Resource limit exeeded at URL %s", URL)
+			}
+			logger.Debugf("Too many requests, retrying in %dms.", int(retryAfter*1000))
+			time.Sleep(time.Duration(retryAfter) * time.Second)
+		} else {
+			// Failed on assuming <delay-seconds>, try <http-date>
+			// http-date: <day-name>, <day> <month> <year> <hour>:<minute>:<second> GMT
+			// time.RFC1123 = "Mon, 02 Jan 2006 15:04:05 MST"
+			httpDate, err := time.Parse(time.RFC1123, respRetryAfter)
+			if err != nil {
+				return nil, errors.Newf(err, "Invalid Retry-After header %s", URL)
+			}
+			sleepDuration := time.Until(httpDate)
+			if sleepDuration.Minutes() > 10 {
+				logger.Debugf("Cloud is not accepting further requests from this account until %s", httpDate.Local().Format(time.UnixDate))
+				logger.Debugf("It is recommended to verify your account rate limits")
+				return nil, errors.Newf(err, "Cloud is not accepting further requests from this account until %s", httpDate.Local().Format(time.UnixDate))
+			}
+			logger.Debugf("Too many requests, retrying after %s", httpDate.Local().Format(time.UnixDate))
+			time.Sleep(sleepDuration)
 		}
-		if retryAfter == 0 {
-			return nil, errors.Newf(err, "Resource limit exeeded at URL %s", URL)
-		}
-		logger.Debugf("Too many requests, retrying in %dms.", int(retryAfter*1000))
-		time.Sleep(time.Duration(retryAfter) * time.Second)
 		if reqReader != nil {
 			// Wait for body to be closed - if we don't, then it could be used
 			// concurrently.
