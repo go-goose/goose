@@ -175,7 +175,9 @@ func (s *HTTPClientTestSuite) TestJSONRequestSetsToken(c *gc.C) {
 	c.Check(agent, gc.Equals, "token")
 }
 
-func (s *HTTPClientTestSuite) TestRetry(c *gc.C) {
+func (s *HTTPClientTestSuite) testRetryAfter(c *gc.C,
+	retryAfter func(*time.Time, http.ResponseWriter),
+	verifyWait func(time.Time) (time.Duration, bool)) {
 	count := 0
 	var t0 time.Time
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -185,11 +187,11 @@ func (s *HTTPClientTestSuite) TestRetry(c *gc.C) {
 		switch count {
 		case 1:
 			t0 = time.Now()
-			w.Header().Set("Retry-After", "1")
+			retryAfter(&t0, w)
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		case 2:
-			if waitDuration := time.Since(t0); waitDuration < time.Second {
+			if waitDuration, fail := verifyWait(t0); fail {
 				c.Errorf("client did not wait long enough (expected 1s got %v)", waitDuration)
 			}
 			w.Write([]byte(`hello`))
@@ -230,9 +232,32 @@ func (s *HTTPClientTestSuite) TestRetry(c *gc.C) {
 	c.Assert(string(data), gc.Equals, "hello")
 }
 
-func (s *HTTPClientTestSuite) TestResourceLimitExceeded(c *gc.C) {
+func (s *HTTPClientTestSuite) TestRetryDelaySeconds(c *gc.C) {
+	retryAfter := func(_ *time.Time, w http.ResponseWriter) {
+		w.Header().Set("Retry-After", "1")
+	}
+	verifyWait := func(t time.Time) (time.Duration, bool) {
+		waitDuration := time.Since(t)
+		return waitDuration, waitDuration < time.Second
+	}
+	s.testRetryAfter(c, retryAfter, verifyWait)
+}
+
+func (s *HTTPClientTestSuite) TestRetryHttpDate(c *gc.C) {
+	retryAfter := func(t *time.Time, w http.ResponseWriter) {
+		*t = t.Add(time.Duration(1) * time.Second)
+		w.Header().Set("Retry-After", t.Format(time.RFC1123))
+	}
+	verifyWait := func(t time.Time) (time.Duration, bool) {
+		return time.Duration(1) * time.Second, time.Now().Unix() < t.Unix()
+	}
+	s.testRetryAfter(c, retryAfter, verifyWait)
+
+}
+
+func (s *HTTPClientTestSuite) testRetryAfterCheckLimits(c *gc.C, retryAfter, errorMatch string) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Retry-After", "0")
+		w.Header().Set("Retry-After", retryAfter)
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
 	defer srv.Close()
@@ -241,7 +266,19 @@ func (s *HTTPClientTestSuite) TestResourceLimitExceeded(c *gc.C) {
 		ExpectedStatus: []int{http.StatusOK},
 	}
 	err := client.JsonRequest("POST", srv.URL, "", req, nil)
-	c.Assert(err, gc.ErrorMatches, `Resource limit exeeded at URL http://.*`)
+	c.Assert(err, gc.ErrorMatches, errorMatch)
+}
+
+func (s *HTTPClientTestSuite) TestResourceLimitExceeded(c *gc.C) {
+	s.testRetryAfterCheckLimits(c, "0", `Resource limit exeeded at URL http://.*`)
+}
+
+func (s *HTTPClientTestSuite) TestHttpDateTenMinutes(c *gc.C) {
+	t0 := time.Now()
+	t0 = t0.Add(time.Duration(11) * time.Minute)
+	s.testRetryAfterCheckLimits(c,
+		t0.Format(time.RFC1123),
+		fmt.Sprintf(`Cloud is not accepting further requests from this account until %s`, t0.Format(time.UnixDate)))
 }
 
 type HTTPSClientTestSuite struct {
