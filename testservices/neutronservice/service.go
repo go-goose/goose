@@ -240,9 +240,49 @@ func (n *Neutron) floatingIPByAddr(address string) (*neutron.FloatingIPV2, error
 	return n.neutronModel.FloatingIPByAddr(address)
 }
 
+// matchFloatingIPs returns a list of matching FloatingIPs, after applying the
+// given filter. Each separate filter is combined with a logical AND.
+// Each filter can have only one value. A nil filter matches all FloatingIPs.
+//
+// This is tested to match OpenStack behavior. Regular expression
+// matching is supported for FilterProjectId only, and the supported
+// syntax is limited to whatever DB backend is used (see SQL
+// REGEXP/RLIKE).
+//
+// Example:
+//
+// f := filter{
+//     neutron.FilterProjectId: `foo.*`,
+// }
+//
+// This will match all FloatingIPs with project_id starting
+// with "foo".
+func (n *Neutron) matchFloatingIPs(f filter) []neutron.FloatingIPV2 {
+	fips := n.neutronModel.AllFloatingIPs()
+	if len(f) == 0 {
+		return fips
+	}
+	if projectId := f[neutron.FilterProjectId]; projectId != "" {
+		matched := []neutron.FloatingIPV2{}
+		externalNetworks, err := n.matchNetworks(filter{neutron.FilterRouterExternal: "true"})
+		if err != nil {
+			return fips
+		}
+		for _, fip := range fips {
+			for _, network := range externalNetworks {
+				if fip.FloatingNetworkId == network.Id && projectId == network.TenantId {
+					matched = append(matched, fip)
+				}
+			}
+		}
+		fips = matched
+	}
+	return fips
+}
+
 // allFloatingIPs returns a list of all created floating IPs.
-func (n *Neutron) allFloatingIPs() []neutron.FloatingIPV2 {
-	return n.neutronModel.AllFloatingIPs()
+func (n *Neutron) allFloatingIPs(f filter) []neutron.FloatingIPV2 {
+	return n.matchFloatingIPs(f)
 }
 
 // removeFloatingIP deletes an existing floating IP by ID.
@@ -253,7 +293,7 @@ func (n *Neutron) removeFloatingIP(ipId string) error {
 	return n.neutronModel.RemoveFloatingIP(ipId)
 }
 
-// filter is used internally by matchNetworks.
+// filter is used internally by matchNetworks and matchFloatingIPs.
 type filter map[string]string
 
 // matchNetworks returns a list of matching networks, after applying the

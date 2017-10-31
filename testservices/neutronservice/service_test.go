@@ -385,7 +385,7 @@ func (s *NeutronSuite) TestRemoveFloatingIPTwiceFails(c *gc.C) {
 }
 
 func (s *NeutronSuite) TestAllFloatingIPs(c *gc.C) {
-	fips := s.service.allFloatingIPs()
+	fips := s.service.allFloatingIPs(nil)
 	c.Assert(fips, gc.HasLen, 0)
 	fips = []neutron.FloatingIPV2{
 		{Id: "1"},
@@ -395,12 +395,41 @@ func (s *NeutronSuite) TestAllFloatingIPs(c *gc.C) {
 	defer s.deleteIP(c, fips[0])
 	s.createIP(c, fips[1])
 	defer s.deleteIP(c, fips[1])
-	ips := s.service.allFloatingIPs()
+	ips := s.service.allFloatingIPs(nil)
 	c.Assert(ips, gc.HasLen, len(fips))
 	if ips[0].Id != fips[0].Id {
 		ips[0], ips[1] = ips[1], ips[0]
 	}
 	c.Assert(ips, gc.DeepEquals, fips)
+}
+
+func (s *NeutronSuite) TestAllFloatingIPsWithFilter(c *gc.C) {
+	newNets := []neutron.NetworkV2{
+		{Id: "75", Name: "ListNetwork75", External: true, SubnetIds: []string{}, TenantId: "tenant-one"},
+		{Id: "42", Name: "ListNetwork42", External: true, SubnetIds: []string{}, TenantId: "tenant-two"},
+	}
+	err := s.service.addNetwork(newNets[0])
+	c.Assert(err, gc.IsNil)
+	defer s.service.removeNetwork(newNets[0].Id)
+	err = s.service.addNetwork(newNets[1])
+	c.Assert(err, gc.IsNil)
+	defer s.service.removeNetwork(newNets[1].Id)
+
+	fips := []neutron.FloatingIPV2{
+		{Id: "1", FloatingNetworkId: "75"},
+		{Id: "2", FloatingNetworkId: "42"},
+	}
+	s.createIP(c, fips[0])
+	defer s.deleteIP(c, fips[0])
+	s.createIP(c, fips[1])
+	defer s.deleteIP(c, fips[1])
+
+	f := filter{
+		neutron.FilterProjectId: "tenant-two",
+	}
+	filteredFips := s.service.allFloatingIPs(f)
+	c.Assert(filteredFips, gc.HasLen, 1)
+	c.Assert(filteredFips[0].Id, gc.DeepEquals, fips[1].Id)
 }
 
 func (s *NeutronSuite) TestGetFloatingIP(c *gc.C) {

@@ -676,7 +676,7 @@ func (s *NeutronHTTPSuite) TestDeleteSecurityGroupRule(c *gc.C) {
 func (s *NeutronHTTPSuite) TestPostFloatingIPV2(c *gc.C) {
 	// network 998 has External = true
 	fip := neutron.FloatingIPV2{Id: "1", IP: "10.0.0.1", FloatingNetworkId: "998"}
-	c.Assert(s.service.allFloatingIPs(), gc.HasLen, 0)
+	c.Assert(s.service.allFloatingIPs(nil), gc.HasLen, 0)
 	var req struct {
 		IP neutron.FloatingIPV2 `json:"floatingip"`
 	}
@@ -698,7 +698,7 @@ func (s *NeutronHTTPSuite) TestPostFloatingIPV2(c *gc.C) {
 }
 
 func (s *NeutronHTTPSuite) TestGetFloatingIPs(c *gc.C) {
-	c.Assert(s.service.allFloatingIPs(), gc.HasLen, 0)
+	c.Assert(s.service.allFloatingIPs(nil), gc.HasLen, 0)
 	var expected struct {
 		IPs []neutron.FloatingIPV2 `json:"floatingips"`
 	}

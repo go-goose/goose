@@ -91,6 +91,43 @@ func (s *LiveTests) TestFloatingIPsV2(c *gc.C) {
 	c.Assert(err, gc.Not(gc.IsNil))
 }
 
+// For the purposes of this test, project_id and tenant_id are
+// interchangable.
+func (s *LiveTests) TestFloatingIPsV2WithFilter(c *gc.C) {
+	filter := neutron.NewFilter()
+	filter.Set(neutron.FilterRouterExternal, "true")
+	networks, err := s.neutron.ListNetworksV2(filter)
+	c.Assert(err, gc.IsNil)
+	if len(networks) < 2 {
+		c.Errorf("at least two external neutron networks are necessary for this test")
+	}
+
+	network0 := networks[0]
+	c.Assert(network0, gc.Not(gc.Equals), "")
+	network1 := networks[1]
+	c.Assert(network1, gc.Not(gc.Equals), "")
+	c.Assert(network0.TenantId, gc.Not(gc.Equals), network1.TenantId)
+
+	fipNetworkOne, err := s.neutron.AllocateFloatingIPV2(network0.Id)
+	c.Assert(err, gc.IsNil)
+	defer s.neutron.DeleteFloatingIPV2(fipNetworkOne.Id)
+	c.Assert(fipNetworkOne, gc.Not(gc.IsNil))
+	c.Check(fipNetworkOne.FloatingNetworkId, gc.Equals, network0.Id)
+
+	fipNetworkTwo, err := s.neutron.AllocateFloatingIPV2(network1.Id)
+	c.Assert(err, gc.IsNil)
+	defer s.neutron.DeleteFloatingIPV2(fipNetworkTwo.Id)
+	c.Assert(fipNetworkTwo, gc.Not(gc.IsNil))
+	c.Check(fipNetworkTwo.FloatingNetworkId, gc.Equals, network1.Id)
+
+	filter = neutron.NewFilter()
+	filter.Set(neutron.FilterProjectId, network1.TenantId)
+	ips, err := s.neutron.ListFloatingIPsV2(filter)
+	c.Assert(err, gc.IsNil)
+	c.Assert(ips, gc.HasLen, 1)
+	c.Assert(ips[0].FloatingNetworkId, gc.Equals, network1.Id)
+}
+
 func (s *LiveTests) TestListNetworksV2(c *gc.C) {
 	networks, err := s.neutron.ListNetworksV2()
 	c.Assert(err, gc.IsNil)
