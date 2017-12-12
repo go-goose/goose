@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	goosehttp "gopkg.in/goose.v2/http"
 )
 
 // Basic returns a basic Cinder client which will handle authorization
@@ -46,14 +48,23 @@ func NewClient(tenantId string, endpoint *url.URL, handleRequest RequestHandlerF
 		changedEndpoint.Path += "/"
 		endpoint = &changedEndpoint
 	}
-	return &Client{tenantId, endpoint, handleRequest}
+	httpClient := goosehttp.New()
+	httpClient.Client = http.Client{Transport: handleRequest}
+	return &Client{tenantId, endpoint, httpClient}
 }
 
 // Client is a Cinder client.
 type Client struct {
-	tenantId      string
-	endpoint      *url.URL
-	handleRequest RequestHandlerFn
+	tenantId string
+	endpoint *url.URL
+	client   *goosehttp.Client
+}
+
+// TODO(axw) update all callers of handleRequest
+// to use c.client.JsonRequest instead, so we can
+// benefit from the common goose error handling.
+func (c *Client) handleRequest(req *http.Request) (*http.Response, error) {
+	return c.client.Do(req)
 }
 
 // GetSnapshot shows information for a specified snapshot.
