@@ -15,12 +15,20 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+
+	"gopkg.in/goose.v2/client"
+	goosehttp "gopkg.in/goose.v2/http"
 )
 
 // RequestHandlerFn specifies a function signature which wadl2go will
 // use to process the http.Request. What this means is up to the
 // implementor.
 type RequestHandlerFn func(*http.Request) (*http.Response, error)
+
+// RoundTrip is part of the http.RoundTripper interface.
+func (f RequestHandlerFn) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
 
 type UpdateVolumeTypeParams struct {
 
@@ -503,50 +511,18 @@ type GetVolumeResults struct {
 // Preconditions
 //
 // The specified volume must exist. :
-func getVolume(client *Client, args GetVolumeParams) (*GetVolumeResults, error) {
-
-	argsAsJson, err := json.Marshal(args)
-	if err != nil {
-		return nil, err
-	}
-
-	urlPath := url.URL{Path: fmt.Sprintf("volumes/%s", args.VolumeId)}
-	url := client.endpoint.ResolveReference(&urlPath).String()
-
-	var req *http.Request
-	if string(argsAsJson) != "{}" {
-		req, err = http.NewRequest("GET", url, bytes.NewBuffer(argsAsJson))
-		if err != nil {
-			return nil, err
-		}
-		req.Header.Set("Content-Type", "application/json")
-	} else {
-		req, err = http.NewRequest("GET", url, nil)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	resp, err := client.handleRequest(req)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	switch resp.StatusCode {
-	default:
-		return nil, fmt.Errorf("invalid status (%d): %s", resp.StatusCode, body)
-	case 200:
-		break
-	}
-
+func getVolume(c *Client, args GetVolumeParams) (*GetVolumeResults, error) {
 	var results GetVolumeResults
-	json.Unmarshal(body, &results)
-
+	requestData := goosehttp.RequestData{
+		RespValue:      &results,
+		ExpectedStatus: []int{http.StatusOK},
+	}
+	urlPath := url.URL{Path: fmt.Sprintf("volumes/%s", args.VolumeId)}
+	url := c.endpoint.ResolveReference(&urlPath).String()
+	err := c.client.JsonRequest(client.GET, url, "", &requestData, nil)
+	if err != nil {
+		return nil, err
+	}
 	return &results, nil
 }
 
@@ -655,50 +631,18 @@ type DeleteVolumeResults struct {
 //
 // If volume status remains in deleting or becomes error_deleting the request failed. Ensure you meet the preconditions then investigate the storage backend.
 // The volume managed by OpenStack Block Storage is not deleted from the storage system. :
-func deleteVolume(client *Client, args DeleteVolumeParams) (*DeleteVolumeResults, error) {
-
-	argsAsJson, err := json.Marshal(args)
-	if err != nil {
-		return nil, err
-	}
-
-	urlPath := url.URL{Path: fmt.Sprintf("volumes/%s", args.VolumeId)}
-	url := client.endpoint.ResolveReference(&urlPath).String()
-
-	var req *http.Request
-	if string(argsAsJson) != "{}" {
-		req, err = http.NewRequest("DELETE", url, bytes.NewBuffer(argsAsJson))
-		if err != nil {
-			return nil, err
-		}
-		req.Header.Set("Content-Type", "application/json")
-	} else {
-		req, err = http.NewRequest("DELETE", url, nil)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	resp, err := client.handleRequest(req)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	switch resp.StatusCode {
-	default:
-		return nil, fmt.Errorf("invalid status (%d): %s", resp.StatusCode, body)
-	case 202:
-		break
-	}
-
+func deleteVolume(c *Client, args DeleteVolumeParams) (*DeleteVolumeResults, error) {
 	var results DeleteVolumeResults
-	json.Unmarshal(body, &results)
-
+	requestData := goosehttp.RequestData{
+		RespValue:      &results,
+		ExpectedStatus: []int{http.StatusAccepted},
+	}
+	urlPath := url.URL{Path: fmt.Sprintf("volumes/%s", args.VolumeId)}
+	url := c.endpoint.ResolveReference(&urlPath).String()
+	err := c.client.JsonRequest(client.DELETE, url, "", &requestData, nil)
+	if err != nil {
+		return nil, err
+	}
 	return &results, nil
 }
 

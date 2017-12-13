@@ -798,11 +798,6 @@ func (c *Client) AttachVolume(serverId, volumeId, device string) (*VolumeAttachm
 	}
 	url := fmt.Sprintf("%s/%s/%s", apiServers, serverId, apiVolumeAttachments)
 	err := c.client.SendRequest(client.POST, "compute", "v2", url, &requestData)
-	if errors.IsNotFound(err) {
-		return nil, errors.NewNotImplementedf(
-			err, nil, "the server does not support attaching volumes",
-		)
-	}
 	if err != nil {
 		return nil, errors.Newf(err, "failed to attach volume")
 	}
@@ -817,11 +812,6 @@ func (c *Client) DetachVolume(serverId, attachmentId string) error {
 	}
 	url := fmt.Sprintf("%s/%s/%s/%s", apiServers, serverId, apiVolumeAttachments, attachmentId)
 	err := c.client.SendRequest(client.DELETE, "compute", "v2", url, &requestData)
-	if errors.IsNotFound(err) {
-		return errors.NewNotImplementedf(
-			err, nil, "the server does not support deleting attached volumes",
-		)
-	}
 	if err != nil {
 		return errors.Newf(err, "failed to delete volume attachment")
 	}
@@ -840,11 +830,6 @@ func (c *Client) ListVolumeAttachments(serverId string) ([]VolumeAttachment, err
 	}
 	url := fmt.Sprintf("%s/%s/%s", apiServers, serverId, apiVolumeAttachments)
 	err := c.client.SendRequest(client.GET, "compute", "v2", url, &requestData)
-	if errors.IsNotFound(err) {
-		return nil, errors.NewNotImplementedf(
-			err, nil, "the server does not support listing attached volumes",
-		)
-	}
 	if err != nil {
 		return nil, errors.Newf(err, "failed to list volume attachments")
 	}

@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/goose.v2/errors"
 	"gopkg.in/goose.v2/neutron"
 	"gopkg.in/goose.v2/nova"
 	"gopkg.in/goose.v2/testservices"
@@ -1313,7 +1312,8 @@ func (n *Nova) handleDetachVolumes(w http.ResponseWriter, r *http.Request) error
 		}
 	}
 
-	return errors.NewNotFoundf(nil, nil, "no such attachment id: %v", attachId)
+	writeResponse(w, http.StatusNotFound, nil)
+	return nil
 }
 
 func (n *Nova) handleListVolumes(w http.ResponseWriter, r *http.Request) error {

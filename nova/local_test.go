@@ -317,4 +317,9 @@ func (s *localLiveSuite) TestVolumeAttachments(c *gc.C) {
 	volAttachments, err = s.nova.ListVolumeAttachments(instance.Id)
 	c.Assert(err, gc.IsNil)
 	c.Assert(volAttachments, gc.HasLen, 0)
+
+	// Test detaching unattached volume.
+	err = s.nova.DetachVolume(instance.Id, volAttachment.Id)
+	c.Assert(err, gc.NotNil)
+	c.Assert(errors.IsNotFound(err), gc.Equals, true)
 }
