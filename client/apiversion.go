@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	gooseerrors "gopkg.in/goose.v2/errors"
 	goosehttp "gopkg.in/goose.v2/http"
 	"gopkg.in/goose.v2/logging"
 )
@@ -67,6 +66,14 @@ func getAPIVersionURL(apiURLVersionInfo *apiURLVersion, requested apiVersion) (s
 		return "", fmt.Errorf("could not find matching URL")
 	}
 	versionURL := apiURLVersionInfo.rootURL
+
+	// https://bugs.launchpad.net/juju/+bug/1756135:
+	// some hrefURL.Path contain more than the version, with
+	// overlap on the apiURLVersionInfo.rootURL
+	if strings.HasPrefix(match, "/"+versionURL.Path) {
+		versionURL.Path = "/"
+	}
+
 	versionURL.Path = path.Join(versionURL.Path, match, apiURLVersionInfo.serviceURLSuffix)
 	return versionURL.String(), nil
 }
@@ -141,6 +148,17 @@ func unmarshallVersion(Versions json.RawMessage) ([]apiVersionInfo, error) {
 // in which case this method will return an empty set of versions in the result
 // structure.
 func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURLVersion, error) {
+	c.apiVersionMu.Lock()
+	defer c.apiVersionMu.Unlock()
+	logger := logging.FromCompat(c.logger)
+
+	// Make sure we haven't already received the version info.
+	// Cache done on serviceCatalogURL, https://<url.Host> is not
+	// guarenteed to be unique.
+	if apiInfo, ok := c.apiURLVersions[serviceCatalogURL]; ok {
+		return apiInfo, nil
+	}
+
 	url, err := url.Parse(serviceCatalogURL)
 	if err != nil {
 		return nil, err
@@ -151,24 +169,46 @@ func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURL
 	// API version-specific base URL.
 	var pathParts, origPathParts []string
 	if url.Path != "/" {
-		// The rackspace object-store endpoint triggers the version removal here,
-		// so keep the original parts for object-store and container endpoints.
+		// If a version is included in the serviceCatalogURL, the
+		// part before the version will end up in url, the part after
+		// the version will end up in pathParts.  origPathParts is a
+		// special case for "object-store"
 		// e.g. https://storage101.dfw1.clouddrive.com/v1/MossoCloudFS_1019383
+		// https://x.x.x.x/image
+		// https://x.x.x.x/cloudformation/v1
+		// https://x.x.x.x/compute/v2/9032a0051293421eb20b64da69d46252
+		// http://y.y.y.y:9292
+		// http://y.y.y.y:8774/v2/010ab46135ba414882641f663ec917b6
 		origPathParts = strings.Split(strings.Trim(url.Path, "/"), "/")
 		pathParts = origPathParts
-		if _, err := parseVersion(pathParts[0]); err == nil {
-			pathParts = pathParts[1:]
+		found := false
+		for i, p := range pathParts {
+			if _, err := parseVersion(p); err == nil {
+				found = true
+				if i == 0 {
+					pathParts = pathParts[1:]
+					url.Path = "/"
+				} else {
+					url.Path = pathParts[0] + "/"
+					pathParts = pathParts[2:]
+				}
+				break
+			}
 		}
-		url.Path = "/"
+		if !found {
+			url.Path = path.Join(pathParts...) + "/"
+			pathParts = []string{}
+		}
 	}
 
-	baseURL := url.String()
+	getVersionURL := url.String()
 
 	// If this is an object-store serviceType, or an object-store container endpoint,
 	// there is no list version API call to make. Return a apiURLVersion which will
 	// satisfy a requested api version of "", "v1" or "v1.0"
 	if c.serviceURLs["object-store"] != "" && strings.Contains(serviceCatalogURL, c.serviceURLs["object-store"]) {
-		objectStoreLink := apiVersionLink{Href: baseURL, Rel: "self"}
+		url.Path = "/"
+		objectStoreLink := apiVersionLink{Href: url.String(), Rel: "self"}
 		objectStoreApiVersionInfo := []apiVersionInfo{
 			{
 				Version: apiVersion{major: 1, minor: 0},
@@ -181,18 +221,10 @@ func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURL
 				Status:  "stable",
 			},
 		}
-		return &apiURLVersion{*url, strings.Join(origPathParts, "/"), objectStoreApiVersionInfo}, nil
+		apiURLVersionInfo := &apiURLVersion{*url, strings.Join(origPathParts, "/"), objectStoreApiVersionInfo}
+		c.apiURLVersions[serviceCatalogURL] = apiURLVersionInfo
+		return apiURLVersionInfo, nil
 	}
-
-	// Make sure we haven't already received the version info.
-	c.apiVersionMu.Lock()
-	defer c.apiVersionMu.Unlock()
-	if apiInfo, ok := c.apiURLVersions[baseURL]; ok {
-		return apiInfo, nil
-	}
-
-	logger := logging.FromCompat(c.logger)
-	logger.Debugf("performing API version discovery for %q", baseURL)
 
 	var raw struct {
 		Versions json.RawMessage `json:"versions"`
@@ -208,27 +240,23 @@ func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURL
 		rootURL:          *url,
 		serviceURLSuffix: strings.Join(pathParts, "/"),
 	}
-	if err := c.sendRequest("GET", baseURL, c.Token(), requestData); err != nil {
-		if gooseerrors.IsNotFound(err) {
-			// Some OpenStack clouds do not support the
-			// version endpoint, and will return a status
-			// code of 404. We check for 404 and return an
-			// empty set of versions.
-			logger.Warningf("API version discovery failed: %v", err)
-			c.apiURLVersions[baseURL] = apiURLVersionInfo
-			return apiURLVersionInfo, nil
-		}
-		return nil, err
+	if err := c.sendRequest("GET", getVersionURL, c.Token(), requestData); err != nil {
+		logger.Debugf("API version discovery failed: %v", err)
+		c.apiURLVersions[serviceCatalogURL] = apiURLVersionInfo
+		return apiURLVersionInfo, nil
 	}
 
 	versions, err := unmarshallVersion(raw.Versions)
 	if err != nil {
-		return nil, err
+		logger.Debugf("API version discovery unmarshallVersion failed: %v", err)
+		c.apiURLVersions[serviceCatalogURL] = apiURLVersionInfo
+		return apiURLVersionInfo, nil
 	}
 	apiURLVersionInfo.versions = versions
 	logger.Debugf("discovered API versions: %+v", versions)
 
 	// Cache the result.
-	c.apiURLVersions[baseURL] = apiURLVersionInfo
+	c.apiURLVersions[serviceCatalogURL] = apiURLVersionInfo
+
 	return apiURLVersionInfo, nil
 }
