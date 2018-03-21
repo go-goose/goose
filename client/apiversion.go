@@ -39,7 +39,7 @@ type apiURLVersion struct {
 // the rootURL and the serviceURLSuffix.  If there is no match to the requested API
 // version an error is returned.  If only the major number is defined for the requested
 // version, the first match found is returned.
-func getAPIVersionURL(apiURLVersionInfo *apiURLVersion, requested apiVersion) (string, error) {
+func (c *authenticatingClient) getAPIVersionURL(apiURLVersionInfo *apiURLVersion, requested apiVersion) (string, error) {
 	var match string
 	for _, v := range apiURLVersionInfo.versions {
 		if v.Version.major != requested.major {
@@ -71,6 +71,8 @@ func getAPIVersionURL(apiURLVersionInfo *apiURLVersion, requested apiVersion) (s
 	// some hrefURL.Path contain more than the version, with
 	// overlap on the apiURLVersionInfo.rootURL
 	if strings.HasPrefix(match, "/"+versionURL.Path) {
+		logger := logging.FromCompat(c.logger)
+		logger.Tracef("version href path %q overlaps with url path %q, using version href", match, versionURL.Path)
 		versionURL.Path = "/"
 	}
 
@@ -174,11 +176,19 @@ func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURL
 		// the version will end up in pathParts.  origPathParts is a
 		// special case for "object-store"
 		// e.g. https://storage101.dfw1.clouddrive.com/v1/MossoCloudFS_1019383
+		// 		becomes: https://storage101.dfw1.clouddrive.com/ and MossoCloudFS_1019383
 		// https://x.x.x.x/image
+		// 		becomes: https://x.x.x.x/image/
 		// https://x.x.x.x/cloudformation/v1
+		// 		becomes: https://x.x.x.x/cloudformation/
 		// https://x.x.x.x/compute/v2/9032a0051293421eb20b64da69d46252
+		// 		becomes: https://x.x.x.x/compute/ and 9032a0051293421eb20b64da69d46252
+		// https://x.x.x.x/volumev1/v2
+		// 		becomes: https://x.x.x.x/volumev1/
 		// http://y.y.y.y:9292
+		// 		becomes: http://y.y.y.y:9292/
 		// http://y.y.y.y:8774/v2/010ab46135ba414882641f663ec917b6
+		//		becomes: http://y.y.y.y:8774/ and 010ab46135ba414882641f663ec917b6
 		origPathParts = strings.Split(strings.Trim(url.Path, "/"), "/")
 		pathParts = origPathParts
 		found := false
@@ -200,6 +210,7 @@ func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURL
 			pathParts = []string{}
 		}
 	}
+	logger.Tracef("api version will be inserted between %q and %q", url.String(), path.Join(pathParts...)+"/")
 
 	getVersionURL := url.String()
 
@@ -241,7 +252,7 @@ func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURL
 		serviceURLSuffix: strings.Join(pathParts, "/"),
 	}
 	if err := c.sendRequest("GET", getVersionURL, c.Token(), requestData); err != nil {
-		logger.Debugf("API version discovery failed: %v", err)
+		logger.Warningf("API version discovery failed: %v", err)
 		c.apiURLVersions[serviceCatalogURL] = apiURLVersionInfo
 		return apiURLVersionInfo, nil
 	}

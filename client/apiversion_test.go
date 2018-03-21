@@ -142,6 +142,14 @@ func (s *localLiveSuite) makeServiceURLTests() []makeServiceURLTest {
 			success:     true,
 			URL:         "http://localhost:%s/compute/v2.1/servers/",
 		},
+		{
+			// See https://bugs.launchpad.net/juju/+bug/1756135
+			serviceType: "compute4",
+			version:     "v2",
+			parts:       []string{"servers/"},
+			success:     true,
+			URL:         "http://localhost:%s/computev1/v2.1/servers/",
+		},
 	}
 }
 

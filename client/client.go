@@ -250,9 +250,9 @@ func (c *authenticatingClient) MakeServiceURL(serviceType, apiVersion string, pa
 
 	defer func() {
 		if returnURL != "" {
-			logger.Tracef("MakeServiceURL: %s",returnURL)
+			logger.Tracef("MakeServiceURL: %s", returnURL)
 		}
-	} ()
+	}()
 
 	if apiVersion == "" || !c.isAPIVersionDiscoveryEnabled() {
 		return makeURL(serviceURL, parts), nil
@@ -273,7 +273,7 @@ func (c *authenticatingClient) MakeServiceURL(serviceType, apiVersion string, pa
 		logger.Warningf("falling back to catalogue service URL")
 		return makeURL(serviceURL, parts), nil
 	}
-	serviceURL, err = getAPIVersionURL(apiURLVersionInfo, requestedVersion)
+	serviceURL, err = c.getAPIVersionURL(apiURLVersionInfo, requestedVersion)
 	if err != nil {
 		return "", err
 	}
