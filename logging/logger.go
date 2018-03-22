@@ -26,6 +26,7 @@ type CompatLogger interface {
 type Logger interface {
 	Debugf(format string, v ...interface{})
 	Warningf(format string, v ...interface{})
+	Tracef(format string, v ...interface{})
 }
 
 // LoggoLogger is a logger that may be provided when constructing
@@ -55,6 +56,11 @@ func (a CompatLoggerAdapter) Debugf(format string, v ...interface{}) {
 // Warningf is part of the Logger interface.
 func (a CompatLoggerAdapter) Warningf(format string, v ...interface{}) {
 	a.Printf("WARNING: "+format, v...)
+}
+
+// Tracef is part of the Logger interface.
+func (a CompatLoggerAdapter) Tracef(format string, v ...interface{}) {
+	a.Printf("TRACE: "+format, v...)
 }
 
 // FromCompat takes a CompatLogger, and returns a Logger. This function

@@ -225,6 +225,12 @@ func (auth *fakeAuthenticator) Auth(creds *identity.Credentials) (*identity.Auth
 	URLs := make(map[string]identity.ServiceURLs)
 	endpoints := make(map[string]string)
 	endpoints["compute"] = fmt.Sprintf("http://localhost:%s", auth.port)
+	// Special case for https://bugs.launchpad.net/juju/+bug/1756135
+	endpoints["compute2"] = fmt.Sprintf("http://localhost:%s/v2/010ab46135ba414882641f663ec917b6", auth.port)
+	// Special case for https://bugs.launchpad.net/juju/+bug/1756135
+	endpoints["compute3"] = fmt.Sprintf("http://localhost:%s/compute", auth.port)
+	// Special case for https://bugs.launchpad.net/juju/+bug/1756135
+	endpoints["compute4"] = fmt.Sprintf("http://localhost:%s/computev1/v2", auth.port)
 	endpoints["object-store"] = fmt.Sprintf("http://localhost:%s/swift/v1", auth.port)
 	endpoints["juju-container-test"] = fmt.Sprintf("http://localhost:%s/swift/v1", auth.port)
 	URLs[creds.Region] = endpoints

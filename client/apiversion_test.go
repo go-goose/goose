@@ -118,6 +118,38 @@ func (s *localLiveSuite) makeServiceURLTests() []makeServiceURLTest {
 			success:     false,
 			err:         "no endpoints known for service type: no-such-service",
 		},
+		{
+			// See https://bugs.launchpad.net/juju/+bug/1756135
+			serviceType: "compute2",
+			version:     "v2.1",
+			parts:       []string{"servers/"},
+			success:     true,
+			URL:         "http://localhost:%s/v2.1/010ab46135ba414882641f663ec917b6/servers/",
+		},
+		{
+			// See https://bugs.launchpad.net/juju/+bug/1756135
+			serviceType: "compute3",
+			version:     "v4.2",
+			parts:       []string{"servers/"},
+			success:     true,
+			URL:         "http://localhost:%s/compute/v4.2/servers/",
+		},
+		{
+			// See https://bugs.launchpad.net/juju/+bug/1756135
+			serviceType: "compute3",
+			version:     "v2",
+			parts:       []string{"servers/"},
+			success:     true,
+			URL:         "http://localhost:%s/compute/v2.1/servers/",
+		},
+		{
+			// See https://bugs.launchpad.net/juju/+bug/1756135
+			serviceType: "compute4",
+			version:     "v2",
+			parts:       []string{"servers/"},
+			success:     true,
+			URL:         "http://localhost:%s/computev1/v2.1/servers/",
+		},
 	}
 }
 
@@ -189,13 +221,15 @@ func (s *localLiveSuite) TestMakeServiceURLValues(c *gc.C) {
 const authInformationBody = `{"versions": [` +
 	`{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v3.4", "links": [{"href": "%s/v3/", "rel": "self"}]},` +
 	`{"status": "stable", "updated": "2014-04-17T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v2.0+json"}], "id": "v2.0", "links": [{"href": "%s/v2.0/", "rel": "self"}, {"href": "http://docs.openstack.org/", "type": "text/html", "rel": "describedby"}]},` +
-	`{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v2.1", "links": [{"href": "%s/v2.1/", "rel": "self"}]}` +
+	`{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v2.1", "links": [{"href": "%s/v2.1/", "rel": "self"}]},` +
+	`{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v4.2", "links": [{"href": "%s/compute/v4.2/", "rel": "self"}]}` +
 	`]}`
 
 const authValuesInformationBody = `{"versions": {"values": [` +
 	`{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v3.4", "links": [{"href": "%s/v3/", "rel": "self"}]},` +
 	`{"status": "stable", "updated": "2014-04-17T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v2.0+json"}], "id": "v2.0", "links": [{"href": "%s/v2.0/", "rel": "self"}, {"href": "http://docs.openstack.org/", "type": "text/html", "rel": "describedby"}]},` +
-	`{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v2.1", "links": [{"href": "%s/v2.1/", "rel": "self"}]}` +
+	`{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v2.1", "links": [{"href": "%s/v2.1/", "rel": "self"}]},` +
+	`{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v4.2", "links": [{"href": "%s/compute/v4.2/", "rel": "self"}]}` +
 	`]}}`
 
 func (vh *versionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -206,7 +240,7 @@ func (vh *versionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(body))
 		return
 	}
-	body := []byte(fmt.Sprintf(vh.authBody, "http://localhost:"+vh.port, "http://localhost:"+vh.port, "http://localhost:"+vh.port))
+	body := []byte(fmt.Sprintf(vh.authBody, "http://localhost:"+vh.port, "http://localhost:"+vh.port, "http://localhost:"+vh.port, "http://localhost:"+vh.port))
 	// workaround for https://code.google.com/p/go/issues/detail?id=4454
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	w.WriteHeader(http.StatusMultipleChoices)

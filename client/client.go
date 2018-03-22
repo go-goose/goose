@@ -238,14 +238,22 @@ func (c *authenticatingClient) sendAuthRequest(
 // object-store and container service types have no versions. For these services, the
 // caller may pass "" for apiVersion, to use the service catalogue URL without any
 // version discovery.
-func (c *authenticatingClient) MakeServiceURL(serviceType, apiVersion string, parts []string) (string, error) {
+func (c *authenticatingClient) MakeServiceURL(serviceType, apiVersion string, parts []string) (returnURL string, _ error) {
 	if !c.IsAuthenticated() {
 		return "", errors.New("cannot get endpoint URL without being authenticated")
 	}
+	logger := logging.FromCompat(c.logger)
 	serviceURL, ok := c.serviceURLs[serviceType]
 	if !ok {
 		return "", errors.New("no endpoints known for service type: " + serviceType)
 	}
+
+	defer func() {
+		if returnURL != "" {
+			logger.Tracef("MakeServiceURL: %s", returnURL)
+		}
+	}()
+
 	if apiVersion == "" || !c.isAPIVersionDiscoveryEnabled() {
 		return makeURL(serviceURL, parts), nil
 	}
@@ -262,11 +270,10 @@ func (c *authenticatingClient) MakeServiceURL(serviceType, apiVersion string, pa
 		// so just use the service URL as if discovery were
 		// disabled. This isn't guaranteed to result in a valid
 		// endpoint, but it's the best we can do.
-		logger := logging.FromCompat(c.logger)
 		logger.Warningf("falling back to catalogue service URL")
 		return makeURL(serviceURL, parts), nil
 	}
-	serviceURL, err = getAPIVersionURL(apiURLVersionInfo, requestedVersion)
+	serviceURL, err = c.getAPIVersionURL(apiURLVersionInfo, requestedVersion)
 	if err != nil {
 		return "", err
 	}
