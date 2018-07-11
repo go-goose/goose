@@ -113,6 +113,14 @@ func NewNonSSLValidating() *Client {
 	return &Client{*httpClient, MaxSendAttempts}
 }
 
+func NewWithTLSConfig(tlsConfig *tls.Config) *Client {
+	defaultClient := *http.DefaultClient
+	defaultClient.Transport = &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+	return &Client{defaultClient, MaxSendAttempts}
+}
+
 func gooseAgent() string {
 	return fmt.Sprintf("goose (%s)", goose.Version)
 }
@@ -311,6 +319,7 @@ func (c *Client) sendRateLimitedRequest(
 				io.Reader
 			}{notifier, reqReader}
 		}
+
 		req, err := http.NewRequest(method, URL, body)
 		if err != nil {
 			return nil, errors.Newf(err, "failed creating the request %s", URL)

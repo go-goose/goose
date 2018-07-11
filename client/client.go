@@ -1,6 +1,7 @@
 package client
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/url"
@@ -169,12 +170,16 @@ func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpC
 	return &client
 }
 
-func NewClient(creds *identity.Credentials, auth_method identity.AuthMode, logger logging.CompatLogger) AuthenticatingClient {
-	return newClient(creds, auth_method, sharedHttpClient, logger)
+func NewClient(creds *identity.Credentials, authMethod identity.AuthMode, logger logging.CompatLogger) AuthenticatingClient {
+	return newClient(creds, authMethod, sharedHttpClient, logger)
 }
 
-func NewNonValidatingClient(creds *identity.Credentials, auth_method identity.AuthMode, logger logging.CompatLogger) AuthenticatingClient {
-	return newClient(creds, auth_method, goosehttp.NewNonSSLValidating(), logger)
+func NewNonValidatingClient(creds *identity.Credentials, authMethod identity.AuthMode, logger logging.CompatLogger) AuthenticatingClient {
+	return newClient(creds, authMethod, goosehttp.NewNonSSLValidating(), logger)
+}
+
+func NewClientTLSConfig(creds *identity.Credentials, authMethod identity.AuthMode, logger logging.CompatLogger, config *tls.Config) AuthenticatingClient {
+	return newClient(creds, authMethod, goosehttp.NewWithTLSConfig(config), logger)
 }
 
 func (c *client) sendRequest(method, url, token string, requestData *goosehttp.RequestData) (err error) {
