@@ -7,12 +7,20 @@ import (
 	"strconv"
 	"strings"
 
+	"crypto/x509"
 	"gopkg.in/goose.v2/identity"
 	"gopkg.in/goose.v2/testservices/identityservice"
 	"gopkg.in/goose.v2/testservices/neutronmodel"
 	"gopkg.in/goose.v2/testservices/neutronservice"
 	"gopkg.in/goose.v2/testservices/novaservice"
 	"gopkg.in/goose.v2/testservices/swiftservice"
+)
+
+const (
+	Identity = "identity"
+	Neutron  = "neutron"
+	Nova     = "nova"
+	Swift    = "swift"
 )
 
 // Openstack provides an Openstack service double implementation.
@@ -54,10 +62,10 @@ func New(cred *identity.Credentials, authMode identity.AuthMode, useTLS bool) (*
 		server = httptest.NewServer(nil)
 	}
 	logMsgs = append(logMsgs, "swift service started: "+server.URL)
-	openstack.muxes["swift"] = http.NewServeMux()
-	server.Config.Handler = openstack.muxes["swift"]
-	openstack.URLs["swift"] = server.URL
-	openstack.servers["swift"] = server
+	openstack.muxes[Swift] = http.NewServeMux()
+	server.Config.Handler = openstack.muxes[Swift]
+	openstack.URLs[Swift] = server.URL
+	openstack.servers[Swift] = server
 
 	// Create the swift service using only the region base so we emulate real world deployments.
 	regionParts := strings.Split(cred.Region, ".")
@@ -138,29 +146,29 @@ func NewNoSwift(cred *identity.Credentials, authMode identity.AuthMode, useTLS b
 
 	if useTLS {
 		openstack.servers = map[string]*httptest.Server{
-			"identity": httptest.NewTLSServer(nil),
-			"neutron":  httptest.NewTLSServer(nil),
-			"nova":     httptest.NewTLSServer(nil),
+			Identity: httptest.NewTLSServer(nil),
+			Neutron:  httptest.NewTLSServer(nil),
+			Nova:     httptest.NewTLSServer(nil),
 		}
 	} else {
 		openstack.servers = map[string]*httptest.Server{
-			"identity": httptest.NewServer(nil),
-			"neutron":  httptest.NewServer(nil),
-			"nova":     httptest.NewServer(nil),
+			Identity: httptest.NewServer(nil),
+			Neutron:  httptest.NewServer(nil),
+			Nova:     httptest.NewServer(nil),
 		}
 	}
 
 	openstack.muxes = map[string]*http.ServeMux{
-		"identity": http.NewServeMux(),
-		"neutron":  http.NewServeMux(),
-		"nova":     http.NewServeMux(),
+		Identity: http.NewServeMux(),
+		Neutron:  http.NewServeMux(),
+		Nova:     http.NewServeMux(),
 	}
 
 	for k, v := range openstack.servers {
 		v.Config.Handler = openstack.muxes[k]
 	}
 
-	cred.URL = openstack.servers["identity"].URL
+	cred.URL = openstack.servers[Identity].URL
 	openstack.URLs = make(map[string]string)
 	var logMsgs []string
 	for k, v := range openstack.servers {
@@ -168,10 +176,19 @@ func NewNoSwift(cred *identity.Credentials, authMode identity.AuthMode, useTLS b
 		logMsgs = append(logMsgs, k+" service started: "+openstack.URLs[k])
 	}
 
-	openstack.Nova = novaservice.New(openstack.URLs["nova"], "v2", userInfo.TenantId, cred.Region, openstack.Identity, openstack.FallbackIdentity)
-	openstack.Neutron = neutronservice.New(openstack.URLs["neutron"], "v2.0", userInfo.TenantId, cred.Region, openstack.Identity, openstack.FallbackIdentity)
+	openstack.Nova = novaservice.New(openstack.URLs[Nova], "v2", userInfo.TenantId, cred.Region, openstack.Identity, openstack.FallbackIdentity)
+	openstack.Neutron = neutronservice.New(openstack.URLs[Neutron], "v2.0", userInfo.TenantId, cred.Region, openstack.Identity, openstack.FallbackIdentity)
 
 	return &openstack, logMsgs
+}
+
+// Certificate returns the x509 certificate of the specified service.
+func (openstack *Openstack) Certificate(serviceName string) (*x509.Certificate, error) {
+	service, ok := openstack.servers[serviceName]
+	if ok {
+		return service.Certificate(), nil
+	}
+	return nil, fmt.Errorf("%q not a running service", serviceName)
 }
 
 // UseNeutronNetworking sets up the openstack service to use neutron networking.
@@ -185,23 +202,23 @@ func (openstack *Openstack) UseNeutronNetworking() {
 
 // SetupHTTP attaches all the needed handlers to provide the HTTP API for the Openstack service..
 func (openstack *Openstack) SetupHTTP(mux *http.ServeMux) {
-	openstack.Identity.SetupHTTP(openstack.muxes["identity"])
+	openstack.Identity.SetupHTTP(openstack.muxes[Identity])
 	// If there is a FallbackIdentity service also register its urls.
 	if openstack.FallbackIdentity != nil {
-		openstack.FallbackIdentity.SetupHTTP(openstack.muxes["identity"])
+		openstack.FallbackIdentity.SetupHTTP(openstack.muxes[Identity])
 	}
-	openstack.Neutron.SetupHTTP(openstack.muxes["neutron"])
-	openstack.Nova.SetupHTTP(openstack.muxes["nova"])
+	openstack.Neutron.SetupHTTP(openstack.muxes[Neutron])
+	openstack.Nova.SetupHTTP(openstack.muxes[Nova])
 	if openstack.Swift != nil {
-		openstack.Swift.SetupHTTP(openstack.muxes["swift"])
+		openstack.Swift.SetupHTTP(openstack.muxes[Swift])
 	}
 
 	// Handle root calls to be able to return auth information.
 	// Neutron and Nova services must handle api version information.
 	// Swift has no list version api call to make
 	openstack.muxes["identity"].Handle("/", openstack)
-	openstack.Nova.SetupRootHandler(openstack.muxes["nova"])
-	openstack.Neutron.SetupRootHandler(openstack.muxes["neutron"])
+	openstack.Nova.SetupRootHandler(openstack.muxes[Nova])
+	openstack.Neutron.SetupRootHandler(openstack.muxes[Neutron])
 }
 
 // Stop closes the Openstack service double http Servers and clears the
@@ -231,7 +248,7 @@ func (openstack *Openstack) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	body := []byte(fmt.Sprintf(authInformationBody, openstack.URLs["identity"], openstack.URLs["identity"]))
+	body := []byte(fmt.Sprintf(authInformationBody, openstack.URLs[Identity], openstack.URLs[Identity]))
 	// workaround for https://code.google.com/p/go/issues/detail?id=4454
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	w.WriteHeader(http.StatusMultipleChoices)
