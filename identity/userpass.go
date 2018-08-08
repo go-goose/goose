@@ -12,6 +12,7 @@ type passwordCredentials struct {
 type authRequest struct {
 	PasswordCredentials passwordCredentials `json:"passwordCredentials"`
 	TenantName          string              `json:"tenantName"`
+	TenantID            string              `json:"tenantID"`
 }
 
 type authWrapper struct {
@@ -26,12 +27,15 @@ func (u *UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 	if u.client == nil {
 		u.client = goosehttp.New()
 	}
+	// In Keystone v2 TenantName and TenantID can be interchangeable used.
 	auth := authWrapper{Auth: authRequest{
 		PasswordCredentials: passwordCredentials{
 			Username: creds.User,
 			Password: creds.Secrets,
 		},
-		TenantName: creds.TenantName}}
+		TenantName: creds.TenantName,
+		TenantID:   creds.TenantID,
+	}}
 
 	return keystoneAuth(u.client, auth, creds.URL)
 }

@@ -58,12 +58,15 @@ type AuthDetails struct {
 }
 
 // Credentials defines necessary parameters for authentication.
+// Project and Tenant are same. Tenant is depreciated.
 type Credentials struct {
 	URL           string // The URL to authenticate against
 	User          string // The username to authenticate as
 	Secrets       string // The secrets to pass
 	Region        string // Region to send requests to
 	TenantName    string // The project name for this connection
+	TenantID      string // The project ID for this connection
+	Version       string // The Keystone version
 	Domain        string `credentials:"optional"` // The domain for authorization (new in keystone v3)
 	UserDomain    string `credentials:"optional"` // The owning domain for this user (new in keystone v3)
 	ProjectDomain string `credentials:"optional"` // The project domain for authorization (new in keystone v3)
@@ -122,9 +125,17 @@ var (
 	CredEnvTenantName = []string{
 		"OS_PROJECT_NAME",
 		"OS_TENANT_NAME",
-		"NOVA_PROJECT_ID",
-		"OS_PROJECT_ID",
+	}
+	// CredEnvTenantID is used for Credentials.TenantID.
+	CredEnvTenantID = []string{
 		"OS_TENANT_ID",
+		"OS_PROJECT_ID",
+		"NOVA_PROJECT_ID",
+	}
+	// CredEnvVersion is used for Credentials.Version.
+	CredEnvVersion = []string{
+		"OS_AUTH_VERSION",
+		"OS_IDENTITY_API_VERSION",
 	}
 	// The following env vars are set according to what type
 	// of keystone v3 domain authorization is required.
@@ -151,6 +162,8 @@ func CredentialsFromEnv() *Credentials {
 		Secrets:       getConfig(CredEnvSecrets),
 		Region:        getConfig(CredEnvRegion),
 		TenantName:    getConfig(CredEnvTenantName),
+		TenantID:      getConfig(CredEnvTenantID),
+		Version:       getConfig(CredEnvVersion),
 		Domain:        getConfig(CredEnvDomainName),
 		UserDomain:    getConfig(CredEnvUserDomainName),
 		ProjectDomain: getConfig(CredEnvProjectDomainName),
@@ -162,6 +175,22 @@ func CredentialsFromEnv() *Credentials {
 		}
 		if cred.UserDomain == "" {
 			cred.UserDomain = defaultDomain
+		}
+	}
+	var version string
+	if cred.Version == "" {
+		url := getConfig(CredEnvAuthURL)
+		if ver := url[len(url)-1:]; ver != "/" {
+			version = ver
+		} else {
+			version = url[len(url)-2 : len(cred.URL)-1]
+		}
+	}
+	if version == "2" {
+		if cred.TenantName == "" && cred.TenantID != "" {
+			cred.TenantName = cred.TenantID
+		} else if cred.TenantName != "" && cred.TenantID == "" {
+			cred.TenantID = cred.TenantName
 		}
 	}
 	return cred
@@ -177,7 +206,9 @@ func CompleteCredentialsFromEnv() (cred *Credentials, err error) {
 		f := v.Field(i)
 		tag := t.Field(i).Tag.Get("credentials")
 		if f.String() == "" && tag != "optional" {
-			err = fmt.Errorf("required environment variable not set for credentials attribute: %s", t.Field(i).Name)
+			if t.Field(i).Name != "Version" && t.Field(i).Name != "TenantID" && t.Field(i).Name != "TenantName" {
+				err = fmt.Errorf("required environment variable not set for credentials attribute: %s", t.Field(i).Name)
+			}
 		}
 	}
 	return
