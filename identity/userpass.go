@@ -37,7 +37,7 @@ func (u *UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 	if creds.TenantName == "" && creds.TenantID != "" {
 		auth.Auth.TenantName = creds.TenantID
 	} else if creds.TenantName != "" && creds.TenantID == "" {
-		creds.TenantID = creds.TenantName
+		auth.Auth.TenantName = creds.TenantName
 	}
 
 	return keystoneAuth(u.client, auth, creds.URL)
