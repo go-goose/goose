@@ -103,7 +103,7 @@ type V3TokenResponse struct {
 // Resources are owned by a specific project. A project is owned by a specific domain.
 type V3Project struct {
 	ID   string `json:"id,omitempty"`
-	Name string `json:"name, omitempty"`
+	Name string `json:"name,omitempty"`
 }
 
 // V3Domain represents an authentication domain.
@@ -205,14 +205,11 @@ func (u *V3UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		u.ReturnFailure(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if req.Auth.Scope.Project.ID != "" {
-		res.Project = &V3Project{
-			ID: u.addTenant(req.Auth.Scope.Project.ID),
-		}
-	}
 	if req.Auth.Scope.Project.Name != "" {
+		id, name := u.addTenant(req.Auth.Scope.Project.Name)
 		res.Project = &V3Project{
-			ID: u.addTenant(req.Auth.Scope.Project.Name),
+			ID:   id,
+			Name: name,
 		}
 	}
 	if req.Auth.Scope.Domain.Name != "" {

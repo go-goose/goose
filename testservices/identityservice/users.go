@@ -12,26 +12,26 @@ type Users struct {
 	tenants      map[string]string
 }
 
-func (u *Users) addTenant(tenant string) string {
+func (u *Users) addTenant(tenant string) (string, string) {
 	for id, tenantName := range u.tenants {
 		if tenant == tenantName {
-			return id
+			return id, tenantName
 		}
 	}
 	u.nextTenantId++
 	id := strconv.Itoa(u.nextTenantId)
 	u.tenants[id] = tenant
-	return id
+	return id, tenant
 }
 
 func (u *Users) AddUser(user, secret, tenant, authDomain string) *UserInfo {
-	tenantId := u.addTenant(tenant)
+	tenantId, tenantName := u.addTenant(tenant)
 	u.nextUserId++
 	userInfo := &UserInfo{
 		secret:     secret,
 		Id:         strconv.Itoa(u.nextUserId),
 		TenantId:   tenantId,
-		TenantName: tenant,
+		TenantName: tenantName,
 		authDomain: authDomain,
 	}
 	u.users[user] = *userInfo

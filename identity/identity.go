@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 
 	goosehttp "gopkg.in/goose.v2/http"
@@ -177,11 +178,12 @@ func CredentialsFromEnv() (*Credentials, error) {
 			cred.UserDomain = defaultDomain
 		}
 	}
+	var err error
 	version := getConfig(CredEnvVersion)
 	if version != "" {
-		fmt.Sscanf(version, "%d", &cred.Version)
-		if reflect.TypeOf(cred.Version).Name() != "int" {
-			return &Credentials{}, fmt.Errorf("cred.Version %v is not a valid integer type", cred.Version)
+		cred.Version, err = strconv.Atoi(version)
+		if err != nil {
+			return &Credentials{}, fmt.Errorf("cred.Version is not a valid integer type : %v", err)
 		}
 	}
 
