@@ -344,7 +344,7 @@ func (ra *readerAhead) readAt(buf []byte, p0 int64) (int, error) {
 	}
 	// Check the actual range, because it may be
 	// different from the request.
-	if p0 < ra.p0 || p0 >= ra.p1 || p0 > ra.p0+NoSkip || p0 >= ra.p1 {
+	if p0 < ra.p0 || p0 >= ra.p1 || p0 > ra.p0+NoSkip {
 		return 0, errOutOfRange
 	}
 	if p0 > ra.p0 {

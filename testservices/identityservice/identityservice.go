@@ -6,6 +6,7 @@ import "net/http"
 type IdentityService interface {
 	AddUser(user, secret, tenant, authDomain string) *UserInfo
 	FindUser(token string) (*UserInfo, error)
+	ClearToken(user string) error
 	RegisterServiceProvider(name, serviceType string, serviceProvider ServiceProvider)
 	AddService(service Service)
 	SetupHTTP(mux *http.ServeMux)

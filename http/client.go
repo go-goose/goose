@@ -18,16 +18,13 @@ import (
 
 	"gopkg.in/goose.v2"
 	"gopkg.in/goose.v2/errors"
+	"gopkg.in/goose.v2/internal/gooseio"
 	"gopkg.in/goose.v2/logging"
 )
 
 const (
 	contentTypeJSON        = "application/json"
 	contentTypeOctetStream = "application/octet-stream"
-	// maxBufSize holds the maximum amount of data
-	// that may be allocated as a buffer when sending
-	// a request when the body is not seekable.
-	maxBufSize = 1024 * 1024 * 1024
 )
 
 type Client struct {
@@ -258,7 +255,7 @@ func (c *Client) sendRequest(
 	expectedStatus []int,
 	logger logging.Logger,
 ) (*http.Response, error) {
-	reqReader, err := seekable(reqReader0, length)
+	reqReader, err := gooseio.Seekable(reqReader0, length)
 	if err != nil {
 		return nil, err
 	}
@@ -282,24 +279,6 @@ func (c *Client) sendRequest(
 		return nil, err
 	}
 	return rawResp, err
-}
-
-func seekable(r io.Reader, length int64) (io.ReadSeeker, error) {
-	if r == nil {
-		return nil, nil
-	}
-	if r, ok := r.(io.ReadSeeker); ok {
-		return r, nil
-	}
-	if length > maxBufSize {
-		return nil, fmt.Errorf("body of length %d is too large to hold in memory (max %d bytes)", length, maxBufSize)
-	}
-	reqData := make([]byte, int(length))
-	nrRead, err := io.ReadFull(r, reqData)
-	if err != nil {
-		return nil, errors.Newf(err, "failed reading the request data, read %v of %v bytes", nrRead, length)
-	}
-	return bytes.NewReader(reqData), nil
 }
 
 func (c *Client) sendRateLimitedRequest(

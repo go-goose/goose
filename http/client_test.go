@@ -14,7 +14,6 @@ import (
 	gc "gopkg.in/check.v1"
 
 	"gopkg.in/goose.v2/testing/httpsuite"
-
 )
 
 type LoopingHTTPSuite struct {
@@ -314,7 +313,7 @@ func (s *HTTPSClientTestSuite) TestInsecureClientAllowsSelfSigned(c *gc.C) {
 	c.Check(agent, gc.Equals, gooseAgent())
 }
 
-func (s * HTTPSClientTestSuite) TestTSLConfigClient(c *gc.C) {
+func (s *HTTPSClientTestSuite) TestTSLConfigClient(c *gc.C) {
 	headers, _, _ := s.setupLoopbackRequest()
 	tlsConfig := s.tlsConfig()
 	client := NewWithTLSConfig(tlsConfig)
@@ -326,22 +325,21 @@ func (s * HTTPSClientTestSuite) TestTSLConfigClient(c *gc.C) {
 	c.Check(agent, gc.Equals, gooseAgent())
 }
 
-func (s * HTTPSClientTestSuite) tlsConfig() *tls.Config{
+func (s *HTTPSClientTestSuite) tlsConfig() *tls.Config {
 	pool := x509.NewCertPool()
 	pool.AddCert(s.Server.Certificate())
 	return &tls.Config{
-		RootCAs:pool,
+		RootCAs: pool,
 	}
 }
 
-func (s * HTTPSClientTestSuite) TestTSLConfigClientNoCert(c *gc.C) {
+func (s *HTTPSClientTestSuite) TestTSLConfigClientNoCert(c *gc.C) {
 	s.setupLoopbackRequest()
 	client := NewWithTLSConfig(&tls.Config{})
 	req := &RequestData{ExpectedStatus: []int{http.StatusNoContent}}
 	err := client.BinaryRequest("POST", s.Server.URL, "", req, nil)
 	c.Check(err, gc.ErrorMatches, "(.|\\n)*x509: certificate signed by unknown authority")
 }
-
 
 func (s *HTTPSClientTestSuite) TestProperlyFormattedJsonUnmarshalling(c *gc.C) {
 	validJSON := `{"itemNotFound": {"message": "A Meaningful error", "code": 404}}`
