@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 
 	goosehttp "gopkg.in/goose.v2/http"
@@ -52,18 +53,22 @@ type ServiceURLs map[string]string
 type AuthDetails struct {
 	Token             string
 	TenantId          string
+	TenantName        string
 	UserId            string
 	Domain            string
 	RegionServiceURLs map[string]ServiceURLs // Service type to endpoint URLs for each region
 }
 
 // Credentials defines necessary parameters for authentication.
+// TODO - Tenant is deprecated, migrate attribute names to Project.
 type Credentials struct {
 	URL           string // The URL to authenticate against
 	User          string // The username to authenticate as
 	Secrets       string // The secrets to pass
 	Region        string // Region to send requests to
-	TenantName    string // The project name for this connection
+	TenantName    string `credentials:"optional"` // The project name for this connection
+	TenantID      string `credentials:"optional"` // The project ID for this connection
+	Version       int    `credentials:"optional"` // The Keystone version
 	Domain        string `credentials:"optional"` // The domain for authorization (new in keystone v3)
 	UserDomain    string `credentials:"optional"` // The owning domain for this user (new in keystone v3)
 	ProjectDomain string `credentials:"optional"` // The project domain for authorization (new in keystone v3)
@@ -122,9 +127,17 @@ var (
 	CredEnvTenantName = []string{
 		"OS_PROJECT_NAME",
 		"OS_TENANT_NAME",
-		"NOVA_PROJECT_ID",
-		"OS_PROJECT_ID",
+	}
+	// CredEnvTenantID is used for Credentials.TenantID.
+	CredEnvTenantID = []string{
 		"OS_TENANT_ID",
+		"OS_PROJECT_ID",
+		"NOVA_PROJECT_ID",
+	}
+	// CredEnvVersion is used for Credentials.Version.
+	CredEnvVersion = []string{
+		"OS_AUTH_VERSION",
+		"OS_IDENTITY_API_VERSION",
 	}
 	// The following env vars are set according to what type
 	// of keystone v3 domain authorization is required.
@@ -144,13 +157,14 @@ var (
 
 // CredentialsFromEnv creates and initializes the credentials from the
 // environment variables.
-func CredentialsFromEnv() *Credentials {
+func CredentialsFromEnv() (*Credentials, error) {
 	cred := &Credentials{
 		URL:           getConfig(CredEnvAuthURL),
 		User:          getConfig(CredEnvUser),
 		Secrets:       getConfig(CredEnvSecrets),
 		Region:        getConfig(CredEnvRegion),
 		TenantName:    getConfig(CredEnvTenantName),
+		TenantID:      getConfig(CredEnvTenantID),
 		Domain:        getConfig(CredEnvDomainName),
 		UserDomain:    getConfig(CredEnvUserDomainName),
 		ProjectDomain: getConfig(CredEnvProjectDomainName),
@@ -164,13 +178,25 @@ func CredentialsFromEnv() *Credentials {
 			cred.UserDomain = defaultDomain
 		}
 	}
-	return cred
+	version := getConfig(CredEnvVersion)
+	if version != "" {
+		var err error
+		cred.Version, err = strconv.Atoi(version)
+		if err != nil {
+			return &Credentials{}, fmt.Errorf("cred.Version is not a valid integer type : %v", err)
+		}
+	}
+
+	return cred, nil
 }
 
 // CompleteCredentialsFromEnv gets and verifies all the required
 // authentication parameters have values in the environment.
 func CompleteCredentialsFromEnv() (cred *Credentials, err error) {
-	cred = CredentialsFromEnv()
+	cred, err = CredentialsFromEnv()
+	if err != nil {
+		return &Credentials{}, err
+	}
 	v := reflect.ValueOf(cred).Elem()
 	t := v.Type()
 	for i := 0; i < v.NumField(); i++ {

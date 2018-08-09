@@ -103,16 +103,16 @@ func (u *V3UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 			},
 		},
 	}
-	if creds.TenantName != "" {
-		auth.Auth.Scope = &v3AuthScope{
-			Project: &v3AuthProject{
-				Domain: &v3AuthDomain{
-					Name: projectDomain,
-				},
-				Name: creds.TenantName,
+	auth.Auth.Scope = &v3AuthScope{
+		Project: &v3AuthProject{
+			Domain: &v3AuthDomain{
+				Name: projectDomain,
 			},
-		}
+			Name: creds.TenantName,
+			ID:   creds.TenantID,
+		},
 	}
+
 	if creds.Domain != "" {
 		auth.Auth.Scope = &v3AuthScope{
 			Domain: &v3AuthDomain{
@@ -205,6 +205,7 @@ func v3KeystoneAuth(c *goosehttp.Client, v interface{}, url string) (*AuthDetail
 	return &AuthDetails{
 		Token:             tok,
 		TenantId:          resp.Token.Project.ID,
+		TenantName:        resp.Token.Project.Name,
 		UserId:            resp.Token.User.ID,
 		Domain:            resp.Token.Domain.Name,
 		RegionServiceURLs: rsu,

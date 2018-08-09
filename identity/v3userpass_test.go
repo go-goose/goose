@@ -64,6 +64,26 @@ func (s *V3UserPassTestSuite) TestAuthToADomain(c *gc.C) {
 	c.Assert(auth.Domain, gc.Equals, "domain")
 }
 
+func (s *V3UserPassTestSuite) TestAuthToTenantNameAndTenantID(c *gc.C) {
+	service := identityservice.NewV3UserPass()
+	service.SetupHTTP(s.Mux)
+	userInfo := service.AddUser("joe-user", "secrets", "tenant", "project-domain")
+	var l Authenticator = &V3UserPass{}
+	creds := Credentials{
+		User:          "joe-user",
+		URL:           s.Server.URL + "/v3/auth/tokens",
+		Secrets:       "secrets",
+		TenantName:    "tenant",
+		TenantID:      "tenantID",
+		ProjectDomain: "project-domain",
+	}
+	auth, err := l.Auth(&creds)
+	c.Assert(err, gc.IsNil)
+	c.Assert(auth.Token, gc.Equals, userInfo.Token)
+	c.Assert(auth.TenantName, gc.Equals, userInfo.TenantName)
+	c.Assert(auth.TenantId, gc.Equals, userInfo.TenantId)
+}
+
 func (s *V3UserPassTestSuite) TestAuthWithCatalog(c *gc.C) {
 	service := identityservice.NewV3UserPass()
 	service.SetupHTTP(s.Mux)
