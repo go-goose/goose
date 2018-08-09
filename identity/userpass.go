@@ -26,18 +26,17 @@ func (u *UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 	if u.client == nil {
 		u.client = goosehttp.New()
 	}
-	// In Keystone v2 TenantName and TenantID can be interchangeable used.
+
 	auth := authWrapper{Auth: authRequest{
 		PasswordCredentials: passwordCredentials{
 			Username: creds.User,
 			Password: creds.Secrets,
 		},
-	}}
+		TenantName: creds.TenantName}}
 
-	if creds.TenantName == "" && creds.TenantID != "" {
+	// In Keystone v2 TenantName and TenantID can be interchangeable used.
+	if creds.TenantName == "" {
 		auth.Auth.TenantName = creds.TenantID
-	} else if creds.TenantName != "" && creds.TenantID == "" {
-		auth.Auth.TenantName = creds.TenantName
 	}
 
 	return keystoneAuth(u.client, auth, creds.URL)

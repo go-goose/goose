@@ -103,16 +103,14 @@ func (u *V3UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 			},
 		},
 	}
-	if creds.TenantName != "" || creds.TenantID != "" {
-		auth.Auth.Scope = &v3AuthScope{
-			Project: &v3AuthProject{
-				Domain: &v3AuthDomain{
-					Name: projectDomain,
-				},
-				Name: creds.TenantName,
-				ID:   creds.TenantID,
+	auth.Auth.Scope = &v3AuthScope{
+		Project: &v3AuthProject{
+			Domain: &v3AuthDomain{
+				Name: projectDomain,
 			},
-		}
+			Name: creds.TenantName,
+			ID:   creds.TenantID,
+		},
 	}
 	if creds.Domain != "" {
 		auth.Auth.Scope = &v3AuthScope{

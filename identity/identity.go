@@ -58,7 +58,7 @@ type AuthDetails struct {
 }
 
 // Credentials defines necessary parameters for authentication.
-// Project and Tenant are same. Tenant is depreciated.
+// TODO - Tenant is deprecated, migrate attribute names to Project.
 type Credentials struct {
 	URL           string // The URL to authenticate against
 	User          string // The username to authenticate as
@@ -155,7 +155,7 @@ var (
 
 // CredentialsFromEnv creates and initializes the credentials from the
 // environment variables.
-func CredentialsFromEnv() *Credentials {
+func CredentialsFromEnv() (*Credentials, error) {
 	cred := &Credentials{
 		URL:           getConfig(CredEnvAuthURL),
 		User:          getConfig(CredEnvUser),
@@ -176,15 +176,24 @@ func CredentialsFromEnv() *Credentials {
 			cred.UserDomain = defaultDomain
 		}
 	}
-	fmt.Sscanf(getConfig(CredEnvVersion), "%d", &cred.Version)
+	version := getConfig(CredEnvVersion)
+	if version != "" {
+		fmt.Sscanf(version, "%d", &cred.Version)
+		if reflect.TypeOf(cred.Version).Name() != "int" {
+			return &Credentials{}, fmt.Errorf("cred.Version %v is not a valid integer type", cred.Version)
+		}
+	}
 
-	return cred
+	return cred, nil
 }
 
 // CompleteCredentialsFromEnv gets and verifies all the required
 // authentication parameters have values in the environment.
 func CompleteCredentialsFromEnv() (cred *Credentials, err error) {
-	cred = CredentialsFromEnv()
+	cred, err = CredentialsFromEnv()
+	if err != nil {
+		return &Credentials{}, err
+	}
 	v := reflect.ValueOf(cred).Elem()
 	t := v.Type()
 	for i := 0; i < v.NumField(); i++ {

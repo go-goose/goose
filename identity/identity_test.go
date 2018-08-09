@@ -66,7 +66,8 @@ func (s *CredentialsTestSuite) TestCredentialsFromEnv(c *gc.C) {
 			os.Setenv(key, value)
 		}
 
-		creds := CredentialsFromEnv()
+		creds, err := CredentialsFromEnv()
+		c.Assert(err, gc.IsNil)
 		c.Check(creds.URL, gc.Equals, scenario.authURL)
 		c.Check(creds.User, gc.Equals, scenario.username)
 		c.Check(creds.Secrets, gc.Equals, scenario.password)
