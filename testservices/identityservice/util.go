@@ -10,6 +10,7 @@ import (
 type UserInfo struct {
 	Id         string
 	TenantId   string
+	TenantName string
 	Token      string
 	secret     string
 	authDomain string

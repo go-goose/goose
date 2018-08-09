@@ -52,6 +52,7 @@ type ServiceURLs map[string]string
 type AuthDetails struct {
 	Token             string
 	TenantId          string
+	TenantName        string
 	UserId            string
 	Domain            string
 	RegionServiceURLs map[string]ServiceURLs // Service type to endpoint URLs for each region

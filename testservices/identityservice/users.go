@@ -31,6 +31,7 @@ func (u *Users) AddUser(user, secret, tenant, authDomain string) *UserInfo {
 		secret:     secret,
 		Id:         strconv.Itoa(u.nextUserId),
 		TenantId:   tenantId,
+		TenantName: tenant,
 		authDomain: authDomain,
 	}
 	u.users[user] = *userInfo

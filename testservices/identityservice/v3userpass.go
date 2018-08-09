@@ -28,6 +28,7 @@ type V3UserPassRequest struct {
 		Scope struct {
 			Project struct {
 				Name   string `json:"name"`
+				ID     string `json:"id"`
 				Domain struct {
 					Name string `json:"name,omitempty"`
 				} `json:"domain,omitempty"`
@@ -101,7 +102,8 @@ type V3TokenResponse struct {
 // V3Project represent an openstack project, A project is the base unit of ownership.
 // Resources are owned by a specific project. A project is owned by a specific domain.
 type V3Project struct {
-	ID string `json:"id,omitempty"`
+	ID   string `json:"id,omitempty"`
+	Name string `json:"name, omitempty"`
 }
 
 // V3Domain represents an authentication domain.
@@ -202,6 +204,11 @@ func (u *V3UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		u.ReturnFailure(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+	if req.Auth.Scope.Project.ID != "" {
+		res.Project = &V3Project{
+			ID: u.addTenant(req.Auth.Scope.Project.ID),
+		}
 	}
 	if req.Auth.Scope.Project.Name != "" {
 		res.Project = &V3Project{
