@@ -1,6 +1,8 @@
 package swift_test
 
 import (
+	"strings"
+
 	gc "gopkg.in/check.v1"
 
 	"gopkg.in/goose.v2/identity"
@@ -65,3 +67,15 @@ func (s *localLiveSuite) TearDownTest(c *gc.C) {
 }
 
 // Additional tests to be run against the service double only go here.
+
+func (s *localLiveSuite) TestAuthenticationTokenExpire(c *gc.C) {
+	data1 := "data 1"
+	err := s.LiveTests.swift.PutReader(s.LiveTests.containerName, "test_1", strings.NewReader(data1), int64(len(data1)))
+	c.Assert(err, gc.IsNil)
+	// Clear the token to simulate it expiring.
+	err = s.openstack.Identity.ClearToken("fred")
+	c.Assert(err, gc.IsNil)
+	data2 := "data 2"
+	err = s.LiveTests.swift.PutReader(s.LiveTests.containerName, "test_2", strings.NewReader(data2), int64(len(data2)))
+	c.Assert(err, gc.IsNil)
+}

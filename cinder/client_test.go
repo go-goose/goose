@@ -136,11 +136,11 @@ func (s *CinderTestSuite) TestGetSnapshot(c *gc.C) {
 		c.Check(req.Header["X-Auth-Token"], gc.DeepEquals, []string{testToken})
 
 		resp := Snapshot{
-			CreatedAt:   testTime,
-			Description: testDescr,
-			ID:          testId,
-			Name:        testName,
-			Os_Extended_Snapshot_Attributes_Progress:  testAttrProgr,
+			CreatedAt:                                testTime,
+			Description:                              testDescr,
+			ID:                                       testId,
+			Name:                                     testName,
+			Os_Extended_Snapshot_Attributes_Progress: testAttrProgr,
 			Os_Extended_Snapshot_Attributes_ProjectID: testAttrProj,
 			Size:     1,
 			Status:   testStatus,
@@ -177,11 +177,11 @@ func (s *CinderTestSuite) TestGetSnapshotDetail(c *gc.C) {
 		c.Check(req.Header["X-Auth-Token"], gc.DeepEquals, []string{testToken})
 
 		resp := []Snapshot{{
-			CreatedAt:   testTime,
-			Description: testDescr,
-			ID:          testId,
-			Name:        testName,
-			Os_Extended_Snapshot_Attributes_Progress:  testAttrProgr,
+			CreatedAt:                                testTime,
+			Description:                              testDescr,
+			ID:                                       testId,
+			Name:                                     testName,
+			Os_Extended_Snapshot_Attributes_Progress: testAttrProgr,
 			Os_Extended_Snapshot_Attributes_ProjectID: testAttrProj,
 			Size:     1,
 			Status:   testStatus,
@@ -222,11 +222,11 @@ func (s *CinderTestSuite) TestGetSnapshotSimple(c *gc.C) {
 		c.Check(req.Header["X-Auth-Token"], gc.DeepEquals, []string{testToken})
 
 		resp := []Snapshot{{
-			CreatedAt:   testTime,
-			Description: testDescr,
-			ID:          testId,
-			Name:        testName,
-			Os_Extended_Snapshot_Attributes_Progress:  testAttrProgr,
+			CreatedAt:                                testTime,
+			Description:                              testDescr,
+			ID:                                       testId,
+			Name:                                     testName,
+			Os_Extended_Snapshot_Attributes_Progress: testAttrProgr,
 			Os_Extended_Snapshot_Attributes_ProjectID: testAttrProj,
 			Size:     1,
 			Status:   testStatus,
@@ -265,11 +265,11 @@ func (s *CinderTestSuite) TestShowSnapshotMetadata(c *gc.C) {
 		c.Check(req.Header["X-Auth-Token"], gc.DeepEquals, []string{testToken})
 
 		resp := Snapshot{
-			CreatedAt:   testTime,
-			Description: testDescr,
-			ID:          testId,
-			Name:        testName,
-			Os_Extended_Snapshot_Attributes_Progress:  testAttrProgr,
+			CreatedAt:                                testTime,
+			Description:                              testDescr,
+			ID:                                       testId,
+			Name:                                     testName,
+			Os_Extended_Snapshot_Attributes_Progress: testAttrProgr,
 			Os_Extended_Snapshot_Attributes_ProjectID: testAttrProj,
 			Size:     1,
 			Status:   testStatus,
@@ -591,18 +591,18 @@ func (s *CinderTestSuite) TestGetVolumesDetail(c *gc.C) {
 		numCalls++
 
 		resp := []Volume{{
-			AvailabilityZone: "test-availability-zone",
-			CreatedAt:        testTime,
-			Description:      testDescr,
-			ID:               testId,
-			Name:             testName,
+			AvailabilityZone:            "test-availability-zone",
+			CreatedAt:                   testTime,
+			Description:                 testDescr,
+			ID:                          testId,
+			Name:                        testName,
 			Os_Vol_Host_Attr_Host:       "test-host",
 			Os_Vol_Tenant_Attr_TenantID: testId,
-			Size:        1,
-			SnapshotID:  testId,
-			SourceVolid: testId,
-			Status:      testStatus,
-			VolumeType:  "test-volume-type",
+			Size:                        1,
+			SnapshotID:                  testId,
+			SourceVolid:                 testId,
+			Status:                      testStatus,
+			VolumeType:                  "test-volume-type",
 		}}
 
 		respBody, err := json.Marshal(&GetVolumesDetailResults{Volumes: resp})

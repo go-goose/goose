@@ -502,22 +502,22 @@ func (s *localHTTPSSuite) TestAuthDiscover(c *gc.C) {
 	c.Assert(options, gc.DeepEquals, identity.AuthOptions{identity.AuthOption{Mode: 3, Endpoint: s.cred.URL + "/v3/"}, identity.AuthOption{Mode: 1, Endpoint: s.cred.URL + "/v2.0/"}})
 }
 
-func (s *localHTTPSSuite) TestTLSConfigClientBadConfig(c *gc.C){
+func (s *localHTTPSSuite) TestTLSConfigClientBadConfig(c *gc.C) {
 	cl := client.NewClientTLSConfig(s.cred, identity.AuthUserPass, nil, &tls.Config{})
 	err := cl.Authenticate()
 	c.Assert(err, gc.ErrorMatches, "(.|\n)*x509: certificate signed by unknown authority")
 }
 
-func (s *localHTTPSSuite) TestTLSConfigClient(c *gc.C){
+func (s *localHTTPSSuite) TestTLSConfigClient(c *gc.C) {
 	cl := client.NewClientTLSConfig(s.cred, identity.AuthUserPass, nil, s.tlsConfig())
 	err := cl.Authenticate()
 	c.Assert(err, gc.IsNil)
 }
 
-func (s * localHTTPSSuite) tlsConfig() *tls.Config{
+func (s *localHTTPSSuite) tlsConfig() *tls.Config {
 	pool := x509.NewCertPool()
 	pool.AddCert(s.HTTPSuite.Server.Certificate())
 	return &tls.Config{
-		RootCAs:pool,
+		RootCAs: pool,
 	}
 }

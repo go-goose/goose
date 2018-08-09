@@ -48,6 +48,18 @@ func (u *Users) FindUser(token string) (*UserInfo, error) {
 	return nil, fmt.Errorf("No user with token %v exists", token)
 }
 
+// ClearToken removes the token associated with the given user so that
+// any further uses of that token will be unauthorized.
+func (u *Users) ClearToken(user string) error {
+	ui, ok := u.users[user]
+	if !ok {
+		return fmt.Errorf("user %q does not exist", user)
+	}
+	ui.Token = ""
+	u.users[user] = ui
+	return nil
+}
+
 const (
 	notAuthorized = "The request you have made requires authentication."
 	invalidUser   = "Invalid user / password"

@@ -295,7 +295,7 @@ func (s *LiveTests) TestCreateAndDeleteSecurityGroup(c *gc.C) {
 		err = s.nova.DeleteSecurityGroup(group.Id)
 		c.Check(err, gc.IsNil)
 	} else {
-		c.Fatalf("test security group (%d) not found", group.Id)
+		c.Fatalf("test security group (%s) not found", group.Id)
 	}
 }
 
@@ -327,7 +327,7 @@ func (s *LiveTests) TestUpdateSecurityGroup(c *gc.C) {
 		err = s.nova.DeleteSecurityGroup(group.Id)
 		c.Check(err, gc.IsNil)
 	} else {
-		c.Fatalf("test security group (%d) not found", group.Id)
+		c.Fatalf("test security group (%s) not found", group.Id)
 	}
 }
 
