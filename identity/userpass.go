@@ -12,7 +12,6 @@ type passwordCredentials struct {
 type authRequest struct {
 	PasswordCredentials passwordCredentials `json:"passwordCredentials"`
 	TenantName          string              `json:"tenantName"`
-	TenantID            string              `json:"tenantID"`
 }
 
 type authWrapper struct {
@@ -33,9 +32,13 @@ func (u *UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 			Username: creds.User,
 			Password: creds.Secrets,
 		},
-		TenantName: creds.TenantName,
-		TenantID:   creds.TenantID,
 	}}
+
+	if creds.TenantName == "" && creds.TenantID != "" {
+		auth.Auth.TenantName = creds.TenantID
+	} else if creds.TenantName != "" && creds.TenantID == "" {
+		creds.TenantID = creds.TenantName
+	}
 
 	return keystoneAuth(u.client, auth, creds.URL)
 }

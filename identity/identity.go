@@ -64,9 +64,9 @@ type Credentials struct {
 	User          string // The username to authenticate as
 	Secrets       string // The secrets to pass
 	Region        string // Region to send requests to
-	TenantName    string // The project name for this connection
-	TenantID      string // The project ID for this connection
-	Version       string // The Keystone version
+	TenantName    string `credentials:"optional"` // The project name for this connection
+	TenantID      string `credentials:"optional"` // The project ID for this connection
+	Version       int    `credentials:"optional"` // The Keystone version
 	Domain        string `credentials:"optional"` // The domain for authorization (new in keystone v3)
 	UserDomain    string `credentials:"optional"` // The owning domain for this user (new in keystone v3)
 	ProjectDomain string `credentials:"optional"` // The project domain for authorization (new in keystone v3)
@@ -163,7 +163,6 @@ func CredentialsFromEnv() *Credentials {
 		Region:        getConfig(CredEnvRegion),
 		TenantName:    getConfig(CredEnvTenantName),
 		TenantID:      getConfig(CredEnvTenantID),
-		Version:       getConfig(CredEnvVersion),
 		Domain:        getConfig(CredEnvDomainName),
 		UserDomain:    getConfig(CredEnvUserDomainName),
 		ProjectDomain: getConfig(CredEnvProjectDomainName),
@@ -177,22 +176,8 @@ func CredentialsFromEnv() *Credentials {
 			cred.UserDomain = defaultDomain
 		}
 	}
-	var version string
-	if cred.Version == "" {
-		url := getConfig(CredEnvAuthURL)
-		if ver := url[len(url)-1:]; ver != "/" {
-			version = ver
-		} else {
-			version = url[len(url)-2 : len(cred.URL)-1]
-		}
-	}
-	if version == "2" {
-		if cred.TenantName == "" && cred.TenantID != "" {
-			cred.TenantName = cred.TenantID
-		} else if cred.TenantName != "" && cred.TenantID == "" {
-			cred.TenantID = cred.TenantName
-		}
-	}
+	fmt.Sscanf(getConfig(CredEnvVersion), "%d", &cred.Version)
+
 	return cred
 }
 
@@ -206,9 +191,7 @@ func CompleteCredentialsFromEnv() (cred *Credentials, err error) {
 		f := v.Field(i)
 		tag := t.Field(i).Tag.Get("credentials")
 		if f.String() == "" && tag != "optional" {
-			if t.Field(i).Name != "Version" && t.Field(i).Name != "TenantID" && t.Field(i).Name != "TenantName" {
-				err = fmt.Errorf("required environment variable not set for credentials attribute: %s", t.Field(i).Name)
-			}
+			err = fmt.Errorf("required environment variable not set for credentials attribute: %s", t.Field(i).Name)
 		}
 	}
 	return

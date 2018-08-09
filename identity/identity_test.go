@@ -32,7 +32,6 @@ func (s *CredentialsTestSuite) TestCredentialsFromEnv(c *gc.C) {
 	}{
 		{summary: "Old 'NOVA' style creds",
 			env: map[string]string{
-				"OS_AUTH_URL":     "http://auth/v2",
 				"NOVA_USERNAME":   "test-user",
 				"NOVA_PASSWORD":   "test-pass",
 				"NOVA_API_KEY":    "test-access-key",
@@ -44,11 +43,9 @@ func (s *CredentialsTestSuite) TestCredentialsFromEnv(c *gc.C) {
 			password: "test-pass",
 			tenant:   "tenant-name",
 			region:   "region",
-			authURL:  "http://auth/v2",
 		},
 		{summary: "New 'OS' style environment",
 			env: map[string]string{
-				"OS_AUTH_URL":    "http://auth/v2",
 				"OS_USERNAME":    "test-user",
 				"OS_PASSWORD":    "test-pass",
 				"OS_ACCESS_KEY":  "test-access-key",
@@ -62,7 +59,6 @@ func (s *CredentialsTestSuite) TestCredentialsFromEnv(c *gc.C) {
 			tenant:   "tenant-name",
 			region:   "region",
 			domain:   "domain-name",
-			authURL:  "http://auth/v2",
 		},
 	}
 	for _, scenario := range scenarios {
@@ -75,7 +71,6 @@ func (s *CredentialsTestSuite) TestCredentialsFromEnv(c *gc.C) {
 		c.Check(creds.User, gc.Equals, scenario.username)
 		c.Check(creds.Secrets, gc.Equals, scenario.password)
 		c.Check(creds.Region, gc.Equals, scenario.region)
-		c.Check(creds.TenantName, gc.Equals, scenario.tenant)
 	}
 }
 
@@ -146,7 +141,7 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvVersion(c *gc.C) {
 		"OS_PROJECT_NAME":        "tenant-name",
 		"OS_REGION_NAME":         "region",
 		"OS_DOMAIN_NAME":         "domain-name",
-		"OS_AUTH_VERSION":        "v3",
+		"OS_AUTH_VERSION":        "3",
 		"OS_DEFAULT_DOMAIN_NAME": "default-domain-name",
 	}
 	for key, value := range env {
@@ -162,7 +157,7 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvVersion(c *gc.C) {
 	c.Check(creds.Domain, gc.Equals, "domain-name")
 	c.Check(creds.ProjectDomain, gc.Equals, "default-domain-name")
 	c.Check(creds.UserDomain, gc.Equals, "default-domain-name")
-	c.Check(creds.Version, gc.Equals, "v3")
+	c.Check(creds.Version, gc.Equals, 3)
 }
 
 func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvProjectID(c *gc.C) {
@@ -175,7 +170,7 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvProjectID(c *gc.C) 
 		"OS_PROJECT_ID":           "tenant-id",
 		"OS_REGION_NAME":          "region",
 		"OS_DOMAIN_NAME":          "domain-name",
-		"OS_IDENTITY_API_VERSION": "v3",
+		"OS_IDENTITY_API_VERSION": "3",
 		"OS_DEFAULT_DOMAIN_NAME":  "default-domain-name",
 	}
 	for key, value := range env {
@@ -190,7 +185,7 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvProjectID(c *gc.C) 
 	c.Check(creds.Domain, gc.Equals, "domain-name")
 	c.Check(creds.ProjectDomain, gc.Equals, "default-domain-name")
 	c.Check(creds.UserDomain, gc.Equals, "default-domain-name")
-	c.Check(creds.Version, gc.Equals, "v3")
+	c.Check(creds.Version, gc.Equals, 3)
 	c.Check(creds.TenantID, gc.Equals, "tenant-id")
 	c.Check(creds.TenantName, gc.Equals, "")
 }
