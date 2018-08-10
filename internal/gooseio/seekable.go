@@ -5,10 +5,9 @@ package gooseio
 
 import (
 	"bytes"
-	"fmt"
+	"errors"
 	"io"
-
-	"gopkg.in/goose.v2/errors"
+	"sync"
 )
 
 // maxBufSize holds the maximum amount of data
@@ -16,22 +15,71 @@ import (
 // a request when the body is not seekable.
 const maxBufSize = 1024 * 1024 * 1024
 
-// Seekable returns a ReadSeeker that contains the contents of the given
-// Reader.
-func Seekable(r io.Reader, length int64) (io.ReadSeeker, error) {
-	if r == nil {
-		return nil, nil
+// MakeGetReqReader creates a safe mechanism to get a new request body
+// reader for retrying requests. It returns a suitable replacement reader
+// along with a function that should be used to get subsequent readers
+// when retrying.
+func MakeGetReqReader(r io.Reader, size int64) (io.ReadCloser, func() (io.ReadCloser, error)) {
+	if rs, ok := r.(io.ReadSeeker); ok {
+		return makeSeekingGetReqReader(rs)
 	}
-	if r, ok := r.(io.ReadSeeker); ok {
-		return r, nil
+	return makeBufferingGetReqReader(r, size)
+}
+
+func makeSeekingGetReqReader(rs io.ReadSeeker) (io.ReadCloser, func() (io.ReadCloser, error)) {
+	var mu sync.Mutex
+	mu.Lock()
+	rc := &unlockingReadCloser{
+		mu:     &mu,
+		Reader: rs,
 	}
-	if length > maxBufSize {
-		return nil, fmt.Errorf("body of length %d is too large to hold in memory (max %d bytes)", length, maxBufSize)
+	f := func() (io.ReadCloser, error) {
+		mu.Lock()
+		_, err := rs.Seek(0, 0)
+		if err != nil {
+			return nil, err
+		}
+		return &unlockingReadCloser{
+			mu:     &mu,
+			Reader: rs,
+		}, nil
 	}
-	reqData := make([]byte, int(length))
-	nrRead, err := io.ReadFull(r, reqData)
-	if err != nil {
-		return nil, errors.Newf(err, "failed reading the request data, read %v of %v bytes", nrRead, length)
+	return rc, f
+}
+
+func makeBufferingGetReqReader(r io.Reader, size int64) (io.ReadCloser, func() (io.ReadCloser, error)) {
+	var mu sync.Mutex
+	mu.Lock()
+	var buf bytes.Buffer
+	rc := &unlockingReadCloser{
+		mu:     &mu,
+		Reader: io.TeeReader(io.LimitReader(r, maxBufSize), &buf),
 	}
-	return bytes.NewReader(reqData), nil
+	f := func() (io.ReadCloser, error) {
+		mu.Lock()
+		if buf.Len() > maxBufSize {
+			return nil, errors.New("read past maximum buffer size")
+		}
+		return &unlockingReadCloser{
+			mu: &mu,
+			Reader: io.MultiReader(
+				bytes.NewReader(buf.Bytes()),
+				io.TeeReader(io.LimitReader(r, maxBufSize-int64(buf.Len())), &buf),
+			),
+		}, nil
+	}
+	return rc, f
+}
+
+type unlockingReadCloser struct {
+	mu *sync.Mutex
+	io.Reader
+}
+
+func (c *unlockingReadCloser) Close() error {
+	if c.mu != nil {
+		c.mu.Unlock()
+		c.mu = nil
+	}
+	return nil
 }
