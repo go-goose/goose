@@ -524,14 +524,22 @@ func (c *authenticatingClient) doAuthenticate() error {
 		err         error
 	)
 	if authDetails, err = c.authMode.Auth(c.creds); err != nil {
-		return gooseerrors.Newf(err, "authentication failed")
+		if gooseerrors.IsUnauthorised(err) {
+			return gooseerrors.NewUnauthorisedf(err, "", "authentication failed: ", c.creds)
+		} else {
+			return gooseerrors.Newf(err, "authentication failed")
+		}
 	}
 	logger := logging.FromCompat(c.logger)
 	logger.Debugf("auth details: %+v", authDetails)
 
 	c.regionServiceURLs = authDetails.RegionServiceURLs
 	if err := c.createServiceURLs(); err != nil {
-		return gooseerrors.Newf(err, "cannot create service URLs")
+		if gooseerrors.IsUnauthorised(err) {
+			return gooseerrors.NewUnauthorisedf(err, "", "failed to create URLs")
+		} else {
+			return gooseerrors.Newf(err, "cannot create service URLs")
+		}
 	}
 	c.apiURLVersions = make(map[string]*apiURLVersion)
 	c.tenantId = authDetails.TenantId
