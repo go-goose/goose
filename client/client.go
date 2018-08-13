@@ -17,6 +17,7 @@ import (
 	"gopkg.in/goose.v2/internal/gooseio"
 	"gopkg.in/goose.v2/logging"
 	goosesync "gopkg.in/goose.v2/sync"
+	//"github.com/docker/distribution/registry/api/errcode"
 )
 
 const (
@@ -361,11 +362,11 @@ func (c *authenticatingClient) createServiceURLs() error {
 	}
 	if len(missingServiceTypes) > 0 {
 		if len(possibleRegions) > 0 {
-			return fmt.Errorf("%s\none of these regions may be suitable instead: %s",
+			return gooseerrors.Newf(nil, "%s\none of these regions may be suitable instead: %s",
 				errorPrefix,
 				strings.Join(possibleRegions, ", "))
 		} else {
-			return errors.New(errorPrefix)
+			return gooseerrors.Newf(nil, errorPrefix)
 		}
 	}
 	c.serviceURLs = serviceURLs
@@ -517,29 +518,21 @@ func (c *authenticatingClient) doAuthenticate() error {
 		return nil
 	}
 	if c.authMode == nil {
-		return fmt.Errorf("Authentication method has not been specified")
+		return gooseerrors.Newf(nil, "Authentication method has not been specified")
 	}
 	var (
 		authDetails *identity.AuthDetails
 		err         error
 	)
 	if authDetails, err = c.authMode.Auth(c.creds); err != nil {
-		if gooseerrors.IsUnauthorised(err) {
-			return gooseerrors.NewUnauthorisedf(err, "", "authentication failed: ", c.creds)
-		} else {
-			return gooseerrors.Newf(err, "authentication failed")
-		}
+		return gooseerrors.NewUnauthorisedf(err, "", err.Error())
 	}
 	logger := logging.FromCompat(c.logger)
 	logger.Debugf("auth details: %+v", authDetails)
 
 	c.regionServiceURLs = authDetails.RegionServiceURLs
 	if err := c.createServiceURLs(); err != nil {
-		if gooseerrors.IsUnauthorised(err) {
-			return gooseerrors.NewUnauthorisedf(err, "", "failed to create URLs")
-		} else {
-			return gooseerrors.Newf(err, "cannot create service URLs")
-		}
+		return gooseerrors.Newf(err, err.Error())
 	}
 	c.apiURLVersions = make(map[string]*apiURLVersion)
 	c.tenantId = authDetails.TenantId
