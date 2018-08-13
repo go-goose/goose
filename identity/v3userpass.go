@@ -184,11 +184,11 @@ func v3KeystoneAuth(c *goosehttp.Client, v interface{}, url string) (*AuthDetail
 		},
 	}
 	if err := c.JsonRequest("POST", url, "", &req, nil); err != nil {
-		return nil, gooseerrors.NewUnauthorisedf(err, "", "requesting token failed")
+		return nil, gooseerrors.Newf(err, "", "requesting token failed")
 	}
 	tok := req.RespHeaders.Get("X-Subject-Token")
 	if tok == "" {
-		return nil, gooseerrors.NewUnauthorisedf(nil, "", "token value associated with X-Subject-Token key is empty")
+		return nil, gooseerrors.Newf(nil, "token value associated with X-Subject-Token key is empty")
 	}
 	rsu := make(map[string]ServiceURLs, len(resp.Token.Catalog))
 	for _, s := range resp.Token.Catalog {

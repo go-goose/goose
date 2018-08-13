@@ -18,7 +18,7 @@ func (l *Legacy) Auth(creds *Credentials) (*AuthDetails, error) {
 	}
 	request, err := http.NewRequest("GET", creds.URL, nil)
 	if err != nil {
-		return nil, gooseerrors.NewUnauthorisedf(err, "", "GET request failed")
+		return nil, gooseerrors.Newf(err, "", "GET request failed")
 	}
 	request.Header.Set("X-Auth-User", creds.User)
 	request.Header.Set("X-Auth-Key", creds.Secrets)
@@ -46,7 +46,7 @@ func (l *Legacy) Auth(creds *Credentials) (*AuthDetails, error) {
 
 	swift_url := response.Header.Get("X-Storage-Url")
 	if swift_url == "" {
-		return nil, gooseerrors.NewUnauthorisedf(nil, "", "Did not get valid swift management URL from auth request")
+		return nil, gooseerrors.Newf(nil, "", "Did not get valid swift management URL from auth request")
 	}
 	serviceURLs["object-store"] = swift_url
 

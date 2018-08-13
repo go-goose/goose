@@ -222,7 +222,7 @@ func (auth *fakeAuthenticator) Auth(creds *identity.Credentials) (*identity.Auth
 	tooManyCallers := auth.nrCallers > 1
 	auth.mu.Unlock()
 	if tooManyCallers {
-		return nil, errors.NewUnauthorisedf(nil, "", "Too many callers of Auth function")
+		return nil, errors.Newf(nil, "Too many callers of Auth function")
 	}
 	URLs := make(map[string]identity.ServiceURLs)
 	endpoints := make(map[string]string)
