@@ -64,7 +64,7 @@ func keystoneAuth(client *goosehttp.Client, auth_data interface{}, URL string) (
 	requestData := goosehttp.RequestData{ReqValue: auth_data, RespValue: &accessWrapper}
 	err := client.JsonRequest("POST", URL, "", &requestData, nil)
 	if err != nil {
-		return nil, gooseerrors.Newf(err, "", "requesting token failed")
+		return nil, gooseerrors.Newf(err, "requesting token failed")
 	}
 
 	details := &AuthDetails{}

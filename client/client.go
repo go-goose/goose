@@ -531,7 +531,7 @@ func (c *authenticatingClient) doAuthenticate() error {
 
 	c.regionServiceURLs = authDetails.RegionServiceURLs
 	if err := c.createServiceURLs(); err != nil {
-		return gooseerrors.Newf(err, "cannot create URLs")
+		return gooseerrors.Newf(err, "cannot create service URLs")
 	}
 	c.apiURLVersions = make(map[string]*apiURLVersion)
 	c.tenantId = authDetails.TenantId
