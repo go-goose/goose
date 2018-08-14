@@ -27,10 +27,9 @@ func (s *localLiveSuite) SetUpSuite(c *gc.C) {
 
 	// Set up an Openstack service.
 	s.cred = &identity.Credentials{
-		User:       "fred",
-		Secrets:    "secret",
-		Region:     "zone1.some region",
-		TenantName: "tenant",
+		User:    "fred",
+		Secrets: "secret",
+		Region:  "zone1.some region",
 	}
 	var logMsg []string
 	s.openstack, logMsg = openstackservice.New(s.cred, s.authMode, false)

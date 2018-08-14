@@ -176,4 +176,5 @@ func (s *V3UserPassTestSuite) TestAuthToProjectDomainWithoutTenantNameAndTenantI
 	c.Assert(err, gc.IsNil)
 	c.Assert(auth.TenantId, gc.Equals, userInfo.TenantId)
 	c.Assert(auth.TenantName, gc.Equals, userInfo.TenantName)
+	c.Assert(auth.ProjectDomain, gc.Equals, "")
 }

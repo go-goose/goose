@@ -140,9 +140,6 @@ func NewNoSwift(cred *identity.Credentials, authMode identity.AuthMode, useTLS b
 		domain = "default"
 	}
 	userInfo := openstack.AddUser(cred.User, cred.Secrets, cred.TenantName, domain)
-	if cred.TenantName == "" {
-		panic("Openstack service double requires a project to be specified.")
-	}
 
 	if useTLS {
 		openstack.servers = map[string]*httptest.Server{
