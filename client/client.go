@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io"
 	"net/url"
 	"sort"
 	"strings"
@@ -162,9 +161,9 @@ func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpC
 		client_creds.URL = client_creds.URL + apiTokens
 	}
 	client := authenticatingClient{
-		creds:                &client_creds,
-		requiredServiceTypes: defaultRequiredServiceTypes,
-		client:               client{logger: logger, httpClient: httpClient},
+		creds:                      &client_creds,
+		requiredServiceTypes:       defaultRequiredServiceTypes,
+		client:                     client{logger: logger, httpClient: httpClient},
 		apiVersionDiscoveryEnabled: true,
 	}
 	client.auth = &client
@@ -217,21 +216,18 @@ func (c *authenticatingClient) SendRequest(
 	method, svcType, apiVersion, apiCall string,
 	requestData *goosehttp.RequestData,
 ) (err error) {
-	var rs io.ReadSeeker
-	rs, err = gooseio.Seekable(requestData.ReqReader, int64(requestData.ReqLength))
-	if err != nil {
-		return
+	if requestData.ReqReader != nil && requestData.GetReqReader == nil {
+		requestData.ReqReader, requestData.GetReqReader = gooseio.MakeGetReqReader(requestData.ReqReader, int64(requestData.ReqLength))
 	}
-	requestData.ReqReader = rs
 	err = c.sendAuthRequest(method, svcType, apiVersion, apiCall, requestData)
 	if gooseerrors.IsUnauthorised(err) {
-		if rs != nil {
-			_, err = rs.Seek(0, 0)
+		c.setToken("")
+		if requestData.GetReqReader != nil {
+			requestData.ReqReader, err = requestData.GetReqReader()
 			if err != nil {
 				return
 			}
 		}
-		c.setToken("")
 		err = c.sendAuthRequest(method, svcType, apiVersion, apiCall, requestData)
 	}
 	return

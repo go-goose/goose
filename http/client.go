@@ -66,12 +66,21 @@ type RequestData struct {
 	Params         *url.Values
 	ExpectedStatus []int
 	ReqValue       interface{}
-	// ReqReader is used to read the body of the request.
-	// If it does not implement io.Seeker, the entire
-	// body will be read into memory before sending the request (so
-	// that the request can be retried if needed) otherwise
-	// Seek will be used to rewind the request on retry.
+	// ReqReader is used to read the body of the request. If the
+	// request has to be retried for any reason then a replacement
+	// ReqReader will be collected using GetReqReader.
 	ReqReader io.Reader
+
+	// GetReqReader is called to get a new ReqReader if a request
+	// fails and will be retried. If ReqReader is specified but
+	// GetReqReader is not then an appropriate GetReqReader function
+	// will be generated from ReqReader.
+	//
+	// If ReqReader implements io.Seeker then the generated
+	// GetReqReader function will use Seek to rewind the request.
+	// Otherwise the entire body may be kept in memory whilst sending
+	// the request.
+	GetReqReader func() (io.ReadCloser, error)
 
 	// TODO this should really be int64 not int.
 	ReqLength int
@@ -152,6 +161,7 @@ func createHeaders(extraHeaders http.Header, contentType, authToken string, payl
 func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, logger logging.CompatLogger) error {
 	var body io.Reader
 	var length int64
+	var getBody func() (io.ReadCloser, error)
 	if reqData.Params != nil {
 		url += "?" + reqData.Params.Encode()
 	}
@@ -161,6 +171,9 @@ func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, lo
 			return errors.Newf(err, "failed marshalling the request body")
 		}
 		body = bytes.NewReader(data)
+		getBody = func() (io.ReadCloser, error) {
+			return ioutil.NopCloser(bytes.NewReader(data)), nil
+		}
 		length = int64(len(data))
 	}
 	headers := createHeaders(reqData.ReqHeaders, contentTypeJSON, token, reqData.ReqValue != nil)
@@ -168,6 +181,7 @@ func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, lo
 		method,
 		url,
 		body,
+		getBody,
 		length,
 		headers,
 		reqData.ExpectedStatus,
@@ -212,6 +226,7 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 		method,
 		url,
 		reqData.ReqReader,
+		reqData.GetReqReader,
 		int64(reqData.ReqLength),
 		headers,
 		reqData.ExpectedStatus,
@@ -249,17 +264,14 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 // expectedStatus: a slice of allowed response status codes.
 func (c *Client) sendRequest(
 	method, URL string,
-	reqReader0 io.Reader,
+	reqReader io.Reader,
+	getReqReader func() (io.ReadCloser, error),
 	length int64,
 	headers http.Header,
 	expectedStatus []int,
 	logger logging.Logger,
 ) (*http.Response, error) {
-	reqReader, err := gooseio.Seekable(reqReader0, length)
-	if err != nil {
-		return nil, err
-	}
-	rawResp, err := c.sendRateLimitedRequest(method, URL, headers, reqReader, length, logger)
+	rawResp, err := c.sendRateLimitedRequest(method, URL, headers, reqReader, getReqReader, length, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -284,25 +296,20 @@ func (c *Client) sendRequest(
 func (c *Client) sendRateLimitedRequest(
 	method, URL string,
 	headers http.Header,
-	reqReader io.ReadSeeker,
+	reqReader io.Reader,
+	getReqReader func() (io.ReadCloser, error),
 	length int64,
 	logger logging.Logger,
 ) (resp *http.Response, err error) {
+	if reqReader != nil && getReqReader == nil {
+		reqReader, getReqReader = gooseio.MakeGetReqReader(reqReader, length)
+	}
 	for i := 0; i < c.maxSendAttempts; i++ {
-		var body io.ReadCloser
-		var notifier closeNotifier
-		if reqReader != nil {
-			notifier = make(closeNotifier)
-			body = struct {
-				io.Closer
-				io.Reader
-			}{notifier, reqReader}
-		}
-
-		req, err := http.NewRequest(method, URL, body)
+		req, err := http.NewRequest(method, URL, reqReader)
 		if err != nil {
 			return nil, errors.Newf(err, "failed creating the request %s", URL)
 		}
+		req.GetBody = getReqReader
 		for header, values := range headers {
 			for _, value := range values {
 				req.Header.Add(header, value)
@@ -354,11 +361,9 @@ func (c *Client) sendRateLimitedRequest(
 			time.Sleep(sleepDuration)
 		}
 		if reqReader != nil {
-			// Wait for body to be closed - if we don't, then it could be used
-			// concurrently.
-			<-notifier
-			if _, err := reqReader.Seek(0, 0); err != nil {
-				return nil, fmt.Errorf("cannot seek to start of body: %v", err)
+			reqReader, err = getReqReader()
+			if err != nil {
+				return nil, fmt.Errorf("cannot get request body reader: %v", err)
 			}
 		}
 	}
