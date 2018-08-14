@@ -1,6 +1,8 @@
 package identity
 
 import (
+	"fmt"
+
 	gooseerrors "gopkg.in/goose.v2/errors"
 	goosehttp "gopkg.in/goose.v2/http"
 )
@@ -69,7 +71,7 @@ func keystoneAuth(client *goosehttp.Client, auth_data interface{}, URL string) (
 	access := accessWrapper.Access
 	respToken := access.Token
 	if respToken.Id == "" {
-		return nil, gooseerrors.NewUnauthorisedf(nil, "", "response token Id is empty")
+		return nil, fmt.Errorf("response token Id is empty")
 	}
 	details.Token = respToken.Id
 	details.TenantId = respToken.Tenant.Id

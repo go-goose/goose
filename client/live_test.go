@@ -50,6 +50,16 @@ func (s *LiveTests) TestAuthenticateFail(c *gc.C) {
 	c.Assert(isAuthorised, gc.Equals, true)
 }
 
+func (s *LiveTests) TestNoUnauthorisedAuthenticateFail(c *gc.C) {
+	cred := *s.cred
+	cred.Region = ""
+	osclient := client.NewClient(&cred, s.authMode, nil)
+	c.Assert(osclient.IsAuthenticated(), gc.Equals, false)
+	err := osclient.Authenticate()
+	isAuthorised := gooseerrors.IsUnauthorised(err)
+	c.Assert(isAuthorised, gc.Equals, false)
+}
+
 func (s *LiveTests) TestAuthenticate(c *gc.C) {
 	cl := client.NewClient(s.cred, s.authMode, nil)
 	err := cl.Authenticate()

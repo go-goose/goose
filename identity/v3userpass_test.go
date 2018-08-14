@@ -122,3 +122,58 @@ func (s *V3UserPassTestSuite) TestAuthWithCatalog(c *gc.C) {
 	c.Assert(auth.Token, gc.Equals, userInfo.Token)
 	c.Assert(auth.TenantId, gc.Equals, userInfo.TenantId)
 }
+
+func (s *V3UserPassTestSuite) TestAuthFailToDomainwithTenantNameAndTenantID(c *gc.C) {
+	service := identityservice.NewV3UserPass()
+	service.SetupHTTP(s.Mux)
+	userInfo := service.AddUser("joe-user", "secrets", "tenant", "domain")
+	var l Authenticator = &V3UserPass{}
+	creds := Credentials{
+		User:       "joe-user",
+		URL:        s.Server.URL + "/v3/auth/tokens",
+		Secrets:    "secrets",
+		TenantName: "tenant",
+		TenantID:   "tenantID",
+		Domain:     "domain",
+	}
+	auth, err := l.Auth(&creds)
+	c.Assert(err, gc.IsNil)
+	c.Assert(auth.Token, gc.Equals, userInfo.Token)
+	c.Assert(auth.Domain, gc.Equals, "domain")
+	c.Assert(auth.TenantName, gc.Equals, "")
+	c.Assert(auth.TenantId, gc.Equals, "")
+}
+
+func (s *V3UserPassTestSuite) TestAuthToProjectDomainWithTenantID(c *gc.C) {
+	service := identityservice.NewV3UserPass()
+	service.SetupHTTP(s.Mux)
+	userInfo := service.AddUser("joe-user", "secrets", "", "project-domain")
+	var l Authenticator = &V3UserPass{}
+	creds := Credentials{
+		User:          "joe-user",
+		URL:           s.Server.URL + "/v3/auth/tokens",
+		Secrets:       "secrets",
+		TenantID:      "tenantID",
+		ProjectDomain: "project-domain",
+	}
+	auth, err := l.Auth(&creds)
+	c.Assert(err, gc.IsNil)
+	c.Assert(auth.TenantId, gc.Equals, userInfo.TenantId)
+}
+
+func (s *V3UserPassTestSuite) TestAuthToProjectDomainWithoutTenantNameAndTenantID(c *gc.C) {
+	service := identityservice.NewV3UserPass()
+	service.SetupHTTP(s.Mux)
+	userInfo := service.AddUser("joe-user", "secrets", "", "default")
+	var l Authenticator = &V3UserPass{}
+	creds := Credentials{
+		User:          "joe-user",
+		URL:           s.Server.URL + "/v3/auth/tokens",
+		Secrets:       "secrets",
+		ProjectDomain: "project-domain",
+	}
+	auth, err := l.Auth(&creds)
+	c.Assert(err, gc.IsNil)
+	c.Assert(auth.TenantId, gc.Equals, userInfo.TenantId)
+	c.Assert(auth.TenantName, gc.Equals, userInfo.TenantName)
+}

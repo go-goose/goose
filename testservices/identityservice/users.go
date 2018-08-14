@@ -13,6 +13,9 @@ type Users struct {
 }
 
 func (u *Users) addTenant(tenant string) (string, string) {
+	if tenant == "" {
+		return "", ""
+	}
 	for id, tenantName := range u.tenants {
 		if tenant == tenantName {
 			return id, tenantName
@@ -24,7 +27,7 @@ func (u *Users) addTenant(tenant string) (string, string) {
 	return id, tenant
 }
 
-func (u *Users) AddUser(user, secret, tenant, authDomain string) *UserInfo {
+func (u *Users) AddUser(user, secret, tenant string, authDomain string) *UserInfo {
 	tenantId, tenantName := u.addTenant(tenant)
 	u.nextUserId++
 	userInfo := &UserInfo{

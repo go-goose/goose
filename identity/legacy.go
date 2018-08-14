@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"fmt"
 	gooseerrors "gopkg.in/goose.v2/errors"
 	goosehttp "gopkg.in/goose.v2/http"
 )
@@ -28,14 +29,14 @@ func (l *Legacy) Auth(creds *Credentials) (*AuthDetails, error) {
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusOK {
-		content, _ := ioutil.ReadAll(response.Body)
-		return nil, gooseerrors.NewUnauthorisedf(nil, "", "Failed to Authenticate (code %d %s): %s",
+		content, err := ioutil.ReadAll(response.Body)
+		return nil, gooseerrors.NewUnauthorisedf(err, "", "Failed to Authenticate (code %d %s): %s",
 			response.StatusCode, response.Status, content)
 	}
 	details := &AuthDetails{}
 	details.Token = response.Header.Get("X-Auth-Token")
 	if details.Token == "" {
-		return nil, gooseerrors.NewUnauthorisedf(nil, "", "Did not get valid Token from auth request")
+		return nil, fmt.Errorf("Did not get valid Token from auth request")
 	}
 	details.RegionServiceURLs = make(map[string]ServiceURLs)
 	serviceURLs := make(ServiceURLs)
@@ -46,7 +47,7 @@ func (l *Legacy) Auth(creds *Credentials) (*AuthDetails, error) {
 
 	swift_url := response.Header.Get("X-Storage-Url")
 	if swift_url == "" {
-		return nil, gooseerrors.Newf(nil, "", "Did not get valid swift management URL from auth request")
+		return nil, fmt.Errorf("Did not get valid swift management URL from auth request")
 	}
 	serviceURLs["object-store"] = swift_url
 

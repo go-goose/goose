@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	gc "gopkg.in/check.v1"
-
 	"gopkg.in/goose.v2/identity"
 )
 
