@@ -4,6 +4,7 @@
 package gooseio_test
 
 import (
+	"errors"
 	"io"
 	"io/ioutil"
 	"strings"
@@ -20,9 +21,10 @@ var _ = gc.Suite(&getReqReaderSuite{})
 
 func (s *getReqReaderSuite) TestConcurrentBuffered(c *gc.C) {
 	body := "test body"
-	var r0 struct{ io.Reader }
-	r0.Reader = strings.NewReader(body)
-	r, getBody := gooseio.MakeGetReqReader(r0, int64(len(body)))
+	r, getBody := gooseio.MakeGetReqReader(
+		struct{ io.Reader }{strings.NewReader(body)},
+		int64(len(body)),
+	)
 	s.testConcurrent(c, r, getBody, body)
 }
 
@@ -55,9 +57,10 @@ func (s *getReqReaderSuite) testConcurrent(c *gc.C, r io.ReadCloser, getBody fun
 
 func (s *getReqReaderSuite) TestBufferedEarlyClose(c *gc.C) {
 	body := "test body"
-	var r0 struct{ io.Reader }
-	r0.Reader = strings.NewReader(body)
-	r, getBody := gooseio.MakeGetReqReader(r0, int64(len(body)))
+	r, getBody := gooseio.MakeGetReqReader(
+		struct{ io.Reader }{strings.NewReader(body)},
+		int64(len(body)),
+	)
 
 	var buf [5]byte
 	_, err := io.ReadFull(r, buf[:])
@@ -69,3 +72,106 @@ func (s *getReqReaderSuite) TestBufferedEarlyClose(c *gc.C) {
 	c.Assert(err, gc.Equals, nil)
 	c.Assert(string(buf2), gc.Equals, body)
 }
+
+func (s *getReqReaderSuite) TestReadBeyondBufferLimit(c *gc.C) {
+	oldBufSize := *gooseio.MaxBufSize
+	*gooseio.MaxBufSize = 20
+	defer func() {
+		*gooseio.MaxBufSize = oldBufSize
+	}()
+
+	body := "123456789 abcdefghijklmnopqrstuvqxyz"
+	r, getBody := gooseio.MakeGetReqReader(
+		struct{ io.Reader }{strings.NewReader(body)},
+		int64(len(body)),
+	)
+	data, err := ioutil.ReadAll(r)
+	c.Assert(err, gc.Equals, nil)
+	c.Assert(string(data), gc.Equals, body)
+
+	r.Close()
+
+	// Trying again should fail because we've exceeded the buffer limit.
+
+	r1, err := getBody()
+	c.Assert(err, gc.ErrorMatches, `read past maximum buffer size`)
+	c.Assert(r1, gc.Equals, nil)
+
+	// Try again to make sure the lock hasn't been retained.
+	r1, err = getBody()
+	c.Assert(err, gc.ErrorMatches, `read past maximum buffer size`)
+	c.Assert(r1, gc.Equals, nil)
+}
+
+func (s *getReqReaderSuite) TestRestartWithinBufferLimit(c *gc.C) {
+	oldBufSize := *gooseio.MaxBufSize
+	*gooseio.MaxBufSize = 20
+	defer func() {
+		*gooseio.MaxBufSize = oldBufSize
+	}()
+
+	body := "123456789 abcdefghijklmnopqrstuvqxyz"
+	r, getBody := gooseio.MakeGetReqReader(
+		struct{ io.Reader }{strings.NewReader(body)},
+		int64(len(body)),
+	)
+
+	// Read a small amount of the reader; it should be buffered.
+	buf := make([]byte, 10)
+	_, err := io.ReadFull(r, buf)
+	c.Assert(err, gc.Equals, nil)
+	c.Assert(string(buf), gc.Equals, body[0:10])
+	r.Close()
+
+	// Read a bit more of the reader, but still within the limit.
+	r, err = getBody()
+	c.Assert(err, gc.Equals, nil)
+	buf = make([]byte, 19)
+	_, err = io.ReadFull(r, buf)
+	c.Assert(err, gc.Equals, nil)
+	c.Assert(string(buf), gc.Equals, body[0:19])
+	r.Close()
+
+	// Read beyond the end of the buffer, which should still
+	// work but we won't be able to repeat it.
+	r, err = getBody()
+	c.Assert(err, gc.Equals, nil)
+	buf = make([]byte, 25)
+	_, err = io.ReadFull(r, buf)
+	c.Assert(err, gc.Equals, nil)
+	c.Assert(string(buf), gc.Equals, body[0:25])
+	r.Close()
+
+	r, err = getBody()
+	c.Assert(err, gc.ErrorMatches, `read past maximum buffer size`)
+	c.Assert(r, gc.Equals, nil)
+}
+
+func (s *getReqReaderSuite) TestSeekError(c *gc.C) {
+	body := "test body"
+	r, getBody := gooseio.MakeGetReqReader(readSeekerWithError{strings.NewReader(body)}, int64(len(body)))
+	data, err := ioutil.ReadAll(r)
+	c.Assert(err, gc.Equals, nil)
+	c.Assert(string(data), gc.Equals, body)
+
+	r.Close()
+
+	r, err = getBody()
+	c.Assert(err, gc.ErrorMatches, "some seek error")
+	c.Assert(r, gc.Equals, nil)
+
+	// Try again to make sure we haven't retained the lock.
+	r, err = getBody()
+	c.Assert(err, gc.ErrorMatches, "some seek error")
+	c.Assert(r, gc.Equals, nil)
+}
+
+type readSeekerWithError struct {
+	io.Reader
+}
+
+func (r readSeekerWithError) Seek(off int64, whence int) (int64, error) {
+	return 0, errors.New("some seek error")
+}
+
+var _ io.ReadSeeker = readSeekerWithError{}

@@ -13,7 +13,7 @@ import (
 // maxBufSize holds the maximum amount of data
 // that may be allocated as a buffer when sending
 // a request when the body is not seekable.
-const maxBufSize = 1024 * 1024 * 1024
+var maxBufSize = int64(1024 * 1024 * 1024)
 
 // MakeGetReqReader creates a safe mechanism to get a new request body
 // reader for retrying requests. It returns a suitable replacement reader
@@ -29,48 +29,66 @@ func MakeGetReqReader(r io.Reader, size int64) (io.ReadCloser, func() (io.ReadCl
 func makeSeekingGetReqReader(rs io.ReadSeeker) (io.ReadCloser, func() (io.ReadCloser, error)) {
 	var mu sync.Mutex
 	mu.Lock()
-	rc := &unlockingReadCloser{
-		mu:     &mu,
-		Reader: rs,
-	}
-	f := func() (io.ReadCloser, error) {
-		mu.Lock()
-		_, err := rs.Seek(0, 0)
-		if err != nil {
-			return nil, err
-		}
-		return &unlockingReadCloser{
+	return &unlockingReadCloser{
 			mu:     &mu,
 			Reader: rs,
-		}, nil
-	}
-	return rc, f
+		}, func() (io.ReadCloser, error) {
+			mu.Lock()
+			_, err := rs.Seek(0, 0)
+			if err != nil {
+				mu.Unlock()
+				return nil, err
+			}
+			return &unlockingReadCloser{
+				mu:     &mu,
+				Reader: rs,
+			}, nil
+		}
 }
 
 func makeBufferingGetReqReader(r io.Reader, size int64) (io.ReadCloser, func() (io.ReadCloser, error)) {
+	// mu guards r and buf.
 	var mu sync.Mutex
-	mu.Lock()
 	var buf bytes.Buffer
-	rc := &unlockingReadCloser{
-		mu:     &mu,
-		Reader: io.TeeReader(io.LimitReader(r, maxBufSize), &buf),
-	}
-	f := func() (io.ReadCloser, error) {
-		mu.Lock()
-		if buf.Len() > maxBufSize {
-			return nil, errors.New("read past maximum buffer size")
-		}
+
+	// getReader returns a reader that buffers up to maxBufSize bytes in memory.
+	getReader := func() io.ReadCloser {
+		// Return a reader that first reads any bytes that have been buffered already,
+		// then from a reader that continues to fill up the buffer up to maxBufSize
+		// bytes, then directly from r.
 		return &unlockingReadCloser{
 			mu: &mu,
 			Reader: io.MultiReader(
+				// First read any bytes already buffered.
 				bytes.NewReader(buf.Bytes()),
+
+				// Then read while filling up the buffer to its maximum size.
 				io.TeeReader(io.LimitReader(r, maxBufSize-int64(buf.Len())), &buf),
+
+				// Finally, when the buffer has filled up, read directly from r.
+				// If this happens and the request is repeated, we'll trigger the
+				// "read past maximum buffer size" error.
+				r,
 			),
-		}, nil
+		}
 	}
-	return rc, f
+	// Because net/http doesn't guarantee not to start using the
+	// second reader before the first one has been closed,
+	// we guard it with a mutex, so the second reader cannot
+	// be acquired until the first is closed.
+	mu.Lock()
+	return getReader(), func() (io.ReadCloser, error) {
+		mu.Lock()
+		if int64(buf.Len()) >= maxBufSize {
+			mu.Unlock()
+			return nil, errors.New("read past maximum buffer size")
+		}
+		return getReader(), nil
+	}
 }
 
+// unlockingReadCloser implements io.ReadCloser by unlocking the
+// mutex when it's closed.
 type unlockingReadCloser struct {
 	mu *sync.Mutex
 	io.Reader
