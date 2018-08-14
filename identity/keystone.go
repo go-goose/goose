@@ -71,7 +71,7 @@ func keystoneAuth(client *goosehttp.Client, auth_data interface{}, URL string) (
 	access := accessWrapper.Access
 	respToken := access.Token
 	if respToken.Id == "" {
-		return nil, fmt.Errorf("response token Id is empty")
+		return nil, fmt.Errorf("authentication failed")
 	}
 	details.Token = respToken.Id
 	details.TenantId = respToken.Tenant.Id

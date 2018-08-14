@@ -1,10 +1,10 @@
 package identity
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
-	"fmt"
 	gooseerrors "gopkg.in/goose.v2/errors"
 	goosehttp "gopkg.in/goose.v2/http"
 )
@@ -19,24 +19,24 @@ func (l *Legacy) Auth(creds *Credentials) (*AuthDetails, error) {
 	}
 	request, err := http.NewRequest("GET", creds.URL, nil)
 	if err != nil {
-		return nil, gooseerrors.Newf(err, "", "GET request failed")
+		return nil, err
 	}
 	request.Header.Set("X-Auth-User", creds.User)
 	request.Header.Set("X-Auth-Key", creds.Secrets)
 	response, err := l.client.Do(request)
 	if err != nil {
-		return nil, gooseerrors.NewUnauthorisedf(err, "", "request failed (maybe client policy or network connectivity issue)")
+		return nil, err
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusNoContent && response.StatusCode != http.StatusOK {
-		content, err := ioutil.ReadAll(response.Body)
-		return nil, gooseerrors.NewUnauthorisedf(err, "", "Failed to Authenticate (code %d %s): %s",
+		content, _ := ioutil.ReadAll(response.Body)
+		return nil, fmt.Errorf("Failed to Authenticate (code %d %s): %s",
 			response.StatusCode, response.Status, content)
 	}
 	details := &AuthDetails{}
 	details.Token = response.Header.Get("X-Auth-Token")
 	if details.Token == "" {
-		return nil, fmt.Errorf("Did not get valid Token from auth request")
+		return nil, gooseerrors.NewUnauthorisedf(nil, "", "Did not get valid Token from auth request")
 	}
 	details.RegionServiceURLs = make(map[string]ServiceURLs)
 	serviceURLs := make(ServiceURLs)

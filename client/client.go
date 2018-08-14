@@ -365,7 +365,7 @@ func (c *authenticatingClient) createServiceURLs() error {
 				errorPrefix,
 				strings.Join(possibleRegions, ", "))
 		} else {
-			return fmt.Errorf(errorPrefix)
+			return errors.New(errorPrefix)
 		}
 	}
 	c.serviceURLs = serviceURLs
@@ -531,7 +531,7 @@ func (c *authenticatingClient) doAuthenticate() error {
 
 	c.regionServiceURLs = authDetails.RegionServiceURLs
 	if err := c.createServiceURLs(); err != nil {
-		return gooseerrors.Newf(err,"cannot create URL")
+		return gooseerrors.Newf(err, "cannot create URLs")
 	}
 	c.apiURLVersions = make(map[string]*apiURLVersion)
 	c.tenantId = authDetails.TenantId

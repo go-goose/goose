@@ -27,7 +27,7 @@ func (u *Users) addTenant(tenant string) (string, string) {
 	return id, tenant
 }
 
-func (u *Users) AddUser(user, secret, tenant string, authDomain string) *UserInfo {
+func (u *Users) AddUser(user, secret, tenant, authDomain string) *UserInfo {
 	tenantId, tenantName := u.addTenant(tenant)
 	u.nextUserId++
 	userInfo := &UserInfo{

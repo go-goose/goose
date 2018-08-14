@@ -123,7 +123,7 @@ func (s *V3UserPassTestSuite) TestAuthWithCatalog(c *gc.C) {
 	c.Assert(auth.TenantId, gc.Equals, userInfo.TenantId)
 }
 
-func (s *V3UserPassTestSuite) TestAuthFailToDomainwithTenantNameAndTenantID(c *gc.C) {
+func (s *V3UserPassTestSuite) TestAuthToDomainwithTenantNameAndTenantID(c *gc.C) {
 	service := identityservice.NewV3UserPass()
 	service.SetupHTTP(s.Mux)
 	userInfo := service.AddUser("joe-user", "secrets", "tenant", "domain")
