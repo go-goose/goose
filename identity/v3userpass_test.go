@@ -4,6 +4,7 @@ import (
 	gc "gopkg.in/check.v1"
 
 	"gopkg.in/goose.v2/testing/httpsuite"
+	"gopkg.in/goose.v2/testservices/hook"
 	"gopkg.in/goose.v2/testservices/identityservice"
 )
 
@@ -164,7 +165,7 @@ func (s *V3UserPassTestSuite) TestAuthToProjectDomainWithTenantID(c *gc.C) {
 func (s *V3UserPassTestSuite) TestAuthToProjectDomainWithoutTenantNameAndTenantID(c *gc.C) {
 	service := identityservice.NewV3UserPass()
 	service.SetupHTTP(s.Mux)
-	userInfo := service.AddUser("joe-user", "secrets", "", "default")
+	service.AddUser("joe-user", "secrets", "", "default")
 	var l Authenticator = &V3UserPass{}
 	creds := Credentials{
 		User:          "joe-user",
@@ -172,9 +173,103 @@ func (s *V3UserPassTestSuite) TestAuthToProjectDomainWithoutTenantNameAndTenantI
 		Secrets:       "secrets",
 		ProjectDomain: "project-domain",
 	}
-	auth, err := l.Auth(&creds)
+
+	authfunc := func(sc hook.ServiceControl, args ...interface{}) error {
+		v3input := args[0].(identityservice.V3UserPassRequest)
+		c.Assert(v3input.Auth.Scope.Project.Domain.Name, gc.Equals, "")
+		c.Assert(v3input.Auth.Scope.Project.ID, gc.Equals, "")
+		c.Assert(v3input.Auth.Scope.Project.Name, gc.Equals, "")
+		return nil
+	}
+
+	cleanup := service.RegisterControlPoint("preauthentication", authfunc)
+	defer cleanup()
+
+	_, err := l.Auth(&creds)
 	c.Assert(err, gc.IsNil)
-	c.Assert(auth.TenantId, gc.Equals, userInfo.TenantId)
-	c.Assert(auth.TenantName, gc.Equals, userInfo.TenantName)
-	c.Assert(auth.ProjectDomain, gc.Equals, "")
+}
+
+func (s *V3UserPassTestSuite) TestAuthToProjectDomainWithOnlyTenantName(c *gc.C) {
+	service := identityservice.NewV3UserPass()
+	service.SetupHTTP(s.Mux)
+	service.AddUser("joe-user", "secrets", "tenantName", "project-domain")
+	var l Authenticator = &V3UserPass{}
+	creds := Credentials{
+		User:          "joe-user",
+		URL:           s.Server.URL + "/v3/auth/tokens",
+		Secrets:       "secrets",
+		TenantName:    "tenantName",
+		ProjectDomain: "project-domain",
+	}
+
+	authfunc := func(sc hook.ServiceControl, args ...interface{}) error {
+		v3input := args[0].(identityservice.V3UserPassRequest)
+		c.Assert(v3input.Auth.Scope.Project.Domain.Name, gc.Equals, "project-domain")
+		c.Assert(v3input.Auth.Scope.Project.ID, gc.Equals, "")
+		c.Assert(v3input.Auth.Scope.Project.Name, gc.Equals, "tenantName")
+		return nil
+	}
+
+	cleanup := service.RegisterControlPoint("preauthentication", authfunc)
+	defer cleanup()
+
+	_, err := l.Auth(&creds)
+	c.Assert(err, gc.IsNil)
+}
+
+func (s *V3UserPassTestSuite) TestAuthToProjectDomainWithOnlyTenantID(c *gc.C) {
+	service := identityservice.NewV3UserPass()
+	service.SetupHTTP(s.Mux)
+	service.AddUser("joe-user", "secrets", "tenant", "project-domain")
+	var l Authenticator = &V3UserPass{}
+	creds := Credentials{
+		User:          "joe-user",
+		URL:           s.Server.URL + "/v3/auth/tokens",
+		Secrets:       "secrets",
+		TenantID:      "tenantID",
+		ProjectDomain: "project-domain",
+	}
+
+	authfunc := func(sc hook.ServiceControl, args ...interface{}) error {
+		v3input := args[0].(identityservice.V3UserPassRequest)
+		c.Assert(v3input.Auth.Scope.Project.Domain.Name, gc.Equals, "project-domain")
+		c.Assert(v3input.Auth.Scope.Project.ID, gc.Equals, "tenantID")
+		c.Assert(v3input.Auth.Scope.Project.Name, gc.Equals, "")
+		return nil
+	}
+
+	cleanup := service.RegisterControlPoint("preauthentication", authfunc)
+	defer cleanup()
+
+	_, err := l.Auth(&creds)
+	c.Assert(err, gc.IsNil)
+}
+
+func (s *V3UserPassTestSuite) TestAuthToProjectDomainWithTenantIDAndTenantName(c *gc.C) {
+	service := identityservice.NewV3UserPass()
+	service.SetupHTTP(s.Mux)
+	service.AddUser("joe-user", "secrets", "tenant", "project-domain")
+	var l Authenticator = &V3UserPass{}
+	creds := Credentials{
+		User:          "joe-user",
+		URL:           s.Server.URL + "/v3/auth/tokens",
+		Secrets:       "secrets",
+		TenantID:      "tenantID",
+		TenantName:    "tenantName",
+		ProjectDomain: "project-domain",
+	}
+
+	authfunc := func(sc hook.ServiceControl, args ...interface{}) error {
+		v3input := args[0].(identityservice.V3UserPassRequest)
+		c.Assert(v3input.Auth.Scope.Project.Domain.Name, gc.Equals, "project-domain")
+		c.Assert(v3input.Auth.Scope.Project.ID, gc.Equals, "tenantID")
+		c.Assert(v3input.Auth.Scope.Project.Name, gc.Equals, "tenantName")
+		return nil
+	}
+
+	cleanup := service.RegisterControlPoint("preauthentication", authfunc)
+	defer cleanup()
+
+	_, err := l.Auth(&creds)
+	c.Assert(err, gc.IsNil)
 }

@@ -57,7 +57,6 @@ type AuthDetails struct {
 	UserId            string
 	Domain            string
 	RegionServiceURLs map[string]ServiceURLs // Service type to endpoint URLs for each region
-	ProjectDomain     string
 }
 
 // Credentials defines necessary parameters for authentication.
