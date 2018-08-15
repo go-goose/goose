@@ -2,6 +2,7 @@ package client_test
 
 import (
 	gc "gopkg.in/check.v1"
+
 	"gopkg.in/goose.v2/client"
 	gooseerrors "gopkg.in/goose.v2/errors"
 	"gopkg.in/goose.v2/identity"
@@ -54,8 +55,8 @@ func (s *LiveTests) TestNoUnauthorisedAuthenticateFail(c *gc.C) {
 	osclient := client.NewClient(&cred, s.authMode, nil)
 	c.Assert(osclient.IsAuthenticated(), gc.Equals, false)
 	err := osclient.Authenticate()
-	isAuthorised := gooseerrors.IsUnauthorised(err)
-	c.Assert(isAuthorised, gc.Equals, false)
+	isUnAuthorised := gooseerrors.IsUnauthorised(err)
+	c.Assert(isUnAuthorised, gc.Equals, false)
 }
 
 func (s *LiveTests) TestAuthenticate(c *gc.C) {
