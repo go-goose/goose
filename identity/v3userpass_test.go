@@ -83,7 +83,6 @@ func (s *V3UserPassTestSuite) TestAuthToTenantNameAndTenantID(c *gc.C) {
 	c.Assert(auth.Token, gc.Equals, userInfo.Token)
 	c.Assert(auth.TenantName, gc.Equals, userInfo.TenantName)
 	c.Assert(auth.TenantId, gc.Equals, userInfo.TenantId)
-	//fmt.Printf("XXXX.... userinfo.TenantName : %v \n", userInfo.TenantName)
 }
 
 func (s *V3UserPassTestSuite) TestAuthWithCatalog(c *gc.C) {
