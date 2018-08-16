@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	gooseerrors "gopkg.in/goose.v2/errors"
 	goosehttp "gopkg.in/goose.v2/http"
 )
 
@@ -35,7 +36,7 @@ func (l *Legacy) Auth(creds *Credentials) (*AuthDetails, error) {
 	details := &AuthDetails{}
 	details.Token = response.Header.Get("X-Auth-Token")
 	if details.Token == "" {
-		return nil, fmt.Errorf("Did not get valid Token from auth request")
+		return nil, gooseerrors.NewUnauthorisedf(nil, "", "Did not get valid Token from auth request")
 	}
 	details.RegionServiceURLs = make(map[string]ServiceURLs)
 	serviceURLs := make(ServiceURLs)

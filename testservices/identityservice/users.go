@@ -13,6 +13,9 @@ type Users struct {
 }
 
 func (u *Users) addTenant(tenant string) (string, string) {
+	if tenant == "" {
+		return "", ""
+	}
 	for id, tenantName := range u.tenants {
 		if tenant == tenantName {
 			return id, tenantName

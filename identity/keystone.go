@@ -3,6 +3,7 @@ package identity
 import (
 	"fmt"
 
+	gooseerrors "gopkg.in/goose.v2/errors"
 	goosehttp "gopkg.in/goose.v2/http"
 )
 
@@ -63,7 +64,7 @@ func keystoneAuth(client *goosehttp.Client, auth_data interface{}, URL string) (
 	requestData := goosehttp.RequestData{ReqValue: auth_data, RespValue: &accessWrapper}
 	err := client.JsonRequest("POST", URL, "", &requestData, nil)
 	if err != nil {
-		return nil, err
+		return nil, gooseerrors.Newf(err, "requesting token failed")
 	}
 
 	details := &AuthDetails{}

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	gooseerrors "gopkg.in/goose.v2/errors"
 	goosehttp "gopkg.in/goose.v2/http"
 )
 
@@ -103,14 +104,16 @@ func (u *V3UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 			},
 		},
 	}
-	auth.Auth.Scope = &v3AuthScope{
-		Project: &v3AuthProject{
-			Domain: &v3AuthDomain{
-				Name: projectDomain,
+	if creds.TenantName != "" || creds.TenantID != "" {
+		auth.Auth.Scope = &v3AuthScope{
+			Project: &v3AuthProject{
+				Domain: &v3AuthDomain{
+					Name: projectDomain,
+				},
+				Name: creds.TenantName,
+				ID:   creds.TenantID,
 			},
-			Name: creds.TenantName,
-			ID:   creds.TenantID,
-		},
+		}
 	}
 
 	if creds.Domain != "" {
@@ -186,7 +189,7 @@ func v3KeystoneAuth(c *goosehttp.Client, v interface{}, url string) (*AuthDetail
 	}
 	tok := req.RespHeaders.Get("X-Subject-Token")
 	if tok == "" {
-		return nil, fmt.Errorf("authentication failed")
+		return nil, gooseerrors.NewUnauthorisedf(nil, "", "empty auth token received.")
 	}
 	rsu := make(map[string]ServiceURLs, len(resp.Token.Catalog))
 	for _, s := range resp.Token.Catalog {

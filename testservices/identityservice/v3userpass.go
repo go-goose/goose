@@ -190,6 +190,11 @@ func (u *V3UserPass) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if domain == "" {
 		domain = "default"
 	}
+	// validate the Auth structure
+	if err := u.ProcessControlHook("preauthentication", u, req); err != nil {
+		u.ReturnFailure(w, http.StatusInternalServerError, err.Error())
+	}
+
 	userInfo, errmsg := u.authenticate(
 		req.Auth.Identity.Password.User.Name,
 		req.Auth.Identity.Password.User.Password,
