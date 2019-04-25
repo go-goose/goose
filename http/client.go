@@ -27,6 +27,16 @@ const (
 	contentTypeOctetStream = "application/octet-stream"
 )
 
+type HttpClient interface {
+	BinaryRequest(method, url, token string, reqData *RequestData, logger logging.CompatLogger) (err error)
+	Do(req *http.Request) (*http.Response, error)
+	Get(url string) (resp *http.Response, err error)
+	Head(url string) (resp *http.Response, err error)
+	JsonRequest(method, url, token string, reqData *RequestData, logger logging.CompatLogger) error
+	Post(url, contentType string, body io.Reader) (resp *http.Response, err error)
+	PostForm(url string, data url.Values) (resp *http.Response, err error)
+}
+
 type Client struct {
 	http.Client
 	maxSendAttempts int
@@ -430,6 +440,8 @@ func handleError(URL string, resp *http.Response) error {
 		if dupExp.Match(errBytes) {
 			return errors.NewDuplicateValuef(httpError, "", string(errBytes))
 		}
+	case http.StatusMultipleChoices:
+		return errors.NewMultipleChoicesf(httpError, "", "")
 	}
 	return httpError
 }
