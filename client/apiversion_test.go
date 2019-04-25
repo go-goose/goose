@@ -177,8 +177,7 @@ func (s *localLiveSuite) TestMakeServiceURL(c *gc.C) {
 func (s *localLiveSuite) TestMakeServiceURLAPIVersionDiscoveryDisabled(c *gc.C) {
 	port := "3000"
 	cl := s.assertAuthenticationSuccess(c, port)
-	wasEnabled := cl.SetVersionDiscoveryEnabled(false)
-	c.Assert(wasEnabled, gc.Equals, true)
+	cl.SetVersionDiscoveryDisabled("compute", true)
 
 	url, err := cl.MakeServiceURL("compute", "v2.1", []string{"foo", "bar/"})
 	c.Assert(err, gc.IsNil)
