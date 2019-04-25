@@ -10,7 +10,7 @@ import (
 )
 
 type Legacy struct {
-	client *goosehttp.Client
+	client goosehttp.HttpClient
 }
 
 func (l *Legacy) Auth(creds *Credentials) (*AuthDetails, error) {

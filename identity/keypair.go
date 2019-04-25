@@ -9,7 +9,7 @@ import (
 //
 // It implements Authenticator interface by providing the Auth method.
 type KeyPair struct {
-	client *goosehttp.Client
+	client goosehttp.HttpClient
 }
 
 type keypairCredentials struct {
