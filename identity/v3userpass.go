@@ -71,7 +71,7 @@ type v3AuthProject struct {
 // V3UserPass is an Authenticator that will perform username + password
 // authentication using the v3 protocol.
 type V3UserPass struct {
-	client *goosehttp.Client
+	client goosehttp.HttpClient
 }
 
 // Auth performs a v3 username + password authentication request using
@@ -175,7 +175,7 @@ type v3TokenDomain struct {
 }
 
 // v3KeystoneAuth performs a v3 authentication request.
-func v3KeystoneAuth(c *goosehttp.Client, v interface{}, url string) (*AuthDetails, error) {
+func v3KeystoneAuth(c goosehttp.HttpClient, v interface{}, url string) (*AuthDetails, error) {
 	var resp v3TokenWrapper
 	req := goosehttp.RequestData{
 		ReqValue:  v,

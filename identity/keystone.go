@@ -2,7 +2,6 @@ package identity
 
 import (
 	"fmt"
-
 	gooseerrors "gopkg.in/goose.v2/errors"
 	goosehttp "gopkg.in/goose.v2/http"
 )
@@ -58,7 +57,7 @@ type accessResponse struct {
 //
 // Uses `client` to submit HTTP requests to `URL`
 // and posts `auth_data` as JSON.
-func keystoneAuth(client *goosehttp.Client, auth_data interface{}, URL string) (*AuthDetails, error) {
+func keystoneAuth(client goosehttp.HttpClient, auth_data interface{}, URL string) (*AuthDetails, error) {
 
 	var accessWrapper accessWrapper
 	requestData := goosehttp.RequestData{ReqValue: auth_data, RespValue: &accessWrapper}

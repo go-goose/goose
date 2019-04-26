@@ -212,7 +212,7 @@ func CompleteCredentialsFromEnv() (cred *Credentials, err error) {
 // NewAuthenticator creates an authenticator matching the supplied AuthMode.
 // The httpclient is allowed to be nil, the Authenticator will just use the
 // default http.Client
-func NewAuthenticator(authMode AuthMode, httpClient *goosehttp.Client) Authenticator {
+func NewAuthenticator(authMode AuthMode, httpClient goosehttp.HttpClient) Authenticator {
 	if httpClient == nil {
 		httpClient = goosehttp.New()
 	}
@@ -258,7 +258,7 @@ type authInformation struct {
 
 // FetchAuthOptions returns the authentication options advertised by this
 // openstack.
-func FetchAuthOptions(url string, client *goosehttp.Client, compatLogger logging.CompatLogger) (AuthOptions, error) {
+func FetchAuthOptions(url string, client goosehttp.HttpClient, compatLogger logging.CompatLogger) (AuthOptions, error) {
 	var resp authInformation
 	req := goosehttp.RequestData{
 		RespValue: &resp,

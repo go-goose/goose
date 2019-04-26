@@ -10,12 +10,13 @@ type Code string
 const (
 	// Public available error types.
 	// These errors are provided because they are specifically required by business logic in the callers.
-	UnspecifiedError    = Code("Unspecified")
-	NotFoundError       = Code("NotFound")
-	DuplicateValueError = Code("DuplicateValue")
-	TimeoutError        = Code("Timeout")
-	UnauthorisedError   = Code("Unauthorised")
-	NotImplementedError = Code("NotImplemented")
+	UnspecifiedError     = Code("Unspecified")
+	NotFoundError        = Code("NotFound")
+	DuplicateValueError  = Code("DuplicateValue")
+	TimeoutError         = Code("Timeout")
+	UnauthorisedError    = Code("Unauthorised")
+	NotImplementedError  = Code("NotImplemented")
+	MultipleChoicesError = Code("MultipleChoices")
 )
 
 // Error instances store an optional error cause.
@@ -103,6 +104,13 @@ func IsNotImplemented(err error) bool {
 	return false
 }
 
+func IsMultipleChoices(err error) bool {
+	if e, ok := err.(*gooseError); ok {
+		return e.causedBy(MultipleChoicesError)
+	}
+	return false
+}
+
 // makeErrorf creates a new Error instance with the specified cause.
 func makeErrorf(code Code, cause error, format string, args ...interface{}) Error {
 	return &gooseError{
@@ -155,4 +163,11 @@ func NewNotImplementedf(cause error, context interface{}, format string, args ..
 		format = fmt.Sprintf("Not implemented: %s", context)
 	}
 	return makeErrorf(NotImplementedError, cause, format, args...)
+}
+
+func NewMultipleChoicesf(cause error, context interface{}, format string, args ...interface{}) Error {
+	if format == "" {
+		format = fmt.Sprintf("Not implemented: %s", context)
+	}
+	return makeErrorf(MultipleChoicesError, cause, format, args...)
 }

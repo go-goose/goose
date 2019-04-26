@@ -19,7 +19,7 @@ type authWrapper struct {
 }
 
 type UserPass struct {
-	client *goosehttp.Client
+	client goosehttp.HttpClient
 }
 
 func (u *UserPass) Auth(creds *Credentials) (*AuthDetails, error) {

@@ -13,18 +13,25 @@ import (
 	"gopkg.in/goose.v2/logging"
 )
 
-type apiVersion struct {
-	major int
-	minor int
+// ApiVersion represents choices.id from the openstack
+// api version  Multiple choices JSON response, broken
+// into  major and minor from the string.
+type ApiVersion struct {
+	Major int
+	Minor int
 }
 
-type apiVersionInfo struct {
-	Version apiVersion       `json:"id"`
-	Links   []apiVersionLink `json:"links"`
+// ApiVersionInfo represents choices from the openstack
+// api version Multiple choices JSON response.
+type ApiVersionInfo struct {
+	Version ApiVersion       `json:"id"`
+	Links   []ApiVersionLink `json:"links"`
 	Status  string           `json:"status"`
 }
 
-type apiVersionLink struct {
+// ApiVersionLink represents choices.links from the openstack
+// api version  Multiple choices JSON response.
+type ApiVersionLink struct {
 	Href string `json:"href"`
 	Rel  string `json:"rel"`
 }
@@ -32,20 +39,20 @@ type apiVersionLink struct {
 type apiURLVersion struct {
 	rootURL          url.URL
 	serviceURLSuffix string
-	versions         []apiVersionInfo
+	versions         []ApiVersionInfo
 }
 
 // getAPIVersionURL returns a full formed serviceURL based on the API version requested,
 // the rootURL and the serviceURLSuffix.  If there is no match to the requested API
-// version an error is returned.  If only the major number is defined for the requested
+// version an error is returned.  If only the Major number is defined for the requested
 // version, the first match found is returned.
-func (c *authenticatingClient) getAPIVersionURL(apiURLVersionInfo *apiURLVersion, requested apiVersion) (string, error) {
+func (c *authenticatingClient) getAPIVersionURL(apiURLVersionInfo *apiURLVersion, requested ApiVersion) (string, error) {
 	var match string
 	for _, v := range apiURLVersionInfo.versions {
-		if v.Version.major != requested.major {
+		if v.Version.Major != requested.Major {
 			continue
 		}
-		if requested.minor != -1 && v.Version.minor != requested.minor {
+		if requested.Minor != -1 && v.Version.Minor != requested.Minor {
 			continue
 		}
 		for _, link := range v.Links {
@@ -58,7 +65,7 @@ func (c *authenticatingClient) getAPIVersionURL(apiURLVersionInfo *apiURLVersion
 			}
 			match = hrefURL.Path
 		}
-		if requested.minor != -1 {
+		if requested.Minor != -1 {
 			break
 		}
 	}
@@ -80,7 +87,7 @@ func (c *authenticatingClient) getAPIVersionURL(apiURLVersionInfo *apiURLVersion
 	return versionURL.String(), nil
 }
 
-func (v *apiVersion) UnmarshalJSON(b []byte) error {
+func (v *ApiVersion) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
@@ -93,45 +100,45 @@ func (v *apiVersion) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// parseVersion takes a version string into the major and minor ints for an apiVersion
+// parseVersion takes a version string into the Major and Minor ints for an ApiVersion
 // structure. The string part of the data is returned by a request to List API versions
-// send to an OpenStack service.  It is in the format "v<major>.<minor>". If apiVersion
+// send to an OpenStack service.  It is in the format "v<Major>.<Minor>". If ApiVersion
 // is empty, return {-1, -1}, to differentiate with "v0".
-func parseVersion(s string) (apiVersion, error) {
+func parseVersion(s string) (ApiVersion, error) {
 	if s == "" {
-		return apiVersion{-1, -1}, nil
+		return ApiVersion{-1, -1}, nil
 	}
 	s = strings.TrimPrefix(s, "v")
 	parts := strings.SplitN(s, ".", 2)
 	if len(parts) == 0 || len(parts) > 2 {
-		return apiVersion{}, fmt.Errorf("invalid API version %q", s)
+		return ApiVersion{}, fmt.Errorf("invalid API version %q", s)
 	}
 	var minor int = -1
 	major, err := strconv.Atoi(parts[0])
 	if err != nil {
-		return apiVersion{}, err
+		return ApiVersion{}, err
 	}
 	if len(parts) == 2 {
 		var err error
 		minor, err = strconv.Atoi(parts[1])
 		if err != nil {
-			return apiVersion{}, err
+			return ApiVersion{}, err
 		}
 	}
-	return apiVersion{major, minor}, nil
+	return ApiVersion{major, minor}, nil
 }
 
-func unmarshallVersion(Versions json.RawMessage) ([]apiVersionInfo, error) {
+func unmarshallVersion(Versions json.RawMessage) ([]ApiVersionInfo, error) {
 	// Some services respond with {"versions":[...]}, and
 	// some respond with {"versions":{"values":[...]}}.
 	var object interface{}
-	var versions []apiVersionInfo
+	var versions []ApiVersionInfo
 	if err := json.Unmarshal(Versions, &object); err != nil {
 		return versions, err
 	}
 	if _, ok := object.(map[string]interface{}); ok {
 		var valuesObject struct {
-			Values []apiVersionInfo `json:"values"`
+			Values []ApiVersionInfo `json:"values"`
 		}
 		if err := json.Unmarshal(Versions, &valuesObject); err != nil {
 			return versions, err
@@ -219,16 +226,16 @@ func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURL
 	// satisfy a requested api version of "", "v1" or "v1.0"
 	if c.serviceURLs["object-store"] != "" && strings.Contains(serviceCatalogURL, c.serviceURLs["object-store"]) {
 		url.Path = "/"
-		objectStoreLink := apiVersionLink{Href: url.String(), Rel: "self"}
-		objectStoreApiVersionInfo := []apiVersionInfo{
+		objectStoreLink := ApiVersionLink{Href: url.String(), Rel: "self"}
+		objectStoreApiVersionInfo := []ApiVersionInfo{
 			{
-				Version: apiVersion{major: 1, minor: 0},
-				Links:   []apiVersionLink{objectStoreLink},
+				Version: ApiVersion{Major: 1, Minor: 0},
+				Links:   []ApiVersionLink{objectStoreLink},
 				Status:  "stable",
 			},
 			{
-				Version: apiVersion{major: -1, minor: -1},
-				Links:   []apiVersionLink{objectStoreLink},
+				Version: ApiVersion{Major: -1, Minor: -1},
+				Links:   []ApiVersionLink{objectStoreLink},
 				Status:  "stable",
 			},
 		}

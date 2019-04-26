@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/juju/loggo"
-
 	gc "gopkg.in/check.v1"
 
 	"gopkg.in/goose.v2/client"
@@ -233,6 +232,7 @@ func (auth *fakeAuthenticator) Auth(creds *identity.Credentials) (*identity.Auth
 	endpoints["compute3"] = fmt.Sprintf("http://localhost:%s/compute", auth.port)
 	// Special case for https://bugs.launchpad.net/juju/+bug/1756135
 	endpoints["compute4"] = fmt.Sprintf("http://localhost:%s/computev1/v2", auth.port)
+	endpoints["compute5"] = fmt.Sprintf("http://localhost:%s/compute/v5.1/6a74f3b9a17847588d9fdee581cbb01a", auth.port)
 	endpoints["object-store"] = fmt.Sprintf("http://localhost:%s/swift/v1", auth.port)
 	endpoints["juju-container-test"] = fmt.Sprintf("http://localhost:%s/swift/v1", auth.port)
 	URLs[creds.Region] = endpoints

@@ -54,7 +54,6 @@ func (s *localLiveSuite) TearDownSuite(c *gc.C) {
 
 func (s *localLiveSuite) setupClient(c *gc.C, logger *log.Logger) *neutron.Client {
 	client := client.NewClient(s.cred, identity.AuthUserPass, logger)
-	//client.SetVersionDiscoveryEnabled(false)
 	return neutron.New(client)
 }
 

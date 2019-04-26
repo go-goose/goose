@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/juju/collections/set"
+
 	gooseerrors "gopkg.in/goose.v2/errors"
 	goosehttp "gopkg.in/goose.v2/http"
 	"gopkg.in/goose.v2/identity"
@@ -31,6 +33,12 @@ const (
 	COPY   = "COPY"
 )
 
+// For testing purposes
+//
+//go:generate mockgen -package mocks -destination mocks/auth.go gopkg.in/goose.v2/identity Authenticator
+//go:generate mockgen -package mocks -destination mocks/httpclient.go gopkg.in/goose.v2/http HttpClient
+//go:generate mockgen -package mocks -destination mocks/compatlogger.go gopkg.in/goose.v2/logging CompatLogger
+
 // Client implementations sends service requests to an OpenStack deployment.
 type Client interface {
 	SendRequest(method, svcType, svcVersion, apiCall string, requestData *goosehttp.RequestData) (err error)
@@ -44,14 +52,14 @@ type Client interface {
 type AuthenticatingClient interface {
 	Client
 
-	// SetVersionDiscoveryEnabled enables or disables API version
-	// discovery. Discovery is enabled by default. If enabled,
-	// the client will attempt to list all versions available
-	// for a service and use the best match. Otherwise, any API
-	// version specified in an SendRequest or MakeServiceURL
-	// call will be ignored, and the service catalogue endpoint
-	// URL will be used directly.
-	SetVersionDiscoveryEnabled(bool) bool
+	// SetVersionDiscoveryDisabled enables or disables API version
+	// discovery on a per service basis. Discovery is enabled by
+	// default. If enabled, the client will attempt to list all
+	// versions available for a service and use the best match.
+	// Otherwise, any API version specified in an SendRequest or
+	// MakeServiceURL call will be ignored, and the service
+	// catalogue endpoint URL will be used directly.
+	SetVersionDiscoveryDisabled(string, bool)
 
 	// SetRequiredServiceTypes sets the service types that the
 	// openstack must provide.
@@ -93,7 +101,7 @@ type client struct {
 	mu         sync.Mutex
 	logger     logging.CompatLogger
 	baseURL    string
-	httpClient *goosehttp.Client
+	httpClient goosehttp.HttpClient
 }
 
 var _ Client = (*client)(nil)
@@ -123,9 +131,9 @@ type authenticatingClient struct {
 	serviceURLs identity.ServiceURLs
 
 	// API versions available based on service catalogue URL.
-	apiVersionMu               sync.Mutex
-	apiVersionDiscoveryEnabled bool
-	apiURLVersions             map[string]*apiURLVersion
+	apiVersionMu                sync.Mutex
+	apiVersionDiscoveryDisabled set.Strings
+	apiURLVersions              map[string]*apiURLVersion
 }
 
 func (c *authenticatingClient) EndpointsForRegion(region string) identity.ServiceURLs {
@@ -149,7 +157,7 @@ func NewNonValidatingPublicClient(baseURL string, logger logging.CompatLogger) C
 
 var defaultRequiredServiceTypes = []string{"compute", "object-store"}
 
-func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpClient *goosehttp.Client, logger logging.CompatLogger) AuthenticatingClient {
+func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpClient goosehttp.HttpClient, logger logging.CompatLogger) AuthenticatingClient {
 	client_creds := *creds
 	if strings.HasSuffix(client_creds.URL, "/") {
 		client_creds.URL = client_creds.URL[:len(client_creds.URL)-1]
@@ -161,10 +169,10 @@ func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpC
 		client_creds.URL = client_creds.URL + apiTokens
 	}
 	client := authenticatingClient{
-		creds:                      &client_creds,
-		requiredServiceTypes:       defaultRequiredServiceTypes,
-		client:                     client{logger: logger, httpClient: httpClient},
-		apiVersionDiscoveryEnabled: true,
+		creds:                       &client_creds,
+		requiredServiceTypes:        defaultRequiredServiceTypes,
+		client:                      client{logger: logger, httpClient: httpClient},
+		apiVersionDiscoveryDisabled: set.NewStrings(),
 	}
 	client.auth = &client
 	client.authMode = identity.NewAuthenticator(auth_method, httpClient)
@@ -219,8 +227,10 @@ func (c *authenticatingClient) SendRequest(
 	if requestData.ReqReader != nil && requestData.GetReqReader == nil {
 		requestData.ReqReader, requestData.GetReqReader = gooseio.MakeGetReqReader(requestData.ReqReader, int64(requestData.ReqLength))
 	}
+
 	err = c.sendAuthRequest(method, svcType, apiVersion, apiCall, requestData)
-	if gooseerrors.IsUnauthorised(err) {
+	switch {
+	case gooseerrors.IsUnauthorised(err):
 		c.setToken("")
 		if requestData.GetReqReader != nil {
 			requestData.ReqReader, err = requestData.GetReqReader()
@@ -228,6 +238,15 @@ func (c *authenticatingClient) SendRequest(
 				return
 			}
 		}
+		err = c.sendAuthRequest(method, svcType, apiVersion, apiCall, requestData)
+	case gooseerrors.IsMultipleChoices(err):
+		// https://bugs.launchpad.net/juju/+bug/1817242
+		// If send fails with MultipleChoicesError.  Fall back to
+		// no api version discovery.
+		logger := logging.FromCompat(c.logger)
+		logger.Debugf("received multiple choices error: disabling api discovery for %s", svcType)
+		logger.Debugf("falling back to catalogue service URL")
+		c.SetVersionDiscoveryDisabled(svcType, true)
 		err = c.sendAuthRequest(method, svcType, apiVersion, apiCall, requestData)
 	}
 	return
@@ -247,11 +266,11 @@ func (c *authenticatingClient) sendAuthRequest(
 	return c.sendRequest(method, url, c.Token(), requestData)
 }
 
-// MakeServiceURL uses an endpoint matching the apiVersion for the given service type.
-// Given a major version only, the version with the highest minor will be used.
+// MakeServiceURL uses an endpoint matching the ApiVersion for the given service type.
+// Given a Major version only, the version with the highest Minor will be used.
 //
 // object-store and container service types have no versions. For these services, the
-// caller may pass "" for apiVersion, to use the service catalogue URL without any
+// caller may pass "" for ApiVersion, to use the service catalogue URL without any
 // version discovery.
 func (c *authenticatingClient) MakeServiceURL(serviceType, apiVersion string, parts []string) (returnURL string, _ error) {
 	if !c.IsAuthenticated() {
@@ -269,7 +288,7 @@ func (c *authenticatingClient) MakeServiceURL(serviceType, apiVersion string, pa
 		}
 	}()
 
-	if apiVersion == "" || !c.isAPIVersionDiscoveryEnabled() {
+	if apiVersion == "" || c.isAPIVersionDiscoveryDisabled(serviceType) {
 		return makeURL(serviceURL, parts), nil
 	}
 	requestedVersion, err := parseVersion(apiVersion)
@@ -295,18 +314,20 @@ func (c *authenticatingClient) MakeServiceURL(serviceType, apiVersion string, pa
 	return makeURL(serviceURL, parts), nil
 }
 
-func (c *authenticatingClient) SetVersionDiscoveryEnabled(enabled bool) bool {
+func (c *authenticatingClient) SetVersionDiscoveryDisabled(service string, disabled bool) {
 	c.apiVersionMu.Lock()
 	defer c.apiVersionMu.Unlock()
-	old := c.apiVersionDiscoveryEnabled
-	c.apiVersionDiscoveryEnabled = enabled
-	return old
+	if disabled {
+		c.apiVersionDiscoveryDisabled.Add(service)
+		return
+	}
+	c.apiVersionDiscoveryDisabled.Remove(service)
 }
 
-func (c *authenticatingClient) isAPIVersionDiscoveryEnabled() bool {
+func (c *authenticatingClient) isAPIVersionDiscoveryDisabled(service string) bool {
 	c.apiVersionMu.Lock()
 	defer c.apiVersionMu.Unlock()
-	return c.apiVersionDiscoveryEnabled
+	return c.apiVersionDiscoveryDisabled.Contains(service)
 }
 
 // Return the relevant service endpoint URLs for this client's region.
