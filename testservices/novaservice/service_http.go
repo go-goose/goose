@@ -602,13 +602,14 @@ func noGroupError(groupName, tenantId string) error {
 func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Request) error {
 	var req struct {
 		Server struct {
-			FlavorRef        string
-			ImageRef         string
-			Name             string
-			Metadata         map[string]string
-			SecurityGroups   []map[string]string `json:"security_groups"`
-			Networks         []map[string]string
-			AvailabilityZone string `json:"availability_zone"`
+			FlavorRef          string
+			ImageRef           string
+			Name               string
+			Metadata           map[string]string
+			SecurityGroups     []map[string]string `json:"security_groups"`
+			Networks           []map[string]string
+			AvailabilityZone   string                    `json:"availability_zone"`
+			BlockDeviceMapping []nova.BlockDeviceMapping `json:"block_device_mapping_v2,omitempty"`
 		}
 	}
 	if err := json.Unmarshal(body, &req); err != nil {
@@ -617,7 +618,7 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	if req.Server.Name == "" {
 		return errBadRequestSrvName
 	}
-	if req.Server.ImageRef == "" {
+	if req.Server.ImageRef == "" && req.Server.BlockDeviceMapping == nil {
 		return errBadRequestSrvImage
 	}
 	if req.Server.FlavorRef == "" {
