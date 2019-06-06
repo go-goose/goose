@@ -112,6 +112,10 @@ func (entity Entity) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Image response id can be empty when using block device mapping.
+	if entity.Id == "" {
+		return data, nil
+	}
 	id := convertId(entity.Id)
 	return appendJSON(data, idTag, id)
 }

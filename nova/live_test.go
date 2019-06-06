@@ -693,3 +693,57 @@ func (s *LiveTests) TestSetServerMetadata(c *gc.C) {
 	c.Assert(server.Metadata["k1"], gc.Equals, "v1.replacement")
 	c.Assert(server.Metadata["k2"], gc.Equals, "v2.replacement")
 }
+
+func (s *LiveTests) TestCreateServerBlockDeviceMappingLocal(c *gc.C) {
+	entity, err := s.nova.RunServer(nova.RunServerOpts{
+		Name:             "inst-block-device-mapping-local",
+		FlavorId:         s.testFlavorId,
+		AvailabilityZone: s.testAvailabilityZone,
+		Networks: []nova.ServerNetworks{{
+			NetworkId: s.testNetwork,
+		}},
+		ImageId: s.testImageId,
+		BlockDeviceMappings: []nova.BlockDeviceMapping{{
+			BootIndex:           0,
+			SourceType:          "image",
+			UUID:                s.testImageId,
+			DestinationType:     "local",
+			DeleteOnTermination: true,
+		}},
+	})
+	c.Assert(err, gc.IsNil)
+	defer s.nova.DeleteServer(entity.Id)
+	s.waitTestServerCompleteBuilding(c, entity.Id)
+
+	server, err := s.nova.GetServer(entity.Id)
+	c.Assert(err, gc.IsNil)
+	c.Assert(server, gc.NotNil)
+	c.Assert(server.Status, gc.Equals, nova.StatusActive)
+}
+
+func (s *LiveTests) TestCreateServerBlockDeviceMappingVolume(c *gc.C) {
+	entity, err := s.nova.RunServer(nova.RunServerOpts{
+		Name:             "inst-block-device-mapping-volume",
+		FlavorId:         s.testFlavorId,
+		AvailabilityZone: s.testAvailabilityZone,
+		Networks: []nova.ServerNetworks{{
+			NetworkId: s.testNetwork,
+		}},
+		BlockDeviceMappings: []nova.BlockDeviceMapping{{
+			BootIndex:           0,
+			SourceType:          "image",
+			UUID:                s.testImageId,
+			DestinationType:     "volume",
+			VolumeSize:          20,
+			DeleteOnTermination: true,
+		}},
+	})
+	c.Assert(err, gc.IsNil)
+	defer s.nova.DeleteServer(entity.Id)
+	s.waitTestServerCompleteBuilding(c, entity.Id)
+
+	server, err := s.nova.GetServer(entity.Id)
+	c.Assert(err, gc.IsNil)
+	c.Assert(server, gc.NotNil)
+	c.Assert(server.Status, gc.Equals, nova.StatusActive)
+}

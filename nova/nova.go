@@ -325,15 +325,34 @@ type ServerNetworks struct {
 
 // RunServerOpts defines required and optional arguments for RunServer().
 type RunServerOpts struct {
-	Name               string              `json:"name"`                        // Required
-	FlavorId           string              `json:"flavorRef"`                   // Required
-	ImageId            string              `json:"imageRef"`                    // Required
-	UserData           []byte              `json:"user_data,omitempty"`         // Optional
-	SecurityGroupNames []SecurityGroupName `json:"security_groups,omitempty"`   // Optional
-	Networks           []ServerNetworks    `json:"networks"`                    // Optional
-	AvailabilityZone   string              `json:"availability_zone,omitempty"` // Optional
-	Metadata           map[string]string   `json:"metadata,omitempty"`          // Optional
-	ConfigDrive        bool                `json:"config_drive,omitempty"`      // Optional
+	Name                string               `json:"name"`                              // Required
+	FlavorId            string               `json:"flavorRef"`                         // Required
+	ImageId             string               `json:"imageRef,omitempty"`                // Optional
+	UserData            []byte               `json:"user_data,omitempty"`               // Optional
+	SecurityGroupNames  []SecurityGroupName  `json:"security_groups,omitempty"`         // Optional
+	Networks            []ServerNetworks     `json:"networks"`                          // Optional
+	AvailabilityZone    string               `json:"availability_zone,omitempty"`       // Optional
+	Metadata            map[string]string    `json:"metadata,omitempty"`                // Optional
+	ConfigDrive         bool                 `json:"config_drive,omitempty"`            // Optional
+	BlockDeviceMappings []BlockDeviceMapping `json:"block_device_mapping_v2,omitempty"` // Optional
+}
+
+// BlockDeviceMapping defines block devices to be attached to the Server created by RunServer().
+// See: https://developer.openstack.org/api-ref/compute/?expanded=create-server-detail
+type BlockDeviceMapping struct {
+	BootIndex           int    `json:"boot_index"`
+	UUID                string `json:"uuid,omitempty"`
+	SourceType          string `json:"source_type,omitempty"`
+	DestinationType     string `json:"destination_type,omitempty"`
+	VolumeSize          int    `json:"volume_size,omitempty"`
+	VolumeType          string `json:"volume_type,omitempty"`
+	DeleteOnTermination bool   `json:"delete_on_termination,omitempty"`
+	DeviceName          string `json:"device_name,omitempty"`
+	DeviceType          string `json:"device_type,omitempty"`
+	DiskBus             string `json:"disk_bus,omitempty"`
+	GuestFormat         string `json:"guest_format,omitempty"`
+	NoDevice            bool   `json:"no_device,omitempty"`
+	Tag                 string `json:"tag,omitempty"`
 }
 
 // RunServer creates a new server, based on the given RunServerOpts.
