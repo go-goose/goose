@@ -93,9 +93,9 @@ func New(hostURL, versionPath, tenantId, region string, identityService, fallbac
 	}
 	// Real openstack instances have flavours "out of the box". So we add some here.
 	defaultFlavors := []nova.FlavorDetail{
-		{Id: "1", Name: "m1.tiny", RAM: 512, VCPUs: 1},
-		{Id: "2", Name: "m1.small", RAM: 2048, VCPUs: 1},
-		{Id: "3", Name: "m1.medium", RAM: 4096, VCPUs: 2},
+		{Id: "1", Name: "m1.tiny", RAM: 512, VCPUs: 1, Disk: 5},
+		{Id: "2", Name: "m1.small", RAM: 2048, VCPUs: 1, Disk: 10},
+		{Id: "3", Name: "m1.medium", RAM: 4096, VCPUs: 2, Disk: 15},
 	}
 	// Real openstack instances have a default security group "out of the box". So we add it here.
 	defaultSecurityGroups := []nova.SecurityGroup{
