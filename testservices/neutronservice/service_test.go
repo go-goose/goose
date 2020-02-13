@@ -53,6 +53,11 @@ func (s *NeutronSuite) ensureNoSubnet(c *gc.C, subnet neutron.SubnetV2) {
 	c.Assert(err, gc.ErrorMatches, fmt.Sprintf("itemNotFound: No such subnet %q", subnet.Id))
 }
 
+func (s *NeutronSuite) ensureNoPort(c *gc.C, port neutron.PortV2) {
+	_, err := s.service.port(port.Id)
+	c.Assert(err, gc.ErrorMatches, fmt.Sprintf("itemNotFound: No such port %s", port.Id))
+}
+
 func (s *NeutronSuite) createGroup(c *gc.C, group neutron.SecurityGroupV2) {
 	s.ensureNoGroup(c, group)
 	err := s.service.addSecurityGroup(group)
@@ -62,6 +67,12 @@ func (s *NeutronSuite) createGroup(c *gc.C, group neutron.SecurityGroupV2) {
 func (s *NeutronSuite) createIP(c *gc.C, ip neutron.FloatingIPV2) {
 	s.ensureNoIP(c, ip)
 	err := s.service.addFloatingIP(ip)
+	c.Assert(err, gc.IsNil)
+}
+
+func (s *NeutronSuite) createPort(c *gc.C, port neutron.PortV2) {
+	s.ensureNoPort(c, port)
+	err := s.service.addPort(port)
 	c.Assert(err, gc.IsNil)
 }
 
@@ -81,6 +92,12 @@ func (s *NeutronSuite) deleteIP(c *gc.C, ip neutron.FloatingIPV2) {
 	err := s.service.removeFloatingIP(ip.Id)
 	c.Assert(err, gc.IsNil)
 	s.ensureNoIP(c, ip)
+}
+
+func (s *NeutronSuite) deletePort(c *gc.C, port neutron.PortV2) {
+	err := s.service.removePort(port.Id)
+	c.Assert(err, gc.IsNil)
+	s.ensureNoPort(c, port)
 }
 
 func (s *NeutronSuite) TestAddRemoveSecurityGroup(c *gc.C) {
@@ -598,4 +615,62 @@ func (s *NeutronSuite) TestGetSubnetV2(c *gc.C) {
 	defer s.service.removeSubnet(subnet.Id)
 	sub, _ := s.service.subnet(subnet.Id)
 	c.Assert(*sub, gc.DeepEquals, subnet)
+}
+
+func (s *NeutronSuite) TestAddRemovePort(c *gc.C) {
+	port := neutron.PortV2{Id: "1"}
+	s.createPort(c, port)
+	s.deletePort(c, port)
+}
+
+func (s *NeutronSuite) TestRemovePortTwiceFails(c *gc.C) {
+	port := neutron.PortV2{Id: "1", Name: "test"}
+	s.createPort(c, port)
+	s.deletePort(c, port)
+	err := s.service.removePort(port.Id)
+	c.Assert(err, gc.ErrorMatches, "itemNotFound: No such port 1")
+}
+
+func (s *NeutronSuite) TestAllPorts(c *gc.C) {
+	ports := s.service.allPorts()
+	// There is always a default security group.
+	c.Assert(ports, gc.HasLen, 0)
+	ports = []neutron.PortV2{
+		{
+			Id:        "1",
+			Name:      "one",
+			NetworkId: "a87cc70a-3e15-4acf-8205-9b711a3531b7",
+			TenantId:  s.service.TenantId,
+		},
+		{
+			Id:        "2",
+			Name:      "two",
+			NetworkId: "a87cc70a-3e15-4acf-8205-9b711a3531xx",
+			TenantId:  s.service.TenantId,
+		},
+	}
+
+	s.createPort(c, ports[0])
+	defer s.deletePort(c, ports[0])
+
+	s.createPort(c, ports[1])
+	defer s.deletePort(c, ports[1])
+
+	pr := s.service.allPorts()
+	c.Assert(pr, gc.HasLen, len(ports))
+	checkPortsInList(c, ports, pr)
+}
+
+func (s *NeutronSuite) TestGetPort(c *gc.C) {
+	port := neutron.PortV2{
+		Id:          "42",
+		TenantId:    s.service.TenantId,
+		Name:        "port",
+		Description: "desc",
+		NetworkId:   "a87cc70a-3e15-4acf-8205-9b711a3531xx",
+	}
+	s.createPort(c, port)
+	defer s.deletePort(c, port)
+	gr, _ := s.service.port(port.Id)
+	c.Assert(*gr, gc.DeepEquals, port)
 }

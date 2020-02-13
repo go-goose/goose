@@ -20,8 +20,10 @@ type NeutronModel struct {
 	networks     map[string]neutron.NetworkV2
 	serverGroups map[string][]string
 	serverIPs    map[string][]string
+	ports        map[string]neutron.PortV2
 	nextGroupId  int
 	nextRuleId   int
+	nextPortId   int
 	nextIPId     int
 	rwMu         *sync.RWMutex
 }
@@ -77,12 +79,14 @@ func New() *NeutronModel {
 			TenantId:          "tenant-two",
 		},
 	}
+	defaultPorts := []neutron.PortV2{}
 
 	neutronModel := &NeutronModel{
 		groups:      make(map[string]neutron.SecurityGroupV2),
 		rules:       make(map[string]neutron.SecurityGroupRuleV2),
 		floatingIPs: make(map[string]neutron.FloatingIPV2),
 		networks:    make(map[string]neutron.NetworkV2),
+		ports:       make(map[string]neutron.PortV2),
 		rwMu:        &sync.RWMutex{},
 	}
 
@@ -94,6 +98,12 @@ func New() *NeutronModel {
 	}
 	for _, net := range defaultNetworks {
 		err := neutronModel.AddNetwork(net)
+		if err != nil {
+			panic(err)
+		}
+	}
+	for _, port := range defaultPorts {
+		err := neutronModel.AddPort(port)
 		if err != nil {
 			panic(err)
 		}
@@ -644,5 +654,53 @@ func (n *NeutronModel) RemoveNetwork(netId string) error {
 		return err
 	}
 	delete(n.networks, netId)
+	return nil
+}
+
+// AddPort creates a new port given a neutron.PortV2.
+func (n *NeutronModel) AddPort(port neutron.PortV2) error {
+	n.rwMu.Lock()
+	defer n.rwMu.Unlock()
+	if _, err := n.Port(port.Id); err == nil {
+		return testservices.NewPortAlreadyExistsError(port.Id)
+	}
+
+	n.ports[port.Id] = port
+	return nil
+}
+
+// Port retrieves an existing port by ID, data in neutron.PortV2 form.
+func (n *NeutronModel) Port(portId string) (*neutron.PortV2, error) {
+	if n.rwMu == nil {
+		n.rwMu.RLock()
+		defer n.rwMu.RUnlock()
+	}
+	port, ok := n.ports[portId]
+	if !ok {
+		return nil, testservices.NewPortByIDNotFoundError(portId)
+	}
+	return &port, nil
+}
+
+// AllPorts returns a list of all existing ports, data in
+// neutron.PortV2 form.
+func (n *NeutronModel) AllPorts() []neutron.PortV2 {
+	n.rwMu.RLock()
+	defer n.rwMu.RUnlock()
+	var ports []neutron.PortV2
+	for _, port := range n.ports {
+		ports = append(ports, port)
+	}
+	return ports
+}
+
+// RemovePort deletes an existing group.
+func (n *NeutronModel) RemovePort(portId string) error {
+	n.rwMu.Lock()
+	defer n.rwMu.Unlock()
+	if _, err := n.Port(portId); err != nil {
+		return err
+	}
+	delete(n.ports, portId)
 	return nil
 }

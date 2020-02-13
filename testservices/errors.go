@@ -104,6 +104,14 @@ func NewServerAlreadyExistsError(id string) *ServerError {
 	return serverErrorf(409, "A server with id %q already exists", id)
 }
 
+func NewPortAlreadyExistsError(id string) *ServerError {
+	return serverErrorf(409, "A port with id %s already exists", id)
+}
+
+func NewPortByIDNotFoundError(portId string) *ServerError {
+	return serverErrorf(404, "No such port %s", portId)
+}
+
 func NewSecurityGroupAlreadyExistsError(id string) *ServerError {
 	return serverErrorf(409, "A security group with id %s already exists", id)
 }
