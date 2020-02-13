@@ -6,16 +6,18 @@ package neutron
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
+
 	"gopkg.in/goose.v2/client"
 	"gopkg.in/goose.v2/errors"
 	goosehttp "gopkg.in/goose.v2/http"
-	"net/http"
-	"net/url"
 )
 
 const (
 	ApiFloatingIPsV2        = "floatingips"
 	ApiNetworksV2           = "networks"
+	ApiPortsV2              = "ports"
 	ApiSubnetsV2            = "subnets"
 	ApiSecurityGroupsV2     = "security-groups"
 	ApiSecurityGroupRulesV2 = "security-group-rules"
@@ -227,6 +229,85 @@ func (c *Client) DeleteFloatingIPV2(ipId string) error {
 	err := c.client.SendRequest(client.DELETE, "network", "v2.0", url, &requestData)
 	if err != nil {
 		err = errors.Newf(err, "failed to delete floating ip %s details", ipId)
+	}
+	return err
+}
+
+// PortV2 describes a defined network for creating a port.
+type PortV2 struct {
+	Description    string           `json:"description,omitempty"`
+	FixedIPs       []PortFixedIPsV2 `json:"fixed_ips,omitempty"`
+	Id             string           `json:"id,omitempty"`
+	Name           string           `json:"name,omitempty"`
+	NetworkId      string           `json:"network_id"`
+	SecurityGroups []string         `json:"security_groups,omitempty"`
+	Status         string           `json:"status,omitempty"`
+	TenantId       string           `json:"tenant_id,omitempty"`
+}
+
+// PortFixedIPsV2 represents a FIxedIp with ip addresses and an associated
+// subnet id.
+type PortFixedIPsV2 struct {
+	IPAddress string `json:"ip_address"`
+	SubnetID  string `json:"subnet_id"`
+}
+
+// ListPortsV2 lists NetworkIds, names, and other details for all ports.
+func (c *Client) ListPortsV2() ([]PortV2, error) {
+	var resp struct {
+		Ports []PortV2 `json:"ports"`
+	}
+	requestData := goosehttp.RequestData{RespValue: &resp}
+	err := c.client.SendRequest(client.GET, "network", "v2.0", ApiPortsV2, &requestData)
+	if err != nil {
+		return nil, errors.Newf(err, "failed to list ports")
+	}
+	return resp.Ports, nil
+}
+
+// PortByIdV2 returns the port by portId.
+func (c *Client) PortByIdV2(portId string) (PortV2, error) {
+	var resp struct {
+		Port PortV2 `json:"port"`
+	}
+	url := fmt.Sprintf("%s?port_id=%s", ApiSecurityGroupsV2, url.QueryEscape(portId))
+	requestData := goosehttp.RequestData{RespValue: &resp}
+	err := c.client.SendRequest(client.GET, "network", "v2.0", url, &requestData)
+	if err != nil {
+		return PortV2{}, err
+	}
+	return resp.Port, nil
+}
+
+// CreatePortV2 creates a new port.
+func (c *Client) CreatePortV2(port PortV2) (*PortV2, error) {
+	var req struct {
+		Port PortV2 `json:"port"`
+	}
+	req.Port = port
+
+	var resp struct {
+		Port PortV2 `json:"port"`
+	}
+	requestData := goosehttp.RequestData{
+		ReqValue:       req,
+		RespValue:      &resp,
+		ExpectedStatus: []int{http.StatusCreated},
+	}
+	err := c.client.SendRequest(client.POST, "network", "v2.0", ApiPortsV2, &requestData)
+	if err != nil {
+		return nil, errors.Newf(err, "failed to create a port with network id: %s", port.NetworkId)
+	}
+	return &resp.Port, nil
+}
+
+// DeletePortV2 deletes the specified port.
+func (c *Client) DeletePortV2(portId string) error {
+	url := fmt.Sprintf("%s/%s", ApiPortsV2, portId)
+	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusNoContent}}
+	err := c.client.SendRequest(client.DELETE, "network", "v2.0", url, &requestData)
+	if err != nil {
+		err = errors.Newf(err, "failed to delete port with id: %s", portId)
 	}
 	return err
 }
