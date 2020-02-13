@@ -596,13 +596,7 @@ func (n *Neutron) handlePorts(w http.ResponseWriter, r *http.Request) error {
 			return errBadRequestIncorrect
 		}
 		var req struct {
-			Port struct {
-				Name        string
-				Description string
-				FixedIPs    []neutron.PortFixedIPsV2
-				NetworkId   string
-				Status      string
-			} `json:"port"`
+			Port neutron.PortV2 `json:"port"`
 		}
 		if err := json.Unmarshal(body, &req); err != nil {
 			return err

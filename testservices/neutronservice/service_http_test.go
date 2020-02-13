@@ -177,6 +177,7 @@ func (s *NeutronHTTPSuite) simpleTests() []SimpleTest {
 			headers: setHeader(authToken, s.token),
 			expect:  errBadRequestMalformedURL,
 		},
+
 		{
 			method: "GET",
 			url:    neutron.ApiSecurityGroupsV2 + "/42",
@@ -207,6 +208,7 @@ func (s *NeutronHTTPSuite) simpleTests() []SimpleTest {
 			url:    neutron.ApiSecurityGroupsV2 + "/42",
 			expect: errNotFoundJSONSG,
 		},
+
 		{
 			method: "GET",
 			url:    neutron.ApiSecurityGroupRulesV2,
@@ -252,6 +254,7 @@ func (s *NeutronHTTPSuite) simpleTests() []SimpleTest {
 			url:    neutron.ApiSecurityGroupRulesV2 + "/42",
 			expect: errNotFoundJSONSGR,
 		},
+
 		{
 			method: "GET",
 			url:    neutron.ApiFloatingIPsV2 + "/42",
@@ -312,6 +315,7 @@ func (s *NeutronHTTPSuite) simpleTests() []SimpleTest {
 			url:    neutron.ApiNetworksV2 + "/invalid",
 			expect: errNotFound,
 		},
+
 		{
 			method: "GET",
 			url:    neutron.ApiSubnetsV2 + "/42",
@@ -341,6 +345,32 @@ func (s *NeutronHTTPSuite) simpleTests() []SimpleTest {
 			method: "DELETE",
 			url:    neutron.ApiSubnetsV2 + "/invalid",
 			expect: errNotFound,
+		},
+
+		{
+			method: "GET",
+			url:    neutron.ApiPortsV2 + "/42",
+			expect: errNotFoundJSONP,
+		},
+		{
+			method: "POST",
+			url:    neutron.ApiPortsV2,
+			expect: errBadRequestIncorrect,
+		},
+		{
+			method: "POST",
+			url:    neutron.ApiPortsV2 + "/invalid",
+			expect: errNotFound,
+		},
+		{
+			method: "DELETE",
+			url:    neutron.ApiPortsV2,
+			expect: errNotFound,
+		},
+		{
+			method: "DELETE",
+			url:    neutron.ApiPortsV2 + "/42",
+			expect: errNotFoundJSONP,
 		},
 	}
 	return simpleTests
@@ -793,6 +823,112 @@ func (s *NeutronHTTPSuite) TestGetSubnets(c *gc.C) {
 	c.Assert(resp.StatusCode, gc.Equals, http.StatusOK)
 	assertJSON(c, resp, &expectedSubnet)
 	c.Assert(expectedSubnet.Subnet, gc.DeepEquals, subnets[0])
+}
+
+func (s *NeutronHTTPSuite) TestGetPorts(c *gc.C) {
+	// There is always a default port.
+	ports := s.service.allPorts()
+	c.Assert(ports, gc.HasLen, 0)
+	var expected struct {
+		Ports []neutron.PortV2 `json:"ports"`
+	}
+	resp, err := s.authRequest("GET", neutron.ApiPortsV2, nil, nil)
+	c.Assert(err, gc.IsNil)
+	c.Assert(resp.StatusCode, gc.Equals, http.StatusOK)
+	assertJSON(c, resp, &expected)
+	c.Assert(expected.Ports, gc.HasLen, 0)
+
+	ports = []neutron.PortV2{
+		{
+			Id:        "1",
+			Name:      "group 1",
+			TenantId:  s.service.TenantId,
+			NetworkId: "a87cc70a-3e15-4acf-8205-9b711a3531b7",
+		},
+		{
+			Id:        "2",
+			Name:      "group 2",
+			TenantId:  s.service.TenantId,
+			NetworkId: "a87cc70a-3e15-4acf-8205-9b711a3531xx",
+		},
+	}
+
+	for _, group := range ports {
+		err := s.service.addPort(group)
+		c.Assert(err, gc.IsNil)
+		defer s.service.removePort(group.Id)
+	}
+
+	resp, err = s.authRequest("GET", neutron.ApiPortsV2, nil, nil)
+	c.Assert(err, gc.IsNil)
+	c.Assert(resp.StatusCode, gc.Equals, http.StatusOK)
+	assertJSON(c, resp, &expected)
+	c.Assert(expected.Ports, gc.HasLen, len(ports))
+
+	checkPortsInList(c, ports, expected.Ports)
+
+	var expectedPort struct {
+		Port neutron.PortV2 `json:"port"`
+	}
+	url := fmt.Sprintf("%s/%s", neutron.ApiPortsV2, "1")
+	resp, err = s.authRequest("GET", url, nil, nil)
+	c.Assert(err, gc.IsNil)
+	c.Assert(resp.StatusCode, gc.Equals, http.StatusOK)
+	assertJSON(c, resp, &expectedPort)
+	c.Assert(expectedPort.Port, gc.DeepEquals, ports[0])
+}
+
+func (s *NeutronHTTPSuite) TestAddPort(c *gc.C) {
+	port := neutron.PortV2{
+		Id:          "1",
+		Name:        "port 1",
+		Description: "desc",
+		TenantId:    s.service.TenantId,
+		NetworkId:   "a87cc70a-3e15-4acf-8205-9b711a3531b7",
+	}
+	_, err := s.service.port(port.Id)
+	c.Assert(err, gc.NotNil)
+
+	var req struct {
+		Port struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+			NetworkId   string `json:"network_id"`
+		} `json:"port"`
+	}
+	req.Port.Name = port.Name
+	req.Port.Description = port.Description
+	req.Port.NetworkId = port.NetworkId
+
+	var expected struct {
+		Port neutron.PortV2 `json:"port"`
+	}
+	resp, err := s.jsonRequest("POST", neutron.ApiPortsV2, req, nil)
+	c.Assert(err, gc.IsNil)
+	c.Assert(resp.StatusCode, gc.Equals, http.StatusCreated)
+	assertJSON(c, resp, &expected)
+	c.Assert(expected.Port, gc.DeepEquals, port)
+
+	err = s.service.removePort(port.Id)
+	c.Assert(err, gc.IsNil)
+}
+
+func (s *NeutronHTTPSuite) TestDeletePort(c *gc.C) {
+	port := neutron.PortV2{Id: "1", Name: "port 1", TenantId: s.service.TenantId}
+	_, err := s.service.port(port.Id)
+	c.Assert(err, gc.NotNil)
+
+	err = s.service.addPort(port)
+	c.Assert(err, gc.IsNil)
+	defer s.service.removePort(port.Id)
+
+	url := fmt.Sprintf("%s/%s", neutron.ApiPortsV2, "1")
+	resp, err := s.authRequest("DELETE", url, nil, nil)
+	c.Assert(err, gc.IsNil)
+	c.Assert(resp.StatusCode, gc.Equals, http.StatusNoContent)
+
+	_, err = s.service.port(port.Id)
+	c.Assert(err, gc.NotNil)
 }
 
 func (s *NeutronHTTPSSuite) SetUpSuite(c *gc.C) {
