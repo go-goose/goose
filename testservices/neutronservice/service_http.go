@@ -576,6 +576,7 @@ func (n *Neutron) handlePorts(w http.ResponseWriter, r *http.Request) error {
 			resp := struct {
 				Ports []neutron.PortV2 `json:"ports"`
 			}{n.allPorts()}
+
 			return sendJSON(http.StatusOK, resp, w, r)
 		}
 		if err != nil {

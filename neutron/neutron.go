@@ -270,7 +270,7 @@ func (c *Client) PortByIdV2(portId string) (PortV2, error) {
 	var resp struct {
 		Port PortV2 `json:"port"`
 	}
-	url := fmt.Sprintf("%s?port_id=%s", ApiSecurityGroupsV2, url.QueryEscape(portId))
+	url := fmt.Sprintf("%s/%s", ApiPortsV2, url.QueryEscape(portId))
 	requestData := goosehttp.RequestData{RespValue: &resp}
 	err := c.client.SendRequest(client.GET, "network", "v2.0", url, &requestData)
 	if err != nil {

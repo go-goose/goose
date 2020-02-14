@@ -344,9 +344,6 @@ func (s *LiveTests) TestPortsV2(c *gc.C) {
 	if !found {
 		c.Errorf("expected to find added port %s", newPort)
 	}
-
-	_, err = s.neutron.PortByIdV2(newPort.Id)
-	c.Assert(err, gc.Not(gc.IsNil))
 }
 
 func (s *LiveTests) TestPortByIdV2(c *gc.C) {
@@ -369,5 +366,22 @@ func (s *LiveTests) TestPortByIdV2(c *gc.C) {
 
 	// Try to find a Port that doesn't exist
 	_, err = s.neutron.PortByIdV2("xunknown-port-idxx-8205-9b711a3531b7")
+	c.Assert(err, gc.Not(gc.IsNil))
+}
+
+func (s *LiveTests) TestPortsDeleteV2(c *gc.C) {
+	port := neutron.PortV2{
+		Name:        "PortTest",
+		Description: "Testing create port",
+		NetworkId:   "a87cc70a-3e15-4acf-8205-9b711a3531b7",
+	}
+	newPort, err := s.neutron.CreatePortV2(port)
+	c.Assert(err, gc.IsNil)
+	c.Assert(newPort, gc.Not(gc.IsNil))
+
+	err = s.neutron.DeletePortV2(newPort.Id)
+	c.Assert(err, gc.IsNil)
+
+	_, err = s.neutron.PortByIdV2(newPort.Id)
 	c.Assert(err, gc.Not(gc.IsNil))
 }
