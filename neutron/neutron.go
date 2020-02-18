@@ -233,19 +233,21 @@ func (c *Client) DeleteFloatingIPV2(ipId string) error {
 	return err
 }
 
-// PortV2 describes a defined network for creating a port.
+// PortV2 describes a defined network for administrating a port.
 type PortV2 struct {
-	Description    string           `json:"description,omitempty"`
-	FixedIPs       []PortFixedIPsV2 `json:"fixed_ips,omitempty"`
-	Id             string           `json:"id,omitempty"`
-	Name           string           `json:"name,omitempty"`
-	NetworkId      string           `json:"network_id"`
-	SecurityGroups []string         `json:"security_groups,omitempty"`
-	Status         string           `json:"status,omitempty"`
-	TenantId       string           `json:"tenant_id,omitempty"`
+	Description         string           `json:"description,omitempty"`
+	DeviceId            string           `json:"device_id,omitempty"`
+	FixedIPs            []PortFixedIPsV2 `json:"fixed_ips,omitempty"`
+	Id                  string           `json:"id,omitempty"`
+	Name                string           `json:"name,omitempty"`
+	NetworkId           string           `json:"network_id"`
+	PortSecurityEnabled bool             `json:"port_security_enabled,omitempty"`
+	SecurityGroups      []string         `json:"security_groups,omitempty"`
+	Status              string           `json:"status,omitempty"`
+	TenantId            string           `json:"tenant_id,omitempty"`
 }
 
-// PortFixedIPsV2 represents a FIxedIp with ip addresses and an associated
+// PortFixedIPsV2 represents a FixedIp with ip addresses and an associated
 // subnet id.
 type PortFixedIPsV2 struct {
 	IPAddress string `json:"ip_address"`
@@ -253,11 +255,15 @@ type PortFixedIPsV2 struct {
 }
 
 // ListPortsV2 lists NetworkIds, names, and other details for all ports.
-func (c *Client) ListPortsV2() ([]PortV2, error) {
+func (c *Client) ListPortsV2(filter ...*Filter) ([]PortV2, error) {
 	var resp struct {
 		Ports []PortV2 `json:"ports"`
 	}
-	requestData := goosehttp.RequestData{RespValue: &resp}
+	var params *url.Values
+	if len(filter) > 0 {
+		params = &filter[0].v
+	}
+	requestData := goosehttp.RequestData{RespValue: &resp, Params: params}
 	err := c.client.SendRequest(client.GET, "network", "v2.0", ApiPortsV2, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to list ports")

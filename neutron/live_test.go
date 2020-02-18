@@ -344,6 +344,15 @@ func (s *LiveTests) TestPortsV2(c *gc.C) {
 	if !found {
 		c.Errorf("expected to find added port %s", newPort)
 	}
+
+	port1 := ports[0]
+
+	filter := neutron.NewFilter()
+	filter.Set(neutron.FilterProjectId, port1.TenantId)
+	ports, err = s.neutron.ListPortsV2(filter)
+	c.Assert(err, gc.IsNil)
+	c.Assert(ports, gc.HasLen, 1)
+	c.Assert(ports[0].Id, gc.Equals, port1.Id)
 }
 
 func (s *LiveTests) TestPortByIdV2(c *gc.C) {
