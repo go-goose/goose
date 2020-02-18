@@ -28,6 +28,7 @@ type Neutron struct {
 	subnets      map[string]neutron.SubnetV2
 	nextGroupId  int
 	nextRuleId   int
+	nextPortId   int
 	nextIPId     int
 }
 
@@ -141,6 +142,35 @@ func (n *Neutron) updateSecurityGroup(group neutron.SecurityGroupV2) error {
 		return err
 	}
 	return n.neutronModel.UpdateSecurityGroup(group)
+}
+
+// addPort creates a new port.
+func (n *Neutron) addPort(port neutron.PortV2) error {
+	if err := n.ProcessFunctionHook(n, port); err != nil {
+		return err
+	}
+	return n.neutronModel.AddPort(port)
+}
+
+// port retrieves an existing port by ID.
+func (n *Neutron) port(portId string) (*neutron.PortV2, error) {
+	if err := n.ProcessFunctionHook(n, portId); err != nil {
+		return nil, err
+	}
+	return n.neutronModel.Port(portId)
+}
+
+// allPorts returns a list of all existing ports.
+func (n *Neutron) allPorts() []neutron.PortV2 {
+	return n.neutronModel.AllPorts()
+}
+
+// removePort deletes an existing port.
+func (n *Neutron) removePort(portId string) error {
+	if err := n.ProcessFunctionHook(n, portId); err != nil {
+		return err
+	}
+	return n.neutronModel.RemovePort(portId)
 }
 
 // addSecurityGroup creates a new security group.

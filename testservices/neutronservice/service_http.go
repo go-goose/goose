@@ -22,6 +22,7 @@ const (
 	authToken               = "X-Auth-Token"
 	apiFloatingIPsV2        = "/v2.0/" + neutron.ApiFloatingIPsV2
 	apiNetworksV2           = "/v2.0/" + neutron.ApiNetworksV2
+	apiPortsV2              = "/v2.0/" + neutron.ApiPortsV2
 	apiSubnetsV2            = "/v2.0/" + neutron.ApiSubnetsV2
 	apiSecurityGroupsV2     = "/v2.0/" + neutron.ApiSecurityGroupsV2
 	apiSecurityGroupRulesV2 = "/v2.0/" + neutron.ApiSecurityGroupRulesV2
@@ -118,6 +119,14 @@ The resource could not be found.
 		nil,
 		nil,
 	}
+	errNotFoundJSONP = &errorResponse{
+		http.StatusNotFound,
+		`{"itemNotFound": {"message": "Port $ID$ not found.", "code": 404}}`,
+		"application/json; charset=UTF-8",
+		"",
+		nil,
+		nil,
+	}
 	errMultipleChoices = &errorResponse{
 		http.StatusMultipleChoices,
 		`{"choices": [{"status": "CURRENT", "media-types": [{"base": ` +
@@ -148,6 +157,9 @@ The resource could not be found.
 	}
 	errNoGroupId = &errorResponse{
 		errorText: "no security group id given",
+	}
+	errNoPortId = &errorResponse{
+		errorText: "no port id given",
 	}
 	errRateLimitExceeded = &errorResponse{
 		http.StatusRequestEntityTooLarge,
@@ -539,6 +551,98 @@ func (n *Neutron) handleSecurityGroupRules(w http.ResponseWriter, r *http.Reques
 	return fmt.Errorf("unknown request method %q for %s", r.Method, r.URL.Path)
 }
 
+// processPortId returns the group if one is specified in the given request,
+// either by id or by ?name. If there was no group id specified in the path,
+// it returns errNoPortId
+func (n *Neutron) processPortId(w http.ResponseWriter, r *http.Request) (*neutron.PortV2, error) {
+	portId := path.Base(r.URL.Path)
+	apiFunc := path.Base(apiPortsV2)
+	if portId != apiFunc {
+		port, err := n.port(portId)
+		if err != nil {
+			return nil, errNotFoundJSONP
+		}
+		return port, nil
+	}
+	return nil, errNoPortId
+}
+
+// handlePorts handles the /v2.0/ports HTTP API.
+func (n *Neutron) handlePorts(w http.ResponseWriter, r *http.Request) error {
+	switch r.Method {
+	case "GET":
+		port, err := n.processPortId(w, r)
+		if err == errNoPortId {
+			resp := struct {
+				Ports []neutron.PortV2 `json:"ports"`
+			}{n.allPorts()}
+
+			return sendJSON(http.StatusOK, resp, w, r)
+		}
+		if err != nil {
+			return err
+		}
+		resp := struct {
+			Port neutron.PortV2 `json:"port"`
+		}{*port}
+
+		return sendJSON(http.StatusOK, resp, w, r)
+	case "POST":
+		_, err := n.processPortId(w, r)
+		if err != errNoPortId {
+			return errNotFound
+		}
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil || len(body) == 0 {
+			return errBadRequestIncorrect
+		}
+		var req struct {
+			Port neutron.PortV2 `json:"port"`
+		}
+		if err := json.Unmarshal(body, &req); err != nil {
+			return err
+		} else {
+			n.nextPortId++
+			nextId := strconv.Itoa(n.nextPortId)
+			err = n.addPort(neutron.PortV2{
+				Id:          nextId,
+				Name:        req.Port.Name,
+				Description: req.Port.Description,
+				FixedIPs:    req.Port.FixedIPs,
+				NetworkId:   req.Port.NetworkId,
+				Status:      req.Port.Status,
+				TenantId:    n.TenantId,
+			})
+			if err != nil {
+				return err
+			}
+			port, err := n.port(nextId)
+			if err != nil {
+				return err
+			}
+			var resp struct {
+				Port neutron.PortV2 `json:"port"`
+			}
+			resp.Port = *port
+			return sendJSON(http.StatusCreated, resp, w, r)
+		}
+
+	case "DELETE":
+		if port, err := n.processPortId(w, r); port != nil {
+			if err := n.removePort(port.Id); err != nil {
+				return err
+			}
+			writeResponse(w, http.StatusNoContent, nil)
+			return nil
+		} else if err == errNoPortId {
+			return errNotFound
+		} else {
+			return err
+		}
+	}
+	return fmt.Errorf("unknown request method %q for %s", r.Method, r.URL.Path)
+}
+
 // handleFloatingIPs handles the v2/floatingips HTTP API.
 func (n *Neutron) handleFloatingIPs(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
@@ -703,6 +807,8 @@ func (n *Neutron) SetupHTTP(mux *http.ServeMux) {
 		"/$v/security-groups/":      n.handler((*Neutron).handleSecurityGroups),
 		"/$v/security-group-rules":  n.handler((*Neutron).handleSecurityGroupRules),
 		"/$v/security-group-rules/": n.handler((*Neutron).handleSecurityGroupRules),
+		"/$v/ports":                 n.handler((*Neutron).handlePorts),
+		"/$v/ports/":                n.handler((*Neutron).handlePorts),
 		"/$v/floatingips":           n.handler((*Neutron).handleFloatingIPs),
 		"/$v/floatingips/":          n.handler((*Neutron).handleFloatingIPs),
 		"/$v/networks":              n.handler((*Neutron).handleNetworks),

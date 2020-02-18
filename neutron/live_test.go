@@ -1,8 +1,9 @@
 package neutron_test
 
 import (
-	gc "gopkg.in/check.v1"
 	"net"
+
+	gc "gopkg.in/check.v1"
 
 	"gopkg.in/goose.v2/client"
 	"gopkg.in/goose.v2/identity"
@@ -306,4 +307,90 @@ func (s *LiveTests) TestSecurityGroupsRulesV2(c *gc.C) {
 	}
 	err = s.neutron.DeleteSecurityGroupRuleV2(newSecGrpRule.Id)
 	c.Assert(err, gc.IsNil)
+}
+
+func (s *LiveTests) deletePort(id string, c *gc.C) {
+	err := s.neutron.DeletePortV2(id)
+	c.Assert(err, gc.IsNil)
+}
+
+func (s *LiveTests) TestPortsV2(c *gc.C) {
+	port := neutron.PortV2{
+		Name:        "PortTest",
+		Description: "Testing create port",
+		NetworkId:   "a87cc70a-3e15-4acf-8205-9b711a3531b7",
+	}
+	newPort, err := s.neutron.CreatePortV2(port)
+	c.Assert(err, gc.IsNil)
+	defer s.deletePort(newPort.Id, c)
+	c.Assert(newPort, gc.Not(gc.IsNil))
+
+	ports, err := s.neutron.ListPortsV2()
+	c.Assert(err, gc.IsNil)
+	c.Assert(ports, gc.Not(gc.HasLen), 0)
+
+	var found bool
+	for _, port := range ports {
+		c.Check(port.Id, gc.Not(gc.Equals), "")
+		c.Check(port.Name, gc.Not(gc.Equals), "")
+		c.Check(port.Description, gc.Not(gc.Equals), "")
+		c.Check(port.TenantId, gc.Not(gc.Equals), "")
+		c.Check(port.NetworkId, gc.Not(gc.Equals), "")
+		// Is this the Port we just created?
+		if port.Id == newPort.Id {
+			found = true
+		}
+	}
+	if !found {
+		c.Errorf("expected to find added port %s", newPort)
+	}
+
+	port1 := ports[0]
+
+	filter := neutron.NewFilter()
+	filter.Set(neutron.FilterProjectId, port1.TenantId)
+	ports, err = s.neutron.ListPortsV2(filter)
+	c.Assert(err, gc.IsNil)
+	c.Assert(ports, gc.HasLen, 1)
+	c.Assert(ports[0].Id, gc.Equals, port1.Id)
+}
+
+func (s *LiveTests) TestPortByIdV2(c *gc.C) {
+	// Create and find a Port
+	port := neutron.PortV2{
+		Name:        "PortTest",
+		Description: "Testing create port",
+		NetworkId:   "a87cc70a-3e15-4acf-8205-9b711a3531b7",
+	}
+	newPort, err := s.neutron.CreatePortV2(port)
+	c.Assert(err, gc.IsNil)
+	defer s.deletePort(newPort.Id, c)
+	c.Assert(newPort, gc.Not(gc.IsNil))
+
+	foundPort, err := s.neutron.PortByIdV2(newPort.Id)
+	c.Assert(err, gc.IsNil)
+	if newPort.Id != foundPort.Id {
+		c.Errorf("expected to find added port %s, when requested by Id", newPort.Id)
+	}
+
+	// Try to find a Port that doesn't exist
+	_, err = s.neutron.PortByIdV2("xunknown-port-idxx-8205-9b711a3531b7")
+	c.Assert(err, gc.Not(gc.IsNil))
+}
+
+func (s *LiveTests) TestPortsDeleteV2(c *gc.C) {
+	port := neutron.PortV2{
+		Name:        "PortTest",
+		Description: "Testing create port",
+		NetworkId:   "a87cc70a-3e15-4acf-8205-9b711a3531b7",
+	}
+	newPort, err := s.neutron.CreatePortV2(port)
+	c.Assert(err, gc.IsNil)
+	c.Assert(newPort, gc.Not(gc.IsNil))
+
+	err = s.neutron.DeletePortV2(newPort.Id)
+	c.Assert(err, gc.IsNil)
+
+	_, err = s.neutron.PortByIdV2(newPort.Id)
+	c.Assert(err, gc.Not(gc.IsNil))
 }
