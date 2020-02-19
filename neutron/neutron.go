@@ -250,8 +250,8 @@ type PortV2 struct {
 // PortFixedIPsV2 represents a FixedIp with ip addresses and an associated
 // subnet id.
 type PortFixedIPsV2 struct {
-	IPAddress string `json:"ip_address"`
-	SubnetID  string `json:"subnet_id"`
+	IPAddress string `json:"ip_address,omitempty"`
+	SubnetID  string `json:"subnet_id,omitempty"`
 }
 
 // ListPortsV2 lists NetworkIds, names, and other details for all ports.
