@@ -136,6 +136,12 @@ func (n *Neutron) AddNeutronModel(neutronModel *neutronmodel.NeutronModel) {
 	n.neutronModel = neutronModel
 }
 
+// NeutronModel returns the current NeutronModel, which can then be used to
+// update internal state for neutron test doubles.
+func (n *Neutron) NeutronModel() *neutronmodel.NeutronModel {
+	return n.neutronModel
+}
+
 // updateSecurityGroup updates an existing security group.
 func (n *Neutron) updateSecurityGroup(group neutron.SecurityGroupV2) error {
 	if err := n.ProcessFunctionHook(n, group); err != nil {
