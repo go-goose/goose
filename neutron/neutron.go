@@ -244,6 +244,7 @@ type PortV2 struct {
 	PortSecurityEnabled bool             `json:"port_security_enabled,omitempty"`
 	SecurityGroups      []string         `json:"security_groups,omitempty"`
 	Status              string           `json:"status,omitempty"`
+	Tags                []string         `json:"tags,omitempty"`
 	TenantId            string           `json:"tenant_id,omitempty"`
 }
 

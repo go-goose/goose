@@ -611,6 +611,7 @@ func (n *Neutron) handlePorts(w http.ResponseWriter, r *http.Request) error {
 				FixedIPs:    req.Port.FixedIPs,
 				NetworkId:   req.Port.NetworkId,
 				Status:      req.Port.Status,
+				Tags:        req.Port.Tags,
 				TenantId:    n.TenantId,
 			})
 			if err != nil {
