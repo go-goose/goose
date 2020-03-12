@@ -1302,6 +1302,33 @@ func (s *NovaHTTPSuite) TestListAvailabilityZones(c *gc.C) {
 	c.Assert(expected.Zones, gc.DeepEquals, zones)
 }
 
+func (s *NovaHTTPSuite) TestAddServerOSInterface(c *gc.C) {
+	osInterface := nova.OSInterface{
+		FixedIPs: []nova.PortFixedIP{
+			{IPAddress: "10.0.0.1", SubnetID: "sub-net-id"},
+		},
+		IPAddress: "10.0.0.1",
+	}
+	server := nova.ServerDetail{
+		Id:        "sr1",
+		Addresses: map[string][]nova.IPAddress{"private": []nova.IPAddress{}},
+	}
+	s.service.addOSInterface(server.Id, osInterface)
+	c.Assert(s.service.hasServerOSInterface(server.Id, osInterface.IPAddress), gc.Equals, true)
+
+	defer s.service.removeOSInterface(server.Id, osInterface.IPAddress)
+	s.service.removeOSInterface(server.Id, osInterface.IPAddress)
+
+	defer s.service.removeServer(server.Id)
+	c.Assert(s.service.hasServerOSInterface(server.Id, osInterface.IPAddress), gc.Equals, false)
+
+	s.service.addOSInterface(server.Id, osInterface)
+
+	resp, err := s.jsonRequest("GET", "/servers/"+server.Id+"/os-interface", nil, nil)
+	c.Assert(err, gc.IsNil)
+	c.Assert(resp.StatusCode, gc.Equals, http.StatusOK)
+}
+
 func (s *NovaHTTPSSuite) SetUpSuite(c *gc.C) {
 	s.HTTPSuite.SetUpSuite(c)
 	identityDouble := identityservice.NewUserPass()

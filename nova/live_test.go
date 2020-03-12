@@ -747,3 +747,30 @@ func (s *LiveTests) TestCreateServerBlockDeviceMappingVolume(c *gc.C) {
 	c.Assert(server, gc.NotNil)
 	c.Assert(server.Status, gc.Equals, nova.StatusActive)
 }
+
+func (s *LiveTests) TestServerOSInterfaces(c *gc.C) {
+	if s.useNeutronNetworking {
+		c.Skip("Live tests use Neutron, this test will fail")
+	}
+
+	entity, err := s.nova.RunServer(nova.RunServerOpts{
+		Name:             "inst-os-interface",
+		FlavorId:         s.testFlavorId,
+		ImageId:          s.testImageId,
+		AvailabilityZone: s.testAvailabilityZone,
+		Networks: []nova.ServerNetworks{{
+			NetworkId: s.testNetwork,
+		}},
+	})
+	c.Assert(err, gc.IsNil)
+	defer s.nova.DeleteServer(entity.Id)
+	s.waitTestServerCompleteBuilding(c, entity.Id)
+
+	server, err := s.nova.GetServer(entity.Id)
+	c.Assert(err, gc.IsNil)
+	c.Assert(server, gc.NotNil)
+	c.Assert(server.Status, gc.Equals, nova.StatusActive)
+
+	_, err = s.nova.ListOSInterfaces(entity.Id)
+	c.Assert(err, gc.IsNil)
+}

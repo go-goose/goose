@@ -740,7 +740,7 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 
 // handleServers handles the servers HTTP API.
 func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
-
+	// Handle os volume attachments as a leaf of a server.
 	if strings.Contains(r.URL.Path, "os-volume_attachments") {
 		switch r.Method {
 		case "GET":
@@ -752,6 +752,12 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
+	// Handle os interfaces as a leaf of a server.
+	if strings.Contains(r.URL.Path, "os-interface") {
+		return n.handleOSInterfaces(w, r)
+	}
+
+	// Handle server related functionality directly.
 	switch r.Method {
 	case "GET":
 		if suffix := path.Base(r.URL.Path); suffix != "servers" {
@@ -1231,6 +1237,21 @@ func (n *Nova) handleAvailabilityZones(w http.ResponseWriter, r *http.Request) e
 	return fmt.Errorf("unknown request method %q for %s", r.Method, r.URL.Path)
 }
 
+// handleOSInterfaces handles the os-interfaces HTTP API.
+func (n *Nova) handleOSInterfaces(w http.ResponseWriter, r *http.Request) error {
+	switch r.Method {
+	case "GET":
+		serverId := path.Base(strings.Replace(r.URL.Path, "/os-interface", "", 1))
+
+		interfaces := n.serverOSInterfaces(serverId)
+		resp := struct {
+			InterfaceAttachments []nova.OSInterface `json:"interfaceAttachments"`
+		}{interfaces}
+		return sendJSON(http.StatusOK, resp, w, r)
+	}
+	return fmt.Errorf("unknown request method %q for %s", r.Method, r.URL.Path)
+}
+
 func (n *Nova) handleAttachVolumes(w http.ResponseWriter, r *http.Request) error {
 	serverId := path.Base(strings.Replace(r.URL.Path, "/os-volume_attachments", "", 1))
 
@@ -1333,6 +1354,18 @@ func (n *Nova) handleListVolumes(w http.ResponseWriter, r *http.Request) error {
 }
 
 // SetupHTTP attaches all the needed handlers to provide the HTTP API.
+//
+// TODO (stickupkid): The following needs re-working for version 3 of goose.
+// Instead we should be providing a router matching library. There is way too
+// much ad-hock calling of methods in different call sites, that makes it almost
+// impossible to follow the flow of this stub.
+//
+// Instead we should define our routes up front as a dependency of our tests.
+//
+// Example of this would be:
+// handlers := map[string]http.Handler{
+// 	"/{version}/{tenant_id}/servers/{server_id}/os-interfaces": n.handleOSInterfaces,
+// }
 func (n *Nova) SetupHTTP(mux *http.ServeMux) {
 	handlers := map[string]http.Handler{
 		"/$v/":                        errBadRequest,

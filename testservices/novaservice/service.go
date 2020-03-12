@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"gopkg.in/goose.v2/errors"
@@ -33,12 +34,14 @@ type Nova struct {
 	serverGroups              map[string][]string
 	serverIPs                 map[string][]string
 	availabilityZones         map[string]nova.AvailabilityZone
+	serverIdToOSInterfaces    map[string][]nova.OSInterface
 	serverIdToAttachedVolumes map[string][]nova.VolumeAttachment
 	nextServerId              int
 	nextGroupId               int
 	nextRuleId                int
 	nextIPId                  int
 	nextAttachmentId          int
+	nextOSInterfaceId         int
 	useNeutronNetworking      bool
 	noValidHostZone           nova.AvailabilityZone
 	serverStatus              string
@@ -111,6 +114,7 @@ func New(hostURL, versionPath, tenantId, region string, identityService, fallbac
 		serverGroups:              make(map[string][]string),
 		serverIPs:                 make(map[string][]string),
 		availabilityZones:         make(map[string]nova.AvailabilityZone),
+		serverIdToOSInterfaces:    make(map[string][]nova.OSInterface),
 		serverIdToAttachedVolumes: make(map[string][]nova.VolumeAttachment),
 		useNeutronNetworking:      false,
 		ServiceInstance: testservices.ServiceInstance{
@@ -1121,4 +1125,72 @@ func (n *Nova) setServerMetadata(serverId string, metadata map[string]string) er
 	}
 	n.servers[serverId] = *server
 	return nil
+}
+
+// addOSInterface adds a os-interface attachment to a server.
+func (n *Nova) addOSInterface(serverID string, osInterfaces ...nova.OSInterface) error {
+	for _, osInter := range osInterfaces {
+		n.nextOSInterfaceId++
+
+		port := &osInter
+		port.PortID = strconv.Itoa(n.nextOSInterfaceId)
+
+		n.serverIdToOSInterfaces[serverID] = append(n.serverIdToOSInterfaces[serverID], *port)
+	}
+
+	return nil
+}
+
+// removeOSInterface removes a os-interface attachment from a server based
+// on the matching criteria.
+func (n *Nova) removeOSInterface(serverID, ipAddress string) error {
+	interfaces, ok := n.serverIdToOSInterfaces[serverID]
+	if !ok {
+		return testservices.NewServerByIDNotFoundError(serverID)
+	}
+
+	for i, v := range interfaces {
+		if v.IPAddress == ipAddress {
+			interfaces = append(interfaces[:i], interfaces[i+1:]...)
+			n.serverIdToOSInterfaces[serverID] = interfaces
+			return nil
+		}
+	}
+
+	return testservices.NewNoSuchOSInterfaceError(ipAddress)
+}
+
+func (n *Nova) allOSInterfaces() []nova.OSInterface {
+	var results []nova.OSInterface
+	for serverID := range n.servers {
+		results = append(results, n.serverOSInterfaces(serverID)...)
+	}
+	return results
+}
+
+func (n *Nova) serverOSInterfaces(serverID string) []nova.OSInterface {
+	if interfaces, ok := n.serverIdToOSInterfaces[serverID]; ok {
+		return interfaces
+	}
+	return make([]nova.OSInterface, 0)
+}
+
+func (n *Nova) serverOSInterface(serverID string, ipAddress string) (nova.OSInterface, error) {
+	for _, osInterface := range n.serverOSInterfaces(serverID) {
+		if osInterface.IPAddress == ipAddress {
+			return osInterface, nil
+		}
+	}
+	return nova.OSInterface{}, testservices.NewNoSuchOSInterfaceError(ipAddress)
+}
+
+func (n *Nova) hasServerOSInterface(serverID string, ipAddress string) bool {
+	for _, osInterface := range n.serverOSInterfaces(serverID) {
+		for _, ips := range osInterface.FixedIPs {
+			if ips.IPAddress == ipAddress {
+				return true
+			}
+		}
+	}
+	return false
 }

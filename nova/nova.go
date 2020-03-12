@@ -22,6 +22,7 @@ const (
 	apiServersDetail     = "servers/detail"
 	apiAvailabilityZone  = "os-availability-zone"
 	apiVolumeAttachments = "os-volume_attachments"
+	apiOSInterface       = "os-interface"
 )
 
 // Server status values.
@@ -556,7 +557,6 @@ func (c *Client) DetachVolume(serverId, attachmentId string) error {
 // ListVolumeAttachments lists the volumes currently attached to the
 // server with the given serverId.
 func (c *Client) ListVolumeAttachments(serverId string) ([]VolumeAttachment, error) {
-
 	var resp struct {
 		VolumeAttachments []VolumeAttachment `json:"volumeAttachments"`
 	}
@@ -589,4 +589,39 @@ func (c *Client) SetServerMetadata(serverId string, metadata map[string]string) 
 		err = errors.Newf(err, "failed to set metadata %v on server with id: %s", metadata, serverId)
 	}
 	return err
+}
+
+// PortFixedIP represents a FixedIP with ip addresses and an associated
+// subnet id.
+type PortFixedIP struct {
+	IPAddress string `json:"ip_address"`
+	SubnetID  string `json:"subnet_id"`
+}
+
+// OSInterface represents an interface attachment to a server.
+type OSInterface struct {
+	FixedIPs   []PortFixedIP `json:"fixed_ips,omitempty"`
+	IPAddress  string        `json:"ip_address"`
+	MacAddress string        `json:"mac_addr,omitempty"`
+	NetID      string        `json:"net_id,omitempty"`
+	PortID     string        `json:"port_id,omitempty"`
+	PortState  string        `json:"port_state,omitempty"`
+}
+
+// ListOSInterfaces lists all the os-interfaces (port interfaces) associated
+// with a given server.
+// https://docs.openstack.org/api-ref/compute/?expanded=list-port-interfaces-detail
+func (c *Client) ListOSInterfaces(serverId string) ([]OSInterface, error) {
+	var resp struct {
+		InterfaceAttachments []OSInterface `json:"interfaceAttachments"`
+	}
+	requestData := goosehttp.RequestData{
+		RespValue: &resp,
+	}
+	url := fmt.Sprintf("%s/%s/%s", apiServers, serverId, apiOSInterface)
+	err := c.client.SendRequest(client.GET, "compute", "v2", url, &requestData)
+	if err != nil {
+		return nil, errors.Newf(err, "failed to list os interfaces")
+	}
+	return resp.InterfaceAttachments, nil
 }
