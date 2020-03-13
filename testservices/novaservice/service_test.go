@@ -92,7 +92,7 @@ func (s *NovaSuite) createIP(c *gc.C, ip nova.FloatingIP) {
 
 func (s *NovaSuite) createOSInterface(c *gc.C, serverID string, inter nova.OSInterface) {
 	s.ensureNoOSInterface(c, serverID, inter)
-	err := s.service.addOSInterface(serverID, inter)
+	err := s.service.AddOSInterface(serverID, inter)
 	c.Assert(err, gc.IsNil)
 }
 
@@ -127,7 +127,7 @@ func (s *NovaSuite) deleteIP(c *gc.C, ip nova.FloatingIP) {
 }
 
 func (s *NovaSuite) deleteOSInterface(c *gc.C, serverID string, inter nova.OSInterface) {
-	err := s.service.removeOSInterface(serverID, inter.IPAddress)
+	err := s.service.RemoveOSInterface(serverID, inter.IPAddress)
 	c.Assert(err, gc.IsNil)
 	s.ensureNoOSInterface(c, serverID, inter)
 }

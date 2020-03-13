@@ -1127,8 +1127,8 @@ func (n *Nova) setServerMetadata(serverId string, metadata map[string]string) er
 	return nil
 }
 
-// addOSInterface adds a os-interface attachment to a server.
-func (n *Nova) addOSInterface(serverID string, osInterfaces ...nova.OSInterface) error {
+// AddOSInterface adds a os-interface attachment to a server.
+func (n *Nova) AddOSInterface(serverID string, osInterfaces ...nova.OSInterface) error {
 	for _, osInter := range osInterfaces {
 		n.nextOSInterfaceId++
 
@@ -1141,9 +1141,9 @@ func (n *Nova) addOSInterface(serverID string, osInterfaces ...nova.OSInterface)
 	return nil
 }
 
-// removeOSInterface removes a os-interface attachment from a server based
+// RemoveOSInterface removes a os-interface attachment from a server based
 // on the matching criteria.
-func (n *Nova) removeOSInterface(serverID, ipAddress string) error {
+func (n *Nova) RemoveOSInterface(serverID, ipAddress string) error {
 	interfaces, ok := n.serverIdToOSInterfaces[serverID]
 	if !ok {
 		return testservices.NewServerByIDNotFoundError(serverID)

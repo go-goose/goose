@@ -1313,16 +1313,16 @@ func (s *NovaHTTPSuite) TestAddServerOSInterface(c *gc.C) {
 		Id:        "sr1",
 		Addresses: map[string][]nova.IPAddress{"private": []nova.IPAddress{}},
 	}
-	s.service.addOSInterface(server.Id, osInterface)
+	s.service.AddOSInterface(server.Id, osInterface)
 	c.Assert(s.service.hasServerOSInterface(server.Id, osInterface.IPAddress), gc.Equals, true)
 
-	defer s.service.removeOSInterface(server.Id, osInterface.IPAddress)
-	s.service.removeOSInterface(server.Id, osInterface.IPAddress)
+	defer s.service.RemoveOSInterface(server.Id, osInterface.IPAddress)
+	s.service.RemoveOSInterface(server.Id, osInterface.IPAddress)
 
 	defer s.service.removeServer(server.Id)
 	c.Assert(s.service.hasServerOSInterface(server.Id, osInterface.IPAddress), gc.Equals, false)
 
-	s.service.addOSInterface(server.Id, osInterface)
+	s.service.AddOSInterface(server.Id, osInterface)
 
 	resp, err := s.jsonRequest("GET", "/servers/"+server.Id+"/os-interface", nil, nil)
 	c.Assert(err, gc.IsNil)
