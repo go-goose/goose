@@ -763,7 +763,10 @@ func (s *LiveTests) TestServerOSInterfaces(c *gc.C) {
 		}},
 	})
 	c.Assert(err, gc.IsNil)
-	defer s.nova.DeleteServer(entity.Id)
+	defer func() {
+		err := s.nova.DeleteServer(entity.Id)
+		c.Assert(err, gc.IsNil)
+	}()
 	s.waitTestServerCompleteBuilding(c, entity.Id)
 
 	server, err := s.nova.GetServer(entity.Id)
