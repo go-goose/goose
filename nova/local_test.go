@@ -294,7 +294,6 @@ func (s *localLiveSuite) TestRunServerAvailabilityZoneNotAvailable(c *gc.C) {
 }
 
 func (s *localLiveSuite) TestVolumeAttachments(c *gc.C) {
-
 	instance, err := s.createInstance("test-instance")
 	c.Assert(err, gc.IsNil)
 

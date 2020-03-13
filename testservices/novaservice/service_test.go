@@ -51,6 +51,11 @@ func (s *NovaSuite) ensureNoGroup(c *gc.C, group nova.SecurityGroup) {
 	c.Assert(err, gc.ErrorMatches, fmt.Sprintf("itemNotFound: No such security group %s", group.Id))
 }
 
+func (s *NovaSuite) ensureNoOSInterface(c *gc.C, serverID string, inter nova.OSInterface) {
+	_, err := s.service.serverOSInterface(serverID, inter.IPAddress)
+	c.Assert(err, gc.ErrorMatches, fmt.Sprintf("itemNotFound: No such os interface %q", inter.IPAddress))
+}
+
 func (s *NovaSuite) ensureNoRule(c *gc.C, rule nova.SecurityGroupRule) {
 	_, err := s.service.securityGroupRule(rule.Id)
 	c.Assert(err, gc.ErrorMatches, fmt.Sprintf("itemNotFound: No such security group rule %s", rule.Id))
@@ -85,6 +90,12 @@ func (s *NovaSuite) createIP(c *gc.C, ip nova.FloatingIP) {
 	c.Assert(err, gc.IsNil)
 }
 
+func (s *NovaSuite) createOSInterface(c *gc.C, serverID string, inter nova.OSInterface) {
+	s.ensureNoOSInterface(c, serverID, inter)
+	err := s.service.AddOSInterface(serverID, inter)
+	c.Assert(err, gc.IsNil)
+}
+
 func (s *NovaSuite) deleteFlavor(c *gc.C, flavor nova.FlavorDetail) {
 	err := s.service.removeFlavor(flavor.Id)
 	c.Assert(err, gc.IsNil)
@@ -113,6 +124,12 @@ func (s *NovaSuite) deleteIP(c *gc.C, ip nova.FloatingIP) {
 	err := s.service.removeFloatingIP(ip.Id)
 	c.Assert(err, gc.IsNil)
 	s.ensureNoIP(c, ip)
+}
+
+func (s *NovaSuite) deleteOSInterface(c *gc.C, serverID string, inter nova.OSInterface) {
+	err := s.service.RemoveOSInterface(serverID, inter.IPAddress)
+	c.Assert(err, gc.IsNil)
+	s.ensureNoOSInterface(c, serverID, inter)
 }
 
 func (s *NovaSuite) TestAddRemoveFlavor(c *gc.C) {
@@ -1350,4 +1367,49 @@ func (s *NovaSuite) TestRemoveServerFloatingIPTwiceFails(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	err = s.service.removeServerFloatingIP(server.Id, fip.Id)
 	c.Assert(err, gc.ErrorMatches, `itemNotFound: Server "sr1" does not have floating IP 1`)
+}
+
+func (s *NovaSuite) TestAllOSInterfaces(c *gc.C) {
+	if s.service.useNeutronNetworking {
+		c.Skip("skipped in novaservice when using Neutron Model")
+	}
+
+	serverID := "sr1"
+	server := nova.ServerDetail{
+		Id:        serverID,
+		Addresses: map[string][]nova.IPAddress{"private": []nova.IPAddress{}},
+	}
+	s.createServer(c, server)
+	defer s.deleteServer(c, server)
+
+	interfaces := s.service.serverOSInterfaces(serverID)
+	// There shouldn't be any interfaces associated with a server.
+	c.Assert(interfaces, gc.HasLen, 0)
+	interfaces = []nova.OSInterface{
+		{
+			FixedIPs: []nova.PortFixedIP{
+				{
+					IPAddress: "10.0.0.1",
+					SubnetID:  "aaa-bbb-ccc",
+				},
+			},
+			IPAddress: "10.0.0.1",
+		},
+		{
+			FixedIPs: []nova.PortFixedIP{
+				{
+					IPAddress: "10.0.0.2",
+					SubnetID:  "xxx-yyy-zzz",
+				},
+			},
+			IPAddress: "10.0.0.2",
+		},
+	}
+	s.createOSInterface(c, serverID, interfaces[0])
+	defer s.deleteOSInterface(c, serverID, interfaces[0])
+	s.createOSInterface(c, serverID, interfaces[1])
+	defer s.deleteOSInterface(c, serverID, interfaces[1])
+
+	newInterfaces := s.service.serverOSInterfaces(serverID)
+	c.Assert(newInterfaces, gc.HasLen, len(interfaces))
 }
