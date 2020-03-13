@@ -606,6 +606,7 @@ type OSInterface struct {
 	NetID      string        `json:"net_id,omitempty"`
 	PortID     string        `json:"port_id,omitempty"`
 	PortState  string        `json:"port_state,omitempty"`
+	Tag        string        `json:"tag,omitempty"`
 }
 
 // ListOSInterfaces lists all the os-interfaces (port interfaces) associated
@@ -616,7 +617,8 @@ func (c *Client) ListOSInterfaces(serverId string) ([]OSInterface, error) {
 		InterfaceAttachments []OSInterface `json:"interfaceAttachments"`
 	}
 	requestData := goosehttp.RequestData{
-		RespValue: &resp,
+		RespValue:      &resp,
+		ExpectedStatus: []int{http.StatusOK},
 	}
 	url := fmt.Sprintf("%s/%s/%s", apiServers, serverId, apiOSInterface)
 	err := c.client.SendRequest(client.GET, "compute", "v2", url, &requestData)
