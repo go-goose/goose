@@ -29,6 +29,22 @@ const (
 	FilterRouterExternal = "router:external" // The router:external
 	FilterNetwork        = "name"            // The network name.
 	FilterProjectId      = "project_id"      // The project id
+
+	// A list of tags to filter the list result by. Resources that match all tags in this
+	// list will be returned. Tags in query must be separated by comma.
+	FilterTags = "tags"
+
+	// 	A list of tags to filter the list result by. Resources that match any tag in this list
+	// will be returned. Tags in query must be separated by comma.
+	FilterTagsAny = "tags-any"
+
+	// A list of tags to filter the list result by. Resources that match all tags in this list
+	// will be excluded. Tags in query must be separated by comma.
+	FilterNotTags = "not-tags"
+
+	// A list of tags to filter the list result by. Resources that match any tag in this list
+	// will be excluded. Tags in query must be separated by comma.
+	FilterNotTagsAny = "not-tags-any"
 )
 
 // NetworkV2 contains details about a labeled network
@@ -244,6 +260,7 @@ type PortV2 struct {
 	PortSecurityEnabled bool             `json:"port_security_enabled,omitempty"`
 	SecurityGroups      []string         `json:"security_groups,omitempty"`
 	Status              string           `json:"status,omitempty"`
+	Tags                []string         `json:"tags,omitempty"`
 	TenantId            string           `json:"tenant_id,omitempty"`
 }
 

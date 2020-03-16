@@ -319,6 +319,7 @@ func (s *LiveTests) TestPortsV2(c *gc.C) {
 		Name:        "PortTest",
 		Description: "Testing create port",
 		NetworkId:   "a87cc70a-3e15-4acf-8205-9b711a3531b7",
+		Tags:        []string{"tag0", "tag1"},
 	}
 	newPort, err := s.neutron.CreatePortV2(port)
 	c.Assert(err, gc.IsNil)
@@ -336,6 +337,7 @@ func (s *LiveTests) TestPortsV2(c *gc.C) {
 		c.Check(port.Description, gc.Not(gc.Equals), "")
 		c.Check(port.TenantId, gc.Not(gc.Equals), "")
 		c.Check(port.NetworkId, gc.Not(gc.Equals), "")
+		c.Check(port.Tags, gc.HasLen, 2)
 		// Is this the Port we just created?
 		if port.Id == newPort.Id {
 			found = true
@@ -352,7 +354,8 @@ func (s *LiveTests) TestPortsV2(c *gc.C) {
 	ports, err = s.neutron.ListPortsV2(filter)
 	c.Assert(err, gc.IsNil)
 	c.Assert(ports, gc.HasLen, 1)
-	c.Assert(ports[0].Id, gc.Equals, port1.Id)
+	c.Assert(ports[0].Name, gc.Equals, port.Name)
+	c.Assert(ports[0].Tags, gc.DeepEquals, port.Tags)
 }
 
 func (s *LiveTests) TestPortByIdV2(c *gc.C) {
@@ -361,6 +364,7 @@ func (s *LiveTests) TestPortByIdV2(c *gc.C) {
 		Name:        "PortTest",
 		Description: "Testing create port",
 		NetworkId:   "a87cc70a-3e15-4acf-8205-9b711a3531b7",
+		Tags:        []string{"tag0", "tag1"},
 	}
 	newPort, err := s.neutron.CreatePortV2(port)
 	c.Assert(err, gc.IsNil)
@@ -383,6 +387,7 @@ func (s *LiveTests) TestPortsDeleteV2(c *gc.C) {
 		Name:        "PortTest",
 		Description: "Testing create port",
 		NetworkId:   "a87cc70a-3e15-4acf-8205-9b711a3531b7",
+		Tags:        []string{"tag0", "tag1"},
 	}
 	newPort, err := s.neutron.CreatePortV2(port)
 	c.Assert(err, gc.IsNil)

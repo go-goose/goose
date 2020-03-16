@@ -844,12 +844,14 @@ func (s *NeutronHTTPSuite) TestGetPorts(c *gc.C) {
 			Name:      "group 1",
 			TenantId:  s.service.TenantId,
 			NetworkId: "a87cc70a-3e15-4acf-8205-9b711a3531b7",
+			Tags:      []string{"tag0", "tag1"},
 		},
 		{
 			Id:        "2",
 			Name:      "group 2",
 			TenantId:  s.service.TenantId,
 			NetworkId: "a87cc70a-3e15-4acf-8205-9b711a3531xx",
+			Tags:      []string{"tag3", "tag2"},
 		},
 	}
 
@@ -885,20 +887,23 @@ func (s *NeutronHTTPSuite) TestAddPort(c *gc.C) {
 		Description: "desc",
 		TenantId:    s.service.TenantId,
 		NetworkId:   "a87cc70a-3e15-4acf-8205-9b711a3531b7",
+		Tags:        []string{"tag0", "tag1"},
 	}
 	_, err := s.service.port(port.Id)
 	c.Assert(err, gc.NotNil)
 
 	var req struct {
 		Port struct {
-			Name        string `json:"name"`
-			Description string `json:"description"`
-			NetworkId   string `json:"network_id"`
+			Name        string   `json:"name"`
+			Description string   `json:"description"`
+			NetworkId   string   `json:"network_id"`
+			Tags        []string `json:"tags"`
 		} `json:"port"`
 	}
 	req.Port.Name = port.Name
 	req.Port.Description = port.Description
 	req.Port.NetworkId = port.NetworkId
+	req.Port.Tags = port.Tags
 
 	var expected struct {
 		Port neutron.PortV2 `json:"port"`

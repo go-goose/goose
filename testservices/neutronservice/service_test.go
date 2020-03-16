@@ -641,12 +641,14 @@ func (s *NeutronSuite) TestAllPorts(c *gc.C) {
 			Name:      "one",
 			NetworkId: "a87cc70a-3e15-4acf-8205-9b711a3531b7",
 			TenantId:  s.service.TenantId,
+			Tags:      []string{"tag0", "tag1"},
 		},
 		{
 			Id:        "2",
 			Name:      "two",
 			NetworkId: "a87cc70a-3e15-4acf-8205-9b711a3531xx",
 			TenantId:  s.service.TenantId,
+			Tags:      []string{"tag2", "tag3"},
 		},
 	}
 
@@ -668,6 +670,7 @@ func (s *NeutronSuite) TestGetPort(c *gc.C) {
 		Name:        "port",
 		Description: "desc",
 		NetworkId:   "a87cc70a-3e15-4acf-8205-9b711a3531xx",
+		Tags:        []string{"tag0", "tag1"},
 	}
 	s.createPort(c, port)
 	defer s.deletePort(c, port)
