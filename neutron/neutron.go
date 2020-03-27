@@ -262,6 +262,7 @@ type PortV2 struct {
 	Status              string           `json:"status,omitempty"`
 	Tags                []string         `json:"tags,omitempty"`
 	TenantId            string           `json:"tenant_id,omitempty"`
+	MACAddress          string           `json:"mac_address,omitempty"`
 }
 
 // PortFixedIPsV2 represents a FixedIp with ip addresses and an associated
