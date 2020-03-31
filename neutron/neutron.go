@@ -253,6 +253,7 @@ func (c *Client) DeleteFloatingIPV2(ipId string) error {
 type PortV2 struct {
 	Description         string           `json:"description,omitempty"`
 	DeviceId            string           `json:"device_id,omitempty"`
+	DeviceOwner         string           `json:"device_owner,omitempty"`
 	FixedIPs            []PortFixedIPsV2 `json:"fixed_ips,omitempty"`
 	Id                  string           `json:"id,omitempty"`
 	Name                string           `json:"name,omitempty"`
