@@ -37,8 +37,27 @@ type HttpClient interface {
 	PostForm(url string, data url.Values) (resp *http.Response, err error)
 }
 
+type Option func(*options)
+
+type options struct {
+	headersFunc HeadersFunc
+}
+
+func WithHeadersFunc(headersFunc HeadersFunc) Option {
+	return func(options *options) {
+		options.headersFunc = headersFunc
+	}
+}
+
+func newOptions() *options {
+	return &options{
+		headersFunc: DefaultHeaders,
+	}
+}
+
 type Client struct {
 	http.Client
+	headersFunc     HeadersFunc
 	maxSendAttempts int
 }
 
@@ -112,11 +131,26 @@ var insecureClient *http.Client
 var insecureClientMutex sync.Mutex
 
 // New returns a new goose http *Client using the default net/http client.
-func New() *Client {
-	return &Client{*http.DefaultClient, MaxSendAttempts}
+func New(options ...Option) *Client {
+	opts := newOptions()
+	for _, option := range options {
+		option(opts)
+	}
+
+	return &Client{
+		Client:          *http.DefaultClient,
+		headersFunc:     opts.headersFunc,
+		maxSendAttempts: MaxSendAttempts,
+	}
 }
 
-func NewNonSSLValidating() *Client {
+// NewNonSSLValidating creates a new goose http *Client skipping SSL validation.
+func NewNonSSLValidating(options ...Option) *Client {
+	opts := newOptions()
+	for _, option := range options {
+		option(opts)
+	}
+
 	insecureClientMutex.Lock()
 	httpClient := insecureClient
 	if httpClient == nil {
@@ -126,39 +160,36 @@ func NewNonSSLValidating() *Client {
 		httpClient = insecureClient
 	}
 	insecureClientMutex.Unlock()
-	return &Client{*httpClient, MaxSendAttempts}
+
+	return &Client{
+		Client:          *httpClient,
+		headersFunc:     opts.headersFunc,
+		maxSendAttempts: MaxSendAttempts,
+	}
 }
 
-func NewWithTLSConfig(tlsConfig *tls.Config) *Client {
+// NewWithTLSConfig creates a new goose http *Client with a TLS config.
+func NewWithTLSConfig(tlsConfig *tls.Config, options ...Option) *Client {
+	opts := newOptions()
+	for _, option := range options {
+		option(opts)
+	}
+
 	defaultClient := *http.DefaultClient
 	defaultClient.Transport = &http.Transport{
 		TLSClientConfig: tlsConfig,
 	}
-	return &Client{defaultClient, MaxSendAttempts}
+
+	return &Client{
+		Client:          defaultClient,
+		headersFunc:     opts.headersFunc,
+		maxSendAttempts: MaxSendAttempts,
+	}
 }
 
-func gooseAgent() string {
+// GooseAgent returns the current client goose agent version.
+func GooseAgent() string {
 	return fmt.Sprintf("goose (%s)", goose.Version)
-}
-
-func createHeaders(extraHeaders http.Header, contentType, authToken string, payloadExists bool) http.Header {
-	headers := make(http.Header)
-	if extraHeaders != nil {
-		for header, values := range extraHeaders {
-			for _, value := range values {
-				headers.Add(header, value)
-			}
-		}
-	}
-	if authToken != "" {
-		headers.Set("X-Auth-Token", authToken)
-	}
-	if payloadExists {
-		headers.Add("Content-Type", contentType)
-	}
-	headers.Add("Accept", contentType)
-	headers.Add("User-Agent", gooseAgent())
-	return headers
 }
 
 // JsonRequest JSON encodes and sends the object in reqData.ReqValue (if any) to the specified URL.
@@ -186,7 +217,7 @@ func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, lo
 		}
 		length = int64(len(data))
 	}
-	headers := createHeaders(reqData.ReqHeaders, contentTypeJSON, token, reqData.ReqValue != nil)
+	headers := c.headersFunc(method, reqData.ReqHeaders, contentTypeJSON, token, reqData.ReqValue != nil)
 	resp, err := c.sendRequest(
 		method,
 		url,
@@ -231,7 +262,7 @@ func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, 
 	if reqData.Params != nil {
 		url += "?" + reqData.Params.Encode()
 	}
-	headers := createHeaders(reqData.ReqHeaders, contentTypeOctetStream, token, reqData.ReqLength != 0)
+	headers := c.headersFunc(method, reqData.ReqHeaders, contentTypeOctetStream, token, reqData.ReqLength != 0)
 	resp, err := c.sendRequest(
 		method,
 		url,

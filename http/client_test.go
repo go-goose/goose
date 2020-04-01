@@ -46,7 +46,7 @@ var _ = gc.Suite(&HTTPClientTestSuite{})
 
 func (s *HTTPClientTestSuite) assertHeaderValues(c *gc.C, token string) {
 	emptyHeaders := http.Header{}
-	headers := createHeaders(emptyHeaders, "content-type", token, true)
+	headers := DefaultHeaders("GET", emptyHeaders, "content-type", token, true)
 	contentTypes := []string{"content-type"}
 	headerData := map[string][]string{
 		"Content-Type": contentTypes, "Accept": contentTypes, "User-Agent": {gooseAgent()}}
@@ -71,7 +71,7 @@ func (s *HTTPClientTestSuite) TestCreateHeadersCopiesSupplied(c *gc.C) {
 	initialHeaders["Foo"] = []string{"Bar"}
 	contentType := contentTypeJSON
 	contentTypes := []string{contentType}
-	headers := createHeaders(initialHeaders, contentType, "", true)
+	headers := DefaultHeaders("GET", initialHeaders, contentType, "", true)
 	// it should not change the headers passed in
 	c.Assert(initialHeaders, gc.DeepEquals, http.Header{"Foo": []string{"Bar"}})
 	// The initial headers should be in the output
