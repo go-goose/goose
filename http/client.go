@@ -187,8 +187,8 @@ func NewWithTLSConfig(tlsConfig *tls.Config, options ...Option) *Client {
 	}
 }
 
-// GooseAgent returns the current client goose agent version.
-func GooseAgent() string {
+// gooseAgent returns the current client goose agent version.
+func gooseAgent() string {
 	return fmt.Sprintf("goose (%s)", goose.Version)
 }
 

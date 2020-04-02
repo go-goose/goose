@@ -15,12 +15,11 @@ import (
 //  - User-Agent
 //
 func NeutronHeaders(method string, extraHeaders http.Header, contentType, authToken string, payloadExists bool) http.Header {
-	headers := make(http.Header)
+	headers := goosehttp.BasicHeaders()
 
 	if authToken != "" {
 		headers.Set("X-Auth-Token", authToken)
 	}
-	headers.Add("User-Agent", goosehttp.GooseAgent())
 
 	// Officially we should also take into account the method, as we should not
 	// be applying this to every request.
@@ -28,17 +27,22 @@ func NeutronHeaders(method string, extraHeaders http.Header, contentType, authTo
 		headers.Add("Content-Type", contentType)
 	}
 
-	// POST allows Content-Type, Accept
-	// PUT allows Content-Type, Accept
-	// GET allows Accept
-	// PATCH allows Content-Type, Accept
-	// HEAD allows
-	// OPTIONS allows
-	// DELETE allows
+	// According to the REST specs, the following should be considered the
+	// correct implementation of requests. Openstack implementation follow
+	// these specs and will return errors if certain headers are pressent.
+	//
+	// POST allows:    [Content-Type, Accept]
+	// PUT allows:     [Content-Type, Accept]
+	// GET allows:     [Accept]
+	// PATCH allows:   [Content-Type, Accept]
+	// HEAD allows:    []
+	// OPTIONS allows: []
+	// DELETE allows:  []
+	// COPY allows:    []
 
 	var ignoreAccept bool
 	switch method {
-	case "DELETE", "HEAD", "OPTIONS":
+	case "DELETE", "HEAD", "OPTIONS", "COPY":
 		ignoreAccept = true
 	}
 

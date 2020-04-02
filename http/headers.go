@@ -14,7 +14,7 @@ type HeadersFunc = func(method string, headers http.Header, contentType, authTok
 //  - User-Agent
 //
 func DefaultHeaders(method string, extraHeaders http.Header, contentType, authToken string, payloadExists bool) http.Header {
-	headers := make(http.Header)
+	headers := BasicHeaders()
 	if extraHeaders != nil {
 		for header, values := range extraHeaders {
 			for _, value := range values {
@@ -29,6 +29,12 @@ func DefaultHeaders(method string, extraHeaders http.Header, contentType, authTo
 		headers.Add("Content-Type", contentType)
 	}
 	headers.Add("Accept", contentType)
-	headers.Add("User-Agent", GooseAgent())
+	return headers
+}
+
+// BasicHeaders constructs basic http.Headers with expected default values.
+func BasicHeaders() http.Header {
+	headers := make(http.Header)
+	headers.Add("User-Agent", gooseAgent())
 	return headers
 }

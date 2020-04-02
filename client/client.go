@@ -93,8 +93,26 @@ type AuthenticatingClient interface {
 	IdentityAuthOptions() (identity.AuthOptions, error)
 }
 
-// A single http client is shared between all Goose clients.
-var sharedHttpClient = goosehttp.New()
+// Option allows the adaptation of a client given new options.
+type Option func(*options)
+
+type options struct {
+	httpHeadersFunc goosehttp.HeadersFunc
+}
+
+// WithHTTPHeadersFunc allows passing in a new HTTP headers func for the client
+// to execute for each request.
+func WithHTTPHeadersFunc(httpHeadersFunc goosehttp.HeadersFunc) Option {
+	return func(options *options) {
+		options.httpHeadersFunc = httpHeadersFunc
+	}
+}
+
+func newOptions() *options {
+	return &options{
+		httpHeadersFunc: goosehttp.DefaultHeaders,
+	}
+}
 
 // This client sends requests without authenticating.
 type client struct {
@@ -142,17 +160,70 @@ func (c *authenticatingClient) EndpointsForRegion(region string) identity.Servic
 
 var _ AuthenticatingClient = (*authenticatingClient)(nil)
 
-func NewPublicClient(baseURL string, logger logging.CompatLogger) Client {
-	client := client{baseURL: baseURL, logger: logger, httpClient: sharedHttpClient}
-	return &client
-}
+// TODO (stickupkid): The needs some clean up.
+// All the following New constructor methods should actually be placed into
+// one factory method with a given configuration so that there is only one
+// place that a client can be constructed.
 
-func NewNonValidatingPublicClient(baseURL string, logger logging.CompatLogger) Client {
+// NewPublicClient creates a new Client that validates against TLS.
+func NewPublicClient(baseURL string, logger logging.CompatLogger, options ...Option) Client {
+	opts := newOptions()
+	for _, option := range options {
+		option(opts)
+	}
+
 	return &client{
 		baseURL:    baseURL,
 		logger:     logger,
-		httpClient: goosehttp.NewNonSSLValidating(),
+		httpClient: goosehttp.New(goosehttp.WithHeadersFunc(opts.httpHeadersFunc)),
 	}
+}
+
+// NewNonValidatingPublicClient creates a new Client that doesn't validate
+// against TLS.
+func NewNonValidatingPublicClient(baseURL string, logger logging.CompatLogger, options ...Option) Client {
+	opts := newOptions()
+	for _, option := range options {
+		option(opts)
+	}
+
+	return &client{
+		baseURL:    baseURL,
+		logger:     logger,
+		httpClient: goosehttp.NewNonSSLValidating(goosehttp.WithHeadersFunc(opts.httpHeadersFunc)),
+	}
+}
+
+// NewClient creates a new authenticated client.
+func NewClient(creds *identity.Credentials, authMethod identity.AuthMode, logger logging.CompatLogger, options ...Option) AuthenticatingClient {
+	opts := newOptions()
+	for _, option := range options {
+		option(opts)
+	}
+
+	return newClient(creds, authMethod, goosehttp.New(goosehttp.WithHeadersFunc(opts.httpHeadersFunc)), logger)
+}
+
+// NewNonValidatingClient creates a new authenticated client that doesn't
+// validate against TLS.
+func NewNonValidatingClient(creds *identity.Credentials, authMethod identity.AuthMode, logger logging.CompatLogger, options ...Option) AuthenticatingClient {
+	opts := newOptions()
+	for _, option := range options {
+		option(opts)
+	}
+
+	return newClient(creds, authMethod, goosehttp.NewNonSSLValidating(goosehttp.WithHeadersFunc(opts.httpHeadersFunc)), logger)
+}
+
+// NewClientTLSConfig creates a new authenticated client that allows passing
+// in a new TLS config.
+func NewClientTLSConfig(creds *identity.Credentials, authMethod identity.AuthMode, logger logging.CompatLogger, config *tls.Config, options ...Option) AuthenticatingClient {
+	opts := newOptions()
+	for _, option := range options {
+		option(opts)
+	}
+
+	return newClient(creds, authMethod, goosehttp.NewWithTLSConfig(config, goosehttp.WithHeadersFunc(opts.httpHeadersFunc)), logger)
 }
 
 var defaultRequiredServiceTypes = []string{"compute", "object-store"}
@@ -169,26 +240,17 @@ func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpC
 		client_creds.URL = client_creds.URL + apiTokens
 	}
 	client := authenticatingClient{
-		creds:                       &client_creds,
-		requiredServiceTypes:        defaultRequiredServiceTypes,
-		client:                      client{logger: logger, httpClient: httpClient},
+		creds:                &client_creds,
+		requiredServiceTypes: defaultRequiredServiceTypes,
+		client: client{
+			logger:     logger,
+			httpClient: httpClient,
+		},
 		apiVersionDiscoveryDisabled: set.NewStrings(),
 	}
 	client.auth = &client
 	client.authMode = identity.NewAuthenticator(auth_method, httpClient)
 	return &client
-}
-
-func NewClient(creds *identity.Credentials, authMethod identity.AuthMode, logger logging.CompatLogger) AuthenticatingClient {
-	return newClient(creds, authMethod, sharedHttpClient, logger)
-}
-
-func NewNonValidatingClient(creds *identity.Credentials, authMethod identity.AuthMode, logger logging.CompatLogger) AuthenticatingClient {
-	return newClient(creds, authMethod, goosehttp.NewNonSSLValidating(), logger)
-}
-
-func NewClientTLSConfig(creds *identity.Credentials, authMethod identity.AuthMode, logger logging.CompatLogger, config *tls.Config) AuthenticatingClient {
-	return newClient(creds, authMethod, goosehttp.NewWithTLSConfig(config), logger)
 }
 
 func (c *client) sendRequest(method, url, token string, requestData *goosehttp.RequestData) (err error) {
