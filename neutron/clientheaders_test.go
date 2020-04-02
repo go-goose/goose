@@ -13,7 +13,7 @@ type clientHeaderSuite struct{}
 var _ = gc.Suite(&clientHeaderSuite{})
 
 func (s *clientHeaderSuite) TestNeutronHeaders(c *gc.C) {
-	lift := func(m map[string]string) http.Header {
+	makeHeaders := func(m map[string]string) http.Header {
 		headers := goosehttp.BasicHeaders()
 		for k, v := range m {
 			headers.Add(k, v)
@@ -35,7 +35,7 @@ func (s *clientHeaderSuite) TestNeutronHeaders(c *gc.C) {
 		{
 			name:   "test GET with empty args",
 			method: "GET",
-			expected: lift(map[string]string{
+			expected: makeHeaders(map[string]string{
 				"Accept": "",
 			}),
 		},
@@ -47,7 +47,7 @@ func (s *clientHeaderSuite) TestNeutronHeaders(c *gc.C) {
 			method:        "GET",
 			contentType:   "application/json",
 			payloadExists: true,
-			expected: lift(map[string]string{
+			expected: makeHeaders(map[string]string{
 				"Content-Type": "application/json",
 				"Accept":       "application/json",
 			}),
@@ -61,7 +61,7 @@ func (s *clientHeaderSuite) TestNeutronHeaders(c *gc.C) {
 			method:        method,
 			contentType:   "application/json",
 			payloadExists: true,
-			expected: lift(map[string]string{
+			expected: makeHeaders(map[string]string{
 				"Content-Type": "application/json",
 				"Accept":       "application/json",
 			}),
@@ -69,7 +69,7 @@ func (s *clientHeaderSuite) TestNeutronHeaders(c *gc.C) {
 			name:        fmt.Sprintf("test %s", method),
 			method:      method,
 			contentType: "application/json",
-			expected: lift(map[string]string{
+			expected: makeHeaders(map[string]string{
 				"Accept": "application/json",
 			}),
 		})
@@ -82,14 +82,14 @@ func (s *clientHeaderSuite) TestNeutronHeaders(c *gc.C) {
 			method:        method,
 			contentType:   "application/json",
 			payloadExists: true,
-			expected: lift(map[string]string{
+			expected: makeHeaders(map[string]string{
 				"Content-Type": "application/json",
 			}),
 		}, test{
 			name:        fmt.Sprintf("test %s", method),
 			method:      method,
 			contentType: "application/json",
-			expected:    lift(map[string]string{}),
+			expected:    makeHeaders(map[string]string{}),
 		})
 	}
 
