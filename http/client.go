@@ -37,12 +37,18 @@ type HttpClient interface {
 	PostForm(url string, data url.Values) (resp *http.Response, err error)
 }
 
+// Option allows the adaptation of a http client given new options.
+// Both client.Client and http.Client have Options. To allow isolation between
+// layers, we have separate options. If client.Client and http.Client want
+// different options they can do so, without causing conflict.
 type Option func(*options)
 
 type options struct {
 	headersFunc HeadersFunc
 }
 
+// WithHeadersFunc allows passing in a new headers func for the http.Client
+// to execute for each request.
 func WithHeadersFunc(headersFunc HeadersFunc) Option {
 	return func(options *options) {
 		options.headersFunc = headersFunc

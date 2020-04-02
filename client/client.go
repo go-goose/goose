@@ -94,6 +94,9 @@ type AuthenticatingClient interface {
 }
 
 // Option allows the adaptation of a client given new options.
+// Both client.Client and http.Client have Options. To allow isolation between
+// layers, we have separate options. If client.Client and http.Client want
+// different options they can do so, without causing conflict.
 type Option func(*options)
 
 type options struct {
