@@ -64,8 +64,10 @@ func (s *localLiveSuite) TearDownTest(c *gc.C) {
 func (s *localLiveSuite) TestProductStreamsEndpoint(c *gc.C) {
 	err := s.client.Authenticate()
 	c.Assert(err, gc.IsNil)
+
 	serviceURL, err := s.client.MakeServiceURL("product-streams", "", nil)
 	c.Assert(err, gc.IsNil)
+
 	_, err = url.Parse(serviceURL)
 	c.Assert(err, gc.IsNil)
 	c.Assert(strings.HasSuffix(serviceURL, "/imagemetadata"), gc.Equals, true)
@@ -74,8 +76,10 @@ func (s *localLiveSuite) TestProductStreamsEndpoint(c *gc.C) {
 func (s *localLiveSuite) TestJujuToolsEndpoint(c *gc.C) {
 	err := s.client.Authenticate()
 	c.Assert(err, gc.IsNil)
+
 	serviceURL, err := s.client.MakeServiceURL("juju-tools", "", nil)
 	c.Assert(err, gc.IsNil)
+
 	_, err = url.Parse(serviceURL)
 	c.Assert(err, gc.IsNil)
 }

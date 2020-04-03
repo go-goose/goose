@@ -75,7 +75,9 @@ type Client struct {
 
 // New creates a new Client.
 func New(client client.Client) *Client {
-	return &Client{client}
+	return &Client{
+		client: client,
+	}
 }
 
 // ----------------------------------------------------------------------------
@@ -251,12 +253,14 @@ func (c *Client) DeleteFloatingIPV2(ipId string) error {
 
 // PortV2 describes a defined network for administrating a port.
 type PortV2 struct {
+	AdminStateUp        bool             `json:"admin_state_up,omitempty"`
 	Description         string           `json:"description,omitempty"`
 	DeviceId            string           `json:"device_id,omitempty"`
+	DeviceOwner         string           `json:"device_owner,omitempty"`
 	FixedIPs            []PortFixedIPsV2 `json:"fixed_ips,omitempty"`
 	Id                  string           `json:"id,omitempty"`
 	Name                string           `json:"name,omitempty"`
-	NetworkId           string           `json:"network_id"`
+	NetworkId           string           `json:"network_id,omitempty"`
 	PortSecurityEnabled bool             `json:"port_security_enabled,omitempty"`
 	SecurityGroups      []string         `json:"security_groups,omitempty"`
 	Status              string           `json:"status,omitempty"`

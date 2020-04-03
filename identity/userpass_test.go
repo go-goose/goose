@@ -16,9 +16,13 @@ var _ = gc.Suite(&UserPassTestSuite{})
 func (s *UserPassTestSuite) TestAuthAgainstServer(c *gc.C) {
 	service := identityservice.NewUserPass()
 	service.SetupHTTP(s.Mux)
+
 	userInfo := service.AddUser("joe-user", "secrets", "tenant", "default")
+
 	var l Authenticator = &UserPass{}
+
 	creds := Credentials{User: "joe-user", URL: s.Server.URL + "/tokens", Secrets: "secrets"}
+
 	auth, err := l.Auth(&creds)
 	c.Assert(err, gc.IsNil)
 	c.Assert(auth.Token, gc.Equals, userInfo.Token)
@@ -29,7 +33,9 @@ func (s *UserPassTestSuite) TestAuthAgainstServer(c *gc.C) {
 func (s *UserPassTestSuite) TestRegionMatch(c *gc.C) {
 	service := identityservice.NewUserPass()
 	service.SetupHTTP(s.Mux)
+
 	userInfo := service.AddUser("joe-user", "secrets", "tenant", "default")
+
 	serviceDef := identityservice.V2Service{
 		Name: "swift",
 		Type: "object-store",
@@ -37,6 +43,7 @@ func (s *UserPassTestSuite) TestRegionMatch(c *gc.C) {
 			{PublicURL: "http://swift", Region: "RegionOne"},
 		}}
 	service.AddService(identityservice.Service{V2: serviceDef})
+
 	serviceDef = identityservice.V2Service{
 		Name: "nova",
 		Type: "compute",
@@ -44,6 +51,7 @@ func (s *UserPassTestSuite) TestRegionMatch(c *gc.C) {
 			{PublicURL: "http://nova", Region: "zone1.RegionOne"},
 		}}
 	service.AddService(identityservice.Service{V2: serviceDef})
+
 	serviceDef = identityservice.V2Service{
 		Name: "nova",
 		Type: "compute",
@@ -58,7 +66,9 @@ func (s *UserPassTestSuite) TestRegionMatch(c *gc.C) {
 		Secrets: "secrets",
 		Region:  "zone1.RegionOne",
 	}
+
 	var l Authenticator = &UserPass{}
+
 	auth, err := l.Auth(&creds)
 	c.Assert(err, gc.IsNil)
 	c.Assert(auth.RegionServiceURLs["RegionOne"]["object-store"], gc.Equals, "http://swift")
