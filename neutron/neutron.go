@@ -429,7 +429,12 @@ func (c *Client) DeleteSecurityGroupV2(groupId string) error {
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusNoContent}}
 	err := c.client.SendRequest(client.DELETE, "network", "v2.0", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, "failed to delete security group with id: %s", groupId)
+		if errors.IsNotFound(err) {
+			err = errors.Newf(err, "failed to delete security group with id: %s", groupId)
+		} else {
+			// If the security group isn't found, then that is considered OK.
+			err = nil
+		}
 	}
 	return err
 }
@@ -533,7 +538,13 @@ func (c *Client) DeleteSecurityGroupRuleV2(ruleId string) error {
 	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusNoContent}}
 	err := c.client.SendRequest(client.DELETE, "network", "v2.0", url, &requestData)
 	if err != nil {
-		err = errors.Newf(err, "failed to delete security group rule with id: %s", ruleId)
+		if errors.IsNotFound(err) {
+			err = errors.Newf(err, "failed to delete security group rule with id: %s", ruleId)
+		} else {
+			// If the security group rule isn't found, then that is considered
+			// OK.
+			err = nil
+		}
 	}
 	return err
 }
