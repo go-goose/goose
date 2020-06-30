@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"time"
 
+	"gopkg.in/goose.v2/errors"
 	goosehttp "gopkg.in/goose.v2/http"
 )
 
@@ -340,4 +341,13 @@ func (c *Client) SetVolumeMetadata(volumeId string, metadata map[string]string) 
 		return nil, err
 	}
 	return response.Metadata, nil
+}
+
+// ListVolumeAvailabilityZones lists any volume availability zones.
+func (c *Client) ListVolumeAvailabilityZones() ([]AvailabilityZone, error) {
+	resp, err := listAvailabilityZones(c)
+	if err != nil {
+		return nil, errors.Newf(err, "failed to get list of availability zones")
+	}
+	return resp.AvailabilityZoneInfo, nil
 }
