@@ -802,12 +802,42 @@ func (s *CinderTestSuite) TestGetVolumeTypes(c *gc.C) {
 	c.Check(volumeType.ID, gc.Equals, testId)
 }
 
+func (s *CinderTestSuite) TestGetAvailabilityZones(c *gc.C) {
+
+	numCalls := 0
+	s.HandleFunc("/v2/"+testId+"/os-availability-zone", func(w http.ResponseWriter, req *http.Request) {
+		numCalls++
+
+		resp := []AvailabilityZone{{
+			Name: "zone-1",
+			State: AvailabilityZoneState{
+				Available: true,
+			},
+		}}
+
+		respBody, err := json.Marshal(&GetAvailabilityZonesResults{AvailabilityZoneInfo: resp})
+		c.Assert(err, gc.IsNil)
+
+		w.(*responseWriter).StatusCode = 200
+		w.(*responseWriter).Body = ioutil.NopCloser(bytes.NewBuffer(respBody))
+	})
+
+	zones, err := s.client.ListVolumeAvailabilityZones()
+	c.Assert(numCalls, gc.Equals, 1)
+	c.Assert(err, gc.IsNil)
+	c.Assert(zones, gc.HasLen, 1)
+
+	zone := zones[0]
+
+	c.Check(zone.Name, gc.Equals, "zone-1")
+	c.Check(zone.State.Available, gc.Equals, true)
+}
+
 func (s *CinderTestSuite) localDo(req *http.Request) (*http.Response, error) {
 	handler, matchedPattern := s.Handler(req)
 	if matchedPattern == "" {
 		return nil, fmt.Errorf("no test handler registered for %s", req.URL.Path)
 	}
-	fmt.Println(matchedPattern)
 
 	var response http.Response
 	handler.ServeHTTP(&responseWriter{&response}, req)

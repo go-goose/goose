@@ -17,6 +17,7 @@ import (
 	"net/url"
 
 	"gopkg.in/goose.v2/client"
+	gooseerrors "gopkg.in/goose.v2/errors"
 	goosehttp "gopkg.in/goose.v2/http"
 )
 
@@ -1663,6 +1664,61 @@ func updateVolumeMetadata(client *Client, volumeId string, args *UpdateVolumeMet
 	}
 
 	var results UpdateVolumeMetadataParams
+	json.Unmarshal(body, &results)
+
+	return &results, nil
+}
+
+// GetAvailabilityZonesResults holds the result of getting availability zones.
+type GetAvailabilityZonesResults struct {
+	AvailabilityZoneInfo []AvailabilityZone
+}
+
+// AvailabilityZone identifies an availability zone, and describes its state.
+type AvailabilityZone struct {
+	Name  string                `json:"zoneName"`
+	State AvailabilityZoneState `json:"zoneState"`
+}
+
+// AvailabilityZoneState describes an availability zone's state.
+type AvailabilityZoneState struct {
+	Available bool
+}
+
+//
+// Lists volume availability zones.
+func listAvailabilityZones(client *Client) (*GetAvailabilityZonesResults, error) {
+
+	urlPath := url.URL{Path: "os-availability-zone"}
+	url := client.endpoint.ResolveReference(&urlPath).String()
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.handleRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	switch resp.StatusCode {
+	default:
+		return nil, fmt.Errorf("invalid status (%d): %s", resp.StatusCode, body)
+	case 400, 404:
+		return nil, gooseerrors.NewNotImplementedf(
+			err, nil, "the server does not support availability zones for volumes",
+		)
+	case 200:
+		break
+	}
+
+	var results GetAvailabilityZonesResults
 	json.Unmarshal(body, &results)
 
 	return &results, nil
