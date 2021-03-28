@@ -86,6 +86,7 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvValid(c *gc.C) {
 		"OS_REGION_NAME":         "region",
 		"OS_DOMAIN_NAME":         "domain-name",
 		"OS_PROJECT_DOMAIN_NAME": "project-domain-name",
+		"OS_PROJECT_DOMAIN_ID":   "project-domain-id",
 		"OS_USER_DOMAIN_NAME":    "user-domain-name",
 		// ignored because user and project domains set
 		"OS_DEFAULT_DOMAIN_NAME": "default-domain-name",
@@ -102,6 +103,7 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvValid(c *gc.C) {
 	c.Check(creds.TenantName, gc.Equals, "tenant-name")
 	c.Check(creds.Domain, gc.Equals, "domain-name")
 	c.Check(creds.ProjectDomain, gc.Equals, "project-domain-name")
+	c.Check(creds.ProjectDomainID, gc.Equals, "project-domain-id")
 	c.Check(creds.UserDomain, gc.Equals, "user-domain-name")
 }
 

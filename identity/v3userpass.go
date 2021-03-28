@@ -85,7 +85,8 @@ func (u *V3UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 		userDomain = "default"
 	}
 	projectDomain := creds.ProjectDomain
-	if projectDomain == "" {
+	projectDomainID := creds.ProjectDomainID
+	if (projectDomain == "") && (projectDomainID == "") {
 		projectDomain = "default"
 	}
 	auth := v3AuthWrapper{
@@ -109,6 +110,7 @@ func (u *V3UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 			Project: &v3AuthProject{
 				Domain: &v3AuthDomain{
 					Name: projectDomain,
+					ID:   projectDomainID,
 				},
 				Name: creds.TenantName,
 				ID:   creds.TenantID,

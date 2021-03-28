@@ -62,16 +62,17 @@ type AuthDetails struct {
 // Credentials defines necessary parameters for authentication.
 // TODO - Tenant is deprecated, migrate attribute names to Project.
 type Credentials struct {
-	URL           string // The URL to authenticate against
-	User          string // The username to authenticate as
-	Secrets       string // The secrets to pass
-	Region        string // Region to send requests to
-	TenantName    string `credentials:"optional"` // The project name for this connection
-	TenantID      string `credentials:"optional"` // The project ID for this connection
-	Version       int    `credentials:"optional"` // The Keystone version
-	Domain        string `credentials:"optional"` // The domain for authorization (new in keystone v3)
-	UserDomain    string `credentials:"optional"` // The owning domain for this user (new in keystone v3)
-	ProjectDomain string `credentials:"optional"` // The project domain for authorization (new in keystone v3)
+	URL             string // The URL to authenticate against
+	User            string // The username to authenticate as
+	Secrets         string // The secrets to pass
+	Region          string // Region to send requests to
+	TenantName      string `credentials:"optional"` // The project name for this connection
+	TenantID        string `credentials:"optional"` // The project ID for this connection
+	Version         int    `credentials:"optional"` // The Keystone version
+	Domain          string `credentials:"optional"` // The domain for authorization (new in keystone v3)
+	UserDomain      string `credentials:"optional"` // The owning domain for this user (new in keystone v3)
+	ProjectDomain   string `credentials:"optional"` // The project domain for authorization (new in keystone v3)
+	ProjectDomainID string `credentials:"optional"` // The project domain id for authorization (new in keystone v3)
 }
 
 // Authenticator is implemented by each authentication method.
@@ -147,6 +148,9 @@ var (
 	CredEnvProjectDomainName = []string{
 		"OS_PROJECT_DOMAIN_NAME",
 	}
+        CredEnvProjectDomainID = []string{
+                "OS_PROJECT_DOMAIN_ID",
+        }
 	CredEnvUserDomainName = []string{
 		"OS_USER_DOMAIN_NAME",
 	}
@@ -159,15 +163,16 @@ var (
 // environment variables.
 func CredentialsFromEnv() (*Credentials, error) {
 	cred := &Credentials{
-		URL:           getConfig(CredEnvAuthURL),
-		User:          getConfig(CredEnvUser),
-		Secrets:       getConfig(CredEnvSecrets),
-		Region:        getConfig(CredEnvRegion),
-		TenantName:    getConfig(CredEnvTenantName),
-		TenantID:      getConfig(CredEnvTenantID),
-		Domain:        getConfig(CredEnvDomainName),
-		UserDomain:    getConfig(CredEnvUserDomainName),
-		ProjectDomain: getConfig(CredEnvProjectDomainName),
+		URL:             getConfig(CredEnvAuthURL),
+		User:            getConfig(CredEnvUser),
+		Secrets:         getConfig(CredEnvSecrets),
+		Region:          getConfig(CredEnvRegion),
+		TenantName:      getConfig(CredEnvTenantName),
+		TenantID:        getConfig(CredEnvTenantID),
+		Domain:          getConfig(CredEnvDomainName),
+		UserDomain:      getConfig(CredEnvUserDomainName),
+		ProjectDomain:   getConfig(CredEnvProjectDomainName),
+		ProjectDomainID: getConfig(CredEnvProjectDomainID),
 	}
 	defaultDomain := getConfig(CredEnvDefaultDomainName)
 	if defaultDomain != "" {
