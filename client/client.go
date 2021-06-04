@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"sort"
 	"strings"
@@ -100,7 +101,9 @@ type AuthenticatingClient interface {
 type Option func(*options)
 
 type options struct {
-	httpHeadersFunc goosehttp.HeadersFunc
+	httpHeadersFunc    goosehttp.HeadersFunc
+	httpClient         *http.Client
+	insecureHTTPClient *http.Client
 }
 
 // WithHTTPHeadersFunc allows passing in a new HTTP headers func for the client
@@ -111,9 +114,33 @@ func WithHTTPHeadersFunc(httpHeadersFunc goosehttp.HeadersFunc) Option {
 	}
 }
 
+// WithHTTPClient allows the setting of the http.Client to use for all the http
+// requests.
+func WithHTTPClient(client *http.Client) Option {
+	return func(options *options) {
+		options.httpClient = client
+	}
+}
+
+// WithInsecureHTTPClient allows the setting of a insecure http.Client to use
+// for all insecure http requests.
+func WithInsecureHTTPClient(client *http.Client) Option {
+	return func(options *options) {
+		options.insecureHTTPClient = client
+	}
+}
+
 func newOptions() *options {
 	return &options{
 		httpHeadersFunc: goosehttp.DefaultHeaders,
+		httpClient:      &http.Client{},
+		insecureHTTPClient: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			},
+		},
 	}
 }
 
@@ -176,9 +203,12 @@ func NewPublicClient(baseURL string, logger logging.CompatLogger, options ...Opt
 	}
 
 	return &client{
-		baseURL:    baseURL,
-		logger:     logger,
-		httpClient: goosehttp.New(goosehttp.WithHeadersFunc(opts.httpHeadersFunc)),
+		baseURL: baseURL,
+		logger:  logger,
+		httpClient: goosehttp.New(
+			goosehttp.WithHeadersFunc(opts.httpHeadersFunc),
+			goosehttp.WithHTTPClient(opts.httpClient),
+		),
 	}
 }
 
@@ -191,9 +221,12 @@ func NewNonValidatingPublicClient(baseURL string, logger logging.CompatLogger, o
 	}
 
 	return &client{
-		baseURL:    baseURL,
-		logger:     logger,
-		httpClient: goosehttp.NewNonSSLValidating(goosehttp.WithHeadersFunc(opts.httpHeadersFunc)),
+		baseURL: baseURL,
+		logger:  logger,
+		httpClient: goosehttp.New(
+			goosehttp.WithHeadersFunc(opts.httpHeadersFunc),
+			goosehttp.WithHTTPClient(opts.insecureHTTPClient),
+		),
 	}
 }
 
@@ -204,7 +237,10 @@ func NewClient(creds *identity.Credentials, authMethod identity.AuthMode, logger
 		option(opts)
 	}
 
-	return newClient(creds, authMethod, goosehttp.New(goosehttp.WithHeadersFunc(opts.httpHeadersFunc)), logger)
+	return newClient(creds, authMethod, goosehttp.New(
+		goosehttp.WithHeadersFunc(opts.httpHeadersFunc),
+		goosehttp.WithHTTPClient(opts.httpClient),
+	), logger)
 }
 
 // NewNonValidatingClient creates a new authenticated client that doesn't
@@ -215,7 +251,10 @@ func NewNonValidatingClient(creds *identity.Credentials, authMethod identity.Aut
 		option(opts)
 	}
 
-	return newClient(creds, authMethod, goosehttp.NewNonSSLValidating(goosehttp.WithHeadersFunc(opts.httpHeadersFunc)), logger)
+	return newClient(creds, authMethod, goosehttp.New(
+		goosehttp.WithHeadersFunc(opts.httpHeadersFunc),
+		goosehttp.WithHTTPClient(opts.insecureHTTPClient),
+	), logger)
 }
 
 // NewClientTLSConfig creates a new authenticated client that allows passing
@@ -226,7 +265,19 @@ func NewClientTLSConfig(creds *identity.Credentials, authMethod identity.AuthMod
 		option(opts)
 	}
 
-	return newClient(creds, authMethod, goosehttp.NewWithTLSConfig(config, goosehttp.WithHeadersFunc(opts.httpHeadersFunc)), logger)
+	client := *opts.httpClient
+	if client.Transport == nil {
+		client.Transport = &http.Transport{}
+	}
+	if t, ok := client.Transport.(*http.Transport); ok {
+		t.TLSClientConfig = config
+		client.Transport = t
+	}
+
+	return newClient(creds, authMethod, goosehttp.New(
+		goosehttp.WithHeadersFunc(opts.httpHeadersFunc),
+		goosehttp.WithHTTPClient(&client),
+	), logger)
 }
 
 var defaultRequiredServiceTypes = []string{"compute", "object-store"}

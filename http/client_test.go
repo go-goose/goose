@@ -272,7 +272,7 @@ func (s *HTTPClientTestSuite) testRetryAfterCheckLimits(c *gc.C, retryAfter, err
 }
 
 func (s *HTTPClientTestSuite) TestResourceLimitExceeded(c *gc.C) {
-	s.testRetryAfterCheckLimits(c, "0", `Resource limit exeeded at URL http://.*`)
+	s.testRetryAfterCheckLimits(c, "0", `Resource limit exceeded at URL http://.*`)
 }
 
 func (s *HTTPClientTestSuite) TestHttpDateTenMinutes(c *gc.C) {
@@ -304,7 +304,13 @@ func (s *HTTPSClientTestSuite) TestDefaultClientRejectSelfSigned(c *gc.C) {
 
 func (s *HTTPSClientTestSuite) TestInsecureClientAllowsSelfSigned(c *gc.C) {
 	headers, _, _ := s.setupLoopbackRequest()
-	client := NewNonSSLValidating()
+	client := New(WithHTTPClient(&http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	}))
 	req := &RequestData{ExpectedStatus: []int{http.StatusNoContent}}
 	err := client.BinaryRequest("POST", s.Server.URL, "", req, nil)
 	c.Assert(err, gc.IsNil)
@@ -316,7 +322,11 @@ func (s *HTTPSClientTestSuite) TestInsecureClientAllowsSelfSigned(c *gc.C) {
 func (s *HTTPSClientTestSuite) TestTSLConfigClient(c *gc.C) {
 	headers, _, _ := s.setupLoopbackRequest()
 	tlsConfig := s.tlsConfig()
-	client := NewWithTLSConfig(tlsConfig)
+	client := New(WithHTTPClient(&http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+		},
+	}))
 	req := &RequestData{ExpectedStatus: []int{http.StatusNoContent}}
 	err := client.BinaryRequest("POST", s.Server.URL, "", req, nil)
 	c.Assert(err, gc.IsNil)
@@ -335,7 +345,11 @@ func (s *HTTPSClientTestSuite) tlsConfig() *tls.Config {
 
 func (s *HTTPSClientTestSuite) TestTSLConfigClientNoCert(c *gc.C) {
 	s.setupLoopbackRequest()
-	client := NewWithTLSConfig(&tls.Config{})
+	client := New(WithHTTPClient(&http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{},
+		},
+	}))
 	req := &RequestData{ExpectedStatus: []int{http.StatusNoContent}}
 	err := client.BinaryRequest("POST", s.Server.URL, "", req, nil)
 	c.Check(err, gc.ErrorMatches, "(.|\\n)*x509: certificate signed by unknown authority")
