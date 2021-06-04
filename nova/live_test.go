@@ -284,6 +284,7 @@ func (s *LiveTests) TestCreateAndDeleteSecurityGroup(c *gc.C) {
 	c.Check(group.Description, gc.Equals, "test_desc")
 
 	groups, err := s.nova.ListSecurityGroups()
+	c.Check(err, gc.IsNil)
 	found := false
 	for _, g := range groups {
 		if g.Id == group.Id {
@@ -314,6 +315,7 @@ func (s *LiveTests) TestUpdateSecurityGroup(c *gc.C) {
 	c.Check(groupUpdated.Description, gc.Equals, "test_desc_new")
 
 	groups, err := s.nova.ListSecurityGroups()
+	c.Check(err, gc.IsNil)
 	found := false
 	for _, g := range groups {
 		if g.Id == group.Id {
@@ -338,7 +340,7 @@ func (s *LiveTests) TestDuplicateSecurityGroupError(c *gc.C) {
 	group, err := s.nova.CreateSecurityGroup("test_dupgroup", "test_desc")
 	c.Assert(err, gc.IsNil)
 	defer s.nova.DeleteSecurityGroup(group.Id)
-	group, err = s.nova.CreateSecurityGroup("test_dupgroup", "test_desc")
+	_, err = s.nova.CreateSecurityGroup("test_dupgroup", "test_desc")
 	c.Assert(errors.IsDuplicateValue(err), gc.Equals, true)
 }
 

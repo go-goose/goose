@@ -179,23 +179,6 @@ The resource could not be found.
 		nil,
 		nil,
 	}
-	errVersionsLinks = &errorResponse{
-		http.StatusOK,
-		`{"version": {"status": "CURRENT", "updated": "2011-01-21T11` +
-			`:33:21Z", "media-types": [{"base": "application/xml", "type": ` +
-			`"application/vnd.openstack.compute+xml;version=2"}, {"base": ` +
-			`"application/json", "type": "application/vnd.openstack.compute` +
-			`+json;version=2"}], "id": "v2.0", "links": [{"href": "$ENDPOINT$"` +
-			`, "rel": "self"}, {"href": "http://docs.openstack.org/api/openstack` +
-			`-compute/1.1/os-compute-devguide-1.1.pdf", "type": "application/pdf` +
-			`", "rel": "describedby"}, {"href": "http://docs.openstack.org/api/` +
-			`openstack-compute/1.1/wadl/os-compute-1.1.wadl", "type": ` +
-			`"application/vnd.sun.wadl+xml", "rel": "describedby"}]}}`,
-		"application/json",
-		"version missing from URL",
-		nil,
-		nil,
-	}
 	errNotImplemented = &errorResponse{
 		http.StatusNotImplemented,
 		"501 Not Implemented",
@@ -811,19 +794,16 @@ func (n *Nova) handleServers(w http.ResponseWriter, r *http.Request) error {
 		return sendJSON(http.StatusOK, resp, w, r)
 	case "POST":
 		if suffix := path.Base(r.URL.Path); suffix != "servers" {
-			serverId := ""
 			if suffix == "action" {
 				// handle POST /servers/<id>/action
-				serverId = path.Base(strings.Replace(r.URL.Path, "/action", "", 1))
+				serverId := path.Base(strings.Replace(r.URL.Path, "/action", "", 1))
 				server, _ := n.server(serverId)
 				return n.handleServerActions(server, w, r)
 			} else if suffix == "metadata" {
 				// handle POST /servers/<id>/metadata
-				serverId = path.Base(strings.Replace(r.URL.Path, "/metadata", "", 1))
+				serverId := path.Base(strings.Replace(r.URL.Path, "/metadata", "", 1))
 				server, _ := n.server(serverId)
 				return n.handleServerMetadata(server, w, r)
-			} else {
-				serverId = suffix
 			}
 			return errNotFound
 		}

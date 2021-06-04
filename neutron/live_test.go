@@ -93,7 +93,7 @@ func (s *LiveTests) TestFloatingIPsV2(c *gc.C) {
 }
 
 // For the purposes of this test, project_id and tenant_id are
-// interchangable.
+// interchangeable.
 func (s *LiveTests) TestFloatingIPsV2WithFilter(c *gc.C) {
 	filter := neutron.NewFilter()
 	filter.Set(neutron.FilterRouterExternal, "true")
@@ -216,6 +216,7 @@ func (s *LiveTests) TestSecurityGroupsV2(c *gc.C) {
 	}
 	// Change the created SecurityGroup's name
 	updatedSecGroup, err := s.neutron.UpdateSecurityGroupV2(newSecGrp.Id, "NameChanged", "")
+	c.Assert(err, gc.IsNil)
 	// Verify the name change
 	foundSecGrps, err := s.neutron.SecurityGroupByNameV2(updatedSecGroup.Name)
 	c.Assert(err, gc.IsNil)

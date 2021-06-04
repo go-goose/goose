@@ -91,6 +91,7 @@ func (s *LegacySuite) TestLegacyAuth(c *gc.C) {
 	response, err := LegacyAuthRequest(s.Server.URL, "user", "secret-key")
 	c.Assert(err, gc.IsNil)
 	content, err := ioutil.ReadAll(response.Body)
+	c.Assert(err, gc.IsNil)
 	response.Body.Close()
 	c.Check(response.Header.Get("X-Auth-Token"), gc.Equals, token)
 	c.Check(response.Header.Get("X-Server-Management-Url"), gc.Equals, serverURL+"/compute")

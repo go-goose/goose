@@ -205,7 +205,7 @@ type IPAddress struct {
 }
 
 // ServerFault describes a single server fault. Details (stack trace) are available for
-// those with adminstrator privilages.
+// those with administrator privileges.
 type ServerFault struct {
 	Code    int    `json:"code"` // Response code
 	Created string `json:"created"`

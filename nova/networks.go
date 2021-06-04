@@ -16,9 +16,6 @@ import (
 
 const (
 	apiNetworks = "os-networks"
-	// The os-tenant-networks extension is a newer addition aimed at exposing
-	// management of networks to unprivileged accounts. Not used at present.
-	apiTenantNetworks = "os-tenant-networks"
 )
 
 // Network contains details about a labeled network

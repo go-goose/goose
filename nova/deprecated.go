@@ -193,14 +193,14 @@ type RuleInfo struct {
 	//  "icmp" (in this case, both FromPort and ToPort can be -1).
 	IPProtocol string `json:"ip_protocol"`
 
-	// FromPort and ToPort are both optional, and if specifed must be
+	// FromPort and ToPort are both optional, and if specified must be
 	// integers between 1 and 65535 (valid TCP port numbers). -1 is a
 	// special value, meaning "use default" (e.g. for ICMP).
 	FromPort int `json:"from_port"`
 	ToPort   int `json:"to_port"`
 
 	// Cidr cannot be specified with GroupId. Ingress rules need a valid
-	// subnet mast in CIDR format here, while if GroupID is specifed, it
+	// subnet mast in CIDR format here, while if GroupID is specified, it
 	// means you're adding a group rule, specifying source group ID, which
 	// must exist already and can be equal to ParentGroupId).
 	// need Cidr, while

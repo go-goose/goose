@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"crypto/x509"
+
 	"gopkg.in/goose.v3/identity"
 	"gopkg.in/goose.v3/testservices/identityservice"
 	"gopkg.in/goose.v3/testservices/neutronmodel"
@@ -51,7 +52,7 @@ func (openstack *Openstack) AddUser(user, secret, project, authDomain string) *i
 // New creates an instance of a full Openstack service double.
 // An initial user with the specified credentials is registered with the
 // identity service. This service double manages the httpServers necessary
-// for Neturon, Nova, Swift and Identity services
+// for Neutron, Nova, Swift and Identity services
 func New(cred *identity.Credentials, authMode identity.AuthMode, useTLS bool) (*Openstack, []string) {
 	openstack, logMsgs := NewNoSwift(cred, authMode, useTLS)
 
@@ -225,7 +226,7 @@ func (openstack *Openstack) Stop() {
 		v.Config.Handler = nil
 		v.Close()
 	}
-	for k, _ := range openstack.muxes {
+	for k := range openstack.muxes {
 		openstack.muxes[k] = nil
 	}
 }

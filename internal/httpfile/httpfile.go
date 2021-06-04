@@ -158,7 +158,7 @@ func (f *File) Read(buf []byte) (int, error) {
 		return n, err
 	}
 	if err == nil {
-		if f.reader1 == nil && f.reader0.remaining() < int64(f.readAhead/2) && f.reader0.p1 < f.length {
+		if f.reader1 == nil && f.reader0.remaining() < (f.readAhead/2) && f.reader0.p1 < f.length {
 			// We're well advanced through the current reader,
 			// so kick off a new one.
 			f.reader1 = f.newReaderAhead(f.reader0.p1, f.reader0.p1+f.readAhead)

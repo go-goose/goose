@@ -713,11 +713,11 @@ func (s *NovaSuite) TestGetSecurityGroupByName(c *gc.C) {
 		Rules:    []nova.SecurityGroupRule{},
 	}
 	s.ensureNoGroup(c, group)
-	gr, err := s.service.securityGroupByName(group.Name)
+	_, err := s.service.securityGroupByName(group.Name)
 	c.Assert(err, gc.ErrorMatches, `itemNotFound: No such security group named "test"`)
 	s.createGroup(c, group)
 	defer s.deleteGroup(c, group)
-	gr, err = s.service.securityGroupByName(group.Name)
+	gr, err := s.service.securityGroupByName(group.Name)
 	c.Assert(err, gc.IsNil)
 	c.Assert(*gr, gc.DeepEquals, group)
 }
@@ -1206,11 +1206,11 @@ func (s *NovaSuite) TestGetFloatingIPByAddr(c *gc.C) {
 	}
 	fip := nova.FloatingIP{Id: "1", IP: "1.2.3.4"}
 	s.ensureNoIP(c, fip)
-	ip, err := s.service.floatingIPByAddr(fip.IP)
+	_, err := s.service.floatingIPByAddr(fip.IP)
 	c.Assert(err, gc.NotNil)
 	s.createIP(c, fip)
 	defer s.deleteIP(c, fip)
-	ip, err = s.service.floatingIPByAddr(fip.IP)
+	ip, err := s.service.floatingIPByAddr(fip.IP)
 	c.Assert(err, gc.IsNil)
 	c.Assert(*ip, gc.DeepEquals, fip)
 	_, err = s.service.floatingIPByAddr("invalid")
@@ -1219,8 +1219,10 @@ func (s *NovaSuite) TestGetFloatingIPByAddr(c *gc.C) {
 
 func (s *NovaSuite) TestAddHasRemoveServerFloatingIP(c *gc.C) {
 	server := nova.ServerDetail{
-		Id:        "sr1",
-		Addresses: map[string][]nova.IPAddress{"private": []nova.IPAddress{}},
+		Id: "sr1",
+		Addresses: map[string][]nova.IPAddress{
+			"private": {},
+		},
 	}
 	fip := nova.FloatingIP{Id: "1", IP: "1.2.3.4"}
 	s.ensureNoServer(c, server)
@@ -1296,7 +1298,7 @@ func (s *NovaSuite) TestAddServerFloatingIPWithInvalidIPFails(c *gc.C) {
 func (s *NovaSuite) TestAddServerFloatingIPTwiceFails(c *gc.C) {
 	server := nova.ServerDetail{
 		Id:        "sr1",
-		Addresses: map[string][]nova.IPAddress{"private": []nova.IPAddress{}},
+		Addresses: map[string][]nova.IPAddress{"private": {}},
 	}
 	fip := nova.FloatingIP{Id: "1", IP: "1.2.3.4"}
 	s.createServer(c, server)
@@ -1314,7 +1316,7 @@ func (s *NovaSuite) TestAddServerFloatingIPTwiceFails(c *gc.C) {
 func (s *NovaSuite) TestRemoveServerFloatingIPWithInvalidServerFails(c *gc.C) {
 	server := nova.ServerDetail{
 		Id:        "sr1",
-		Addresses: map[string][]nova.IPAddress{"private": []nova.IPAddress{}},
+		Addresses: map[string][]nova.IPAddress{"private": {}},
 	}
 	fip := nova.FloatingIP{Id: "1", IP: "1.2.3.4"}
 	s.createServer(c, server)
@@ -1335,7 +1337,7 @@ func (s *NovaSuite) TestRemoveServerFloatingIPWithInvalidIPFails(c *gc.C) {
 	fip := nova.FloatingIP{Id: "1", IP: "1.2.3.4"}
 	server := nova.ServerDetail{
 		Id:        "sr1",
-		Addresses: map[string][]nova.IPAddress{"private": []nova.IPAddress{}},
+		Addresses: map[string][]nova.IPAddress{"private": {}},
 	}
 	s.createIP(c, fip)
 	s.createServer(c, server)
@@ -1355,7 +1357,7 @@ func (s *NovaSuite) TestRemoveServerFloatingIPTwiceFails(c *gc.C) {
 	fip := nova.FloatingIP{Id: "1", IP: "1.2.3.4"}
 	server := nova.ServerDetail{
 		Id:        "sr1",
-		Addresses: map[string][]nova.IPAddress{"private": []nova.IPAddress{}},
+		Addresses: map[string][]nova.IPAddress{"private": {}},
 	}
 	s.createServer(c, server)
 	defer s.deleteServer(c, server)
@@ -1377,7 +1379,7 @@ func (s *NovaSuite) TestAllOSInterfaces(c *gc.C) {
 	serverID := "sr1"
 	server := nova.ServerDetail{
 		Id:        serverID,
-		Addresses: map[string][]nova.IPAddress{"private": []nova.IPAddress{}},
+		Addresses: map[string][]nova.IPAddress{"private": {}},
 	}
 	s.createServer(c, server)
 	defer s.deleteServer(c, server)

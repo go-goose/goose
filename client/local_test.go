@@ -157,6 +157,7 @@ func (s *localLiveSuite) TestInexactRegionMatch(c *gc.C) {
 	}
 	cl := client.NewClient(s.cred, s.authMode, nil)
 	err := cl.Authenticate()
+	c.Assert(err, gc.IsNil)
 	serviceURL, err := cl.MakeServiceURL("compute", "v2", []string{})
 	c.Assert(err, gc.IsNil)
 	_, err = url.Parse(serviceURL)
