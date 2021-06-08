@@ -163,7 +163,7 @@ func (c *authenticatingClient) getAPIVersions(serviceCatalogURL string) (*apiURL
 
 	// Make sure we haven't already received the version info.
 	// Cache done on serviceCatalogURL, https://<url.Host> is not
-	// guarenteed to be unique.
+	// guaranteed to be unique.
 	if apiInfo, ok := c.apiURLVersions[serviceCatalogURL]; ok {
 		return apiInfo, nil
 	}

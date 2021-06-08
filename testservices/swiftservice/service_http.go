@@ -70,7 +70,7 @@ func (s *Swift) handleContainers(container string, w http.ResponseWriter, r *htt
 		} else {
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json; charset=UF-8")
-			w.Write([]byte(objdata))
+			w.Write(objdata)
 		}
 	case "DELETE":
 		if err = s.RemoveContainer(container); err != nil {

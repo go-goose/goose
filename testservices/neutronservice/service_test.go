@@ -167,6 +167,7 @@ func (s *NeutronSuite) TestGetSecurityGroupByName(c *gc.C) {
 	}
 	s.ensureNoGroup(c, group)
 	gr, err := s.service.securityGroupByName(group.Name)
+	c.Assert(err, gc.IsNil)
 	c.Assert(gr, gc.HasLen, 0)
 	s.createGroup(c, group)
 	defer s.deleteGroup(c, group)
@@ -183,6 +184,7 @@ func (s *NeutronSuite) TestGetSecurityGroupByName(c *gc.C) {
 	}
 	s.ensureNoGroup(c, group2)
 	gr2, err := s.service.securityGroupByName(group2.Name)
+	c.Assert(err, gc.IsNil)
 	c.Assert(gr2, gc.HasLen, 0)
 	s.createGroup(c, group2)
 	defer s.deleteGroup(c, group2)
@@ -465,11 +467,11 @@ func (s *NeutronSuite) TestGetFloatingIP(c *gc.C) {
 func (s *NeutronSuite) TestGetFloatingIPByAddr(c *gc.C) {
 	fip := neutron.FloatingIPV2{Id: "1", IP: "1.2.3.4"}
 	s.ensureNoIP(c, fip)
-	ip, err := s.service.floatingIPByAddr(fip.IP)
+	_, err := s.service.floatingIPByAddr(fip.IP)
 	c.Assert(err, gc.NotNil)
 	s.createIP(c, fip)
 	defer s.deleteIP(c, fip)
-	ip, err = s.service.floatingIPByAddr(fip.IP)
+	ip, err := s.service.floatingIPByAddr(fip.IP)
 	c.Assert(err, gc.IsNil)
 	c.Assert(*ip, gc.DeepEquals, fip)
 	_, err = s.service.floatingIPByAddr("invalid")

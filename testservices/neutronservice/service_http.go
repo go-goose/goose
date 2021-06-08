@@ -56,15 +56,6 @@ This server could not verify that you are authorized to access the ` +
 		nil,
 		nil,
 	}
-	errForbidden = &errorResponse{
-		http.StatusForbidden,
-		`{"forbidden": {"message": "Policy doesn't allow compute_extension:` +
-			`flavormanage to be performed.", "code": 403}}`,
-		"application/json; charset=UTF-8",
-		"forbidden flavors request",
-		nil,
-		nil,
-	}
 	errBadRequestMalformedURL = &errorResponse{
 		http.StatusBadRequest,
 		`{"badRequest": {"message": "Malformed request url", "code": 400}}`,
@@ -144,14 +135,6 @@ The resource could not be found.
 		`{"versions": [{"status": "CURRENT", "id": "v2.0", "links": [{"href": "v2.0", "rel": "self"}]}]}`,
 		"application/json",
 		"no version specified in URL",
-		nil,
-		nil,
-	}
-	errNotImplemented = &errorResponse{
-		http.StatusNotImplemented,
-		"501 Not Implemented",
-		"text/plain; charset=UTF-8",
-		"not implemented",
 		nil,
 		nil,
 	}
@@ -347,7 +330,7 @@ func (n *Neutron) handleSecurityGroups(w http.ResponseWriter, r *http.Request) e
 	case "GET":
 		group, err := n.processGroupId(w, r)
 		if err == errNoGroupId {
-			groups := []neutron.SecurityGroupV2{}
+			var groups []neutron.SecurityGroupV2
 			query := r.URL.Query()
 			if len(query) == 1 {
 				secGroupName := query["name"][0]
@@ -766,7 +749,6 @@ func (n *Neutron) handleNetworks(w http.ResponseWriter, r *http.Request) error {
 	default:
 		return errNotFound
 	}
-	return fmt.Errorf("unknown request method %q for %s", r.Method, r.URL.Path)
 }
 
 // handleNetworks handles the v2/subnets HTTP API.
@@ -796,7 +778,6 @@ func (n *Neutron) handleSubnets(w http.ResponseWriter, r *http.Request) error {
 	default:
 		return errNotFound
 	}
-	return fmt.Errorf("unknown request method %q for %s", r.Method, r.URL.Path)
 }
 
 // SetupHTTP attaches all the needed handlers to provide the HTTP API.

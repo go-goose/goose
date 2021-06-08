@@ -31,7 +31,7 @@ func (s *GlanceSuite) SetUpSuite(c *gc.C) {
 	s.glance = glance.New(client)
 }
 
-var suite = gc.Suite(&GlanceSuite{})
+var _ = gc.Suite(&GlanceSuite{})
 
 func (s *GlanceSuite) TestListImages(c *gc.C) {
 	images, err := s.glance.ListImages()

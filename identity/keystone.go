@@ -2,6 +2,7 @@ package identity
 
 import (
 	"fmt"
+
 	gooseerrors "gopkg.in/goose.v3/errors"
 	goosehttp "gopkg.in/goose.v3/http"
 )

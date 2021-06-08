@@ -631,6 +631,7 @@ func (s *NeutronHTTPSuite) TestAddSecurityGroupRule(c *gc.C) {
 	c.Assert(expected.Rule.RemoteIPPrefix, gc.Equals, rule1.RemoteIPPrefix)
 	// Attempt to create duplicate rule should fail
 	resp, err = s.jsonRequest("POST", neutron.ApiSecurityGroupRulesV2, req, nil)
+	c.Assert(err, gc.IsNil)
 	c.Assert(resp.StatusCode, gc.Equals, http.StatusBadRequest)
 	err = s.service.removeSecurityGroupRule(rule1.Id)
 	c.Assert(err, gc.IsNil)
@@ -662,6 +663,7 @@ func (s *NeutronHTTPSuite) TestAddSecurityGroupRule(c *gc.C) {
 	req.Rule = riIngress6
 	req.Rule.EthernetType = ""
 	resp, err = s.jsonRequest("POST", neutron.ApiSecurityGroupRulesV2, req, nil)
+	c.Assert(err, gc.IsNil)
 	c.Assert(resp.StatusCode, gc.Equals, http.StatusBadRequest)
 	// Attempt to create rule with IPv6 RemoteIPPrefix with correct EthernetType, should pass
 	req.Rule = riIngress6
@@ -724,6 +726,7 @@ func (s *NeutronHTTPSuite) TestPostFloatingIPV2(c *gc.C) {
 	// network 999 has External = false
 	req.IP.FloatingNetworkId = "999"
 	resp, err = s.jsonRequest("POST", neutron.ApiFloatingIPsV2, req, nil)
+	c.Assert(err, gc.IsNil)
 	c.Assert(resp.StatusCode, gc.Equals, http.StatusNotFound)
 }
 

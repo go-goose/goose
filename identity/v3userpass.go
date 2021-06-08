@@ -131,7 +131,7 @@ type v3TokenWrapper struct {
 	Token v3Token `json:"token"`
 }
 
-// v3Token represents the reponse token as described in:
+// v3Token represents the response token as described in:
 // http://developer.openstack.org/api-ref-identity-v3.html#authenticatePasswordScoped
 type v3Token struct {
 	Expires time.Time        `json:"expires_at"`

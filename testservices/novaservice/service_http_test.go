@@ -1108,7 +1108,6 @@ func (s *NovaHTTPSuite) TestGetServerSecurityGroups(c *gc.C) {
 		c.Assert(err, gc.IsNil)
 		defer s.service.removeServerSecurityGroup(server.Id, group.Id)
 	}
-	srvGroups = s.service.allServerSecurityGroups(server.Id)
 	var expected struct {
 		Groups []nova.SecurityGroup `json:"security_groups"`
 	}
@@ -1230,7 +1229,7 @@ func (s *NovaHTTPSuite) TestAddServerFloatingIP(c *gc.C) {
 	fip := nova.FloatingIP{Id: "1", IP: "1.2.3.4"}
 	server := nova.ServerDetail{
 		Id:        "sr1",
-		Addresses: map[string][]nova.IPAddress{"private": []nova.IPAddress{}},
+		Addresses: map[string][]nova.IPAddress{"private": {}},
 	}
 	err := s.service.addFloatingIP(fip)
 	c.Assert(err, gc.IsNil)
@@ -1257,7 +1256,7 @@ func (s *NovaHTTPSuite) TestRemoveServerFloatingIP(c *gc.C) {
 	fip := nova.FloatingIP{Id: "1", IP: "1.2.3.4"}
 	server := nova.ServerDetail{
 		Id:        "sr1",
-		Addresses: map[string][]nova.IPAddress{"private": []nova.IPAddress{}},
+		Addresses: map[string][]nova.IPAddress{"private": {}},
 	}
 	err := s.service.addFloatingIP(fip)
 	c.Assert(err, gc.IsNil)
@@ -1311,7 +1310,7 @@ func (s *NovaHTTPSuite) TestAddServerOSInterface(c *gc.C) {
 	}
 	server := nova.ServerDetail{
 		Id:        "sr1",
-		Addresses: map[string][]nova.IPAddress{"private": []nova.IPAddress{}},
+		Addresses: map[string][]nova.IPAddress{"private": {}},
 	}
 	s.service.AddOSInterface(server.Id, osInterface)
 	c.Assert(s.service.hasServerOSInterface(server.Id, osInterface.IPAddress), gc.Equals, true)
