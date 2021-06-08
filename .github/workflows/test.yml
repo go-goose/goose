@@ -3,7 +3,7 @@ on: [push, pull_request]
 jobs:
   local:
     name: Local Tests
-    runs-on: ubuntu-latests
+    runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
     steps:
 
