@@ -15,7 +15,7 @@ import (
 	"time"
 
 	gc "gopkg.in/check.v1"
-	"gopkg.in/goose.v2/internal/httpfile"
+	"gopkg.in/goose.v3/internal/httpfile"
 )
 
 type httpFileSuite struct{}

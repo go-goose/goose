@@ -5,9 +5,9 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v2/identity"
-	"gopkg.in/goose.v2/testing/httpsuite"
-	"gopkg.in/goose.v2/testservices/openstackservice"
+	"gopkg.in/goose.v3/identity"
+	"gopkg.in/goose.v3/testing/httpsuite"
+	"gopkg.in/goose.v3/testservices/openstackservice"
 )
 
 func registerLocalTests() {

@@ -12,12 +12,12 @@ import (
 
 	"github.com/juju/collections/set"
 
-	gooseerrors "gopkg.in/goose.v2/errors"
-	goosehttp "gopkg.in/goose.v2/http"
-	"gopkg.in/goose.v2/identity"
-	"gopkg.in/goose.v2/internal/gooseio"
-	"gopkg.in/goose.v2/logging"
-	goosesync "gopkg.in/goose.v2/sync"
+	gooseerrors "gopkg.in/goose.v3/errors"
+	goosehttp "gopkg.in/goose.v3/http"
+	"gopkg.in/goose.v3/identity"
+	"gopkg.in/goose.v3/internal/gooseio"
+	"gopkg.in/goose.v3/logging"
+	goosesync "gopkg.in/goose.v3/sync"
 )
 
 const (
@@ -35,9 +35,9 @@ const (
 
 // For testing purposes
 //
-//go:generate mockgen -package mocks -destination mocks/auth.go gopkg.in/goose.v2/identity Authenticator
-//go:generate mockgen -package mocks -destination mocks/httpclient.go gopkg.in/goose.v2/http HttpClient
-//go:generate mockgen -package mocks -destination mocks/compatlogger.go gopkg.in/goose.v2/logging CompatLogger
+//go:generate mockgen -package mocks -destination mocks/auth.go gopkg.in/goose.v3/identity Authenticator
+//go:generate mockgen -package mocks -destination mocks/httpclient.go gopkg.in/goose.v3/http HttpClient
+//go:generate mockgen -package mocks -destination mocks/compatlogger.go gopkg.in/goose.v3/logging CompatLogger
 
 // Client implementations sends service requests to an OpenStack deployment.
 type Client interface {

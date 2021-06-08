@@ -9,7 +9,7 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v2/testing/httpsuite"
+	"gopkg.in/goose.v3/testing/httpsuite"
 )
 
 type KeyPairSuite struct {

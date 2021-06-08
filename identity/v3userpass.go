@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	gooseerrors "gopkg.in/goose.v2/errors"
-	goosehttp "gopkg.in/goose.v2/http"
+	gooseerrors "gopkg.in/goose.v3/errors"
+	goosehttp "gopkg.in/goose.v3/http"
 )
 
 // v3AuthWrapper wraps the v3AuthRequest to perform v3 authentication.

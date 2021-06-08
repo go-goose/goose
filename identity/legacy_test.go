@@ -3,8 +3,8 @@ package identity
 import (
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v2/testing/httpsuite"
-	"gopkg.in/goose.v2/testservices/identityservice"
+	"gopkg.in/goose.v3/testing/httpsuite"
+	"gopkg.in/goose.v3/testservices/identityservice"
 )
 
 type LegacyTestSuite struct {

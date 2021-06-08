@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	goosehttp "gopkg.in/goose.v2/http"
-	"gopkg.in/goose.v2/logging"
+	goosehttp "gopkg.in/goose.v3/http"
+	"gopkg.in/goose.v3/logging"
 )
 
 // ApiVersion represents choices.id from the openstack

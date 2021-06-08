@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	gc "gopkg.in/check.v1"
-	goosehttp "gopkg.in/goose.v2/http"
+	goosehttp "gopkg.in/goose.v3/http"
 )
 
 type clientHeaderSuite struct{}

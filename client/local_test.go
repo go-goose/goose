@@ -13,15 +13,15 @@ import (
 	"github.com/juju/loggo"
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v2/client"
-	"gopkg.in/goose.v2/errors"
-	"gopkg.in/goose.v2/identity"
-	"gopkg.in/goose.v2/logging"
-	"gopkg.in/goose.v2/swift"
-	"gopkg.in/goose.v2/testing/httpsuite"
-	"gopkg.in/goose.v2/testservices"
-	"gopkg.in/goose.v2/testservices/identityservice"
-	"gopkg.in/goose.v2/testservices/openstackservice"
+	"gopkg.in/goose.v3/client"
+	"gopkg.in/goose.v3/errors"
+	"gopkg.in/goose.v3/identity"
+	"gopkg.in/goose.v3/logging"
+	"gopkg.in/goose.v3/swift"
+	"gopkg.in/goose.v3/testing/httpsuite"
+	"gopkg.in/goose.v3/testservices"
+	"gopkg.in/goose.v3/testservices/identityservice"
+	"gopkg.in/goose.v3/testservices/openstackservice"
 )
 
 func registerLocalTests(authModes []identity.AuthMode) {
