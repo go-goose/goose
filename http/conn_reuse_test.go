@@ -12,23 +12,20 @@ import (
 	gc "gopkg.in/check.v1"
 )
 
-type ConnReuseSuite struct {
-}
+type ConnReuseSuite struct{}
 
 var _ = gc.Suite(&ConnReuseSuite{})
 
 func (*ConnReuseSuite) TestConnectionsAreReused(c *gc.C) {
-	oldTransport := http.DefaultTransport.(*http.Transport)
-	defer func() {
-		http.DefaultTransport = oldTransport
-	}()
-	transport := *oldTransport
 	connCount := int32(0)
-	transport.DialContext = func(ctx context.Context, net, addr string) (net.Conn, error) {
-		atomic.AddInt32(&connCount, 1)
-		return oldTransport.DialContext(ctx, net, addr)
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, net, addr string) (net.Conn, error) {
+				atomic.AddInt32(&connCount, 1)
+				return http.DefaultTransport.(*http.Transport).DialContext(ctx, net, addr)
+			},
+		},
 	}
-	http.DefaultTransport = &transport
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		switch req.URL.Path {
@@ -49,7 +46,7 @@ func (*ConnReuseSuite) TestConnectionsAreReused(c *gc.C) {
 			c.Errorf("unexpected path %s", req.URL.Path)
 		}
 	}))
-	client := New()
+	client := New(WithHTTPClient(httpClient))
 
 	assertReq := func(path string, expectTestHeader string) {
 		var req RequestData

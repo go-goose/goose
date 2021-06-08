@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"sort"
 	"strings"
@@ -100,7 +101,9 @@ type AuthenticatingClient interface {
 type Option func(*options)
 
 type options struct {
-	httpHeadersFunc goosehttp.HeadersFunc
+	httpHeadersFunc    goosehttp.HeadersFunc
+	httpClient         *http.Client
+	insecureHTTPClient *http.Client
 }
 
 // WithHTTPHeadersFunc allows passing in a new HTTP headers func for the client
@@ -111,9 +114,33 @@ func WithHTTPHeadersFunc(httpHeadersFunc goosehttp.HeadersFunc) Option {
 	}
 }
 
+// WithHTTPClient allows the setting of the http.Client to use for all the http
+// requests.
+func WithHTTPClient(client *http.Client) Option {
+	return func(options *options) {
+		options.httpClient = client
+	}
+}
+
+// WithInsecureHTTPClient allows the setting of a insecure http.Client to use
+// for all insecure http requests.
+func WithInsecureHTTPClient(client *http.Client) Option {
+	return func(options *options) {
+		options.insecureHTTPClient = client
+	}
+}
+
 func newOptions() *options {
 	return &options{
 		httpHeadersFunc: goosehttp.DefaultHeaders,
+		httpClient:      &http.Client{},
+		insecureHTTPClient: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+				},
+			},
+		},
 	}
 }
 
@@ -176,9 +203,12 @@ func NewPublicClient(baseURL string, logger logging.CompatLogger, options ...Opt
 	}
 
 	return &client{
-		baseURL:    baseURL,
-		logger:     logger,
-		httpClient: goosehttp.New(goosehttp.WithHeadersFunc(opts.httpHeadersFunc)),
+		baseURL: baseURL,
+		logger:  logger,
+		httpClient: goosehttp.New(
+			goosehttp.WithHeadersFunc(opts.httpHeadersFunc),
+			goosehttp.WithHTTPClient(opts.httpClient),
+		),
 	}
 }
 
@@ -191,9 +221,12 @@ func NewNonValidatingPublicClient(baseURL string, logger logging.CompatLogger, o
 	}
 
 	return &client{
-		baseURL:    baseURL,
-		logger:     logger,
-		httpClient: goosehttp.NewNonSSLValidating(goosehttp.WithHeadersFunc(opts.httpHeadersFunc)),
+		baseURL: baseURL,
+		logger:  logger,
+		httpClient: goosehttp.New(
+			goosehttp.WithHeadersFunc(opts.httpHeadersFunc),
+			goosehttp.WithHTTPClient(opts.insecureHTTPClient),
+		),
 	}
 }
 
@@ -204,7 +237,10 @@ func NewClient(creds *identity.Credentials, authMethod identity.AuthMode, logger
 		option(opts)
 	}
 
-	return newClient(creds, authMethod, goosehttp.New(goosehttp.WithHeadersFunc(opts.httpHeadersFunc)), logger)
+	return newClient(creds, authMethod, goosehttp.New(
+		goosehttp.WithHeadersFunc(opts.httpHeadersFunc),
+		goosehttp.WithHTTPClient(opts.httpClient),
+	), logger)
 }
 
 // NewNonValidatingClient creates a new authenticated client that doesn't
@@ -215,18 +251,43 @@ func NewNonValidatingClient(creds *identity.Credentials, authMethod identity.Aut
 		option(opts)
 	}
 
-	return newClient(creds, authMethod, goosehttp.NewNonSSLValidating(goosehttp.WithHeadersFunc(opts.httpHeadersFunc)), logger)
+	return newClient(creds, authMethod, goosehttp.New(
+		goosehttp.WithHeadersFunc(opts.httpHeadersFunc),
+		goosehttp.WithHTTPClient(opts.insecureHTTPClient),
+	), logger)
+}
+
+// TLSTransportConfig allows the setting of a tls.Config onto a given transport.
+type TLSTransportConfig interface {
+	SetTLSConfig(*tls.Config)
 }
 
 // NewClientTLSConfig creates a new authenticated client that allows passing
 // in a new TLS config.
-func NewClientTLSConfig(creds *identity.Credentials, authMethod identity.AuthMode, logger logging.CompatLogger, config *tls.Config, options ...Option) AuthenticatingClient {
+func NewClientTLSConfig(creds *identity.Credentials, authMethod identity.AuthMode, logger logging.CompatLogger, config *tls.Config, options ...Option) (AuthenticatingClient, error) {
 	opts := newOptions()
 	for _, option := range options {
 		option(opts)
 	}
 
-	return newClient(creds, authMethod, goosehttp.NewWithTLSConfig(config, goosehttp.WithHeadersFunc(opts.httpHeadersFunc)), logger)
+	client := *opts.httpClient
+	if client.Transport == nil {
+		client.Transport = &http.Transport{}
+	}
+	switch t := client.Transport.(type) {
+	case *http.Transport:
+		t.TLSClientConfig = config
+		client.Transport = t
+	case TLSTransportConfig:
+		t.SetTLSConfig(config)
+	default:
+		return nil, errors.New("unexpected client transport type: " + fmt.Sprintf("%T", t))
+	}
+
+	return newClient(creds, authMethod, goosehttp.New(
+		goosehttp.WithHeadersFunc(opts.httpHeadersFunc),
+		goosehttp.WithHTTPClient(&client),
+	), logger), nil
 }
 
 var defaultRequiredServiceTypes = []string{"compute", "object-store"}

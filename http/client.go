@@ -4,7 +4,6 @@ package http
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,7 +12,6 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
-	"sync"
 	"time"
 
 	"gopkg.in/goose.v3"
@@ -45,6 +43,7 @@ type Option func(*options)
 
 type options struct {
 	headersFunc HeadersFunc
+	httpClient  *http.Client
 }
 
 // WithHeadersFunc allows passing in a new headers func for the http.Client
@@ -55,9 +54,20 @@ func WithHeadersFunc(headersFunc HeadersFunc) Option {
 	}
 }
 
+// WithHTTPClient allows the setting of the http.Client to use for all the http
+// requests.
+func WithHTTPClient(client *http.Client) Option {
+	return func(options *options) {
+		options.httpClient = client
+	}
+}
+
+// WithInsecureHTTPClient allows the setting of a http.Client that can skip
+// verification.
 func newOptions() *options {
 	return &options{
 		headersFunc: DefaultHeaders,
+		httpClient:  &http.Client{},
 	}
 }
 
@@ -133,9 +143,6 @@ const (
 	MaxSendAttempts = 3
 )
 
-var insecureClient *http.Client
-var insecureClientMutex sync.Mutex
-
 // New returns a new goose http *Client using the default net/http client.
 func New(options ...Option) *Client {
 	opts := newOptions()
@@ -144,50 +151,7 @@ func New(options ...Option) *Client {
 	}
 
 	return &Client{
-		Client:          *http.DefaultClient,
-		headersFunc:     opts.headersFunc,
-		maxSendAttempts: MaxSendAttempts,
-	}
-}
-
-// NewNonSSLValidating creates a new goose http *Client skipping SSL validation.
-func NewNonSSLValidating(options ...Option) *Client {
-	opts := newOptions()
-	for _, option := range options {
-		option(opts)
-	}
-
-	insecureClientMutex.Lock()
-	httpClient := insecureClient
-	if httpClient == nil {
-		insecureConfig := &tls.Config{InsecureSkipVerify: true}
-		insecureTransport := &http.Transport{TLSClientConfig: insecureConfig}
-		insecureClient = &http.Client{Transport: insecureTransport}
-		httpClient = insecureClient
-	}
-	insecureClientMutex.Unlock()
-
-	return &Client{
-		Client:          *httpClient,
-		headersFunc:     opts.headersFunc,
-		maxSendAttempts: MaxSendAttempts,
-	}
-}
-
-// NewWithTLSConfig creates a new goose http *Client with a TLS config.
-func NewWithTLSConfig(tlsConfig *tls.Config, options ...Option) *Client {
-	opts := newOptions()
-	for _, option := range options {
-		option(opts)
-	}
-
-	defaultClient := *http.DefaultClient
-	defaultClient.Transport = &http.Transport{
-		TLSClientConfig: tlsConfig,
-	}
-
-	return &Client{
-		Client:          defaultClient,
+		Client:          *opts.httpClient,
 		headersFunc:     opts.headersFunc,
 		maxSendAttempts: MaxSendAttempts,
 	}
@@ -247,7 +211,7 @@ func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, lo
 
 	if len(respData) > 0 && reqData.RespValue != nil {
 		if err := json.Unmarshal(respData, &reqData.RespValue); err != nil {
-			return errors.Newf(err, "failed unmarshaling the response body: %s", respData)
+			return errors.Newf(err, "failed unmarshalling the response body: %s", respData)
 		}
 	}
 	return nil
@@ -386,7 +350,7 @@ func (c *Client) sendRateLimitedRequest(
 		// Try <delay-seconds> first
 		if retryAfter, err := strconv.ParseFloat(respRetryAfter, 32); err == nil {
 			if retryAfter == 0 {
-				return nil, errors.Newf(err, "Resource limit exeeded at URL %s", URL)
+				return nil, errors.Newf(err, "Resource limit exceeded at URL %s", URL)
 			}
 			logger.Debugf("Too many requests, retrying in %dms.", int(retryAfter*1000))
 			time.Sleep(time.Duration(retryAfter) * time.Second)
@@ -415,24 +379,6 @@ func (c *Client) sendRateLimitedRequest(
 		}
 	}
 	return nil, errors.Newf(err, "Maximum number of attempts (%d) reached sending request to %s", c.maxSendAttempts, URL)
-}
-
-type nopReader struct{}
-
-func (nopReader) Read(buf []byte) (int, error) {
-	return 0, io.EOF
-}
-
-type closeNotifier chan struct{}
-
-func (c closeNotifier) Close() error {
-	select {
-	case <-c:
-		return nil
-	default:
-	}
-	close(c)
-	return nil
 }
 
 type HttpError struct {

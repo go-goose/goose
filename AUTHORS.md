@@ -1,4 +1,4 @@
-goamz Authors
+goose Authors
 =============
 
 This file contains a list of people who contributed relevant code to the project.
