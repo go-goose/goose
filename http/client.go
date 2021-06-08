@@ -4,7 +4,6 @@ package http
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -156,43 +155,6 @@ func New(options ...Option) *Client {
 		headersFunc:     opts.headersFunc,
 		maxSendAttempts: MaxSendAttempts,
 	}
-}
-
-// NewNonSSLValidating creates a new goose http *Client skipping SSL validation.
-// DEPRECATED (stickupkid): No longer used internally, left to ensure we don't
-// break compatibility.
-func NewNonSSLValidating(options ...Option) *Client {
-	return NewWithTLSConfig(&tls.Config{
-		InsecureSkipVerify: true,
-	}, options...)
-}
-
-// NewWithTLSConfig creates a new goose http *Client with a TLS config.
-// DEPRECATED (stickupkid): No longer used internally, left to ensure we don't
-// break compatibility.
-func NewWithTLSConfig(tlsConfig *tls.Config, options ...Option) *Client {
-	opts := newOptions()
-	for _, option := range options {
-		option(opts)
-	}
-
-	// Ensure we don't overwrite existing http.Client information.
-	client := *opts.httpClient
-	if opts.httpClient == nil {
-		client = http.Client{}
-	}
-	if client.Transport == nil {
-		client.Transport = &http.Transport{}
-	}
-	if t, ok := client.Transport.(*http.Transport); ok {
-		t.TLSClientConfig = tlsConfig
-		client.Transport = t
-	}
-
-	return New(
-		WithHTTPClient(&client),
-		WithHeadersFunc(opts.headersFunc),
-	)
 }
 
 // gooseAgent returns the current client goose agent version.

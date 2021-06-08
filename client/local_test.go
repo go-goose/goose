@@ -503,14 +503,18 @@ func (s *localHTTPSSuite) TestAuthDiscover(c *gc.C) {
 }
 
 func (s *localHTTPSSuite) TestTLSConfigClientBadConfig(c *gc.C) {
-	cl := client.NewClientTLSConfig(s.cred, identity.AuthUserPass, nil, &tls.Config{})
-	err := cl.Authenticate()
+	cl, err := client.NewClientTLSConfig(s.cred, identity.AuthUserPass, nil, &tls.Config{})
+	c.Assert(err, gc.IsNil)
+
+	err = cl.Authenticate()
 	c.Assert(err, gc.ErrorMatches, "(.|\n)*x509: certificate signed by unknown authority")
 }
 
 func (s *localHTTPSSuite) TestTLSConfigClient(c *gc.C) {
-	cl := client.NewClientTLSConfig(s.cred, identity.AuthUserPass, nil, s.tlsConfig())
-	err := cl.Authenticate()
+	cl, err := client.NewClientTLSConfig(s.cred, identity.AuthUserPass, nil, s.tlsConfig())
+	c.Assert(err, gc.IsNil)
+
+	err = cl.Authenticate()
 	c.Assert(err, gc.IsNil)
 }
 
