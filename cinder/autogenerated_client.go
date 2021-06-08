@@ -16,9 +16,9 @@ import (
 	"net/http"
 	"net/url"
 
-	"gopkg.in/goose.v2/client"
-	gooseerrors "gopkg.in/goose.v2/errors"
-	goosehttp "gopkg.in/goose.v2/http"
+	"gopkg.in/goose.v3/client"
+	gooseerrors "gopkg.in/goose.v3/errors"
+	goosehttp "gopkg.in/goose.v3/http"
 )
 
 // RequestHandlerFn specifies a function signature which wadl2go will

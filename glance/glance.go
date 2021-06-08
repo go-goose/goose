@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"gopkg.in/goose.v2/client"
-	"gopkg.in/goose.v2/errors"
-	goosehttp "gopkg.in/goose.v2/http"
+	"gopkg.in/goose.v3/client"
+	"gopkg.in/goose.v3/errors"
+	goosehttp "gopkg.in/goose.v3/http"
 )
 
 // API URL parts.

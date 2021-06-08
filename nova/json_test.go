@@ -5,7 +5,7 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v2/nova"
+	"gopkg.in/goose.v3/nova"
 )
 
 type JsonSuite struct {

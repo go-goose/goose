@@ -16,10 +16,10 @@ import (
 	"sync"
 	"time"
 
-	"gopkg.in/goose.v2"
-	"gopkg.in/goose.v2/errors"
-	"gopkg.in/goose.v2/internal/gooseio"
-	"gopkg.in/goose.v2/logging"
+	"gopkg.in/goose.v3"
+	"gopkg.in/goose.v3/errors"
+	"gopkg.in/goose.v3/internal/gooseio"
+	"gopkg.in/goose.v3/logging"
 )
 
 const (

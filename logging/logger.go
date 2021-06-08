@@ -14,7 +14,7 @@ import (
 // retaining compatibility with the old *log.Logger that was
 // previously depended upon directly.
 //
-// TODO(axw) in goose.v2, drop this and use loggo.Logger directly.
+// TODO(axw) in goose.v3, drop this and use loggo.Logger directly.
 type CompatLogger interface {
 	// Printf prints a log message. Arguments are handled
 	// in the/ manner of fmt.Printf.

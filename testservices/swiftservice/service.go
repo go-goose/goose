@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"gopkg.in/goose.v2/swift"
-	"gopkg.in/goose.v2/testservices"
-	"gopkg.in/goose.v2/testservices/identityservice"
+	"gopkg.in/goose.v3/swift"
+	"gopkg.in/goose.v3/testservices"
+	"gopkg.in/goose.v3/testservices/identityservice"
 )
 
 type object map[string][]byte

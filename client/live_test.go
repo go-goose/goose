@@ -3,9 +3,9 @@ package client_test
 import (
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v2/client"
-	gooseerrors "gopkg.in/goose.v2/errors"
-	"gopkg.in/goose.v2/identity"
+	"gopkg.in/goose.v3/client"
+	gooseerrors "gopkg.in/goose.v3/errors"
+	"gopkg.in/goose.v3/identity"
 )
 
 func registerOpenStackTests(cred *identity.Credentials, authModes []identity.AuthMode) {

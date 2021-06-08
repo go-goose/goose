@@ -8,12 +8,12 @@ import (
 	"strings"
 
 	"crypto/x509"
-	"gopkg.in/goose.v2/identity"
-	"gopkg.in/goose.v2/testservices/identityservice"
-	"gopkg.in/goose.v2/testservices/neutronmodel"
-	"gopkg.in/goose.v2/testservices/neutronservice"
-	"gopkg.in/goose.v2/testservices/novaservice"
-	"gopkg.in/goose.v2/testservices/swiftservice"
+	"gopkg.in/goose.v3/identity"
+	"gopkg.in/goose.v3/testservices/identityservice"
+	"gopkg.in/goose.v3/testservices/neutronmodel"
+	"gopkg.in/goose.v3/testservices/neutronservice"
+	"gopkg.in/goose.v3/testservices/novaservice"
+	"gopkg.in/goose.v3/testservices/swiftservice"
 )
 
 const (

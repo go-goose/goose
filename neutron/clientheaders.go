@@ -3,7 +3,7 @@ package neutron
 import (
 	"net/http"
 
-	goosehttp "gopkg.in/goose.v2/http"
+	goosehttp "gopkg.in/goose.v3/http"
 )
 
 // NeutronHeaders creates a set of http.Headers from the given arguments passed

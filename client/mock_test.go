@@ -7,11 +7,11 @@ import (
 	"github.com/golang/mock/gomock"
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v2/client"
-	"gopkg.in/goose.v2/client/mocks"
-	"gopkg.in/goose.v2/errors"
-	goosehttp "gopkg.in/goose.v2/http"
-	"gopkg.in/goose.v2/identity"
+	"gopkg.in/goose.v3/client"
+	"gopkg.in/goose.v3/client/mocks"
+	"gopkg.in/goose.v3/errors"
+	goosehttp "gopkg.in/goose.v3/http"
+	"gopkg.in/goose.v3/identity"
 )
 
 type localMockSuite struct {
