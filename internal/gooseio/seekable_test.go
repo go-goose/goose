@@ -12,7 +12,7 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v3/internal/gooseio"
+	"github.com/go-goose/goose/v3/internal/gooseio"
 )
 
 type getReqReaderSuite struct{}

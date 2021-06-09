@@ -14,10 +14,10 @@ import (
 	"strconv"
 	"time"
 
-	"gopkg.in/goose.v3"
-	"gopkg.in/goose.v3/errors"
-	"gopkg.in/goose.v3/internal/gooseio"
-	"gopkg.in/goose.v3/logging"
+	"github.com/go-goose/goose/v3"
+	"github.com/go-goose/goose/v3/errors"
+	"github.com/go-goose/goose/v3/internal/gooseio"
+	"github.com/go-goose/goose/v3/logging"
 )
 
 const (

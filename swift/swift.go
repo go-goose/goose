@@ -12,10 +12,10 @@ import (
 	"net/url"
 	"time"
 
-	"gopkg.in/goose.v3/client"
-	"gopkg.in/goose.v3/errors"
-	goosehttp "gopkg.in/goose.v3/http"
-	"gopkg.in/goose.v3/internal/httpfile"
+	"github.com/go-goose/goose/v3/client"
+	"github.com/go-goose/goose/v3/errors"
+	goosehttp "github.com/go-goose/goose/v3/http"
+	"github.com/go-goose/goose/v3/internal/httpfile"
 )
 
 // Client provides a means to access the OpenStack Object Storage Service.

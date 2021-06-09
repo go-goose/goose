@@ -5,8 +5,8 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	goosehttp "gopkg.in/goose.v3/http"
-	"gopkg.in/goose.v3/testing/envsuite"
+	goosehttp "github.com/go-goose/goose/v3/http"
+	"github.com/go-goose/goose/v3/testing/envsuite"
 )
 
 type CredentialsTestSuite struct {

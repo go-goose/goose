@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/goose.v3/neutron"
-	"gopkg.in/goose.v3/testservices"
-	"gopkg.in/goose.v3/testservices/identityservice"
-	"gopkg.in/goose.v3/testservices/neutronmodel"
+	"github.com/go-goose/goose/v3/neutron"
+	"github.com/go-goose/goose/v3/testservices"
+	"github.com/go-goose/goose/v3/testservices/identityservice"
+	"github.com/go-goose/goose/v3/testservices/neutronmodel"
 )
 
 var _ testservices.HttpService = (*Neutron)(nil)

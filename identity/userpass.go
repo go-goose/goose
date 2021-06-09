@@ -1,7 +1,7 @@
 package identity
 
 import (
-	goosehttp "gopkg.in/goose.v3/http"
+	goosehttp "github.com/go-goose/goose/v3/http"
 )
 
 type passwordCredentials struct {

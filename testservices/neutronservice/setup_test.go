@@ -5,7 +5,7 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v3/neutron"
+	"github.com/go-goose/goose/v3/neutron"
 )
 
 func Test(t *testing.T) {

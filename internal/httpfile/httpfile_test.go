@@ -14,8 +14,8 @@ import (
 	"testing/iotest"
 	"time"
 
+	"github.com/go-goose/goose/v3/internal/httpfile"
 	gc "gopkg.in/check.v1"
-	"gopkg.in/goose.v3/internal/httpfile"
 )
 
 type httpFileSuite struct{}

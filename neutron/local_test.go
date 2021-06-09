@@ -5,12 +5,12 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v3/client"
-	"gopkg.in/goose.v3/identity"
-	"gopkg.in/goose.v3/neutron"
-	"gopkg.in/goose.v3/testservices"
-	"gopkg.in/goose.v3/testservices/hook"
-	"gopkg.in/goose.v3/testservices/openstackservice"
+	"github.com/go-goose/goose/v3/client"
+	"github.com/go-goose/goose/v3/identity"
+	"github.com/go-goose/goose/v3/neutron"
+	"github.com/go-goose/goose/v3/testservices"
+	"github.com/go-goose/goose/v3/testservices/hook"
+	"github.com/go-goose/goose/v3/testservices/openstackservice"
 )
 
 func registerLocalTests() {

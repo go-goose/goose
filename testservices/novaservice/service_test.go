@@ -7,9 +7,9 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v3/nova"
-	"gopkg.in/goose.v3/testservices/hook"
-	"gopkg.in/goose.v3/testservices/neutronmodel"
+	"github.com/go-goose/goose/v3/nova"
+	"github.com/go-goose/goose/v3/testservices/hook"
+	"github.com/go-goose/goose/v3/testservices/neutronmodel"
 )
 
 type NovaSuite struct {
