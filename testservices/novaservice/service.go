@@ -10,11 +10,11 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/goose.v3/errors"
-	"gopkg.in/goose.v3/nova"
-	"gopkg.in/goose.v3/testservices"
-	"gopkg.in/goose.v3/testservices/identityservice"
-	"gopkg.in/goose.v3/testservices/neutronmodel"
+	"github.com/go-goose/goose/v3/errors"
+	"github.com/go-goose/goose/v3/nova"
+	"github.com/go-goose/goose/v3/testservices"
+	"github.com/go-goose/goose/v3/testservices/identityservice"
+	"github.com/go-goose/goose/v3/testservices/neutronmodel"
 )
 
 var _ testservices.HttpService = (*Nova)(nil)

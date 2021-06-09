@@ -6,7 +6,7 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v3/testing/httpsuite"
+	"github.com/go-goose/goose/v3/testing/httpsuite"
 )
 
 type LegacySuite struct {

@@ -1,4 +1,4 @@
-module gopkg.in/goose.v3
+module github.com/go-goose/goose/v3
 
 go 1.14
 

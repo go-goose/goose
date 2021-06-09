@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"gopkg.in/goose.v3/testservices/hook"
+	"github.com/go-goose/goose/v3/testservices/hook"
 )
 
 // Implement the v2 User Pass form of identity (Keystone)

@@ -7,9 +7,9 @@ import (
 
 	"github.com/juju/gnuflag"
 
-	"gopkg.in/goose.v3/client"
-	"gopkg.in/goose.v3/identity"
-	"gopkg.in/goose.v3/nova"
+	"github.com/go-goose/goose/v3/client"
+	"github.com/go-goose/goose/v3/identity"
+	"github.com/go-goose/goose/v3/nova"
 )
 
 // DeleteAll destroys all security groups except the default

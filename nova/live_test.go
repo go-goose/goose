@@ -9,10 +9,10 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v3/client"
-	"gopkg.in/goose.v3/errors"
-	"gopkg.in/goose.v3/identity"
-	"gopkg.in/goose.v3/nova"
+	"github.com/go-goose/goose/v3/client"
+	"github.com/go-goose/goose/v3/errors"
+	"github.com/go-goose/goose/v3/identity"
+	"github.com/go-goose/goose/v3/nova"
 )
 
 const (

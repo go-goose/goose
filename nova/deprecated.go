@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"gopkg.in/goose.v3/client"
-	"gopkg.in/goose.v3/errors"
-	goosehttp "gopkg.in/goose.v3/http"
+	"github.com/go-goose/goose/v3/client"
+	"github.com/go-goose/goose/v3/errors"
+	goosehttp "github.com/go-goose/goose/v3/http"
 )
 
 // The following API requests found in this file are officially deprecated by

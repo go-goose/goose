@@ -3,7 +3,7 @@ goose
 
 Go OpenStack Exchange (goose) - Go bindings for talking to OpenStack.
 
-[![GoDoc](https://godoc.org/gopkg.in/goose.v3?status.png)](http://godoc.org/gopkg.in/goose.v3)
+[![GoDoc](https://godoc.org/github.com/go-goose/goose/v3?status.png)](http://godoc.org/github.com/go-goose/goose/v3)
 
 **NOTE**: This is an experimental branch, which is under development with no guarentee of backwards compatibilty at this time (April 2017).  Please use goose.v1 if you require a stable branch.
 
@@ -12,22 +12,22 @@ Instructions
 
 Install the package with:
 
-    go get gopkg.in/goose.v3/...
+    go get github.com/go-goose/goose/v3/...
 
 Import it with:
 
-    import "gopkg.in/goose.v3/<package>"
+    import "github.com/go-goose/goose/v3/<package>"
 
 Example:
 
-    import "gopkg.in/goose.v3/client"
+    import "github.com/go-goose/goose/v3/client"
 
 and use _client_ as the package name inside the code.
 The same applies to the other sub-packages: _nova_, _switft_, etc.
 
 For more details, check the API documentation:
 
-* https://gopkg.in/goose.v3
+* https://github.com/go-goose/goose/v3
 
 Contacts
 --------

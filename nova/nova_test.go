@@ -8,7 +8,7 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"gopkg.in/goose.v3/identity"
+	"github.com/go-goose/goose/v3/identity"
 )
 
 // instanceDetails specify parameters used to start a test machine for the live tests.
