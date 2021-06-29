@@ -13,12 +13,12 @@ import (
 
 	"github.com/juju/collections/set"
 
-	gooseerrors "github.com/go-goose/goose/v3/errors"
-	goosehttp "github.com/go-goose/goose/v3/http"
-	"github.com/go-goose/goose/v3/identity"
-	"github.com/go-goose/goose/v3/internal/gooseio"
-	"github.com/go-goose/goose/v3/logging"
-	goosesync "github.com/go-goose/goose/v3/sync"
+	gooseerrors "github.com/go-goose/goose/v4/errors"
+	goosehttp "github.com/go-goose/goose/v4/http"
+	"github.com/go-goose/goose/v4/identity"
+	"github.com/go-goose/goose/v4/internal/gooseio"
+	"github.com/go-goose/goose/v4/logging"
+	goosesync "github.com/go-goose/goose/v4/sync"
 )
 
 const (

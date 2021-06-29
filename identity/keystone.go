@@ -3,8 +3,8 @@ package identity
 import (
 	"fmt"
 
-	gooseerrors "github.com/go-goose/goose/v3/errors"
-	goosehttp "github.com/go-goose/goose/v3/http"
+	gooseerrors "github.com/go-goose/goose/v4/errors"
+	goosehttp "github.com/go-goose/goose/v4/http"
 )
 
 type endpoint struct {

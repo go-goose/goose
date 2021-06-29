@@ -5,16 +5,12 @@ package logging
 
 import (
 	"log"
-
-	"github.com/juju/loggo"
 )
 
 // CompatLogger is a minimal logging interface that may be provided
 // when constructing a goose Client to log requests and responses,
 // retaining compatibility with the old *log.Logger that was
 // previously depended upon directly.
-//
-// TODO(axw) in goose.v3, drop this and use loggo.Logger directly.
 type CompatLogger interface {
 	// Printf prints a log message. Arguments are handled
 	// in the/ manner of fmt.Printf.
@@ -29,17 +25,23 @@ type Logger interface {
 	Tracef(format string, v ...interface{})
 }
 
-// LoggoLogger is a logger that may be provided when constructing
+// DebugLogger represents any logger that offers a Debugf method which takes a
+// format and a series of optional objects for logging.
+type DebugLogger interface {
+	Debugf(format string, v ...interface{})
+}
+
+// DebugLoggerAdapater is a logger that may be provided when constructing
 // a goose Client to log requests and responses. Users must
 // provide a CompatLogger, which will be upgraded to Logger
 // if provided.
-type LoggoLogger struct {
-	loggo.Logger
+type DebugLoggerAdapater struct {
+	Logger DebugLogger
 }
 
 // Printf is part of the CompatLogger interface.
-func (l LoggoLogger) Printf(format string, v ...interface{}) {
-	l.Debugf(format, v...)
+func (l DebugLoggerAdapater) Printf(format string, v ...interface{}) {
+	l.Logger.Debugf(format, v...)
 }
 
 // CompatLoggerAdapter is a type wrapping CompatLogger, implementing

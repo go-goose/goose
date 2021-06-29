@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	goosehttp "github.com/go-goose/goose/v3/http"
-	"github.com/go-goose/goose/v3/logging"
+	goosehttp "github.com/go-goose/goose/v4/http"
+	"github.com/go-goose/goose/v4/logging"
 )
 
 // AuthMode defines the authentication method to use (see Auth*

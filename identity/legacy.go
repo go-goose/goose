@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	gooseerrors "github.com/go-goose/goose/v3/errors"
-	goosehttp "github.com/go-goose/goose/v3/http"
+	gooseerrors "github.com/go-goose/goose/v4/errors"
+	goosehttp "github.com/go-goose/goose/v4/http"
 )
 
 type Legacy struct {

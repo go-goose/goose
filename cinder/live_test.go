@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/go-goose/goose/v3/client"
-	"github.com/go-goose/goose/v3/identity"
+	"github.com/go-goose/goose/v4/client"
+	"github.com/go-goose/goose/v4/identity"
 	gc "gopkg.in/check.v1"
 )
 

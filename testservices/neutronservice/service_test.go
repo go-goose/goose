@@ -7,8 +7,8 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"github.com/go-goose/goose/v3/neutron"
-	"github.com/go-goose/goose/v3/testservices/neutronmodel"
+	"github.com/go-goose/goose/v4/neutron"
+	"github.com/go-goose/goose/v4/testservices/neutronmodel"
 )
 
 type NeutronSuite struct {

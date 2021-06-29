@@ -16,9 +16,9 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/go-goose/goose/v3/client"
-	gooseerrors "github.com/go-goose/goose/v3/errors"
-	goosehttp "github.com/go-goose/goose/v3/http"
+	"github.com/go-goose/goose/v4/client"
+	gooseerrors "github.com/go-goose/goose/v4/errors"
+	goosehttp "github.com/go-goose/goose/v4/http"
 )
 
 // RequestHandlerFn specifies a function signature which wadl2go will

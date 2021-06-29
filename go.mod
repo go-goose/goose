@@ -1,4 +1,4 @@
-module github.com/go-goose/goose/v3
+module github.com/go-goose/goose/v4
 
 go 1.14
 
