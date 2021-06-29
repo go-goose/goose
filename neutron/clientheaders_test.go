@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	goosehttp "github.com/go-goose/goose/v3/http"
+	goosehttp "github.com/go-goose/goose/v4/http"
 	gc "gopkg.in/check.v1"
 )
 

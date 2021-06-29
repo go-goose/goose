@@ -3,9 +3,9 @@ package client
 import (
 	"time"
 
-	goosehttp "github.com/go-goose/goose/v3/http"
-	"github.com/go-goose/goose/v3/identity"
-	"github.com/go-goose/goose/v3/logging"
+	goosehttp "github.com/go-goose/goose/v4/http"
+	"github.com/go-goose/goose/v4/identity"
+	"github.com/go-goose/goose/v4/logging"
 )
 
 type AuthCleanup func()

@@ -9,12 +9,12 @@ import (
 
 	"crypto/x509"
 
-	"github.com/go-goose/goose/v3/identity"
-	"github.com/go-goose/goose/v3/testservices/identityservice"
-	"github.com/go-goose/goose/v3/testservices/neutronmodel"
-	"github.com/go-goose/goose/v3/testservices/neutronservice"
-	"github.com/go-goose/goose/v3/testservices/novaservice"
-	"github.com/go-goose/goose/v3/testservices/swiftservice"
+	"github.com/go-goose/goose/v4/identity"
+	"github.com/go-goose/goose/v4/testservices/identityservice"
+	"github.com/go-goose/goose/v4/testservices/neutronmodel"
+	"github.com/go-goose/goose/v4/testservices/neutronservice"
+	"github.com/go-goose/goose/v4/testservices/novaservice"
+	"github.com/go-goose/goose/v4/testservices/swiftservice"
 )
 
 const (

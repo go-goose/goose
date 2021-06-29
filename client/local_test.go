@@ -10,18 +10,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/juju/loggo"
 	gc "gopkg.in/check.v1"
 
-	"github.com/go-goose/goose/v3/client"
-	"github.com/go-goose/goose/v3/errors"
-	"github.com/go-goose/goose/v3/identity"
-	"github.com/go-goose/goose/v3/logging"
-	"github.com/go-goose/goose/v3/swift"
-	"github.com/go-goose/goose/v3/testing/httpsuite"
-	"github.com/go-goose/goose/v3/testservices"
-	"github.com/go-goose/goose/v3/testservices/identityservice"
-	"github.com/go-goose/goose/v3/testservices/openstackservice"
+	"github.com/go-goose/goose/v4/client"
+	"github.com/go-goose/goose/v4/errors"
+	"github.com/go-goose/goose/v4/identity"
+	"github.com/go-goose/goose/v4/logging"
+	"github.com/go-goose/goose/v4/swift"
+	"github.com/go-goose/goose/v4/testing/httpsuite"
+	"github.com/go-goose/goose/v4/testservices"
+	"github.com/go-goose/goose/v4/testservices/identityservice"
+	"github.com/go-goose/goose/v4/testservices/openstackservice"
+	"github.com/juju/loggo"
 )
 
 func registerLocalTests(authModes []identity.AuthMode) {
@@ -251,15 +251,16 @@ func (s *localLiveSuite) TestAuthenticationTimeout(c *gc.C) {
 	auth := s.doNewAuthenticator(c, 0, "3003")
 	client.SetAuthenticator(cl, auth)
 
-	var err error
-	err = cl.Authenticate()
+	err := cl.Authenticate()
 	// Wake up the authenticator after we have timed out.
 	auth.authStart <- struct{}{}
 	c.Assert(errors.IsTimeout(err), gc.Equals, true)
 }
 
 func (s *localLiveSuite) assertAuthenticationSuccess(c *gc.C, port string) client.AuthenticatingClient {
-	cl := client.NewClient(s.cred, s.authMode, logging.LoggoLogger{loggo.GetLogger("goose.client")})
+	cl := client.NewClient(s.cred, s.authMode, logging.DebugLoggerAdapater{
+		Logger: loggo.GetLogger("goose.client"),
+	})
 	cl.SetRequiredServiceTypes([]string{"compute"})
 	defer client.SetAuthenticationTimeout(2 * time.Millisecond)()
 	auth := s.doNewAuthenticator(c, 1, port)

@@ -9,9 +9,9 @@
 package nova
 
 import (
-	"github.com/go-goose/goose/v3/client"
-	"github.com/go-goose/goose/v3/errors"
-	goosehttp "github.com/go-goose/goose/v3/http"
+	"github.com/go-goose/goose/v4/client"
+	"github.com/go-goose/goose/v4/errors"
+	goosehttp "github.com/go-goose/goose/v4/http"
 )
 
 const (

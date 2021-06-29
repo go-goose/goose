@@ -5,7 +5,7 @@
 package mocks
 
 import (
-	identity "github.com/go-goose/goose/v3/identity"
+	identity "github.com/go-goose/goose/v4/identity"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
 )

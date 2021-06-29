@@ -14,7 +14,7 @@ import (
 	"testing/iotest"
 	"time"
 
-	"github.com/go-goose/goose/v3/internal/httpfile"
+	"github.com/go-goose/goose/v4/internal/httpfile"
 	gc "gopkg.in/check.v1"
 )
 

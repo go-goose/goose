@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/go-goose/goose/v3/testservices/hook"
+	"github.com/go-goose/goose/v4/testservices/hook"
 )
 
 // Implement the v2 Key Pair form of identity based on Keystone
