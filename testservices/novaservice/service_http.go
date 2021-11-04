@@ -621,6 +621,7 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	// TODO(gz) some kind of sane handling of networks
 	// only networks with sub-nets should be used for boot
 	createSecurityGroups := true
+	networkNames := make([]string, 0)
 	for _, net := range req.Server.Networks {
 		var netPortSecurity *neutron.NetworkV2
 		var err error
@@ -632,6 +633,7 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 			if createSecurityGroups && netPortSecurity.PortSecurityEnabled != nil {
 				createSecurityGroups = *netPortSecurity.PortSecurityEnabled
 			}
+			networkNames = append(networkNames, netPortSecurity.Name)
 		} else {
 			_, err = n.network(net["uuid"])
 			if err != nil {
@@ -685,11 +687,14 @@ func (n *Nova) handleRunServer(body []byte, w http.ResponseWriter, r *http.Reque
 	}
 	nextServer := len(servers) + 1
 	n.buildServerLinks(&server)
-	// set some IP addresses
+	// set some IP addresses for local
+	for _, name := range networkNames {
+		addr := fmt.Sprintf("127.0.0.%d", nextServer)
+		server.Addresses[name] = []nova.IPAddress{{4, addr, "fixed"}, {6, "::face::000f", "fixed"}}
+	}
+	// set some IP addresses, expected by juju tests.
 	addr := fmt.Sprintf("127.10.0.%d", nextServer)
 	server.Addresses["public"] = []nova.IPAddress{{4, addr, "fixed"}, {6, "::dead:beef:f00d", "fixed"}}
-	addr = fmt.Sprintf("127.0.0.%d", nextServer)
-	server.Addresses["private"] = []nova.IPAddress{{4, addr, "fixed"}, {6, "::face::000f", "fixed"}}
 	if err := n.addServer(server); err != nil {
 		return err
 	}
