@@ -665,15 +665,12 @@ func (s *NovaHTTPSuite) TestNewUUID(c *gc.C) {
 func (s *NovaHTTPSuite) assertAddresses(c *gc.C, serverId string) {
 	server, err := s.service.server(serverId)
 	c.Assert(err, gc.IsNil)
-	c.Assert(server.Addresses, gc.HasLen, 2)
+	c.Assert(server.Addresses, gc.HasLen, 1)
 	c.Assert(server.Addresses["public"], gc.HasLen, 2)
-	c.Assert(server.Addresses["private"], gc.HasLen, 2)
 	for network, addresses := range server.Addresses {
 		for _, addr := range addresses {
 			if addr.Version == 4 && network == "public" {
 				c.Assert(addr.Address, gc.Matches, `127\.10\.0\.\d{1,3}`)
-			} else if addr.Version == 4 && network == "private" {
-				c.Assert(addr.Address, gc.Matches, `127\.0\.0\.\d{1,3}`)
 			}
 		}
 
