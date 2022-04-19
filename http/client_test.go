@@ -13,6 +13,7 @@ import (
 
 	gc "gopkg.in/check.v1"
 
+	"github.com/go-goose/goose/v5/errors"
 	"github.com/go-goose/goose/v5/testing/httpsuite"
 )
 
@@ -175,6 +176,35 @@ func (s *HTTPClientTestSuite) TestJSONRequestSetsToken(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	agent := headers.Get("X-Auth-Token")
 	c.Check(agent, gc.Equals, "token")
+}
+
+func (s *HTTPClientTestSuite) setupErrorRequest(c *gc.C, statusCode int) error {
+	handler := func(resp http.ResponseWriter, req *http.Request) {
+		err := req.Body.Close()
+		c.Assert(err, gc.IsNil)
+		resp.Header().Add("Content-Length", "0")
+		resp.WriteHeader(statusCode)
+		_, err = resp.Write([]byte{})
+		c.Assert(err, gc.IsNil)
+	}
+	s.Mux.HandleFunc("/", handler)
+	client := New()
+	return client.JsonRequest("POST", s.Server.URL, "token", &RequestData{}, nil)
+}
+
+func (s *HTTPClientTestSuite) TestHandleNotFoundError(c *gc.C) {
+	err := s.setupErrorRequest(c, http.StatusNotFound)
+	c.Assert(errors.IsNotFound(err), gc.Equals, true)
+}
+
+func (s *HTTPClientTestSuite) TestHandleUnauthorisedError(c *gc.C) {
+	err := s.setupErrorRequest(c, http.StatusUnauthorized)
+	c.Assert(errors.IsUnauthorised(err), gc.Equals, true)
+}
+
+func (s *HTTPClientTestSuite) TestHandleForbiddenError(c *gc.C) {
+	err := s.setupErrorRequest(c, http.StatusForbidden)
+	c.Assert(errors.IsForbidden(err), gc.Equals, true)
 }
 
 func (s *HTTPClientTestSuite) testRetryAfter(c *gc.C,

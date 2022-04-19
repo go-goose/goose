@@ -1,4 +1,4 @@
-// +build gccgo
+//go:build gccgo
 
 package hook
 
