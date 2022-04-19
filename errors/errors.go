@@ -15,6 +15,7 @@ const (
 	DuplicateValueError  = Code("DuplicateValue")
 	TimeoutError         = Code("Timeout")
 	UnauthorisedError    = Code("Unauthorised")
+	ForbiddenError       = Code("Forbidden")
 	NotImplementedError  = Code("NotImplemented")
 	MultipleChoicesError = Code("MultipleChoices")
 )
@@ -97,6 +98,13 @@ func IsUnauthorised(err error) bool {
 	return false
 }
 
+func IsForbidden(err error) bool {
+	if e, ok := err.(*gooseError); ok {
+		return e.causedBy(ForbiddenError)
+	}
+	return false
+}
+
 func IsNotImplemented(err error) bool {
 	if e, ok := err.(*gooseError); ok {
 		return e.causedBy(NotImplementedError)
@@ -155,6 +163,14 @@ func NewUnauthorisedf(cause error, context interface{}, format string, args ...i
 		format = fmt.Sprintf("Unauthorised: %s", context)
 	}
 	return makeErrorf(UnauthorisedError, cause, format, args...)
+}
+
+// NewForbiddenf creates a new Forbidden Error instance with the specified cause.
+func NewForbiddenf(cause error, context interface{}, format string, args ...interface{}) Error {
+	if format == "" {
+		format = fmt.Sprintf("Forbidden: %s", context)
+	}
+	return makeErrorf(ForbiddenError, cause, format, args...)
 }
 
 // NewNotImplementedf creates a new NotImplemented Error instance with the specified cause.
