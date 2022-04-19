@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-goose/goose/v4/neutron"
-	"github.com/go-goose/goose/v4/nova"
-	"github.com/go-goose/goose/v4/testservices"
-	"github.com/go-goose/goose/v4/testservices/identityservice"
+	"github.com/go-goose/goose/v5/neutron"
+	"github.com/go-goose/goose/v5/nova"
+	"github.com/go-goose/goose/v5/testservices"
+	"github.com/go-goose/goose/v5/testservices/identityservice"
 )
 
 const authToken = "X-Auth-Token"

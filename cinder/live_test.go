@@ -9,9 +9,10 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/go-goose/goose/v4/client"
-	"github.com/go-goose/goose/v4/identity"
 	gc "gopkg.in/check.v1"
+
+	"github.com/go-goose/goose/v5/client"
+	"github.com/go-goose/goose/v5/identity"
 )
 
 var _ = gc.Suite(&liveCinderSuite{})

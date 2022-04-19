@@ -5,8 +5,8 @@
 package mocks
 
 import (
-	http "github.com/go-goose/goose/v4/http"
-	logging "github.com/go-goose/goose/v4/logging"
+	http "github.com/go-goose/goose/v5/http"
+	logging "github.com/go-goose/goose/v5/logging"
 	gomock "github.com/golang/mock/gomock"
 	io "io"
 	http0 "net/http"

@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	goosehttp "github.com/go-goose/goose/v4/http"
 	gc "gopkg.in/check.v1"
+
+	goosehttp "github.com/go-goose/goose/v5/http"
 )
 
 type clientHeaderSuite struct{}

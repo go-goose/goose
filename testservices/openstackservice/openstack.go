@@ -1,20 +1,19 @@
 package openstackservice
 
 import (
+	"crypto/x509"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"strings"
 
-	"crypto/x509"
-
-	"github.com/go-goose/goose/v4/identity"
-	"github.com/go-goose/goose/v4/testservices/identityservice"
-	"github.com/go-goose/goose/v4/testservices/neutronmodel"
-	"github.com/go-goose/goose/v4/testservices/neutronservice"
-	"github.com/go-goose/goose/v4/testservices/novaservice"
-	"github.com/go-goose/goose/v4/testservices/swiftservice"
+	"github.com/go-goose/goose/v5/identity"
+	"github.com/go-goose/goose/v5/testservices/identityservice"
+	"github.com/go-goose/goose/v5/testservices/neutronmodel"
+	"github.com/go-goose/goose/v5/testservices/neutronservice"
+	"github.com/go-goose/goose/v5/testservices/novaservice"
+	"github.com/go-goose/goose/v5/testservices/swiftservice"
 )
 
 const (

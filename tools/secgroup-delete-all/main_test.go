@@ -7,12 +7,12 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"github.com/go-goose/goose/v4/client"
-	"github.com/go-goose/goose/v4/identity"
-	"github.com/go-goose/goose/v4/nova"
-	"github.com/go-goose/goose/v4/testing/httpsuite"
-	"github.com/go-goose/goose/v4/testservices/hook"
-	"github.com/go-goose/goose/v4/testservices/openstackservice"
+	"github.com/go-goose/goose/v5/client"
+	"github.com/go-goose/goose/v5/identity"
+	"github.com/go-goose/goose/v5/nova"
+	"github.com/go-goose/goose/v5/testing/httpsuite"
+	"github.com/go-goose/goose/v5/testservices/hook"
+	"github.com/go-goose/goose/v5/testservices/openstackservice"
 )
 
 func Test(t *testing.T) {

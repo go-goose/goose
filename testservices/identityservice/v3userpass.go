@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-goose/goose/v4/testservices/hook"
+	"github.com/go-goose/goose/v5/testservices/hook"
 )
 
 // V3UserPassRequest Implement the v3 User Pass form of identity (Keystone)

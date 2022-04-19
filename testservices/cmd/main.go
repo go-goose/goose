@@ -8,7 +8,7 @@ import (
 
 	"github.com/juju/gnuflag"
 
-	"github.com/go-goose/goose/v4/testservices/identityservice"
+	"github.com/go-goose/goose/v5/testservices/identityservice"
 )
 
 type userInfo struct {

@@ -16,11 +16,11 @@ Install the package with:
 
 Import it with:
 
-    import "github.com/go-goose/goose/v4/<package>"
+    import "github.com/go-goose/goose/v5/<package>"
 
 Example:
 
-    import "github.com/go-goose/goose/v4/client"
+    import "github.com/go-goose/goose/v5/client"
 
 and use _client_ as the package name inside the code.
 The same applies to the other sub-packages: _nova_, _switft_, etc.

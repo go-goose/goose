@@ -132,7 +132,7 @@ func (s *localLiveSuite) makeServiceURLTests() []makeServiceURLTest {
 			version:     "v4.2",
 			parts:       []string{"servers/"},
 			success:     true,
-			URL:         "http://localhost:%s/compute/v4.2/servers/",
+			URL:         "http://localhost:%s/compute/v5.2/servers/",
 		},
 		{
 			// See https://bugs.launchpad.net/juju/+bug/1756135
@@ -221,14 +221,14 @@ const authInformationBody = `{"versions": [` +
 	`{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v3.4", "links": [{"href": "%s/v3/", "rel": "self"}]},` +
 	`{"status": "stable", "updated": "2014-04-17T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v2.0+json"}], "id": "v2.0", "links": [{"href": "%s/v2.0/", "rel": "self"}, {"href": "http://docs.openstack.org/", "type": "text/html", "rel": "describedby"}]},` +
 	`{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v2.1", "links": [{"href": "%s/v2.1/", "rel": "self"}]},` +
-	`{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v4.2", "links": [{"href": "%s/compute/v4.2/", "rel": "self"}]}` +
+	`{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v4.2", "links": [{"href": "%s/compute/v5.2/", "rel": "self"}]}` +
 	`]}`
 
 const authValuesInformationBody = `{"versions": {"values": [` +
 	`{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v3.4", "links": [{"href": "%s/v3/", "rel": "self"}]},` +
 	`{"status": "stable", "updated": "2014-04-17T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v2.0+json"}], "id": "v2.0", "links": [{"href": "%s/v2.0/", "rel": "self"}, {"href": "http://docs.openstack.org/", "type": "text/html", "rel": "describedby"}]},` +
 	`{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v2.1", "links": [{"href": "%s/v2.1/", "rel": "self"}]},` +
-	`{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v4.2", "links": [{"href": "%s/compute/v4.2/", "rel": "self"}]}` +
+	`{"status": "stable", "updated": "2015-03-30T00:00:00Z", "media-types": [{"base": "application/json", "type": "application/vnd.openstack.identity-v3+json"}], "id": "v4.2", "links": [{"href": "%s/compute/v5.2/", "rel": "self"}]}` +
 	`]}}`
 
 func (vh *versionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

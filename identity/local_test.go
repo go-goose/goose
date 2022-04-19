@@ -6,8 +6,8 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"github.com/go-goose/goose/v4/identity"
-	"github.com/go-goose/goose/v4/testservices/openstackservice"
+	"github.com/go-goose/goose/v5/identity"
+	"github.com/go-goose/goose/v5/testservices/openstackservice"
 )
 
 func registerLocalTests(authMode identity.AuthMode) {

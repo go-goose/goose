@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/go-goose/goose/v4/client"
-	"github.com/go-goose/goose/v4/errors"
-	goosehttp "github.com/go-goose/goose/v4/http"
+	"github.com/go-goose/goose/v5/client"
+	"github.com/go-goose/goose/v5/errors"
+	goosehttp "github.com/go-goose/goose/v5/http"
 )
 
 // API URL parts.

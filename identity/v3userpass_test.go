@@ -3,9 +3,9 @@ package identity
 import (
 	gc "gopkg.in/check.v1"
 
-	"github.com/go-goose/goose/v4/testing/httpsuite"
-	"github.com/go-goose/goose/v4/testservices/hook"
-	"github.com/go-goose/goose/v4/testservices/identityservice"
+	"github.com/go-goose/goose/v5/testing/httpsuite"
+	"github.com/go-goose/goose/v5/testservices/hook"
+	"github.com/go-goose/goose/v5/testservices/identityservice"
 )
 
 type V3UserPassTestSuite struct {

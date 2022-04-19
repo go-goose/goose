@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/go-goose/goose/v4/neutron"
-	"github.com/go-goose/goose/v4/nova"
-	"github.com/go-goose/goose/v4/testservices"
+	"github.com/go-goose/goose/v5/neutron"
+	"github.com/go-goose/goose/v5/nova"
+	"github.com/go-goose/goose/v5/testservices"
 )
 
 type NeutronModel struct {

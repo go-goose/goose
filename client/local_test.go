@@ -12,16 +12,17 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"github.com/go-goose/goose/v4/client"
-	"github.com/go-goose/goose/v4/errors"
-	"github.com/go-goose/goose/v4/identity"
-	"github.com/go-goose/goose/v4/logging"
-	"github.com/go-goose/goose/v4/swift"
-	"github.com/go-goose/goose/v4/testing/httpsuite"
-	"github.com/go-goose/goose/v4/testservices"
-	"github.com/go-goose/goose/v4/testservices/identityservice"
-	"github.com/go-goose/goose/v4/testservices/openstackservice"
 	"github.com/juju/loggo"
+
+	"github.com/go-goose/goose/v5/client"
+	"github.com/go-goose/goose/v5/errors"
+	"github.com/go-goose/goose/v5/identity"
+	"github.com/go-goose/goose/v5/logging"
+	"github.com/go-goose/goose/v5/swift"
+	"github.com/go-goose/goose/v5/testing/httpsuite"
+	"github.com/go-goose/goose/v5/testservices"
+	"github.com/go-goose/goose/v5/testservices/identityservice"
+	"github.com/go-goose/goose/v5/testservices/openstackservice"
 )
 
 func registerLocalTests(authModes []identity.AuthMode) {

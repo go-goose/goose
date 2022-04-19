@@ -6,9 +6,9 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"github.com/go-goose/goose/v4/client"
-	"github.com/go-goose/goose/v4/glance"
-	"github.com/go-goose/goose/v4/identity"
+	"github.com/go-goose/goose/v5/client"
+	"github.com/go-goose/goose/v5/glance"
+	"github.com/go-goose/goose/v5/identity"
 )
 
 func Test(t *testing.T) { gc.TestingT(t) }

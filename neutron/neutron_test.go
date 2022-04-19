@@ -6,7 +6,7 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"github.com/go-goose/goose/v4/identity"
+	"github.com/go-goose/goose/v5/identity"
 )
 
 var live = flag.Bool("live", false, "Include live OpenStack tests")

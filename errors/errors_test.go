@@ -5,7 +5,7 @@ import (
 
 	gc "gopkg.in/check.v1"
 
-	"github.com/go-goose/goose/v4/errors"
+	"github.com/go-goose/goose/v5/errors"
 )
 
 func Test(t *testing.T) { gc.TestingT(t) }

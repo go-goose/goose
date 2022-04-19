@@ -3,8 +3,8 @@ package testservices
 import (
 	"net/http"
 
-	"github.com/go-goose/goose/v4/testservices/hook"
-	"github.com/go-goose/goose/v4/testservices/identityservice"
+	"github.com/go-goose/goose/v5/testservices/hook"
+	"github.com/go-goose/goose/v5/testservices/identityservice"
 )
 
 // An HttpService provides the HTTP API for a service double.

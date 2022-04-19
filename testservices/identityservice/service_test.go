@@ -3,7 +3,7 @@ package identityservice
 import (
 	gc "gopkg.in/check.v1"
 
-	"github.com/go-goose/goose/v4/testing/httpsuite"
+	"github.com/go-goose/goose/v5/testing/httpsuite"
 )
 
 // All tests in the IdentityServiceSuite run against each IdentityService
