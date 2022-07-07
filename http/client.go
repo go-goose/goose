@@ -420,7 +420,7 @@ func handleError(URL string, resp *http.Response) error {
 		return errors.NewUnauthorisedf(httpError, "", "Unauthorised URL %s", URL)
 	case http.StatusForbidden:
 		return errors.NewForbiddenf(httpError, "", string(errBytes))
-	case http.StatusBadRequest:
+	case http.StatusConflict, http.StatusBadRequest:
 		dupExp, _ := regexp.Compile(".*already exists.*")
 		if dupExp.Match(errBytes) {
 			return errors.NewDuplicateValuef(httpError, "", string(errBytes))
