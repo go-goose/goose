@@ -331,6 +331,7 @@ func (n *NeutronModel) AddSecurityGroupRule(ruleId string, rule neutron.RuleInfo
 		ParentGroupId:  rule.ParentGroupId,
 		Id:             ruleId,
 		RemoteIPPrefix: rule.RemoteIPPrefix,
+		RemoteGroupID:  rule.RemoteGroupId,
 	}
 	if rule.Direction == "ingress" || rule.Direction == "egress" {
 		newrule.Direction = rule.Direction
