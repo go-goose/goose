@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/go-goose/goose/v5/client"
 	"github.com/go-goose/goose/v5/errors"
@@ -364,13 +365,24 @@ type SecurityGroupV2 struct {
 	Description string                `json:"description"`
 }
 
+type ListSecurityGroupsV2Query struct {
+	// Security groups that match all entries in `Tags` will be returned.
+	Tags []string
+}
+
 // ListSecurityGroupsV2 lists IDs, names, and other details for all security groups.
-func (c *Client) ListSecurityGroupsV2() ([]SecurityGroupV2, error) {
+func (c *Client) ListSecurityGroupsV2(query ListSecurityGroupsV2Query) ([]SecurityGroupV2, error) {
 	var resp struct {
 		Groups []SecurityGroupV2 `json:"security_groups"`
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.GET, "network", "v2.0", ApiSecurityGroupsV2, &requestData)
+	endpoint := ApiApplicationPolicyGroupsV2
+
+	if len(query.Tags) > 0 {
+		endpoint = fmt.Sprintf("%s?tags=%s", endpoint, url.QueryEscape(strings.Join(query.Tags, ",")))
+	}
+
+	err := c.client.SendRequest(client.GET, "network", "v2.0", endpoint, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to list security groups")
 	}
@@ -535,5 +547,22 @@ func (c *Client) DeleteSecurityGroupRuleV2(ruleId string) error {
 	if err != nil {
 		err = errors.Newf(err, "failed to delete security group rule with id: %s", ruleId)
 	}
+	return err
+}
+
+// CreateTags creates multiple tags for a resource.
+func (c *Client) CreateTags(resourceType string, resourceId string, tags []string) error {
+	var req struct {
+		Tags []string `json:"tags"`
+	}
+	req.Tags = tags
+
+	endpoint := fmt.Sprintf("%s/%s/tags", resourceType, resourceId)
+	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusOK}}
+	err := c.client.SendRequest(client.POST, "tags", "v2.0", endpoint, &requestData)
+	if err != nil {
+		err = errors.Newf(err, "failed to create tags %v for resource type %s", req.Tags, resourceType)
+	}
+
 	return err
 }
