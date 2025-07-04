@@ -197,7 +197,8 @@ func (s *LiveTests) TestSecurityGroupsV2(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Assert(newSecGrp, gc.Not(gc.IsNil))
 	defer s.deleteSecurityGroup(newSecGrp.Id, c)
-	secGrps, err := s.neutron.ListSecurityGroupsV2()
+	query := neutron.ListSecurityGroupsV2Query{}
+	secGrps, err := s.neutron.ListSecurityGroupsV2(query)
 	c.Assert(err, gc.IsNil)
 	c.Assert(secGrps, gc.Not(gc.HasLen), 0)
 	var found bool
@@ -233,6 +234,35 @@ func (s *LiveTests) TestSecurityGroupsV2(c *gc.C) {
 	}
 	_, err = s.neutron.SecurityGroupByNameV2(newSecGrp.Name)
 	c.Assert(err, gc.Not(gc.IsNil))
+}
+
+func (s *LiveTests) TestSecurityGroupsV2WithTags(c *gc.C) {
+	newSecGrp, err := s.neutron.CreateSecurityGroupV2("SecurityGroupTest", "Testing create security group")
+	c.Assert(err, gc.IsNil)
+	c.Assert(newSecGrp, gc.Not(gc.IsNil))
+	defer s.deleteSecurityGroup(newSecGrp.Id, c)
+	err = s.neutron.CreateTags("security-groups", newSecGrp.Id, []string{"awesome-group"})
+	c.Assert(err, gc.IsNil)
+	query := neutron.ListSecurityGroupsV2Query{
+		Tags: []string{"awesome-group"},
+	}
+	secGrps, err := s.neutron.ListSecurityGroupsV2(query)
+	c.Assert(err, gc.IsNil)
+	c.Assert(secGrps, gc.Not(gc.HasLen), 0)
+	var found bool
+	for _, secGrp := range secGrps {
+		c.Check(secGrp.Id, gc.Not(gc.Equals), "")
+		c.Check(secGrp.Name, gc.Not(gc.Equals), "")
+		c.Check(secGrp.Description, gc.Not(gc.Equals), "")
+		c.Check(secGrp.TenantId, gc.Not(gc.Equals), "")
+		// Is this the SecurityGroup we just created?
+		if secGrp.Id == newSecGrp.Id {
+			found = true
+		}
+	}
+	if !found {
+		c.Errorf("expected to find added security group %s", newSecGrp.Name)
+	}
 }
 
 func (s *LiveTests) TestSecurityGroupsByNameV2(c *gc.C) {
