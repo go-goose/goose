@@ -363,6 +363,7 @@ type SecurityGroupV2 struct {
 	Id          string                `json:"id"`
 	Name        string                `json:"name"`
 	Description string                `json:"description"`
+	Tags        []string              `json:"tags"`
 }
 
 type ListSecurityGroupsV2Query struct {
@@ -376,7 +377,7 @@ func (c *Client) ListSecurityGroupsV2(query ListSecurityGroupsV2Query) ([]Securi
 		Groups []SecurityGroupV2 `json:"security_groups"`
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	endpoint := ApiApplicationPolicyGroupsV2
+	endpoint := ApiSecurityGroupsV2
 
 	if len(query.Tags) > 0 {
 		endpoint = fmt.Sprintf("%s?tags=%s", endpoint, url.QueryEscape(strings.Join(query.Tags, ",")))
@@ -550,16 +551,15 @@ func (c *Client) DeleteSecurityGroupRuleV2(ruleId string) error {
 	return err
 }
 
-// CreateTags creates multiple tags for a resource.
-func (c *Client) CreateTags(resourceType string, resourceId string, tags []string) error {
+// ReplaceAllTags Replaces all tags on the resource.
+func (c *Client) ReplaceAllTags(resourceType string, resourceId string, tags []string) error {
 	var req struct {
 		Tags []string `json:"tags"`
 	}
 	req.Tags = tags
-
 	endpoint := fmt.Sprintf("%s/%s/tags", resourceType, resourceId)
-	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusOK}}
-	err := c.client.SendRequest(client.POST, "tags", "v2.0", endpoint, &requestData)
+	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusOK}}
+	err := c.client.SendRequest(client.PUT, "network", "v2.0", endpoint, &requestData)
 	if err != nil {
 		err = errors.Newf(err, "failed to create tags %v for resource type %s", req.Tags, resourceType)
 	}
