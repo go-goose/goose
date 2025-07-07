@@ -241,8 +241,10 @@ func (s *LiveTests) TestSecurityGroupsV2WithTags(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Assert(newSecGrp, gc.Not(gc.IsNil))
 	defer s.deleteSecurityGroup(newSecGrp.Id, c)
-	err = s.neutron.CreateTags("security-groups", newSecGrp.Id, []string{"awesome-group"})
+	err = s.neutron.ReplaceAllTags("security-groups", newSecGrp.Id, []string{"awesome-group"})
 	c.Assert(err, gc.IsNil)
+
+	// find an existing security group by tag
 	query := neutron.ListSecurityGroupsV2Query{
 		Tags: []string{"awesome-group"},
 	}
@@ -255,7 +257,6 @@ func (s *LiveTests) TestSecurityGroupsV2WithTags(c *gc.C) {
 		c.Check(secGrp.Name, gc.Not(gc.Equals), "")
 		c.Check(secGrp.Description, gc.Not(gc.Equals), "")
 		c.Check(secGrp.TenantId, gc.Not(gc.Equals), "")
-		// Is this the SecurityGroup we just created?
 		if secGrp.Id == newSecGrp.Id {
 			found = true
 		}
@@ -263,6 +264,13 @@ func (s *LiveTests) TestSecurityGroupsV2WithTags(c *gc.C) {
 	if !found {
 		c.Errorf("expected to find added security group %s", newSecGrp.Name)
 	}
+
+	// security group does not exist with this tag
+	query.Tags = []string{"not-exist-tag"}
+	secGrps2, err := s.neutron.ListSecurityGroupsV2(query)
+	c.Assert(err, gc.IsNil)
+	c.Assert(secGrps2, gc.HasLen, 0)
+
 }
 
 func (s *LiveTests) TestSecurityGroupsByNameV2(c *gc.C) {
