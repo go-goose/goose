@@ -187,6 +187,14 @@ func (n *Neutron) addSecurityGroup(group neutron.SecurityGroupV2) error {
 	return n.neutronModel.AddSecurityGroup(group)
 }
 
+// addSecurityGroup creates a new security group.
+func (n *Neutron) addTagsToSecurityGroup(groupId string, tags []string) error {
+	if err := n.ProcessFunctionHook(n, groupId); err != nil {
+		return err
+	}
+	return n.neutronModel.AddTagsToSecurityGroup(groupId, tags)
+}
+
 // securityGroup retrieves an existing group by ID.
 func (n *Neutron) securityGroup(groupId string) (*neutron.SecurityGroupV2, error) {
 	if err := n.ProcessFunctionHook(n, groupId); err != nil {
@@ -201,6 +209,14 @@ func (n *Neutron) securityGroupByName(groupName string) ([]neutron.SecurityGroup
 		return nil, err
 	}
 	return n.neutronModel.SecurityGroupByName(groupName)
+}
+
+// securityGroupByTags retrieves existing tagged group(s).
+func (n *Neutron) securityGroupByTags(tags []string) ([]neutron.SecurityGroupV2, error) {
+	if err := n.ProcessFunctionHook(n, tags); err != nil {
+		return nil, err
+	}
+	return n.neutronModel.SecurityGroupByTags(tags)
 }
 
 // allSecurityGroups returns a list of all existing groups.

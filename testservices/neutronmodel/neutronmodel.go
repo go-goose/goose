@@ -4,7 +4,9 @@
 package neutronmodel
 
 import (
+	"fmt"
 	"net"
+	"sort"
 	"strconv"
 	"sync"
 
@@ -176,6 +178,7 @@ func (n *NeutronModel) UpdateSecurityGroup(group neutron.SecurityGroupV2) error 
 	}
 	existingGroup.Name = group.Name
 	existingGroup.Description = group.Description
+	existingGroup.Tags = group.Tags
 	n.groups[group.Id] = *existingGroup
 	return nil
 }
@@ -218,6 +221,15 @@ func (n *NeutronModel) AddSecurityGroup(group neutron.SecurityGroupV2) error {
 	}
 	n.groups[group.Id] = group
 	return nil
+}
+
+func (n *NeutronModel) AddTagsToSecurityGroup(groupId string, tags []string) error {
+	group, _ := n.SecurityGroup(groupId)
+	if group == nil {
+		return testservices.NewNotFoundError(fmt.Sprintf("Resource security_groups %s could not be found.", groupId))
+	}
+	group.Tags = tags
+	return n.UpdateSecurityGroup(*group)
 }
 
 // AddNovaSecurityGroup creates a new security group given a nova.SecurityGroup.
@@ -264,7 +276,35 @@ func (n *NeutronModel) SecurityGroupByName(groupName string) ([]neutron.Security
 		}
 	}
 	return foundGrps, nil
-	//return nil, testservices.NewSecurityGroupByNameNotFoundError(groupName)
+}
+
+func equals(s1 []string, s2 []string) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
+
+	for i := 0; i < len(s1); i++ {
+		if s1[i] != s2[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (n *NeutronModel) SecurityGroupByTags(tags []string) ([]neutron.SecurityGroupV2, error) {
+	n.rwMu.RLock()
+	defer n.rwMu.RUnlock()
+	var foundGrps []neutron.SecurityGroupV2
+	sort.Strings(tags)
+
+	for _, group := range n.groups {
+		sort.Strings(group.Tags)
+		if equals(group.Tags, tags) {
+			foundGrps = append(foundGrps, group)
+		}
+	}
+	return foundGrps, nil
 }
 
 // NovaSecurityGroupByName retrieves an existing named group, data in

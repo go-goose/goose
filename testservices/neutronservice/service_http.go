@@ -326,6 +326,18 @@ func (n *Neutron) processGroupId(w http.ResponseWriter, r *http.Request) (*neutr
 
 // handleSecurityGroups handles the /v2.0/security-groups HTTP API.
 func (n *Neutron) handleSecurityGroups(w http.ResponseWriter, r *http.Request) error {
+	// Add tags to security group uses HTTP API "PUT /v2.0/security-groups/{id}/tags".
+	// I know this is ugly, but it's a workaround because the standard Go mux
+	// doesn't support path variables.
+	pattern := `^/v2\.0/security-groups/\d+/tags$`
+	matchedTagsUrl, err := regexp.MatchString(pattern, r.URL.Path)
+	if err != nil {
+		return err
+	}
+	if matchedTagsUrl {
+		return n.handleTags(w, r)
+	}
+
 	switch r.Method {
 	case "GET":
 		group, err := n.processGroupId(w, r)
@@ -333,10 +345,19 @@ func (n *Neutron) handleSecurityGroups(w http.ResponseWriter, r *http.Request) e
 			var groups []neutron.SecurityGroupV2
 			query := r.URL.Query()
 			if len(query) == 1 {
-				secGroupName := query["name"][0]
-				groups, err = n.securityGroupByName(secGroupName)
-				if err != nil {
-					return err
+				if _, ok := query["name"]; ok {
+					secGroupName := query["name"][0]
+					groups, err = n.securityGroupByName(secGroupName)
+					if err != nil {
+						return err
+					}
+				} else if _, ok = query["tags"]; ok {
+					tagsStr := query["tags"][0]
+					tags := strings.Split(tagsStr, ",")
+					groups, err = n.securityGroupByTags(tags)
+					if err != nil {
+						return err
+					}
 				}
 			} else {
 				groups = n.allSecurityGroups()
@@ -445,6 +466,48 @@ func (n *Neutron) handleSecurityGroups(w http.ResponseWriter, r *http.Request) e
 			return err
 		}
 	}
+	return fmt.Errorf("unknown request method %q for %s", r.Method, r.URL.Path)
+}
+
+// handleTags handles the /v2.0/{resourceType}/{resourceId}/tags HTTP API.
+func (n *Neutron) handleTags(w http.ResponseWriter, r *http.Request) error {
+	switch r.Method {
+	case "PUT":
+		path, ok := strings.CutPrefix(r.URL.Path, "/v2.0/security-groups/")
+		if !ok {
+			return fmt.Errorf("could not cut path prefix for handle tags")
+		}
+
+		groupId, ok := strings.CutSuffix(path, "/tags")
+		if !ok {
+			log.Println("something wrong 2")
+			return fmt.Errorf("could not cut suffix for handle tags")
+		}
+
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil || len(body) == 0 {
+			return errBadRequestIncorrect
+		}
+
+		var req struct {
+			Tags []string `json:"tags"`
+		}
+		if err = json.Unmarshal(body, &req); err != nil {
+			return err
+		}
+
+		if err := n.addTagsToSecurityGroup(groupId, req.Tags); err != nil {
+			return err
+		}
+
+		var resp struct {
+			Tags []string `json:"tags"`
+		}
+
+		resp.Tags = req.Tags
+		return sendJSON(http.StatusOK, resp, w, r)
+	}
+
 	return fmt.Errorf("unknown request method %q for %s", r.Method, r.URL.Path)
 }
 
