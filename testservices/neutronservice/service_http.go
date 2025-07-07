@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -473,15 +474,14 @@ func (n *Neutron) handleSecurityGroups(w http.ResponseWriter, r *http.Request) e
 func (n *Neutron) handleTags(w http.ResponseWriter, r *http.Request) error {
 	switch r.Method {
 	case "PUT":
-		path, ok := strings.CutPrefix(r.URL.Path, "/v2.0/security-groups/")
-		if !ok {
-			return fmt.Errorf("could not cut path prefix for handle tags")
-		}
-
-		groupId, ok := strings.CutSuffix(path, "/tags")
-		if !ok {
-			log.Println("something wrong 2")
-			return fmt.Errorf("could not cut suffix for handle tags")
+		pattern := `^/v2\.0/security-groups/(\d+)/tags$`
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(r.URL.Path)
+		var groupId string
+		if len(matches) > 1 {
+			groupId = matches[1]
+		} else {
+			return fmt.Errorf("could get group id handle tags")
 		}
 
 		body, err := ioutil.ReadAll(r.Body)
