@@ -2,6 +2,7 @@ package neutron_test
 
 import (
 	"net"
+	"strings"
 
 	gc "gopkg.in/check.v1"
 
@@ -193,9 +194,10 @@ func (s *LiveTests) deleteSecurityGroup(id string, c *gc.C) {
 }
 
 func (s *LiveTests) TestSecurityGroupsV2(c *gc.C) {
-	newSecGrp, err := s.neutron.CreateSecurityGroupV2("SecurityGroupTest", "Testing create security group")
+	newSecGrp, err := s.neutron.CreateSecurityGroupV2("SecurityGroupTest", "Testing create security group", []string{})
 	c.Assert(err, gc.IsNil)
 	c.Assert(newSecGrp, gc.Not(gc.IsNil))
+	c.Assert(newSecGrp.Tags, gc.HasLen, 0)
 	defer s.deleteSecurityGroup(newSecGrp.Id, c)
 	query := neutron.ListSecurityGroupsV2Query{}
 	secGrps, err := s.neutron.ListSecurityGroupsV2(query)
@@ -237,12 +239,11 @@ func (s *LiveTests) TestSecurityGroupsV2(c *gc.C) {
 }
 
 func (s *LiveTests) TestSecurityGroupsV2WithTags(c *gc.C) {
-	newSecGrp, err := s.neutron.CreateSecurityGroupV2("SecurityGroupTest", "Testing create security group")
+	newSecGrp, err := s.neutron.CreateSecurityGroupV2("SecurityGroupTest", "Testing create security group", []string{"awesome-group"})
 	c.Assert(err, gc.IsNil)
 	c.Assert(newSecGrp, gc.Not(gc.IsNil))
+	c.Assert(newSecGrp.Tags, gc.DeepEquals, []string{"awesome-group"})
 	defer s.deleteSecurityGroup(newSecGrp.Id, c)
-	err = s.neutron.ReplaceAllTags("security-groups", newSecGrp.Id, []string{"awesome-group"})
-	c.Assert(err, gc.IsNil)
 
 	// find an existing security group by tag
 	query := neutron.ListSecurityGroupsV2Query{
@@ -250,7 +251,7 @@ func (s *LiveTests) TestSecurityGroupsV2WithTags(c *gc.C) {
 	}
 	secGrps, err := s.neutron.ListSecurityGroupsV2(query)
 	c.Assert(err, gc.IsNil)
-	c.Assert(secGrps, gc.Not(gc.HasLen), 0)
+	c.Assert(secGrps, gc.HasLen, 1)
 	var found bool
 	for _, secGrp := range secGrps {
 		c.Check(secGrp.Id, gc.Not(gc.Equals), "")
@@ -271,11 +272,54 @@ func (s *LiveTests) TestSecurityGroupsV2WithTags(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Assert(secGrps2, gc.HasLen, 0)
 
+	// create another security group
+	newSecGrp2, err := s.neutron.CreateSecurityGroupV2("SecurityGroupTest2", "Testing create security group", []string{"awesome-group", "happy-group"})
+	c.Assert(err, gc.IsNil)
+	c.Assert(newSecGrp2, gc.Not(gc.IsNil))
+	c.Assert(newSecGrp2.Tags, gc.DeepEquals, []string{"awesome-group", "happy-group"})
+	defer s.deleteSecurityGroup(newSecGrp2.Id, c)
+
+	// list with multiple tags
+	query.Tags = []string{"awesome-group", "happy-group"}
+	secGrps3, err := s.neutron.ListSecurityGroupsV2(query)
+	c.Assert(err, gc.IsNil)
+	c.Assert(secGrps3, gc.HasLen, 1)
+
+	for _, secGrp := range secGrps3 {
+		c.Check(secGrp.Id, gc.Not(gc.Equals), "")
+		c.Check(secGrp.Name, gc.Not(gc.Equals), "")
+		c.Check(secGrp.Description, gc.Not(gc.Equals), "")
+		c.Check(secGrp.TenantId, gc.Not(gc.Equals), "")
+	}
+
+	// now we should get two groups back because there are
+	// two groups tagged with "awesome-group"
+	query.Tags = []string{"awesome-group"}
+	secGrps4, err := s.neutron.ListSecurityGroupsV2(query)
+	c.Assert(err, gc.IsNil)
+	c.Assert(secGrps4, gc.HasLen, 2)
+}
+
+func (s *LiveTests) TestSecurityGroupsV2WithTagsRollback(c *gc.C) {
+	// the tag creation fails and is smart enough to roll back (delete the security group)
+	newSecGrp, err := s.neutron.CreateSecurityGroupV2("SecurityGroupTest", "Testing create security group", []string{"unit-test-rollback"})
+	c.Assert(err, gc.NotNil)
+	c.Assert(strings.Contains(err.Error(), "creating tags failed, rolled back security group"), gc.Equals, true)
+	c.Assert(newSecGrp, gc.IsNil)
+
+	// try to find the security group, it doesn't exist
+	query := neutron.ListSecurityGroupsV2Query{
+		Tags: []string{"unit-test-rollback"},
+	}
+	secGrps, err := s.neutron.ListSecurityGroupsV2(query)
+	c.Assert(err, gc.IsNil)
+	c.Assert(secGrps, gc.IsNil)
+
 }
 
 func (s *LiveTests) TestSecurityGroupsByNameV2(c *gc.C) {
 	// Create and find a SecurityGroup
-	newSecGrp, err := s.neutron.CreateSecurityGroupV2("SecurityGroupTest", "Testing find security group by name")
+	newSecGrp, err := s.neutron.CreateSecurityGroupV2("SecurityGroupTest", "Testing find security group by name", []string{})
 	c.Assert(err, gc.IsNil)
 	defer s.deleteSecurityGroup(newSecGrp.Id, c)
 	c.Assert(newSecGrp, gc.Not(gc.IsNil))
@@ -290,7 +334,7 @@ func (s *LiveTests) TestSecurityGroupsByNameV2(c *gc.C) {
 	c.Assert(err, gc.Not(gc.IsNil))
 	c.Assert(errorSecGrps, gc.HasLen, 0)
 	// Create and find a SecurityGroup with spaces in the name
-	newSecGrp2, err := s.neutron.CreateSecurityGroupV2("Security Group Test", "Testing find security group by name")
+	newSecGrp2, err := s.neutron.CreateSecurityGroupV2("Security Group Test", "Testing find security group by name", []string{})
 	c.Assert(err, gc.IsNil)
 	defer s.deleteSecurityGroup(newSecGrp2.Id, c)
 	c.Assert(newSecGrp2, gc.Not(gc.IsNil))
@@ -302,7 +346,7 @@ func (s *LiveTests) TestSecurityGroupsByNameV2(c *gc.C) {
 	}
 	// Create a second SecurityGroup with the same name as one already created,
 	// find both.
-	newSecGrp3, err := s.neutron.CreateSecurityGroupV2(newSecGrp.Name, "Testing find security group by name, 2nd")
+	newSecGrp3, err := s.neutron.CreateSecurityGroupV2(newSecGrp.Name, "Testing find security group by name, 2nd", []string{})
 	c.Assert(err, gc.IsNil)
 	defer s.deleteSecurityGroup(newSecGrp3.Id, c)
 	c.Assert(newSecGrp3, gc.Not(gc.IsNil))
@@ -312,7 +356,7 @@ func (s *LiveTests) TestSecurityGroupsByNameV2(c *gc.C) {
 }
 
 func (s *LiveTests) TestSecurityGroupsRulesV2(c *gc.C) {
-	newSecGrp, err := s.neutron.CreateSecurityGroupV2("SecurityGroupTestRules", "Testing create security group")
+	newSecGrp, err := s.neutron.CreateSecurityGroupV2("SecurityGroupTestRules", "Testing create security group", []string{})
 	c.Assert(err, gc.IsNil)
 	defer s.deleteSecurityGroup(newSecGrp.Id, c)
 	rule := neutron.RuleInfoV2{

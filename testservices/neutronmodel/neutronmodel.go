@@ -6,7 +6,6 @@ package neutronmodel
 import (
 	"fmt"
 	"net"
-	"sort"
 	"strconv"
 	"sync"
 
@@ -224,6 +223,11 @@ func (n *NeutronModel) AddSecurityGroup(group neutron.SecurityGroupV2) error {
 }
 
 func (n *NeutronModel) AddTagsToSecurityGroup(groupId string, tags []string) error {
+	// purposely fail to test the rollback
+	if len(tags) > 0 && tags[0] == "unit-test-rollback" {
+		return fmt.Errorf("failed to add tags")
+	}
+
 	group, _ := n.SecurityGroup(groupId)
 	if group == nil {
 		return testservices.NewNotFoundError(fmt.Sprintf("Resource security_groups %s could not be found.", groupId))
@@ -292,15 +296,29 @@ func equals(s1 []string, s2 []string) bool {
 	return true
 }
 
+// containsAll check whether all elements in `tags` are present in `groupTags`.
+func containsAll(groupTags, tags []string) bool {
+	tagSet := make(map[string]struct{}, len(groupTags))
+	for _, tag := range groupTags {
+		tagSet[tag] = struct{}{}
+	}
+
+	for _, tag := range tags {
+		if _, found := tagSet[tag]; !found {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (n *NeutronModel) SecurityGroupByTags(tags []string) ([]neutron.SecurityGroupV2, error) {
 	n.rwMu.RLock()
 	defer n.rwMu.RUnlock()
 	var foundGrps []neutron.SecurityGroupV2
-	sort.Strings(tags)
 
 	for _, group := range n.groups {
-		sort.Strings(group.Tags)
-		if equals(group.Tags, tags) {
+		if containsAll(group.Tags, tags) {
 			foundGrps = append(foundGrps, group)
 		}
 	}
