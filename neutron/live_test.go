@@ -315,6 +315,11 @@ func (s *LiveTests) TestSecurityGroupsV2WithTagsRollback(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Assert(secGrps, gc.IsNil)
 
+	secGrps, err = s.neutron.SecurityGroupByNameV2("SecurityGroupTest")
+	c.Assert(err, gc.NotNil)
+	c.Assert(err, gc.ErrorMatches, "failed to find security group with name: SecurityGroupTest")
+	c.Assert(secGrps, gc.IsNil)
+
 }
 
 func (s *LiveTests) TestSecurityGroupsByNameV2(c *gc.C) {
