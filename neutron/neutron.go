@@ -366,8 +366,9 @@ type SecurityGroupV2 struct {
 	Tags        []string              `json:"tags"`
 }
 
+// ListSecurityGroupsV2Query list security groups that match
+// all entries in Tags (if any are specified) will be returned.
 type ListSecurityGroupsV2Query struct {
-	// List security groups that match all entries in Tags (if any are specified) will be returned.
 	Tags []string
 }
 
@@ -410,23 +411,6 @@ func (c *Client) SecurityGroupByNameV2(name string) ([]SecurityGroupV2, error) {
 	return resp.Groups, nil
 }
 
-func (c *Client) addTagsToSecurityGroup(group *SecurityGroupV2, tags []string) error {
-	if len(tags) > 0 {
-		err := c.ReplaceAllTags("security-groups", group.Id, tags)
-		// we have to roll back, delete the security group
-		if err != nil {
-			if deleteErr := c.DeleteSecurityGroupV2(group.Id); deleteErr != nil {
-				return errors.Newf(deleteErr, "failed to roll back security group with id: %s", group.Id)
-			}
-
-			return errors.Newf(err, "creating tags failed, rolled back security group with id: %s", group.Id)
-		}
-		group.Tags = tags
-	}
-
-	return nil
-}
-
 // CreateSecurityGroupV2 creates a new security group.
 func (c *Client) CreateSecurityGroupV2(name, description string, tags []string) (*SecurityGroupV2, error) {
 	var req struct {
@@ -451,11 +435,23 @@ func (c *Client) CreateSecurityGroupV2(name, description string, tags []string) 
 		return nil, errors.Newf(err, "failed to create a security group with name: %s", name)
 	}
 
-	err = c.addTagsToSecurityGroup(&resp.SecurityGroup, tags)
-	if err != nil {
-		return nil, errors.Newf(err, "failed to create a security group with name: %s", name)
+	// There are no tags to create so we return early.
+	if len(tags) == 0 {
+		return &resp.SecurityGroup, nil
 	}
 
+	// Create the tags for the group.
+	err = c.ReplaceAllTags("security-groups", resp.SecurityGroup.Id, tags)
+	// If this fails, we have to roll back by deleting the security group.
+	if err != nil {
+		if deleteErr := c.DeleteSecurityGroupV2(resp.SecurityGroup.Id); deleteErr != nil {
+			return nil, errors.Newf(deleteErr, "failed to roll back security group with id: %s", resp.SecurityGroup.Id)
+		}
+
+		return nil, errors.Newf(err, "creating tags failed, rolled back security group with id: %s", resp.SecurityGroup.Id)
+	}
+
+	resp.SecurityGroup.Tags = tags
 	return &resp.SecurityGroup, nil
 }
 
