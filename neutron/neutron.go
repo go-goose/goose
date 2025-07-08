@@ -445,7 +445,7 @@ func (c *Client) CreateSecurityGroupV2(name, description string, tags []string) 
 	// If this fails, we have to roll back by deleting the security group.
 	if err != nil {
 		if deleteErr := c.DeleteSecurityGroupV2(resp.SecurityGroup.Id); deleteErr != nil {
-			return nil, errors.Newf(deleteErr, "failed to roll back security group with id: %s", resp.SecurityGroup.Id)
+			return nil, errors.Newf(deleteErr, "creating tags failed and attempt to roll back the security group was made but failed. security group with id: %s", resp.SecurityGroup.Id)
 		}
 
 		return nil, errors.Newf(err, "creating tags failed, rolled back security group with id: %s", resp.SecurityGroup.Id)
