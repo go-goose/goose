@@ -367,7 +367,7 @@ type SecurityGroupV2 struct {
 }
 
 type ListSecurityGroupsV2Query struct {
-	// Security groups that match all entries in `Tags` will be returned.
+	// List security groups that match all entries in Tags (if any are specified) will be returned.
 	Tags []string
 }
 
@@ -574,7 +574,7 @@ func (c *Client) DeleteSecurityGroupRuleV2(ruleId string) error {
 	return err
 }
 
-// ReplaceAllTags Replaces all tags on the resource.
+// ReplaceAllTags replaces all tags on the specified network resource.
 func (c *Client) ReplaceAllTags(resourceType string, resourceId string, tags []string) error {
 	var req struct {
 		Tags []string `json:"tags"`
