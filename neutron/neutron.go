@@ -410,8 +410,25 @@ func (c *Client) SecurityGroupByNameV2(name string) ([]SecurityGroupV2, error) {
 	return resp.Groups, nil
 }
 
+func (c *Client) addTagsToSecurityGroup(group *SecurityGroupV2, tags []string) error {
+	if len(tags) > 0 {
+		err := c.ReplaceAllTags("security-groups", group.Id, tags)
+		// we have to roll back, delete the security group
+		if err != nil {
+			if deleteErr := c.DeleteSecurityGroupV2(group.Id); deleteErr != nil {
+				return errors.Newf(deleteErr, "failed to roll back security group with id: %s", group.Id)
+			}
+
+			return errors.Newf(err, "creating tags failed, rolled back security group with id: %s", group.Id)
+		}
+		group.Tags = tags
+	}
+
+	return nil
+}
+
 // CreateSecurityGroupV2 creates a new security group.
-func (c *Client) CreateSecurityGroupV2(name, description string) (*SecurityGroupV2, error) {
+func (c *Client) CreateSecurityGroupV2(name, description string, tags []string) (*SecurityGroupV2, error) {
 	var req struct {
 		SecurityGroupV2 struct {
 			Name        string `json:"name"`
@@ -433,6 +450,12 @@ func (c *Client) CreateSecurityGroupV2(name, description string) (*SecurityGroup
 	if err != nil {
 		return nil, errors.Newf(err, "failed to create a security group with name: %s", name)
 	}
+
+	err = c.addTagsToSecurityGroup(&resp.SecurityGroup, tags)
+	if err != nil {
+		return nil, errors.Newf(err, "failed to create a security group with name: %s", name)
+	}
+
 	return &resp.SecurityGroup, nil
 }
 
