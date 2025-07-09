@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/go-goose/goose/v5/client"
 	"github.com/go-goose/goose/v5/errors"
@@ -362,15 +363,28 @@ type SecurityGroupV2 struct {
 	Id          string                `json:"id"`
 	Name        string                `json:"name"`
 	Description string                `json:"description"`
+	Tags        []string              `json:"tags"`
+}
+
+// ListSecurityGroupsV2Query list security groups that match
+// all entries in Tags (if any are specified) will be returned.
+type ListSecurityGroupsV2Query struct {
+	Tags []string
 }
 
 // ListSecurityGroupsV2 lists IDs, names, and other details for all security groups.
-func (c *Client) ListSecurityGroupsV2() ([]SecurityGroupV2, error) {
+func (c *Client) ListSecurityGroupsV2(query ListSecurityGroupsV2Query) ([]SecurityGroupV2, error) {
 	var resp struct {
 		Groups []SecurityGroupV2 `json:"security_groups"`
 	}
 	requestData := goosehttp.RequestData{RespValue: &resp}
-	err := c.client.SendRequest(client.GET, "network", "v2.0", ApiSecurityGroupsV2, &requestData)
+	endpoint := ApiSecurityGroupsV2
+
+	if len(query.Tags) > 0 {
+		endpoint = fmt.Sprintf("%s?tags=%s", endpoint, url.QueryEscape(strings.Join(query.Tags, ",")))
+	}
+
+	err := c.client.SendRequest(client.GET, "network", "v2.0", endpoint, &requestData)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to list security groups")
 	}
@@ -398,7 +412,7 @@ func (c *Client) SecurityGroupByNameV2(name string) ([]SecurityGroupV2, error) {
 }
 
 // CreateSecurityGroupV2 creates a new security group.
-func (c *Client) CreateSecurityGroupV2(name, description string) (*SecurityGroupV2, error) {
+func (c *Client) CreateSecurityGroupV2(name, description string, tags []string) (*SecurityGroupV2, error) {
 	var req struct {
 		SecurityGroupV2 struct {
 			Name        string `json:"name"`
@@ -420,6 +434,24 @@ func (c *Client) CreateSecurityGroupV2(name, description string) (*SecurityGroup
 	if err != nil {
 		return nil, errors.Newf(err, "failed to create a security group with name: %s", name)
 	}
+
+	// There are no tags to create so we return early.
+	if len(tags) == 0 {
+		return &resp.SecurityGroup, nil
+	}
+
+	// Create the tags for the group.
+	err = c.ReplaceAllTags("security-groups", resp.SecurityGroup.Id, tags)
+	// If this fails, we have to roll back by deleting the security group.
+	if err != nil {
+		if deleteErr := c.DeleteSecurityGroupV2(resp.SecurityGroup.Id); deleteErr != nil {
+			return nil, errors.Newf(deleteErr, "creating tags failed and attempt to roll back the security group was made but failed. security group with id: %s", resp.SecurityGroup.Id)
+		}
+
+		return nil, errors.Newf(err, "creating tags failed, rolled back security group with id: %s", resp.SecurityGroup.Id)
+	}
+
+	resp.SecurityGroup.Tags = tags
 	return &resp.SecurityGroup, nil
 }
 
@@ -535,5 +567,21 @@ func (c *Client) DeleteSecurityGroupRuleV2(ruleId string) error {
 	if err != nil {
 		err = errors.Newf(err, "failed to delete security group rule with id: %s", ruleId)
 	}
+	return err
+}
+
+// ReplaceAllTags replaces all tags on the specified network resource.
+func (c *Client) ReplaceAllTags(resourceType string, resourceId string, tags []string) error {
+	var req struct {
+		Tags []string `json:"tags"`
+	}
+	req.Tags = tags
+	endpoint := fmt.Sprintf("%s/%s/tags", resourceType, resourceId)
+	requestData := goosehttp.RequestData{ReqValue: req, ExpectedStatus: []int{http.StatusOK}}
+	err := c.client.SendRequest(client.PUT, "network", "v2.0", endpoint, &requestData)
+	if err != nil {
+		err = errors.Newf(err, "failed to create tags %v for resource type %s", req.Tags, resourceType)
+	}
+
 	return err
 }
