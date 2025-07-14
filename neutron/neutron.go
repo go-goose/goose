@@ -466,6 +466,21 @@ func (c *Client) DeleteSecurityGroupV2(groupId string) error {
 	return err
 }
 
+// ShowSecurityGroupV2 finds a security group by ID.
+func (c *Client) ShowSecurityGroupV2(groupId string) (*SecurityGroupV2, error) {
+	var resp struct {
+		SecurityGroup SecurityGroupV2 `json:"security_group"`
+	}
+	url := fmt.Sprintf("%s/%s", ApiSecurityGroupsV2, groupId)
+	requestData := goosehttp.RequestData{ExpectedStatus: []int{http.StatusOK}, RespValue: &resp}
+	err := c.client.SendRequest(client.GET, "network", "v2.0", url, &requestData)
+	if err != nil {
+		return nil, errors.Newf(err, "failed to show security group with ID: %s", groupId)
+	}
+
+	return &resp.SecurityGroup, nil
+}
+
 // UpdateSecurityGroupV2 updates the name and description of the given group.
 func (c *Client) UpdateSecurityGroupV2(groupId, name, description string) (*SecurityGroupV2, error) {
 	var req struct {
@@ -486,6 +501,41 @@ func (c *Client) UpdateSecurityGroupV2(groupId, name, description string) (*Secu
 		return nil, errors.Newf(err, "failed to update security group with Id %s to name: %s", groupId, name)
 	}
 	return &resp.SecurityGroup, nil
+}
+
+// UpdateSecurityGroupWithTagsV2 updates the name, description, and tags (if specified) of the given group.
+func (c *Client) UpdateSecurityGroupWithTagsV2(groupId, name, description string, tags []string) (*SecurityGroupV2, error) {
+	existingGroup, err := c.ShowSecurityGroupV2(groupId)
+	if err != nil {
+		return nil, errors.Newf(err, "failed to update security group with ID: %s", groupId)
+	}
+	oldName := existingGroup.Name
+	oldDescription := existingGroup.Description
+
+	securityGroup, err := c.UpdateSecurityGroupV2(groupId, name, description)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(tags) == 0 {
+		return securityGroup, nil
+	}
+
+	tags = append(tags, securityGroup.Tags...)
+	// Updates the tags for the group.
+	err = c.ReplaceAllTags("security-groups", securityGroup.Id, tags)
+	if err != nil {
+		// Rollback to old name and description if updating tags failed.
+		if _, updateErr := c.UpdateSecurityGroupV2(groupId, oldName, oldDescription); updateErr != nil {
+			return nil, errors.Newf(updateErr, "updating tags failed and attempt to roll back the security group failed. security group with id: %s", securityGroup.Id)
+		}
+
+		return nil, errors.Newf(err, "updating tags failed, rolled back security group with id: %s", securityGroup.Id)
+	}
+
+	securityGroup.Tags = tags
+
+	return securityGroup, nil
 }
 
 // RuleInfoV2 allows the callers of CreateSecurityGroupRuleV2() to

@@ -238,6 +238,96 @@ func (s *LiveTests) TestSecurityGroupsV2(c *gc.C) {
 	c.Assert(err, gc.Not(gc.IsNil))
 }
 
+func (s *LiveTests) TestUpdateSecurityGroupsWithTagsV2(c *gc.C) {
+	newSecGrp, err := s.neutron.CreateSecurityGroupV2("SecurityGroupTest", "Testing create security group", []string{})
+	c.Assert(err, gc.IsNil)
+	c.Assert(newSecGrp, gc.Not(gc.IsNil))
+	c.Assert(newSecGrp.Tags, gc.HasLen, 0)
+	defer s.deleteSecurityGroup(newSecGrp.Id, c)
+	query := neutron.ListSecurityGroupsV2Query{}
+	secGrps, err := s.neutron.ListSecurityGroupsV2(query)
+	c.Assert(err, gc.IsNil)
+	c.Assert(secGrps, gc.Not(gc.HasLen), 0)
+	var found bool
+	for _, secGrp := range secGrps {
+		c.Check(secGrp.Id, gc.Not(gc.Equals), "")
+		c.Check(secGrp.Name, gc.Not(gc.Equals), "")
+		c.Check(secGrp.Description, gc.Not(gc.Equals), "")
+		c.Check(secGrp.TenantId, gc.Not(gc.Equals), "")
+		// Is this the SecurityGroup we just created?
+		if secGrp.Id == newSecGrp.Id {
+			found = true
+		}
+	}
+	if !found {
+		c.Errorf("expected to find added security group %s", newSecGrp)
+	}
+	// Change the created SecurityGroup's name
+	updatedSecGroup, err := s.neutron.UpdateSecurityGroupWithTagsV2(newSecGrp.Id, "NameChanged", "", []string{"new-tag-here"})
+	c.Assert(err, gc.IsNil)
+	// Verify the name change
+	foundSecGrps, err := s.neutron.SecurityGroupByNameV2(updatedSecGroup.Name)
+	c.Assert(err, gc.IsNil)
+	c.Assert(foundSecGrps, gc.Not(gc.HasLen), 0)
+	c.Assert(updatedSecGroup.Tags, gc.HasLen, 1)
+	c.Assert(updatedSecGroup.Tags[0], gc.Equals, "new-tag-here")
+	found = false
+	for _, secGrp := range foundSecGrps {
+		if secGrp.Id == updatedSecGroup.Id {
+			found = true
+			break
+		}
+	}
+	if !found {
+		c.Errorf("expected to find added security group %s, when requested by name", updatedSecGroup.Name)
+	}
+	_, err = s.neutron.SecurityGroupByNameV2(newSecGrp.Name)
+	c.Assert(err, gc.Not(gc.IsNil))
+}
+
+func (s *LiveTests) TestUpdateSecurityGroupsWithTagsV2Rollback(c *gc.C) {
+	newSecGrp, err := s.neutron.CreateSecurityGroupV2("SecurityGroupTest", "Testing create security group", []string{"awesome-group"})
+	c.Assert(err, gc.IsNil)
+	c.Assert(newSecGrp, gc.Not(gc.IsNil))
+	c.Assert(newSecGrp.Tags, gc.HasLen, 1)
+	defer s.deleteSecurityGroup(newSecGrp.Id, c)
+	query := neutron.ListSecurityGroupsV2Query{
+		Tags: []string{"awesome-group"},
+	}
+	secGrps, err := s.neutron.ListSecurityGroupsV2(query)
+	c.Assert(err, gc.IsNil)
+	c.Assert(secGrps, gc.Not(gc.HasLen), 0)
+	var found bool
+	for _, secGrp := range secGrps {
+		c.Check(secGrp.Id, gc.Not(gc.Equals), "")
+		c.Check(secGrp.Name, gc.Not(gc.Equals), "")
+		c.Check(secGrp.Description, gc.Not(gc.Equals), "")
+		c.Check(secGrp.TenantId, gc.Not(gc.Equals), "")
+		// Is this the SecurityGroup we just created?
+		if secGrp.Id == newSecGrp.Id {
+			found = true
+		}
+	}
+	if !found {
+		c.Errorf("expected to find added security group %s", newSecGrp)
+	}
+	// The given tag forces it to rollback
+	updatedSecGroup, err := s.neutron.UpdateSecurityGroupWithTagsV2(newSecGrp.Id, "NameChanged", "", []string{"unit-test-rollback"})
+	c.Assert(updatedSecGroup, gc.IsNil)
+	c.Assert(err, gc.NotNil)
+	c.Assert(strings.Contains(err.Error(), "updating tags failed, rolled back security group"), gc.Equals, true)
+	// Verify that the name is still the same
+	foundSecGrps, err := s.neutron.SecurityGroupByNameV2(newSecGrp.Name)
+	c.Assert(foundSecGrps, gc.HasLen, 1)
+	c.Assert(err, gc.IsNil)
+	c.Assert(foundSecGrps, gc.NotNil)
+	c.Assert(foundSecGrps[0].Name, gc.Equals, "SecurityGroupTest")
+	c.Assert(foundSecGrps[0].Tags, gc.HasLen, 1)
+
+	nonExistingGroups, _ := s.neutron.SecurityGroupByNameV2("NameChanged")
+	c.Assert(nonExistingGroups, gc.HasLen, 0)
+}
+
 func (s *LiveTests) TestSecurityGroupsV2WithTags(c *gc.C) {
 	newSecGrp, err := s.neutron.CreateSecurityGroupV2("SecurityGroupTest", "Testing create security group", []string{"awesome-group"})
 	c.Assert(err, gc.IsNil)
