@@ -177,7 +177,22 @@ func (n *NeutronModel) UpdateSecurityGroup(group neutron.SecurityGroupV2) error 
 	}
 	existingGroup.Name = group.Name
 	existingGroup.Description = group.Description
-	existingGroup.Tags = group.Tags
+	n.groups[group.Id] = *existingGroup
+	return nil
+}
+
+// UpdateSecurityGroupWithTags updates an existing security group with tags given a
+// neutron.SecurityGroupRuleV2.
+func (n *NeutronModel) UpdateSecurityGroupWithTags(group neutron.SecurityGroupV2, tags []string) error {
+	n.rwMu.Lock()
+	defer n.rwMu.Unlock()
+	existingGroup, err := n.SecurityGroup(group.Id)
+	if err != nil {
+		return testservices.NewSecurityGroupByIDNotFoundError(group.Id)
+	}
+	existingGroup.Name = group.Name
+	existingGroup.Description = group.Description
+	existingGroup.Tags = tags
 	n.groups[group.Id] = *existingGroup
 	return nil
 }
@@ -232,8 +247,7 @@ func (n *NeutronModel) AddTagsToSecurityGroup(groupId string, tags []string) err
 	if group == nil {
 		return testservices.NewNotFoundError(fmt.Sprintf("Resource security_groups %s could not be found.", groupId))
 	}
-	group.Tags = tags
-	return n.UpdateSecurityGroup(*group)
+	return n.UpdateSecurityGroupWithTags(*group, tags)
 }
 
 // AddNovaSecurityGroup creates a new security group given a nova.SecurityGroup.
