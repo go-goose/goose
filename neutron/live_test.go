@@ -218,7 +218,7 @@ func (s *LiveTests) TestSecurityGroupsV2(c *gc.C) {
 		c.Errorf("expected to find added security group %s", newSecGrp)
 	}
 	// Change the created SecurityGroup's name
-	updatedSecGroup, err := s.neutron.UpdateSecurityGroupV2(newSecGrp.Id, "NameChanged", "")
+	updatedSecGroup, err := s.neutron.UpdateSecurityGroupV2(newSecGrp.Id, "NameChanged", "", []string{})
 	c.Assert(err, gc.IsNil)
 	// Verify the name change
 	foundSecGrps, err := s.neutron.SecurityGroupByNameV2(updatedSecGroup.Name)
@@ -263,7 +263,7 @@ func (s *LiveTests) TestUpdateSecurityGroupsWithTagsV2(c *gc.C) {
 		c.Errorf("expected to find added security group %s", newSecGrp)
 	}
 	// Change the created SecurityGroup's name
-	updatedSecGroup, err := s.neutron.UpdateSecurityGroupWithTagsV2(newSecGrp.Id, "NameChanged", "", []string{"new-tag-here"})
+	updatedSecGroup, err := s.neutron.UpdateSecurityGroupV2(newSecGrp.Id, "NameChanged", "", []string{"new-tag-here"})
 	c.Assert(err, gc.IsNil)
 	// Verify the name change
 	foundSecGrps, err := s.neutron.SecurityGroupByNameV2(updatedSecGroup.Name)
@@ -312,7 +312,7 @@ func (s *LiveTests) TestUpdateSecurityGroupsWithTagsV2Rollback(c *gc.C) {
 		c.Errorf("expected to find added security group %s", newSecGrp)
 	}
 	// The given tag forces it to rollback
-	updatedSecGroup, err := s.neutron.UpdateSecurityGroupWithTagsV2(newSecGrp.Id, "NameChanged", "", []string{"unit-test-rollback"})
+	updatedSecGroup, err := s.neutron.UpdateSecurityGroupV2(newSecGrp.Id, "NameChanged", "", []string{"unit-test-rollback"})
 	c.Assert(updatedSecGroup, gc.IsNil)
 	c.Assert(err, gc.NotNil)
 	c.Assert(strings.Contains(err.Error(), "updating tags failed, rolled back security group"), gc.Equals, true)

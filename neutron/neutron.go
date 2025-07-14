@@ -482,7 +482,7 @@ func (c *Client) ShowSecurityGroupV2(groupId string) (*SecurityGroupV2, error) {
 }
 
 // UpdateSecurityGroupV2 updates the name and description of the given group.
-func (c *Client) UpdateSecurityGroupV2(groupId, name, description string) (*SecurityGroupV2, error) {
+func (c *Client) updateSecurityGroupV2(groupId, name, description string) (*SecurityGroupV2, error) {
 	var req struct {
 		SecurityGroupV2 struct {
 			Name        string `json:"name"`
@@ -503,8 +503,9 @@ func (c *Client) UpdateSecurityGroupV2(groupId, name, description string) (*Secu
 	return &resp.SecurityGroup, nil
 }
 
-// UpdateSecurityGroupWithTagsV2 updates the name, description, and tags (if specified) of the given group.
-func (c *Client) UpdateSecurityGroupWithTagsV2(groupId, name, description string, tags []string) (*SecurityGroupV2, error) {
+// UpdateSecurityGroupV2 updates the name, description, and tags (if specified) of the given group.
+// When tags are passed, it will overwrite the existing tags that are attached to the group.
+func (c *Client) UpdateSecurityGroupV2(groupId, name, description string, tags []string) (*SecurityGroupV2, error) {
 	existingGroup, err := c.ShowSecurityGroupV2(groupId)
 	if err != nil {
 		return nil, errors.Newf(err, "failed to update security group with ID: %s", groupId)
@@ -512,7 +513,7 @@ func (c *Client) UpdateSecurityGroupWithTagsV2(groupId, name, description string
 	oldName := existingGroup.Name
 	oldDescription := existingGroup.Description
 
-	securityGroup, err := c.UpdateSecurityGroupV2(groupId, name, description)
+	securityGroup, err := c.updateSecurityGroupV2(groupId, name, description)
 	if err != nil {
 		return nil, err
 	}
@@ -521,12 +522,11 @@ func (c *Client) UpdateSecurityGroupWithTagsV2(groupId, name, description string
 		return securityGroup, nil
 	}
 
-	tags = append(tags, securityGroup.Tags...)
 	// Updates the tags for the group.
 	err = c.ReplaceAllTags("security-groups", securityGroup.Id, tags)
 	if err != nil {
 		// Rollback to old name and description if updating tags failed.
-		if _, updateErr := c.UpdateSecurityGroupV2(groupId, oldName, oldDescription); updateErr != nil {
+		if _, updateErr := c.updateSecurityGroupV2(groupId, oldName, oldDescription); updateErr != nil {
 			return nil, errors.Newf(updateErr, "updating tags failed and attempt to roll back the security group failed. security group with id: %s", securityGroup.Id)
 		}
 
