@@ -141,12 +141,13 @@ func (c *Client) ListFlavors() ([]Entity, error) {
 
 // FlavorDetail describes detailed information about a flavor.
 type FlavorDetail struct {
-	Name  string
-	RAM   int    // Available RAM, in MB
-	VCPUs int    // Number of virtual CPU (cores)
-	Disk  int    // Available root partition space, in GB
-	Id    string `json:"-"`
-	Links []Link
+	Name       string
+	RAM        int    // Available RAM, in MB
+	VCPUs      int    // Number of virtual CPU (cores)
+	Disk       int    // Available root partition space, in GB
+	Id         string `json:"-"`
+	Links      []Link
+	ExtraSpecs map[string]interface{} `json:"extra_specs"`
 }
 
 // Allow FlavorDetail slices to be sorted by named attribute.
