@@ -406,7 +406,7 @@ func (c *Client) SecurityGroupByNameV2(name string) ([]SecurityGroupV2, error) {
 		return nil, err
 	}
 	if len(resp.Groups) == 0 {
-		return nil, errors.Newf(err, "failed to find security group with name: %s", name)
+		return nil, errors.NewNotFoundf(err, nil, "failed to find security group with name: %s", name)
 	}
 	return resp.Groups, nil
 }

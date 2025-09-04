@@ -7,6 +7,7 @@ import (
 	gc "gopkg.in/check.v1"
 
 	"github.com/go-goose/goose/v5/client"
+	"github.com/go-goose/goose/v5/errors"
 	"github.com/go-goose/goose/v5/identity"
 	"github.com/go-goose/goose/v5/neutron"
 )
@@ -235,7 +236,7 @@ func (s *LiveTests) TestSecurityGroupsV2(c *gc.C) {
 		c.Errorf("expected to find added security group %s, when requested by name", updatedSecGroup.Name)
 	}
 	_, err = s.neutron.SecurityGroupByNameV2(newSecGrp.Name)
-	c.Assert(err, gc.Not(gc.IsNil))
+	c.Assert(errors.IsNotFound(err), gc.Equals, true)
 }
 
 func (s *LiveTests) TestUpdateSecurityGroupsWithTagsV2(c *gc.C) {
@@ -282,7 +283,7 @@ func (s *LiveTests) TestUpdateSecurityGroupsWithTagsV2(c *gc.C) {
 		c.Errorf("expected to find added security group %s, when requested by name", updatedSecGroup.Name)
 	}
 	_, err = s.neutron.SecurityGroupByNameV2(newSecGrp.Name)
-	c.Assert(err, gc.Not(gc.IsNil))
+	c.Assert(errors.IsNotFound(err), gc.Equals, true)
 }
 
 func (s *LiveTests) TestUpdateSecurityGroupsWithTagsV2Rollback(c *gc.C) {
@@ -324,8 +325,8 @@ func (s *LiveTests) TestUpdateSecurityGroupsWithTagsV2Rollback(c *gc.C) {
 	c.Assert(foundSecGrps[0].Name, gc.Equals, "SecurityGroupTest")
 	c.Assert(foundSecGrps[0].Tags, gc.HasLen, 1)
 
-	nonExistingGroups, _ := s.neutron.SecurityGroupByNameV2("NameChanged")
-	c.Assert(nonExistingGroups, gc.HasLen, 0)
+	_, err = s.neutron.SecurityGroupByNameV2("NameChanged")
+	c.Assert(errors.IsNotFound(err), gc.Equals, true)
 }
 
 func (s *LiveTests) TestSecurityGroupsV2WithTags(c *gc.C) {
@@ -405,11 +406,8 @@ func (s *LiveTests) TestSecurityGroupsV2WithTagsRollback(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	c.Assert(secGrps, gc.IsNil)
 
-	secGrps, err = s.neutron.SecurityGroupByNameV2("SecurityGroupTest")
-	c.Assert(err, gc.NotNil)
-	c.Assert(err, gc.ErrorMatches, "failed to find security group with name: SecurityGroupTest")
-	c.Assert(secGrps, gc.IsNil)
-
+	_, err = s.neutron.SecurityGroupByNameV2("SecurityGroupTest")
+	c.Assert(errors.IsNotFound(err), gc.Equals, true)
 }
 
 func (s *LiveTests) TestSecurityGroupsByNameV2(c *gc.C) {
@@ -425,9 +423,9 @@ func (s *LiveTests) TestSecurityGroupsByNameV2(c *gc.C) {
 		c.Errorf("expected to find added security group %s, when requested by name", newSecGrp.Name)
 	}
 	// Try to find a SecurityGroup that doesn't exist
-	errorSecGrps, err := s.neutron.SecurityGroupByNameV2("NonExistentGroup")
-	c.Assert(err, gc.Not(gc.IsNil))
-	c.Assert(errorSecGrps, gc.HasLen, 0)
+	_, err = s.neutron.SecurityGroupByNameV2("NonExistentGroup")
+	c.Assert(errors.IsNotFound(err), gc.Equals, true)
+
 	// Create and find a SecurityGroup with spaces in the name
 	newSecGrp2, err := s.neutron.CreateSecurityGroupV2("Security Group Test", "Testing find security group by name", []string{})
 	c.Assert(err, gc.IsNil)
