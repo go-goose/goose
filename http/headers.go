@@ -8,11 +8,10 @@ type HeadersFunc = func(method string, headers http.Header, contentType, authTok
 // DefaultHeaders creates a set of http.Headers from the given arguments passed
 // in.
 // In this case it applies the headers passed in first, then sets the following:
-//  - X-Auth-Token
-//  - Content-Type
-//  - Accept
-//  - User-Agent
-//
+//   - X-Auth-Token
+//   - Content-Type
+//   - Accept
+//   - User-Agent
 func DefaultHeaders(method string, extraHeaders http.Header, contentType, authToken string, payloadExists bool) http.Header {
 	headers := BasicHeaders()
 	if extraHeaders != nil {

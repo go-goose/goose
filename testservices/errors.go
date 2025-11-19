@@ -48,11 +48,11 @@ func (n *ServerError) Name() string {
 }
 
 func NewInternalServerError(message string) *ServerError {
-	return serverErrorf(500, message)
+	return serverErrorf(500, "%s", message)
 }
 
 func NewNotFoundError(message string) *ServerError {
-	return serverErrorf(404, message)
+	return serverErrorf(404, "%s", message)
 }
 
 func NewNoMoreFloatingIpsError() *ServerError {

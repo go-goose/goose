@@ -855,6 +855,7 @@ func (s *NeutronHTTPSuite) TestGetPorts(c *gc.C) {
 			TenantId:  s.service.TenantId,
 			NetworkId: "a87cc70a-3e15-4acf-8205-9b711a3531xx",
 			Tags:      []string{"tag3", "tag2"},
+			DeviceId:  "a-device",
 		},
 	}
 
@@ -881,6 +882,13 @@ func (s *NeutronHTTPSuite) TestGetPorts(c *gc.C) {
 	c.Assert(resp.StatusCode, gc.Equals, http.StatusOK)
 	assertJSON(c, resp, &expectedPort)
 	c.Assert(expectedPort.Port, gc.DeepEquals, ports[0])
+
+	url = fmt.Sprintf("%s?%s", neutron.ApiPortsV2, "device_id=a-device")
+	resp, err = s.authRequest("GET", url, nil, nil)
+	c.Assert(err, gc.IsNil)
+	c.Assert(resp.StatusCode, gc.Equals, http.StatusOK)
+	assertJSON(c, resp, &expectedPort)
+	c.Assert(expectedPort.Port, gc.DeepEquals, ports[1])
 }
 
 func (s *NeutronHTTPSuite) TestAddPort(c *gc.C) {

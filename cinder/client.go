@@ -239,24 +239,24 @@ func (c *Client) UpdateSnapshotMetadata(snapshotId, key string) (*UpdateSnapshot
 //
 // Preconditions:
 //
-// - The user must have enough volume storage quota remaining to create
-//   a volume of size requested.
+//   - The user must have enough volume storage quota remaining to create
+//     a volume of size requested.
 //
 // Asynchronous Postconditions:
 //
-// - With correct permissions, you can see the volume status as
-//   available through API calls.
-// - With correct access, you can see the created volume in the
-//   storage system that OpenStack Block Storage manages.
+//   - With correct permissions, you can see the volume status as
+//     available through API calls.
+//   - With correct access, you can see the created volume in the
+//     storage system that OpenStack Block Storage manages.
 //
 // Troubleshooting:
 //
-// - If volume status remains creating or shows another error status,
-//   the request failed. Ensure you meet the preconditions then
-//   investigate the storage backend.
-// - Volume is not created in the storage system which OpenStack Block Storage manages.
-// - The storage node needs enough free storage space to match the
-//   specified size of the volume creation request.
+//   - If volume status remains creating or shows another error status,
+//     the request failed. Ensure you meet the preconditions then
+//     investigate the storage backend.
+//   - Volume is not created in the storage system which OpenStack Block Storage manages.
+//   - The storage node needs enough free storage space to match the
+//     specified size of the volume creation request.
 func (c *Client) CreateVolume(args CreateVolumeVolumeParams) (*CreateVolumeResults, error) {
 	return createVolume(c, CreateVolumeParams{TenantId: c.tenantId, Volume: args})
 }

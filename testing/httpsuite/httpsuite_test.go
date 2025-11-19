@@ -2,7 +2,6 @@ package httpsuite
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -51,14 +50,14 @@ func (s *HTTPTestSuite) TestHelloWorld(c *gc.C) {
 func (s *HTTPSTestSuite) TestHelloWorldWithTLS(c *gc.C) {
 	s.Mux.Handle("/", &HelloHandler{})
 	c.Check(s.Server.URL[:8], gc.Equals, "https://")
-	response, err := http.Get(s.Server.URL)
+	_, err := http.Get(s.Server.URL)
 	// Default http.Get fails because the cert is self-signed
 	c.Assert(err, gc.NotNil)
-	c.Assert(reflect.TypeOf(err.(*url.Error).Err), gc.Equals, reflect.TypeOf(x509.UnknownAuthorityError{}))
+	c.Assert(reflect.TypeOf(err.(*url.Error).Err), gc.Equals, reflect.TypeOf(&tls.CertificateVerificationError{}))
 	// Connect again with a Client that doesn't validate the cert
 	insecureClient := &http.Client{Transport: &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
-	response, err = insecureClient.Get(s.Server.URL)
+	response, err := insecureClient.Get(s.Server.URL)
 	c.Assert(err, gc.IsNil)
 	content, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()

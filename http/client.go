@@ -227,8 +227,6 @@ func (c *Client) JsonRequest(method, url, token string, reqData *RequestData, lo
 // RespReader: if non-nil, is assigned an io.ReadCloser instance used to
 // read the returned data.
 func (c *Client) BinaryRequest(method, url, token string, reqData *RequestData, logger logging.CompatLogger) (err error) {
-	err = nil
-
 	if reqData.Params != nil {
 		url += "?" + reqData.Params.Encode()
 	}

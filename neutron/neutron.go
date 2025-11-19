@@ -85,14 +85,13 @@ func New(client client.Client) *Client {
 // Filter builds filtering parameters to be used in an OpenStack query which supports
 // filtering.  For example:
 //
-//     filter := NewFilter()
-//     filter.Set(neutron.FilterRouterExternal, "true")
-//     resp, err := neutron.ListNetworks(filter)
+//	filter := NewFilter()
+//	filter.Set(neutron.FilterRouterExternal, "true")
+//	resp, err := neutron.ListNetworks(filter)
 //
 // TODO(hml): copied from the nova package.  However it should really be pulled out
 // and shared between goose pkgs, but  we don't want to break compatibility or rev
 // the package at this time.
-//
 type Filter struct {
 	v url.Values
 }

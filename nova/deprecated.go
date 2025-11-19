@@ -172,9 +172,10 @@ func (c *Client) UpdateSecurityGroup(groupId, name, description string) (*Securi
 // create 2 types of security group rules: ingress rules and group
 // rules. The difference stems from how the "source" is defined.
 // It can be either:
-// 1. Ingress rules - specified directly with any valid subnet mask
-//    in CIDR format (e.g. "192.168.0.0/16");
-// 2. Group rules - specified indirectly by giving a source group,
+//  1. Ingress rules - specified directly with any valid subnet mask
+//     in CIDR format (e.g. "192.168.0.0/16");
+//  2. Group rules - specified indirectly by giving a source group,
+//
 // which can be any user's group (different tenant ID).
 //
 // Every rule works as an iptables ACCEPT rule, thus a group/ with no

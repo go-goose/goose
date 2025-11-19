@@ -602,13 +602,31 @@ func (n *Neutron) handleSecurityGroupRules(w http.ResponseWriter, r *http.Reques
 // it returns errNoPortId
 func (n *Neutron) processPortId(w http.ResponseWriter, r *http.Request) (*neutron.PortV2, error) {
 	portId := path.Base(r.URL.Path)
+	filter := r.URL.RawQuery
 	apiFunc := path.Base(apiPortsV2)
-	if portId != apiFunc {
+	if portId == apiFunc && filter == "" {
+		return nil, errNoPortId
+	}
+	if filter == "" {
 		port, err := n.port(portId)
 		if err != nil {
 			return nil, errNotFoundJSONP
 		}
 		return port, nil
+	}
+	parts := strings.Split(filter, "=")
+	if len(parts) != 2 {
+		return nil, errBadRequestIncorrect
+	}
+	attr := parts[0]
+	term := parts[1]
+	for _, p := range n.neutronModel.AllPorts() {
+		switch attr {
+		case "device_id":
+			if p.DeviceId == term {
+				return &p, nil
+			}
+		}
 	}
 	return nil, errNoPortId
 }

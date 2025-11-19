@@ -9,11 +9,10 @@ import (
 // NeutronHeaders creates a set of http.Headers from the given arguments passed
 // in.
 // In this case it applies the headers passed in first, then sets the following:
-//  - X-Auth-Token
-//  - Content-Type
-//  - Accept
-//  - User-Agent
-//
+//   - X-Auth-Token
+//   - Content-Type
+//   - Accept
+//   - User-Agent
 func NeutronHeaders(method string, extraHeaders http.Header, contentType, authToken string, payloadExists bool) http.Header {
 	headers := goosehttp.BasicHeaders()
 
