@@ -618,9 +618,10 @@ func (n *Neutron) processPortId(w http.ResponseWriter, r *http.Request) (*neutro
 	if len(parts) != 2 {
 		return nil, errBadRequestIncorrect
 	}
+	attr := parts[0]
+	term := parts[1]
 	for _, p := range n.neutronModel.AllPorts() {
-		term := parts[1]
-		switch parts[0] {
+		switch attr {
 		case "device_id":
 			if p.DeviceId == term {
 				return &p, nil

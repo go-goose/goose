@@ -406,10 +406,10 @@ type filter map[string]string
 //
 // Example:
 //
-// f := filter{
-//     nova.FilterStatus: nova.StatusActive,
-//     nova.FilterServer: `foo.*`,
-// }
+//	f := filter{
+//	    nova.FilterStatus: nova.StatusActive,
+//	    nova.FilterServer: `foo.*`,
+//	}
 //
 // This will match all servers with status "ACTIVE", and names starting
 // with "foo".

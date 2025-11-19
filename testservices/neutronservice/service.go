@@ -303,9 +303,9 @@ func (n *Neutron) floatingIPByAddr(address string) (*neutron.FloatingIPV2, error
 //
 // Example:
 //
-// f := filter{
-//     neutron.FilterProjectId: `foo.*`,
-// }
+//	f := filter{
+//	    neutron.FilterProjectId: `foo.*`,
+//	}
 //
 // This will match all FloatingIPs with project_id starting
 // with "foo".
@@ -359,10 +359,10 @@ type filter map[string]string
 //
 // Example:
 //
-// f := filter{
-//     neutron.FilterRouterExternal: true,
-//     neutron.FilterNetwork: `foo.*`,
-// }
+//	f := filter{
+//	    neutron.FilterRouterExternal: true,
+//	    neutron.FilterNetwork: `foo.*`,
+//	}
 //
 // This will match all external neworks with names starting
 // with "foo".

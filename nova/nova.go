@@ -71,11 +71,10 @@ func New(client client.Client) *Client {
 // Filter builds filtering parameters to be used in an OpenStack query which supports
 // filtering.  For example:
 //
-//     filter := NewFilter()
-//     filter.Set(nova.FilterServer, "server_name")
-//     filter.Set(nova.FilterStatus, nova.StatusBuild)
-//     resp, err := nova.ListServers(filter)
-//
+//	filter := NewFilter()
+//	filter.Set(nova.FilterServer, "server_name")
+//	filter.Set(nova.FilterStatus, nova.StatusBuild)
+//	resp, err := nova.ListServers(filter)
 type Filter struct {
 	v url.Values
 }

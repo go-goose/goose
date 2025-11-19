@@ -1348,9 +1348,10 @@ func (n *Nova) handleListVolumes(w http.ResponseWriter, r *http.Request) error {
 // Instead we should define our routes up front as a dependency of our tests.
 //
 // Example of this would be:
-// handlers := map[string]http.Handler{
-// 	"/{version}/{tenant_id}/servers/{server_id}/os-interfaces": n.handleOSInterfaces,
-// }
+//
+//	handlers := map[string]http.Handler{
+//		"/{version}/{tenant_id}/servers/{server_id}/os-interfaces": n.handleOSInterfaces,
+//	}
 func (n *Nova) SetupHTTP(mux *http.ServeMux) {
 	handlers := map[string]http.Handler{
 		"/$v/":                        errBadRequest,

@@ -60,7 +60,6 @@ type UpdateVolumeTypeResults struct {
 	VolumeType VolumeType `json:"volume_type"`
 }
 
-//
 // Updates a volume type.
 func updateVolumeType(client *Client, args UpdateVolumeTypeParams) (*UpdateVolumeTypeResults, error) {
 
@@ -135,7 +134,6 @@ type UpdateVolumeTypeExtraSpecsResults struct {
 	VolumeType VolumeType `json:"volume_type"`
 }
 
-//
 // Updates the extra specifications assigned to a volume type.
 func updateVolumeTypeExtraSpecs(client *Client, args UpdateVolumeTypeExtraSpecsParams) (*UpdateVolumeTypeExtraSpecsResults, error) {
 
@@ -210,7 +208,6 @@ type GetSnapshotsSimpleResults struct {
 	Snapshots []Snapshot `json:"snapshots"`
 }
 
-//
 // Lists summary information for all Block Storage snapshots that the tenant who submits the request can access.
 func getSnapshotsSimple(client *Client, args GetSnapshotsSimpleParams) (*GetSnapshotsSimpleResults, error) {
 
@@ -288,7 +285,6 @@ type UpdateSnapshotResults struct {
 	Snapshot Snapshot `json:"snapshot"`
 }
 
-//
 // Updates a specified snapshot.
 func updateSnapshot(client *Client, args UpdateSnapshotParams) (*UpdateSnapshotResults, error) {
 
@@ -353,7 +349,6 @@ type ShowSnapshotMetadataResults struct {
 	Snapshot Snapshot `json:"snapshot"`
 }
 
-//
 // Shows the metadata for a specified snapshot.
 func showSnapshotMetadata(client *Client, args ShowSnapshotMetadataParams) (*ShowSnapshotMetadataResults, error) {
 
@@ -442,7 +437,6 @@ type GetVolumesDetailResults struct {
 	Volumes []Volume `json:"volumes"`
 }
 
-//
 // Lists detailed information for all Block Storage volumes that the tenant who submits the request can access.
 func getVolumesDetail(client *Client, args GetVolumesDetailParams) (*GetVolumesDetailResults, error) {
 
@@ -507,7 +501,6 @@ type GetVolumeResults struct {
 	Volume Volume `json:"volume"`
 }
 
-//
 // Shows information about a specified volume.
 // Preconditions
 //
@@ -553,7 +546,6 @@ type UpdateVolumeResults struct {
 	Volume Volume `json:"volume"`
 }
 
-//
 // Updates a volume.
 func updateVolume(client *Client, args UpdateVolumeParams) (*UpdateVolumeResults, error) {
 
@@ -617,7 +609,6 @@ type DeleteVolumeParams struct {
 type DeleteVolumeResults struct {
 }
 
-//
 // Deletes a specified volume.
 // Preconditions
 //
@@ -674,7 +665,6 @@ type CreateVolumeTypeResults struct {
 	VolumeType VolumeType `json:"volume_type"`
 }
 
-//
 // Creates a volume type.
 func createVolumeType(client *Client, args CreateVolumeTypeParams) (*CreateVolumeTypeResults, error) {
 
@@ -754,7 +744,6 @@ type CreateSnapshotResults struct {
 	Snapshot Snapshot `json:"snapshot"`
 }
 
-//
 // Creates a snapshot, which is a point-in-time complete copy of a volume. You can create a volume from the snapshot.
 func createSnapshot(client *Client, args CreateSnapshotParams) (*CreateSnapshotResults, error) {
 
@@ -814,7 +803,6 @@ type GetSnapshotsDetailResults struct {
 	Snapshots []Snapshot `json:"snapshots"`
 }
 
-//
 // Lists detailed information for all Block Storage snapshots that the tenant who submits the request can access.
 func getSnapshotsDetail(client *Client, args GetSnapshotsDetailParams) (*GetSnapshotsDetailResults, error) {
 
@@ -879,7 +867,6 @@ type GetSnapshotResults struct {
 	Snapshot Snapshot `json:"snapshot"`
 }
 
-//
 // Shows information for a specified snapshot.
 func getSnapshot(client *Client, args GetSnapshotParams) (*GetSnapshotResults, error) {
 
@@ -949,7 +936,6 @@ type ListVersionsResults struct {
 	Versions []Version `json:"versions"`
 }
 
-//
 // Lists information about all Block Storage API versions.
 func listVersions(client *Client, args ListVersionsParams) (*ListVersionsResults, error) {
 
@@ -1005,7 +991,6 @@ type VersionDetailsResults struct {
 	Version Version `json:"version"`
 }
 
-//
 // Shows details for Block Storage API v2.
 func versionDetails(client *Client, args VersionDetailsParams) (*VersionDetailsResults, error) {
 
@@ -1103,7 +1088,6 @@ type CreateVolumeResults struct {
 	Volume Volume `json:"volume"`
 }
 
-//
 // Creates a volume.
 // To create a bootable volume, include the image ID and set the bootable flag to true in the request body.
 // Preconditions
@@ -1176,7 +1160,6 @@ type GetVolumesSimpleResults struct {
 	Volumes []Volume `json:"volumes"`
 }
 
-//
 // Lists summary information for all Block Storage volumes that the tenant who submits the request can access.
 func getVolumesSimple(client *Client, args GetVolumesSimpleParams) (*GetVolumesSimpleResults, error) {
 
@@ -1241,7 +1224,6 @@ type GetVolumeTypeResults struct {
 	VolumeType VolumeType `json:"volume_type"`
 }
 
-//
 // Shows information about a specified volume type.
 func getVolumeType(client *Client, args GetVolumeTypeParams) (*GetVolumeTypeResults, error) {
 
@@ -1305,7 +1287,6 @@ type DeleteSnapshotParams struct {
 type DeleteSnapshotResults struct {
 }
 
-//
 // Deletes a specified snapshot.
 func deleteSnapshot(client *Client, args DeleteSnapshotParams) (*DeleteSnapshotResults, error) {
 
@@ -1370,7 +1351,6 @@ type ListExtensionsCinderV2Results struct {
 	Extensions []Extension `json:"extensions"`
 }
 
-//
 // Lists Block Storage API extensions.
 func listExtensionsCinderV2(client *Client, args ListExtensionsCinderV2Params) (*ListExtensionsCinderV2Results, error) {
 
@@ -1430,7 +1410,6 @@ type GetVolumeTypesResults struct {
 	VolumeTypes []VolumeType `json:"volume_types"`
 }
 
-//
 // Lists volume types.
 func getVolumeTypes(client *Client, args GetVolumeTypesParams) (*GetVolumeTypesResults, error) {
 
@@ -1494,7 +1473,6 @@ type DeleteVolumeTypeParams struct {
 type DeleteVolumeTypeResults struct {
 }
 
-//
 // Deletes a specified volume type.
 func deleteVolumeType(client *Client, args DeleteVolumeTypeParams) (*DeleteVolumeTypeResults, error) {
 
@@ -1572,7 +1550,6 @@ type UpdateSnapshotMetadataResults struct {
 	} `json:"metadata"`
 }
 
-//
 // Updates the metadata for a specified snapshot.
 func updateSnapshotMetadata(client *Client, args UpdateSnapshotMetadataParams) (*UpdateSnapshotMetadataResults, error) {
 
@@ -1685,7 +1662,6 @@ type AvailabilityZoneState struct {
 	Available bool
 }
 
-//
 // Lists volume availability zones.
 func listAvailabilityZones(client *Client) (*GetAvailabilityZonesResults, error) {
 

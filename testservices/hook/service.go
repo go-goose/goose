@@ -24,9 +24,10 @@ type ServiceControl interface {
 
 // ProcessControlHook retrieves the ControlProcessor for the specified hook name and runs it, returning any error.
 // Use it like this to invoke a hook registered for some arbitrary control point:
-// if err := n.ProcessControlHook("foobar", <serviceinstance>, <somearg1>, <somearg2>); err != nil {
-//     return err
-// }
+//
+//	if err := n.ProcessControlHook("foobar", <serviceinstance>, <somearg1>, <somearg2>); err != nil {
+//	    return err
+//	}
 func (s *TestService) ProcessControlHook(hookName string, sc ServiceControl, args ...interface{}) error {
 	if s.ControlHooks == nil {
 		return nil
@@ -39,9 +40,10 @@ func (s *TestService) ProcessControlHook(hookName string, sc ServiceControl, arg
 
 // ProcessFunctionHook runs the ControlProcessor for the current function, returning any error.
 // Use it like this:
-// if err := n.ProcessFunctionHook(<serviceinstance>, <somearg1>, <somearg2>); err != nil {
-//     return err
-// }
+//
+//	if err := n.ProcessFunctionHook(<serviceinstance>, <somearg1>, <somearg2>); err != nil {
+//	    return err
+//	}
 func (s *TestService) ProcessFunctionHook(sc ServiceControl, args ...interface{}) error {
 	hookName := s.currentServiceMethodName()
 	return s.ProcessControlHook(hookName, sc, args...)
