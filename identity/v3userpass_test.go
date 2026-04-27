@@ -124,6 +124,60 @@ func (s *V3UserPassTestSuite) TestAuthWithCatalog(c *gc.C) {
 	c.Assert(auth.TenantId, gc.Equals, userInfo.TenantId)
 }
 
+func (s *V3UserPassTestSuite) TestAuthWithTrustID(c *gc.C) {
+	service := identityservice.NewV3UserPass()
+	service.SetupHTTP(s.Mux)
+	userInfo := service.AddUser("joe-user", "secrets", "tenant", "default")
+	var l Authenticator = &V3UserPass{}
+	creds := Credentials{
+		User:    "joe-user",
+		URL:     s.Server.URL + "/v3/auth/tokens",
+		Secrets: "secrets",
+		TrustID: "trust-id",
+	}
+
+	authfunc := func(sc hook.ServiceControl, args ...interface{}) error {
+		v3input := args[0].(identityservice.V3UserPassRequest)
+		c.Assert(v3input.Auth.Identity.Methods, gc.DeepEquals, []string{"password"})
+		c.Assert(v3input.Auth.Scope.Trust.ID, gc.Equals, "trust-id")
+		c.Assert(v3input.Auth.Scope.Project.ID, gc.Equals, "")
+		c.Assert(v3input.Auth.Scope.Project.Name, gc.Equals, "")
+		c.Assert(v3input.Auth.Scope.Domain.Name, gc.Equals, "")
+		return nil
+	}
+
+	cleanup := service.RegisterControlPoint("preauthentication", authfunc)
+	defer cleanup()
+
+	auth, err := l.Auth(&creds)
+	c.Assert(err, gc.IsNil)
+	c.Assert(auth.Token, gc.Equals, userInfo.Token)
+}
+
+func (s *V3UserPassTestSuite) TestAuthWithTrustIDAndOtherScope(c *gc.C) {
+	var l Authenticator = &V3UserPass{}
+	scenarios := []Credentials{{
+		User:       "joe-user",
+		Secrets:    "secrets",
+		TrustID:    "trust-id",
+		TenantName: "tenant",
+	}, {
+		User:     "joe-user",
+		Secrets:  "secrets",
+		TrustID:  "trust-id",
+		TenantID: "tenant-id",
+	}, {
+		User:    "joe-user",
+		Secrets: "secrets",
+		TrustID: "trust-id",
+		Domain:  "domain",
+	}}
+	for _, creds := range scenarios {
+		_, err := l.Auth(&creds)
+		c.Assert(err, gc.ErrorMatches, "trust authentication cannot be scoped to a project or domain")
+	}
+}
+
 func (s *V3UserPassTestSuite) TestAuthToDomainwithTenantNameAndTenantID(c *gc.C) {
 	service := identityservice.NewV3UserPass()
 	service.SetupHTTP(s.Mux)

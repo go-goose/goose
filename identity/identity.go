@@ -72,6 +72,7 @@ type Credentials struct {
 	Domain        string `credentials:"optional"` // The domain for authorization (new in keystone v3)
 	UserDomain    string `credentials:"optional"` // The owning domain for this user (new in keystone v3)
 	ProjectDomain string `credentials:"optional"` // The project domain for authorization (new in keystone v3)
+	TrustID       string `credentials:"optional"` // The trust ID for authorization (new in keystone v3)
 }
 
 // Authenticator is implemented by each authentication method.
@@ -153,6 +154,9 @@ var (
 	CredEnvDomainName = []string{
 		"OS_DOMAIN_NAME",
 	}
+	CredEnvTrustID = []string{
+		"OS_TRUST_ID",
+	}
 )
 
 // CredentialsFromEnv creates and initializes the credentials from the
@@ -168,6 +172,7 @@ func CredentialsFromEnv() (*Credentials, error) {
 		Domain:        getConfig(CredEnvDomainName),
 		UserDomain:    getConfig(CredEnvUserDomainName),
 		ProjectDomain: getConfig(CredEnvProjectDomainName),
+		TrustID:       getConfig(CredEnvTrustID),
 	}
 	defaultDomain := getConfig(CredEnvDefaultDomainName)
 	if defaultDomain != "" {

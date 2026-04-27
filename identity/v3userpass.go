@@ -58,6 +58,7 @@ type v3AuthToken struct {
 type v3AuthScope struct {
 	Domain  *v3AuthDomain  `json:"domain,omitempty"`
 	Project *v3AuthProject `json:"project,omitempty"`
+	Trust   *v3AuthTrust   `json:"trust,omitempty"`
 }
 
 // v3AuthProject contains the project scope for the authentication
@@ -66,6 +67,10 @@ type v3AuthProject struct {
 	Domain *v3AuthDomain `json:"domain,omitempty"`
 	ID     string        `json:"id,omitempty"`
 	Name   string        `json:"name,omitempty"`
+}
+
+type v3AuthTrust struct {
+	ID string `json:"id"`
 }
 
 // V3UserPass is an Authenticator that will perform username + password
@@ -104,7 +109,16 @@ func (u *V3UserPass) Auth(creds *Credentials) (*AuthDetails, error) {
 			},
 		},
 	}
-	if creds.TenantName != "" || creds.TenantID != "" {
+	if creds.TrustID != "" {
+		if creds.TenantName != "" || creds.TenantID != "" || creds.Domain != "" {
+			return nil, fmt.Errorf("trust authentication cannot be scoped to a project or domain")
+		}
+		auth.Auth.Scope = &v3AuthScope{
+			Trust: &v3AuthTrust{
+				ID: creds.TrustID,
+			},
+		}
+	} else if creds.TenantName != "" || creds.TenantID != "" {
 		auth.Auth.Scope = &v3AuthScope{
 			Project: &v3AuthProject{
 				Domain: &v3AuthDomain{

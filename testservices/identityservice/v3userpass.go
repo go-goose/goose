@@ -36,6 +36,9 @@ type V3UserPassRequest struct {
 			Domain struct {
 				Name string `json:"name,omitempty"`
 			} `json:"domain"`
+			Trust struct {
+				ID string `json:"id"`
+			} `json:"trust"`
 		} `json:"scope"`
 	} `json:"auth"`
 }
