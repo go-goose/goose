@@ -58,7 +58,7 @@ type v3AuthToken struct {
 type v3AuthScope struct {
 	Domain  *v3AuthDomain  `json:"domain,omitempty"`
 	Project *v3AuthProject `json:"project,omitempty"`
-	Trust   *v3AuthTrust   `json:"trust,omitempty"`
+	Trust   *v3AuthTrust   `json:"OS-TRUST:trust,omitempty"`
 }
 
 // v3AuthProject contains the project scope for the authentication
