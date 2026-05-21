@@ -38,7 +38,7 @@ type V3UserPassRequest struct {
 			} `json:"domain"`
 			Trust struct {
 				ID string `json:"id"`
-			} `json:"trust"`
+			} `json:"OS-TRUST:trust"`
 		} `json:"scope"`
 	} `json:"auth"`
 }
