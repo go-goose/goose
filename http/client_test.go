@@ -207,6 +207,11 @@ func (s *HTTPClientTestSuite) TestHandleForbiddenError(c *gc.C) {
 	c.Assert(errors.IsForbidden(err), gc.Equals, true)
 }
 
+func (s *HTTPClientTestSuite) TestHandleConflictError(c *gc.C) {
+	err := s.setupErrorRequest(c, http.StatusConflict)
+	c.Assert(errors.IsConflict(err), gc.Equals, true)
+}
+
 func (s *HTTPClientTestSuite) testRetryAfter(c *gc.C,
 	retryAfter func(*time.Time, http.ResponseWriter),
 	verifyWait func(time.Time) (time.Duration, bool)) {

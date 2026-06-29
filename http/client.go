@@ -423,6 +423,9 @@ func handleError(URL string, resp *http.Response) error {
 		if dupExp.Match(errBytes) {
 			return errors.NewDuplicateValuef(httpError, "", string(errBytes))
 		}
+		if resp.StatusCode == http.StatusConflict {
+			return errors.NewConflictf(httpError, "", string(errBytes))
+		}
 	case http.StatusMultipleChoices:
 		return errors.NewMultipleChoicesf(httpError, "", "")
 	}
