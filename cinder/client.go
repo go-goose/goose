@@ -351,3 +351,14 @@ func (c *Client) ListVolumeAvailabilityZones() ([]AvailabilityZone, error) {
 	}
 	return resp.AvailabilityZoneInfo, nil
 }
+
+// DeleteAttachment removes a volume attachment through the block-storage
+// attachments API. Cinder checks with the Compute API first: while the
+// attachment's instance is still using the volume it refuses with 409
+// (Conflict), and once the instance is gone it deletes the attachment and
+// frees the volume. Unlike the os-force_detach admin action this is permitted
+// for the volume's owner.
+func (c *Client) DeleteAttachment(attachmentId string) error {
+	return deleteAttachment(c, DeleteAttachmentParams{
+		TenantId: c.tenantId, AttachmentId: attachmentId})
+}
