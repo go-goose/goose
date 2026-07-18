@@ -417,14 +417,14 @@ func handleError(URL string, resp *http.Response) error {
 	case http.StatusUnauthorized:
 		return errors.NewUnauthorisedf(httpError, "", "Unauthorised URL %s", URL)
 	case http.StatusForbidden:
-		return errors.NewForbiddenf(httpError, "", string(errBytes))
+		return errors.NewForbiddenf(httpError, "", "%s", errInfo)
 	case http.StatusConflict, http.StatusBadRequest:
 		dupExp, _ := regexp.Compile(".*already exists.*")
 		if dupExp.Match(errBytes) {
-			return errors.NewDuplicateValuef(httpError, "", string(errBytes))
+			return errors.NewDuplicateValuef(httpError, "", "%s", errInfo)
 		}
 		if resp.StatusCode == http.StatusConflict {
-			return errors.NewConflictf(httpError, "", string(errBytes))
+			return errors.NewConflictf(httpError, "", "%s", errInfo)
 		}
 	case http.StatusMultipleChoices:
 		return errors.NewMultipleChoicesf(httpError, "", "")

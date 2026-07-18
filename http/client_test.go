@@ -431,6 +431,43 @@ func (s *HTTPSClientTestSuite) TestBrokenBodyJSONUnmarshalling(c *gc.C) {
 	c.Check(err, gc.ErrorMatches, `Unparsable json error body: \"{\\\"itemNotFound\\\": {}}\"`)
 }
 
+func (s *HTTPSClientTestSuite) TestHandleErrorTreatsResponseMessageAsData(c *gc.C) {
+	tests := []struct {
+		status int
+		body   string
+	}{
+		{http.StatusForbidden, "quota is 100% exhausted"},
+		{http.StatusBadRequest, "resource 100% already exists"},
+		{http.StatusConflict, "volume is 100% attached"},
+	}
+
+	for _, test := range tests {
+		resp := &http.Response{
+			StatusCode: test.status,
+			Header:     http.Header{},
+			Body:       ioutil.NopCloser(strings.NewReader(test.body)),
+		}
+		err := handleError("http://testing.invalid", resp)
+		c.Assert(err, gc.NotNil)
+		message := strings.SplitN(err.Error(), "\n", 2)[0]
+		c.Check(message, gc.Equals, test.body, gc.Commentf("status %d", test.status))
+	}
+}
+
+func (s *HTTPSClientTestSuite) TestHandleErrorUsesDecodedJSONMessage(c *gc.C) {
+	body := `{"forbidden": {"message": "quota is 100% exhausted", "code": 403}}`
+	resp := &http.Response{
+		StatusCode: http.StatusForbidden,
+		Header:     http.Header{"Content-Type": []string{contentTypeJSON}},
+		Body:       ioutil.NopCloser(strings.NewReader(body)),
+	}
+
+	err := handleError("http://testing.invalid", resp)
+	c.Assert(err, gc.NotNil)
+	message := strings.SplitN(err.Error(), "\n", 2)[0]
+	c.Check(message, gc.Equals, "Failed: 403 forbidden: quota is 100% exhausted")
+}
+
 type nopReadCloser struct{}
 
 func (nopReadCloser) Read([]byte) (int, error) {
