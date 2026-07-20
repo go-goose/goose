@@ -18,6 +18,7 @@ const (
 	ForbiddenError       = Code("Forbidden")
 	NotImplementedError  = Code("NotImplemented")
 	MultipleChoicesError = Code("MultipleChoices")
+	ConflictError        = Code("Conflict")
 )
 
 // Error instances store an optional error cause.
@@ -119,6 +120,13 @@ func IsMultipleChoices(err error) bool {
 	return false
 }
 
+func IsConflict(err error) bool {
+	if e, ok := err.(*gooseError); ok {
+		return e.causedBy(ConflictError)
+	}
+	return false
+}
+
 // makeErrorf creates a new Error instance with the specified cause.
 func makeErrorf(code Code, cause error, format string, args ...interface{}) Error {
 	return &gooseError{
@@ -186,4 +194,12 @@ func NewMultipleChoicesf(cause error, context interface{}, format string, args .
 		format = fmt.Sprintf("Not implemented: %s", context)
 	}
 	return makeErrorf(MultipleChoicesError, cause, format, args...)
+}
+
+// NewConflictf creates a new Conflict Error instance with the specified cause.
+func NewConflictf(cause error, context interface{}, format string, args ...interface{}) Error {
+	if format == "" {
+		format = fmt.Sprintf("Conflict: %s", context)
+	}
+	return makeErrorf(ConflictError, cause, format, args...)
 }

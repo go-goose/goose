@@ -405,10 +405,14 @@ type GetVolumesDetailParams struct {
 }
 
 type VolumeAttachment struct {
-	Device   string `json:"device"`
-	Id       string `json:"id"`
-	ServerId string `json:"server_id"`
-	VolumeId string `json:"volume_id"`
+	Device string `json:"device"`
+	Id     string `json:"id"`
+	// AttachmentId is the id of the attachment itself. On modern clouds Id is
+	// the volume id, so callers targeting a specific attachment (e.g. for
+	// os-force_detach) must use this field.
+	AttachmentId string `json:"attachment_id"`
+	ServerId     string `json:"server_id"`
+	VolumeId     string `json:"volume_id"`
 }
 
 type Volume struct {
@@ -1698,4 +1702,25 @@ func listAvailabilityZones(client *Client) (*GetAvailabilityZonesResults, error)
 	json.Unmarshal(body, &results)
 
 	return &results, nil
+}
+
+// DeleteAttachmentParams holds the parameters for deleting a volume attachment.
+type DeleteAttachmentParams struct {
+	TenantId     string `json:"-"`
+	AttachmentId string `json:"-"`
+}
+
+// attachmentsMicroversion is the block-storage microversion at which the
+// attachments API (used by deleteAttachment) became available.
+const attachmentsMicroversion = "volume 3.27"
+
+// Deletes a volume attachment via the block-storage attachments API.
+func deleteAttachment(c *Client, args DeleteAttachmentParams) error {
+	requestData := goosehttp.RequestData{
+		ReqHeaders:     http.Header{"OpenStack-API-Version": []string{attachmentsMicroversion}},
+		ExpectedStatus: []int{http.StatusOK, http.StatusAccepted, http.StatusNoContent},
+	}
+	urlPath := url.URL{Path: fmt.Sprintf("attachments/%s", args.AttachmentId)}
+	url := c.endpoint.ResolveReference(&urlPath).String()
+	return c.client.JsonRequest(client.DELETE, url, "", &requestData, nil)
 }

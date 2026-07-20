@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-goose/goose/v5/errors"
@@ -350,4 +351,36 @@ func (c *Client) ListVolumeAvailabilityZones() ([]AvailabilityZone, error) {
 		return nil, errors.Newf(err, "failed to get list of availability zones")
 	}
 	return resp.AvailabilityZoneInfo, nil
+}
+
+// DeleteAttachment removes a volume attachment through the block-storage
+// attachments API. Cinder checks with the Compute API first: while the
+// attachment's instance is still using the volume it refuses with 409
+// (Conflict), and once the instance is gone it deletes the attachment and
+// frees the volume. Unlike the os-force_detach admin action this is permitted
+// for the volume's owner.
+func (c *Client) DeleteAttachment(attachmentId string) error {
+	if isCinderV2Endpoint(c.endpoint) {
+		return errors.NewNotImplementedf(
+			nil, nil, "volume attachments require Block Storage API v3.27",
+		)
+	}
+
+	err := deleteAttachment(c, DeleteAttachmentParams{
+		TenantId: c.tenantId, AttachmentId: attachmentId})
+	if httpErr, ok := err.(*goosehttp.HttpError); ok && httpErr.StatusCode == http.StatusNotAcceptable {
+		return errors.NewNotImplementedf(
+			err, nil, "the server does not support Block Storage API v3.27",
+		)
+	}
+	return err
+}
+
+func isCinderV2Endpoint(endpoint *url.URL) bool {
+	for _, part := range strings.Split(endpoint.Path, "/") {
+		if part == "v2" || part == "v2.0" {
+			return true
+		}
+	}
+	return false
 }

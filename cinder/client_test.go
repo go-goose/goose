@@ -12,6 +12,8 @@ import (
 	"net/url"
 
 	gc "gopkg.in/check.v1"
+
+	gooseerrors "github.com/go-goose/goose/v5/errors"
 )
 
 const (
@@ -38,15 +40,18 @@ func (s *CinderTestSuite) SetUpSuite(c *gc.C) {
 		return
 	}
 
-	endpoint, err := url.Parse("http://volume.testing/v2/" + testId)
+	s.client = s.newClient(c, "v2")
+}
+
+func (s *CinderTestSuite) newClient(c *gc.C, version string) *Client {
+	endpoint, err := url.Parse(fmt.Sprintf("http://volume.testing/%s/%s", version, testId))
 	c.Assert(err, gc.IsNil)
 
-	cinderClient := NewClient(
+	return NewClient(
 		testId,
 		endpoint,
 		SetAuthHeaderFn(func() string { return testToken }, s.localDo),
 	)
-	s.client = cinderClient
 }
 
 func (s *CinderTestSuite) SetUpTest(c *gc.C) {
@@ -448,6 +453,70 @@ func (s *CinderTestSuite) TestDeleteVolume(c *gc.C) {
 	err := s.client.DeleteVolume(testId)
 	c.Assert(numCalls, gc.Equals, 1)
 	c.Assert(err, gc.IsNil)
+}
+
+func (s *CinderTestSuite) TestDeleteAttachment(c *gc.C) {
+
+	const attachmentId = "test-attachment"
+	client := s.newClient(c, "v3")
+
+	numCalls := 0
+	s.HandleFunc("/v3/"+testId+"/attachments/"+attachmentId, func(w http.ResponseWriter, req *http.Request) {
+		numCalls++
+
+		c.Check(req.Method, gc.Equals, "DELETE")
+		c.Check(req.Header["X-Auth-Token"], gc.DeepEquals, []string{testToken})
+		c.Check(req.Header["Openstack-Api-Version"], gc.DeepEquals, []string{"volume 3.27"})
+
+		w.(*responseWriter).Response.StatusCode = 200
+		w.(*responseWriter).Body = ioutil.NopCloser(bytes.NewBuffer([]byte{}))
+	})
+
+	err := client.DeleteAttachment(attachmentId)
+	c.Assert(numCalls, gc.Equals, 1)
+	c.Assert(err, gc.IsNil)
+}
+
+func (s *CinderTestSuite) TestDeleteAttachmentConflict(c *gc.C) {
+
+	const attachmentId = "test-attachment"
+	client := s.newClient(c, "v3")
+
+	numCalls := 0
+	s.HandleFunc("/v3/"+testId+"/attachments/"+attachmentId, func(w http.ResponseWriter, req *http.Request) {
+		numCalls++
+
+		c.Check(req.Method, gc.Equals, "DELETE")
+
+		w.(*responseWriter).Response.StatusCode = http.StatusConflict
+		w.(*responseWriter).Body = ioutil.NopCloser(bytes.NewBufferString(
+			"Volume status must be available or error or detaching to detach."))
+	})
+
+	err := client.DeleteAttachment(attachmentId)
+	c.Assert(numCalls, gc.Equals, 1)
+	c.Assert(err, gc.NotNil)
+	c.Assert(gooseerrors.IsConflict(err), gc.Equals, true)
+}
+
+func (s *CinderTestSuite) TestDeleteAttachmentUnsupportedV2(c *gc.C) {
+	err := s.client.DeleteAttachment("test-attachment")
+	c.Assert(err, gc.NotNil)
+	c.Assert(gooseerrors.IsNotImplemented(err), gc.Equals, true)
+}
+
+func (s *CinderTestSuite) TestDeleteAttachmentUnsupportedMicroversion(c *gc.C) {
+	const attachmentId = "test-attachment"
+	client := s.newClient(c, "v3")
+
+	s.HandleFunc("/v3/"+testId+"/attachments/"+attachmentId, func(w http.ResponseWriter, req *http.Request) {
+		w.(*responseWriter).Response.StatusCode = http.StatusNotAcceptable
+		w.(*responseWriter).Body = ioutil.NopCloser(bytes.NewBufferString("unsupported microversion"))
+	})
+
+	err := client.DeleteAttachment(attachmentId)
+	c.Assert(err, gc.NotNil)
+	c.Assert(gooseerrors.IsNotImplemented(err), gc.Equals, true)
 }
 
 func (s *CinderTestSuite) TestUpdateVolume(c *gc.C) {
