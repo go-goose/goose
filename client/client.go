@@ -130,17 +130,24 @@ func WithInsecureHTTPClient(client *http.Client) Option {
 	}
 }
 
+func newInsecureHTTPClient() *http.Client {
+	transport, ok := http.DefaultTransport.(*http.Transport)
+	if ok {
+		transport = transport.Clone()
+	} else {
+		transport = &http.Transport{}
+	}
+	if transport.TLSClientConfig == nil {
+		transport.TLSClientConfig = &tls.Config{}
+	}
+	transport.TLSClientConfig.InsecureSkipVerify = true
+	return &http.Client{Transport: transport}
+}
+
 func newOptions() *options {
 	return &options{
 		httpHeadersFunc: goosehttp.DefaultHeaders,
 		httpClient:      &http.Client{},
-		insecureHTTPClient: &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
-			},
-		},
 	}
 }
 
@@ -219,6 +226,9 @@ func NewNonValidatingPublicClient(baseURL string, logger logging.CompatLogger, o
 	for _, option := range options {
 		option(opts)
 	}
+	if opts.insecureHTTPClient == nil {
+		opts.insecureHTTPClient = newInsecureHTTPClient()
+	}
 
 	return &client{
 		baseURL: baseURL,
@@ -249,6 +259,9 @@ func NewNonValidatingClient(creds *identity.Credentials, authMethod identity.Aut
 	opts := newOptions()
 	for _, option := range options {
 		option(opts)
+	}
+	if opts.insecureHTTPClient == nil {
+		opts.insecureHTTPClient = newInsecureHTTPClient()
 	}
 
 	return newClient(creds, authMethod, goosehttp.New(
