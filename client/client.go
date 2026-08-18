@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
 	"sort"
@@ -136,19 +135,7 @@ func newInsecureHTTPClient() *http.Client {
 	if ok {
 		transport = transport.Clone()
 	} else {
-		// Match the explicit defaults used by net/http.DefaultTransport.
-		transport = &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
-			}).DialContext,
-			ForceAttemptHTTP2:     true,
-			MaxIdleConns:          100,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		}
+		transport = &http.Transport{}
 	}
 	if transport.TLSClientConfig == nil {
 		transport.TLSClientConfig = &tls.Config{}
@@ -159,8 +146,9 @@ func newInsecureHTTPClient() *http.Client {
 
 func newOptions() *options {
 	return &options{
-		httpHeadersFunc: goosehttp.DefaultHeaders,
-		httpClient:      &http.Client{},
+		httpHeadersFunc:    goosehttp.DefaultHeaders,
+		httpClient:         &http.Client{},
+		insecureHTTPClient: newInsecureHTTPClient(),
 	}
 }
 
@@ -239,9 +227,6 @@ func NewNonValidatingPublicClient(baseURL string, logger logging.CompatLogger, o
 	for _, option := range options {
 		option(opts)
 	}
-	if opts.insecureHTTPClient == nil {
-		opts.insecureHTTPClient = newInsecureHTTPClient()
-	}
 
 	return &client{
 		baseURL: baseURL,
@@ -272,9 +257,6 @@ func NewNonValidatingClient(creds *identity.Credentials, authMethod identity.Aut
 	opts := newOptions()
 	for _, option := range options {
 		option(opts)
-	}
-	if opts.insecureHTTPClient == nil {
-		opts.insecureHTTPClient = newInsecureHTTPClient()
 	}
 
 	return newClient(creds, authMethod, goosehttp.New(

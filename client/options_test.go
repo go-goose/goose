@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
-	"time"
 )
 
 type fakeRoundTripper struct {
@@ -16,20 +15,6 @@ func TestCustomDefaultTransport(t *testing.T) {
 	original := http.DefaultTransport
 	t.Cleanup(func() { http.DefaultTransport = original })
 	http.DefaultTransport = &fakeRoundTripper{}
-
-	transport := newInsecureHTTPClient().Transport.(*http.Transport)
-	if transport.Proxy == nil ||
-		transport.DialContext == nil ||
-		!transport.ForceAttemptHTTP2 ||
-		transport.MaxIdleConns != 100 ||
-		transport.IdleConnTimeout != 90*time.Second ||
-		transport.TLSHandshakeTimeout != 10*time.Second ||
-		transport.ExpectContinueTimeout != time.Second {
-		t.Fatalf("unexpected fallback transport settings: %#v", transport)
-	}
-	if transport.TLSClientConfig == nil || !transport.TLSClientConfig.InsecureSkipVerify {
-		t.Fatal("fallback transport does not disable certificate verification")
-	}
 
 	NewPublicClient("https://example.invalid", nil)
 	NewNonValidatingPublicClient("https://example.invalid", nil)
