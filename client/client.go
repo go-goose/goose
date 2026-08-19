@@ -130,25 +130,29 @@ func WithInsecureHTTPClient(client *http.Client) Option {
 	}
 }
 
-func newInsecureHTTPClient() *http.Client {
+func newHTTPClient(skipVerify bool) *http.Client {
 	transport, ok := http.DefaultTransport.(*http.Transport)
 	if ok {
 		transport = transport.Clone()
-	} else {
+	} else if skipVerify {
 		transport = &http.Transport{}
+	} else {
+		return &http.Client{Transport: http.DefaultTransport}
 	}
-	if transport.TLSClientConfig == nil {
-		transport.TLSClientConfig = &tls.Config{}
+	if skipVerify {
+		if transport.TLSClientConfig == nil {
+			transport.TLSClientConfig = &tls.Config{}
+		}
+		transport.TLSClientConfig.InsecureSkipVerify = true
 	}
-	transport.TLSClientConfig.InsecureSkipVerify = true
 	return &http.Client{Transport: transport}
 }
 
 func newOptions() *options {
 	return &options{
 		httpHeadersFunc:    goosehttp.DefaultHeaders,
-		httpClient:         &http.Client{},
-		insecureHTTPClient: newInsecureHTTPClient(),
+		httpClient:         newHTTPClient(false),
+		insecureHTTPClient: newHTTPClient(true),
 	}
 }
 
