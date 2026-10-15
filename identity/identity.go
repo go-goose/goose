@@ -218,18 +218,33 @@ func CredentialsFromEnv() (*Credentials, error) {
 
 // CompleteCredentialsFromEnv gets and verifies all the required
 // authentication parameters have values in the environment.
+//
+// Username/password (User, Secrets) and application credential
+// (ApplicationCredentialID, ApplicationCredentialSecret) are
+// alternative credential sets: Keystone application credentials
+// carry no username/password, so a caller authenticating that way
+// is not expected to have OS_USERNAME/OS_PASSWORD set. If either
+// application-credential field is present, User/Secrets are not
+// required; otherwise the existing username/password check is
+// unchanged.
 func CompleteCredentialsFromEnv() (cred *Credentials, err error) {
 	cred, err = CredentialsFromEnv()
 	if err != nil {
 		return &Credentials{}, err
 	}
+	usingAppCred := cred.ApplicationCredentialID != "" ||
+		cred.ApplicationCredentialSecret != ""
 	v := reflect.ValueOf(cred).Elem()
 	t := v.Type()
-	for i := 0; i < v.NumField(); i++ {
+	for i := range v.NumField() {
 		f := v.Field(i)
+		name := t.Field(i).Name
+		if usingAppCred && (name == "User" || name == "Secrets") {
+			continue
+		}
 		tag := t.Field(i).Tag.Get("credentials")
 		if f.String() == "" && tag != "optional" {
-			err = fmt.Errorf("required environment variable not set for credentials attribute: %s", t.Field(i).Name)
+			err = fmt.Errorf("required environment variable not set for credentials attribute: %s", name)
 		}
 	}
 	return
