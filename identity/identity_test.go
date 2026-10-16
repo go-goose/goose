@@ -259,6 +259,31 @@ func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvKeypairCompatibleEn
 	c.Check(creds.Domain, gc.Equals, "domain-name")
 }
 
+// An application credential (id+secret) is an alternative to
+// username/password: a standard environment with only
+// OS_AUTH_URL, OS_APPLICATION_CREDENTIAL_ID and
+// OS_APPLICATION_CREDENTIAL_SECRET set (no OS_USERNAME/OS_PASSWORD,
+// no access/secret key pair) must complete successfully.
+func (s *CredentialsTestSuite) TestCompleteCredentialsFromEnvApplicationCredential(c *gc.C) {
+	env := map[string]string{
+		"OS_AUTH_URL":                      "http://auth",
+		"OS_REGION_NAME":                   "region",
+		"OS_APPLICATION_CREDENTIAL_ID":     "cred-id",
+		"OS_APPLICATION_CREDENTIAL_SECRET": "cred-secret",
+	}
+	for key, value := range env {
+		os.Setenv(key, value)
+	}
+	creds, err := CompleteCredentialsFromEnv()
+	c.Assert(err, gc.IsNil)
+	c.Check(creds.URL, gc.Equals, "http://auth")
+	c.Check(creds.Region, gc.Equals, "region")
+	c.Check(creds.User, gc.Equals, "")
+	c.Check(creds.Secrets, gc.Equals, "")
+	c.Check(creds.ApplicationCredentialID, gc.Equals, "cred-id")
+	c.Check(creds.ApplicationCredentialSecret, gc.Equals, "cred-secret")
+}
+
 func (s *CredentialsTestSuite) TestCompleteCredentialsCheckProjectNameAliasVars(c *gc.C) {
 	env := map[string]string{
 		// required env vars

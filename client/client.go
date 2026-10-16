@@ -310,7 +310,7 @@ func newClient(creds *identity.Credentials, auth_method identity.AuthMode, httpC
 		client_creds.URL = client_creds.URL[:len(client_creds.URL)-1]
 	}
 	switch auth_method {
-	case identity.AuthUserPassV3:
+	case identity.AuthUserPassV3, identity.AuthApplicationCredentialV3:
 		client_creds.URL = client_creds.URL + apiTokensV3
 	default:
 		client_creds.URL = client_creds.URL + apiTokens

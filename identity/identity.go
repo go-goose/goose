@@ -19,10 +19,11 @@ import (
 type AuthMode int
 
 const (
-	AuthLegacy     = AuthMode(iota) // Legacy authentication
-	AuthUserPass                    // Username + password authentication
-	AuthKeyPair                     // Access/secret key pair authentication
-	AuthUserPassV3                  // Username + password authentication (v3 API)
+	AuthLegacy                  = AuthMode(iota) // Legacy authentication
+	AuthUserPass                                 // Username + password authentication
+	AuthKeyPair                                  // Access/secret key pair authentication
+	AuthUserPassV3                               // Username + password authentication (v3 API)
+	AuthApplicationCredentialV3                  // Application credential authentication (v3 API)
 )
 
 func (a AuthMode) String() string {
@@ -35,6 +36,8 @@ func (a AuthMode) String() string {
 		return "Username/password Authentication"
 	case AuthUserPassV3:
 		return "Username/password Authentication (Version 3)"
+	case AuthApplicationCredentialV3:
+		return "Application Credential Authentication (Version 3)"
 	}
 	panic(fmt.Errorf("Unknown athentication type: %d", a))
 }
@@ -62,17 +65,19 @@ type AuthDetails struct {
 // Credentials defines necessary parameters for authentication.
 // TODO - Tenant is deprecated, migrate attribute names to Project.
 type Credentials struct {
-	URL           string // The URL to authenticate against
-	User          string // The username to authenticate as
-	Secrets       string // The secrets to pass
-	Region        string // Region to send requests to
-	TenantName    string `credentials:"optional"` // The project name for this connection
-	TenantID      string `credentials:"optional"` // The project ID for this connection
-	Version       int    `credentials:"optional"` // The Keystone version
-	Domain        string `credentials:"optional"` // The domain for authorization (new in keystone v3)
-	UserDomain    string `credentials:"optional"` // The owning domain for this user (new in keystone v3)
-	ProjectDomain string `credentials:"optional"` // The project domain for authorization (new in keystone v3)
-	TrustID       string `credentials:"optional"` // The trust ID for authorization (new in keystone v3)
+	URL                         string // The URL to authenticate against
+	User                        string // The username to authenticate as
+	Secrets                     string // The secrets to pass
+	Region                      string // Region to send requests to
+	TenantName                  string `credentials:"optional"` // The project name for this connection
+	TenantID                    string `credentials:"optional"` // The project ID for this connection
+	Version                     int    `credentials:"optional"` // The Keystone version
+	Domain                      string `credentials:"optional"` // The domain for authorization (new in keystone v3)
+	UserDomain                  string `credentials:"optional"` // The owning domain for this user (new in keystone v3)
+	ProjectDomain               string `credentials:"optional"` // The project domain for authorization (new in keystone v3)
+	TrustID                     string `credentials:"optional"` // The trust ID for authorization (new in keystone v3)
+	ApplicationCredentialID     string `credentials:"optional"` // The application credential ID (new in keystone v3)
+	ApplicationCredentialSecret string `credentials:"optional"` // The application credential secret (new in keystone v3)
 }
 
 // Authenticator is implemented by each authentication method.
@@ -157,6 +162,16 @@ var (
 	CredEnvTrustID = []string{
 		"OS_TRUST_ID",
 	}
+	// CredEnvApplicationCredentialID is used for
+	// Credentials.ApplicationCredentialID.
+	CredEnvApplicationCredentialID = []string{
+		"OS_APPLICATION_CREDENTIAL_ID",
+	}
+	// CredEnvApplicationCredentialSecret is used for
+	// Credentials.ApplicationCredentialSecret.
+	CredEnvApplicationCredentialSecret = []string{
+		"OS_APPLICATION_CREDENTIAL_SECRET",
+	}
 )
 
 // CredentialsFromEnv creates and initializes the credentials from the
@@ -173,6 +188,12 @@ func CredentialsFromEnv() (*Credentials, error) {
 		UserDomain:    getConfig(CredEnvUserDomainName),
 		ProjectDomain: getConfig(CredEnvProjectDomainName),
 		TrustID:       getConfig(CredEnvTrustID),
+		ApplicationCredentialID: getConfig(
+			CredEnvApplicationCredentialID,
+		),
+		ApplicationCredentialSecret: getConfig(
+			CredEnvApplicationCredentialSecret,
+		),
 	}
 	defaultDomain := getConfig(CredEnvDefaultDomainName)
 	if defaultDomain != "" {
@@ -197,18 +218,33 @@ func CredentialsFromEnv() (*Credentials, error) {
 
 // CompleteCredentialsFromEnv gets and verifies all the required
 // authentication parameters have values in the environment.
+//
+// Username/password (User, Secrets) and application credential
+// (ApplicationCredentialID, ApplicationCredentialSecret) are
+// alternative credential sets: Keystone application credentials
+// carry no username/password, so a caller authenticating that way
+// is not expected to have OS_USERNAME/OS_PASSWORD set. If either
+// application-credential field is present, User/Secrets are not
+// required; otherwise the existing username/password check is
+// unchanged.
 func CompleteCredentialsFromEnv() (cred *Credentials, err error) {
 	cred, err = CredentialsFromEnv()
 	if err != nil {
 		return &Credentials{}, err
 	}
+	usingAppCred := cred.ApplicationCredentialID != "" ||
+		cred.ApplicationCredentialSecret != ""
 	v := reflect.ValueOf(cred).Elem()
 	t := v.Type()
-	for i := 0; i < v.NumField(); i++ {
+	for i := range v.NumField() {
 		f := v.Field(i)
+		name := t.Field(i).Name
+		if usingAppCred && (name == "User" || name == "Secrets") {
+			continue
+		}
 		tag := t.Field(i).Tag.Get("credentials")
 		if f.String() == "" && tag != "optional" {
-			err = fmt.Errorf("required environment variable not set for credentials attribute: %s", t.Field(i).Name)
+			err = fmt.Errorf("required environment variable not set for credentials attribute: %s", name)
 		}
 	}
 	return
@@ -232,6 +268,8 @@ func NewAuthenticator(authMode AuthMode, httpClient goosehttp.HttpClient) Authen
 		return &KeyPair{client: httpClient}
 	case AuthUserPassV3:
 		return &V3UserPass{client: httpClient}
+	case AuthApplicationCredentialV3:
+		return &V3AppCred{client: httpClient}
 	}
 }
 
